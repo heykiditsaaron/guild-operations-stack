@@ -7,10 +7,13 @@ import {
 import { config, type Region } from "./config.js";
 import { pool } from "./db.js";
 
-type RosterCharacter = {
+export type GuildCharacterCoordinate = {
   region: Region;
   realmId: string;
   characterId: string;
+};
+
+type RosterCharacter = GuildCharacterCoordinate & {
   characterName: string;
   realmSlug: string;
 };
@@ -58,19 +61,8 @@ function mediaUrl(assets: Array<{ key?: string; value?: string }> | undefined, k
   return assets?.find((asset) => asset.key === key)?.value ?? null;
 }
 
-function createRequestGate(intervalMs: number): () => Promise<void> {
-  let nextAt = 0;
-  let chain = Promise.resolve();
-
-  return () => {
-    const scheduled = chain.then(async () => {
-      const waitMs = Math.max(0, nextAt - Date.now());
-      if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, waitMs));
-      nextAt = Date.now() + intervalMs;
-    });
-    chain = scheduled.catch(() => undefined);
-    return scheduled;
-  };
+function coordinateKey(character: GuildCharacterCoordinate): string {
+  return `${character.region}:${character.realmId}:${character.characterId}`;
 }
 
 async function currentRosterCharacters(guildId: string): Promise<RosterCharacter[]> {
@@ -101,6 +93,47 @@ async function currentRosterCharacters(guildId: string): Promise<RosterCharacter
       realmSlug: row.realm_slug,
     };
   });
+}
+
+export async function guildCharactersNeedingEnrichment(
+  guildId: string,
+  changedCoordinates: GuildCharacterCoordinate[] = [],
+): Promise<GuildCharacterCoordinate[]> {
+  const changed = new Set(changedCoordinates.map(coordinateKey));
+  const result = await pool.query<{
+    region: Region;
+    realm_id: string;
+    character_id: string;
+    profile_missing: boolean;
+    media_missing: boolean;
+  }>(
+    `SELECT
+       grm.region,
+       grm.realm_id,
+       grm.character_id,
+       (wcp.character_id IS NULL) AS profile_missing,
+       (wcp.character_id IS NULL OR wcp.media_acquired_at IS NULL) AS media_missing
+     FROM guild_roster_memberships grm
+     LEFT JOIN wow_character_profiles wcp
+       ON wcp.region = grm.region
+      AND wcp.realm_id = grm.realm_id
+      AND wcp.character_id = grm.character_id
+     WHERE grm.guild_id = $1
+       AND grm.currently_present = true`,
+    [guildId],
+  );
+
+  return result.rows
+    .filter((row) => row.profile_missing || row.media_missing || changed.has(coordinateKey({
+      region: row.region,
+      realmId: row.realm_id,
+      characterId: row.character_id,
+    })))
+    .map((row) => ({
+      region: row.region,
+      realmId: row.realm_id,
+      characterId: row.character_id,
+    }));
 }
 
 function characterBaseUrl(character: RosterCharacter): string {
@@ -199,30 +232,45 @@ async function persistMedia(
 export async function enrichGuildCharacters(options: {
   guildId?: string;
   concurrency?: number;
-  requestsPerSecond?: number;
+  coordinates?: GuildCharacterCoordinate[];
 } = {}): Promise<GuildCharacterEnrichmentResult> {
   const guildId = options.guildId ?? config.guild.id;
   const concurrency = options.concurrency ?? 8;
-  const requestsPerSecond = options.requestsPerSecond ?? 10;
 
   if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 20) {
     throw new Error("concurrency must be an integer between 1 and 20");
   }
-  if (!Number.isFinite(requestsPerSecond) || requestsPerSecond <= 0 || requestsPerSecond > 50) {
-    throw new Error("requestsPerSecond must be greater than 0 and at most 50");
+
+  const fullRoster = await currentRosterCharacters(guildId);
+  const requested = options.coordinates
+    ? new Set(options.coordinates.map(coordinateKey))
+    : null;
+  const roster = requested
+    ? fullRoster.filter((character) => requested.has(coordinateKey(character)))
+    : fullRoster;
+
+  if (roster.length === 0) {
+    return {
+      guildId,
+      rosterCount: fullRoster.length,
+      attempted: 0,
+      profilesUpdated: 0,
+      mediaUpdated: 0,
+      failedProfiles: 0,
+      failedMedia: 0,
+      apiCalls: 0,
+      failures: [],
+    };
   }
 
-  const roster = await currentRosterCharacters(guildId);
   const accessToken = await applicationAccessToken();
-  const gate = createRequestGate(Math.ceil(1000 / requestsPerSecond));
   const failures: GuildCharacterEnrichmentResult["failures"] = [];
   let profilesUpdated = 0;
   let mediaUpdated = 0;
   let apiCalls = 0;
   let cursor = 0;
 
-  const onRequest = async () => {
-    await gate();
+  const onRequest = () => {
     apiCalls += 1;
   };
 
@@ -269,11 +317,11 @@ export async function enrichGuildCharacters(options: {
     }
   }
 
-  await Promise.all(Array.from({ length: Math.min(concurrency, roster.length || 1) }, () => worker()));
+  await Promise.all(Array.from({ length: Math.min(concurrency, roster.length) }, () => worker()));
 
   return {
     guildId,
-    rosterCount: roster.length,
+    rosterCount: fullRoster.length,
     attempted: roster.length,
     profilesUpdated,
     mediaUpdated,
