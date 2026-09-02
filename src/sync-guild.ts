@@ -13,6 +13,13 @@ try {
       failed_profiles: result.reconciliation.failedProfiles,
       failed_media: result.reconciliation.failedMedia,
       api_calls: result.reconciliation.apiCalls,
+      failures: result.reconciliation.failures.map((failure) => ({
+        character_id: failure.characterId,
+        realm_id: failure.realmId,
+        name: failure.name,
+        stage: failure.stage,
+        error: failure.error,
+      })),
     },
   }, null, 2));
 } finally {
