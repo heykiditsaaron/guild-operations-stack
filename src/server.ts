@@ -4,6 +4,8 @@ import { config } from "./config.js";
 import { pool } from "./db.js";
 import { registerAuthRoutes } from "./auth.js";
 import { registerMainSelectionPage } from "./main-selection-page.js";
+import { loadAssetRegistry, registerAssetRoutes } from "./web/assets.js";
+import { registerHomePage } from "./web/pages/home.js";
 
 const app = Fastify({
   logger: true,
@@ -18,6 +20,10 @@ app.get("/health", async () => {
   await pool.query("SELECT 1");
   return { status: "ok" };
 });
+
+const webAssets = await loadAssetRegistry();
+await registerAssetRoutes(app, webAssets);
+await registerHomePage(app, webAssets);
 
 await registerAuthRoutes(app);
 await registerMainSelectionPage(app);

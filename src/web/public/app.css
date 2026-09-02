@@ -1,0 +1,92 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #0f1014;
+  color: #f7f4ea;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top, rgba(118, 79, 31, 0.28), transparent 36rem),
+    linear-gradient(180deg, #17181d 0%, #0f1014 65%);
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.splash-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+}
+
+.splash-card {
+  width: min(100%, 46rem);
+  padding: clamp(2rem, 7vw, 4.5rem);
+  border: 1px solid rgba(238, 201, 124, 0.22);
+  border-radius: 1.5rem;
+  background: rgba(18, 19, 24, 0.82);
+  box-shadow: 0 2rem 6rem rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(18px);
+}
+
+.eyebrow {
+  margin: 0 0 0.8rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #e8c986;
+}
+
+h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.8rem, 11vw, 5.8rem);
+  line-height: 0.92;
+  letter-spacing: -0.045em;
+}
+
+.lede {
+  max-width: 34rem;
+  margin: 1.5rem 0 0;
+  font-size: clamp(1rem, 3vw, 1.2rem);
+  line-height: 1.65;
+  color: #c9c5ba;
+}
+
+.status-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.86rem;
+  color: #aaa69c;
+}
+
+.status-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: #7cc68d;
+  box-shadow: 0 0 1rem rgba(124, 198, 141, 0.48);
+}
