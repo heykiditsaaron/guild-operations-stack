@@ -31,6 +31,7 @@ async function viewerForHome(sessionToken: string | undefined): Promise<WebViewe
           realmId: mainCharacter.realmId,
           name: mainCharacter.name,
           realmName: selectedCharacter?.realmName ?? mainCharacter.realmName,
+          rankIndex: selectedCharacter?.rankIndex ?? mainCharacter.rankIndex,
           level: selectedCharacter?.level ?? null,
           className: selectedCharacter?.className ?? null,
           activeSpecName: selectedCharacter?.activeSpecName ?? null,
