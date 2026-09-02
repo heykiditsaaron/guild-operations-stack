@@ -31,6 +31,10 @@ export type WebViewer =
         characterId: string;
         realmId: string;
         name: string;
+        realmName: string | null;
+        level: number | null;
+        className: string | null;
+        activeSpecName: string | null;
         avatarUrl: string | null;
       } | null;
       characters: WebViewerCharacter[];
@@ -57,7 +61,7 @@ function userGlyph(): string {
 
 function renderDiscordAssociation(viewer: Extract<WebViewer, { authenticated: true }>, pathname: string): string {
   if (!viewer.discordAssociation) {
-    return `<a href="/me/discord/connect?return_to=${encodeURIComponent(pathname)}">Connect Discord</a>`;
+    return `<a class="discord-connect" href="/me/discord/connect?return_to=${encodeURIComponent(pathname)}">Connect Discord</a>`;
   }
 
   return `<div class="discord-connection" aria-label="Discord connected">
@@ -66,6 +70,29 @@ function renderDiscordAssociation(viewer: Extract<WebViewer, { authenticated: tr
       <span class="discord-connection-name">${escapeHtml(viewer.discordAssociation.username)}</span>
       <span class="discord-connection-status">Discord</span>
     </span>
+  </div>`;
+}
+
+function renderCurrentCharacter(viewer: Extract<WebViewer, { authenticated: true }>): string {
+  if (!viewer.mainCharacter) {
+    return `<div class="me-character-summary me-character-summary-empty">
+      <span class="me-character-name">No main selected</span>
+      <span class="me-character-meta">Choose a guild character to present as.</span>
+      <button type="button" class="me-change-main" data-open-main-picker>Select main</button>
+    </div>`;
+  }
+
+  const character = viewer.mainCharacter;
+  const role = character.activeSpecName && character.className
+    ? `${character.activeSpecName} ${character.className}`
+    : character.className ?? character.activeSpecName ?? "Character";
+  const realm = character.realmName ?? `Realm ${character.realmId}`;
+
+  return `<div class="me-character-summary">
+    <span class="me-character-name">${escapeHtml(character.name)}</span>
+    <span class="me-character-meta">${escapeHtml(role)}</span>
+    <span class="me-character-realm">${escapeHtml(realm)}</span>
+    <button type="button" class="me-change-main" data-open-main-picker>Change main</button>
   </div>`;
 }
 
@@ -87,10 +114,16 @@ function renderMeControl(viewer: WebViewer, pathname: string): string {
       <span data-me-label>${escapeHtml(label)}</span>
       <span class="account-visual${viewer.mainCharacter?.avatarUrl ? " account-visual-portrait" : " account-visual-generic"}" data-me-visual>${portrait}</span>
     </summary>
-    <div class="menu-panel menu-panel-right">
-      <button type="button" data-open-main-picker>Select main</button>
-      ${renderDiscordAssociation(viewer, pathname)}
-      <button type="button" data-logout>Sign out</button>
+    <div class="menu-panel menu-panel-right me-menu-panel">
+      <section class="me-menu-section me-character-section">
+        ${renderCurrentCharacter(viewer)}
+      </section>
+      <section class="me-menu-section me-discord-section">
+        ${renderDiscordAssociation(viewer, pathname)}
+      </section>
+      <section class="me-menu-section me-session-section">
+        <button type="button" class="me-sign-out" data-logout>Sign out</button>
+      </section>
     </div>
   </details>`;
 }
