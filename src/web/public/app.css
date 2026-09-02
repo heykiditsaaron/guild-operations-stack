@@ -201,16 +201,17 @@ summary {
 }
 
 .me-menu-panel {
+  width: min(18rem, calc(100vw - 2rem));
   min-width: 15rem;
-  padding: 0.35rem 0.8rem;
+  padding: 0.4rem 0.9rem;
 }
 
 .me-menu-section {
-  padding: 0.85rem 0.15rem;
+  padding: 0.95rem 0.2rem;
 }
 
 .me-menu-section + .me-menu-section {
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.065);
 }
 
 .me-character-summary {
@@ -220,33 +221,39 @@ summary {
 
 .me-character-name,
 .me-character-meta,
-.me-character-realm {
+.me-character-context {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .me-character-name {
-  font-size: 1rem;
+  font-size: 1.02rem;
   font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .me-character-meta {
-  margin-top: 0.16rem;
+  margin-top: 0.18rem;
   color: #c9c5ba;
   font-size: 0.82rem;
 }
 
-.me-character-realm {
-  margin-top: 0.08rem;
+.me-character-context {
+  margin-top: 0.1rem;
   color: #858178;
   font-size: 0.76rem;
+}
+
+.guild-rank {
+  color: inherit;
+  font: inherit;
 }
 
 .me-menu-panel .me-change-main {
   width: auto;
   min-height: 0;
-  margin-top: 0.62rem;
+  margin-top: 0.72rem;
   padding: 0;
   border-radius: 0;
   color: #aaa69c;
@@ -268,12 +275,12 @@ summary {
 }
 
 .discord-connection {
-  min-height: 3.2rem;
+  min-height: 3rem;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 0.65rem;
-  padding: 0.35rem 0;
+  padding: 0.3rem 0;
 }
 
 .discord-connection-dot {
@@ -321,7 +328,7 @@ summary {
 }
 
 .me-session-section {
-  padding-bottom: 0.55rem;
+  padding-bottom: 0.6rem;
 }
 
 .me-menu-panel .me-sign-out {
