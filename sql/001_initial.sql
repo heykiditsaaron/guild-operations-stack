@@ -80,6 +80,19 @@ CREATE TABLE IF NOT EXISTS guild_rank_definitions (
   PRIMARY KEY (guild_id, rank_index)
 );
 
+CREATE TABLE IF NOT EXISTS subject_main_characters (
+  subject_id uuid NOT NULL REFERENCES guild_subjects(subject_id) ON DELETE RESTRICT,
+  guild_id text NOT NULL REFERENCES guilds(guild_id) ON DELETE RESTRICT,
+  region text NOT NULL,
+  realm_id text NOT NULL,
+  character_id text NOT NULL,
+  selected_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (subject_id, guild_id),
+  FOREIGN KEY (region, realm_id, character_id)
+    REFERENCES characters(region, realm_id, character_id)
+    ON DELETE RESTRICT
+);
+
 CREATE TABLE IF NOT EXISTS authentication_attempts (
   attempt_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   state_hash text NOT NULL UNIQUE,
