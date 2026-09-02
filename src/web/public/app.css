@@ -195,6 +195,11 @@ summary {
   background: rgba(255, 255, 255, 0.06);
 }
 
+.menu-panel button:disabled {
+  cursor: wait;
+  color: #aaa69c;
+}
+
 .page-header,
 .app-main,
 .app-footer {
@@ -331,6 +336,33 @@ h1 {
   margin: 0.8rem 0 1.2rem;
   color: #aaa69c;
   line-height: 1.5;
+}
+
+.refresh-characters-action {
+  width: 100%;
+  min-height: 2.9rem;
+  margin: 0 0 1rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid rgba(232, 201, 134, 0.24);
+  border-radius: 0.75rem;
+  background: rgba(232, 201, 134, 0.055);
+  color: #e8c986;
+  text-align: left;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.refresh-characters-action:hover,
+.refresh-characters-action:focus-visible {
+  border-color: rgba(232, 201, 134, 0.42);
+  background: rgba(232, 201, 134, 0.09);
+}
+
+.refresh-characters-action:disabled {
+  cursor: wait;
+  color: #aaa69c;
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.025);
 }
 
 .character-choices {
