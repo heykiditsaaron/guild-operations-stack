@@ -62,6 +62,13 @@ export async function establishOrResolveSubject(input: {
   return withTransaction(async (client) => {
     const subjectId = await resolveOrCreateSubject(client, input.region, input.principalId);
 
+    // Preserve every previously observed character, but make the latest successful
+    // Blizzard profile observation authoritative for current control.
+    await client.query(
+      "UPDATE characters SET currently_controlled = false WHERE subject_id = $1 AND region = $2",
+      [subjectId, input.region],
+    );
+
     for (const account of input.profile.wow_accounts ?? []) {
       const accountResult = await client.query<{ wow_account_record_id: string }>(
         `INSERT INTO wow_accounts (subject_id, region, wow_account_id)
@@ -82,8 +89,8 @@ export async function establishOrResolveSubject(input: {
         const result = await client.query(
           `INSERT INTO characters (
              subject_id, wow_account_record_id, region, realm_id, character_id,
-             name, realm_name, realm_slug, level, faction
-           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+             name, realm_name, realm_slug, level, faction, currently_controlled
+           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,true)
            ON CONFLICT (region, realm_id, character_id) DO UPDATE SET
              wow_account_record_id = EXCLUDED.wow_account_record_id,
              name = EXCLUDED.name,
@@ -91,6 +98,7 @@ export async function establishOrResolveSubject(input: {
              realm_slug = EXCLUDED.realm_slug,
              level = EXCLUDED.level,
              faction = EXCLUDED.faction,
+             currently_controlled = true,
              last_seen_at = now()
            WHERE characters.subject_id = EXCLUDED.subject_id
            RETURNING character_record_id`,
