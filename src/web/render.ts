@@ -32,6 +32,7 @@ export type WebViewer =
         realmId: string;
         name: string;
         realmName: string | null;
+        rankIndex: number | null;
         level: number | null;
         className: string | null;
         activeSpecName: string | null;
@@ -78,7 +79,7 @@ function renderCurrentCharacter(viewer: Extract<WebViewer, { authenticated: true
     return `<div class="me-character-summary me-character-summary-empty">
       <span class="me-character-name" data-me-character-name>No main selected</span>
       <span class="me-character-meta" data-me-character-meta>Choose a guild character to present as.</span>
-      <span class="me-character-realm" data-me-character-realm hidden></span>
+      <span class="me-character-context" data-me-character-context hidden></span>
       <button type="button" class="me-change-main" data-open-main-picker>Select main</button>
     </div>`;
   }
@@ -88,11 +89,14 @@ function renderCurrentCharacter(viewer: Extract<WebViewer, { authenticated: true
     ? `${character.activeSpecName} ${character.className}`
     : character.className ?? character.activeSpecName ?? "Character";
   const realm = character.realmName ?? `Realm ${character.realmId}`;
+  const rank = character.rankIndex === null
+    ? ""
+    : ` · <span class="guild-rank guild-rank-${character.rankIndex}" data-guild-rank="${character.rankIndex}">Rank ${character.rankIndex}</span>`;
 
   return `<div class="me-character-summary">
     <span class="me-character-name" data-me-character-name>${escapeHtml(character.name)}</span>
     <span class="me-character-meta" data-me-character-meta>${escapeHtml(role)}</span>
-    <span class="me-character-realm" data-me-character-realm>${escapeHtml(realm)}</span>
+    <span class="me-character-context" data-me-character-context><span data-me-character-realm>${escapeHtml(realm)}</span>${rank}</span>
     <button type="button" class="me-change-main" data-open-main-picker>Change main</button>
   </div>`;
 }
@@ -166,6 +170,7 @@ function renderMainPicker(viewer: WebViewer): string {
       data-character-name="${escapeHtml(character.name)}"
       data-character-role="${escapeHtml(role)}"
       data-character-realm="${escapeHtml(location)}"
+      data-character-rank="${character.rankIndex}"
       data-avatar-url="${escapeHtml(character.avatarUrl ?? "")}">
       <span class="character-portrait">${portrait}</span>
       <span class="character-choice-copy">
