@@ -70,6 +70,21 @@ export type BlizzardCharacterMedia = {
   assets?: Array<{ key?: string; value?: string }>;
 };
 
+const BLIZZARD_REQUESTS_PER_SECOND = 10;
+const BLIZZARD_REQUEST_INTERVAL_MS = Math.ceil(1000 / BLIZZARD_REQUESTS_PER_SECOND);
+let nextBlizzardRequestAt = 0;
+let blizzardRequestChain = Promise.resolve();
+
+async function waitForBlizzardRequestBudget(): Promise<void> {
+  const scheduled = blizzardRequestChain.then(async () => {
+    const waitMs = Math.max(0, nextBlizzardRequestAt - Date.now());
+    if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, waitMs));
+    nextBlizzardRequestAt = Date.now() + BLIZZARD_REQUEST_INTERVAL_MS;
+  });
+  blizzardRequestChain = scheduled.catch(() => undefined);
+  await scheduled;
+}
+
 export function authorizationUrl(state: string): string {
   const url = new URL("https://oauth.battle.net/authorize");
   url.searchParams.set("client_id", config.blizzardClientId);
@@ -126,14 +141,6 @@ export async function applicationAccessToken(): Promise<string> {
   return payload.access_token;
 }
 
-async function getJson<T>(url: string, accessToken: string): Promise<T> {
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  if (!response.ok) throw new Error(`Blizzard authority request failed (${response.status})`);
-  return (await response.json()) as T;
-}
-
 export async function getJsonWithRetry<T>(
   url: string,
   accessToken: string,
@@ -143,7 +150,9 @@ export async function getJsonWithRetry<T>(
   let lastError: Error | null = null;
 
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    await waitForBlizzardRequestBudget();
     await options.onRequest?.();
+
     const response = await fetch(url, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -151,18 +160,22 @@ export async function getJsonWithRetry<T>(
     if (response.ok) return (await response.json()) as T;
 
     if (response.status !== 429 && response.status < 500) {
-      throw new Error(`Blizzard profile request failed (${response.status})`);
+      throw new Error(`Blizzard authority request failed (${response.status})`);
     }
 
     const retryAfterSeconds = Number(response.headers.get("retry-after") ?? "0");
     const delayMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
       ? retryAfterSeconds * 1000
       : 500 * 2 ** (attempt - 1);
-    lastError = new Error(`Blizzard profile request failed (${response.status})`);
+    lastError = new Error(`Blizzard authority request failed (${response.status})`);
     if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
 
-  throw lastError ?? new Error("Blizzard profile request failed");
+  throw lastError ?? new Error("Blizzard authority request failed");
+}
+
+async function getJson<T>(url: string, accessToken: string): Promise<T> {
+  return getJsonWithRetry<T>(url, accessToken);
 }
 
 export async function acquireAuthority(region: Region, accessToken: string): Promise<{
