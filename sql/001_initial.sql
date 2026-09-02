@@ -150,11 +150,21 @@ CREATE TABLE IF NOT EXISTS authentication_attempts (
   attempt_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   state_hash text NOT NULL UNIQUE,
   region text NOT NULL,
+  purpose text NOT NULL DEFAULT 'login',
+  subject_id uuid REFERENCES guild_subjects(subject_id) ON DELETE RESTRICT,
   return_to text,
   created_at timestamptz NOT NULL DEFAULT now(),
   expires_at timestamptz NOT NULL,
-  consumed_at timestamptz
+  consumed_at timestamptz,
+  CHECK (purpose IN ('login', 'self_refresh')),
+  CHECK ((purpose = 'login' AND subject_id IS NULL) OR (purpose = 'self_refresh' AND subject_id IS NOT NULL))
 );
+
+ALTER TABLE authentication_attempts
+  ADD COLUMN IF NOT EXISTS purpose text NOT NULL DEFAULT 'login';
+
+ALTER TABLE authentication_attempts
+  ADD COLUMN IF NOT EXISTS subject_id uuid REFERENCES guild_subjects(subject_id) ON DELETE RESTRICT;
 
 CREATE TABLE IF NOT EXISTS application_sessions (
   session_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
