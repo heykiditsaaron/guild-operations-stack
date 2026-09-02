@@ -39,8 +39,12 @@ CREATE TABLE IF NOT EXISTS characters (
   faction text,
   first_seen_at timestamptz NOT NULL DEFAULT now(),
   last_seen_at timestamptz NOT NULL DEFAULT now(),
+  currently_controlled boolean NOT NULL DEFAULT true,
   UNIQUE (region, realm_id, character_id)
 );
+
+ALTER TABLE characters
+  ADD COLUMN IF NOT EXISTS currently_controlled boolean NOT NULL DEFAULT true;
 
 CREATE TABLE IF NOT EXISTS guilds (
   guild_id text PRIMARY KEY,
