@@ -71,7 +71,6 @@ function renderMeControl(viewer: WebViewer, pathname: string): string {
       <span class="account-visual${viewer.mainCharacter?.avatarUrl ? " account-visual-portrait" : " account-visual-generic"}" data-me-visual>${portrait}</span>
     </summary>
     <div class="menu-panel menu-panel-right">
-      <button type="button" data-refresh-characters>Refresh characters</button>
       <button type="button" data-open-main-picker>Select main</button>
       <button type="button" data-logout>Sign out</button>
     </div>
