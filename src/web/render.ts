@@ -76,8 +76,9 @@ function renderDiscordAssociation(viewer: Extract<WebViewer, { authenticated: tr
 function renderCurrentCharacter(viewer: Extract<WebViewer, { authenticated: true }>): string {
   if (!viewer.mainCharacter) {
     return `<div class="me-character-summary me-character-summary-empty">
-      <span class="me-character-name">No main selected</span>
-      <span class="me-character-meta">Choose a guild character to present as.</span>
+      <span class="me-character-name" data-me-character-name>No main selected</span>
+      <span class="me-character-meta" data-me-character-meta>Choose a guild character to present as.</span>
+      <span class="me-character-realm" data-me-character-realm hidden></span>
       <button type="button" class="me-change-main" data-open-main-picker>Select main</button>
     </div>`;
   }
@@ -89,9 +90,9 @@ function renderCurrentCharacter(viewer: Extract<WebViewer, { authenticated: true
   const realm = character.realmName ?? `Realm ${character.realmId}`;
 
   return `<div class="me-character-summary">
-    <span class="me-character-name">${escapeHtml(character.name)}</span>
-    <span class="me-character-meta">${escapeHtml(role)}</span>
-    <span class="me-character-realm">${escapeHtml(realm)}</span>
+    <span class="me-character-name" data-me-character-name>${escapeHtml(character.name)}</span>
+    <span class="me-character-meta" data-me-character-meta>${escapeHtml(role)}</span>
+    <span class="me-character-realm" data-me-character-realm>${escapeHtml(realm)}</span>
     <button type="button" class="me-change-main" data-open-main-picker>Change main</button>
   </div>`;
 }
@@ -152,6 +153,9 @@ function renderMainPicker(viewer: WebViewer): string {
       ? `<img src="${escapeHtml(character.avatarUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer">`
       : `<span class="character-portrait-placeholder" aria-hidden="true">${userGlyph()}</span>`;
     const location = character.realmName ?? `Realm ${character.realmId}`;
+    const role = character.activeSpecName && character.className
+      ? `${character.activeSpecName} ${character.className}`
+      : character.className ?? character.activeSpecName ?? "Character";
 
     return `<button
       type="button"
@@ -160,6 +164,8 @@ function renderMainPicker(viewer: WebViewer): string {
       data-character-id="${escapeHtml(character.characterId)}"
       data-realm-id="${escapeHtml(character.realmId)}"
       data-character-name="${escapeHtml(character.name)}"
+      data-character-role="${escapeHtml(role)}"
+      data-character-realm="${escapeHtml(location)}"
       data-avatar-url="${escapeHtml(character.avatarUrl ?? "")}">
       <span class="character-portrait">${portrait}</span>
       <span class="character-choice-copy">
