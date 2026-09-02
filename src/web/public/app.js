@@ -54,8 +54,24 @@ function setMainPresentation(button) {
   if (!(label instanceof HTMLElement) || !(visual instanceof HTMLElement)) return;
 
   const name = button.dataset.characterName || "Me";
+  const role = button.dataset.characterRole || "Character";
+  const realm = button.dataset.characterRealm || "";
   const avatarUrl = button.dataset.avatarUrl || "";
   label.textContent = name;
+
+  const summary = document.querySelector(".me-character-summary");
+  const summaryName = document.querySelector("[data-me-character-name]");
+  const summaryMeta = document.querySelector("[data-me-character-meta]");
+  const summaryRealm = document.querySelector("[data-me-character-realm]");
+  const changeMain = document.querySelector(".me-change-main");
+  if (summary instanceof HTMLElement) summary.classList.remove("me-character-summary-empty");
+  if (summaryName instanceof HTMLElement) summaryName.textContent = name;
+  if (summaryMeta instanceof HTMLElement) summaryMeta.textContent = role;
+  if (summaryRealm instanceof HTMLElement) {
+    summaryRealm.textContent = realm;
+    summaryRealm.hidden = !realm;
+  }
+  if (changeMain instanceof HTMLButtonElement) changeMain.textContent = "Change main";
 
   visual.replaceChildren();
   visual.classList.remove("account-visual-generic", "account-visual-portrait");
