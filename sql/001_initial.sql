@@ -42,6 +42,44 @@ CREATE TABLE IF NOT EXISTS characters (
   UNIQUE (region, realm_id, character_id)
 );
 
+CREATE TABLE IF NOT EXISTS guilds (
+  guild_id text PRIMARY KEY,
+  region text NOT NULL,
+  realm_id text NOT NULL,
+  name text NOT NULL,
+  realm_name text,
+  realm_slug text NOT NULL,
+  faction text,
+  created_timestamp bigint,
+  first_seen_at timestamptz NOT NULL DEFAULT now(),
+  last_seen_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS guild_roster_memberships (
+  guild_id text NOT NULL REFERENCES guilds(guild_id) ON DELETE RESTRICT,
+  region text NOT NULL,
+  realm_id text NOT NULL,
+  character_id text NOT NULL,
+  rank_index integer NOT NULL CHECK (rank_index >= 0),
+  character_name text NOT NULL,
+  realm_name text,
+  realm_slug text,
+  first_seen_at timestamptz NOT NULL DEFAULT now(),
+  last_seen_at timestamptz NOT NULL DEFAULT now(),
+  currently_present boolean NOT NULL DEFAULT true,
+  PRIMARY KEY (guild_id, region, realm_id, character_id)
+);
+
+CREATE TABLE IF NOT EXISTS guild_rank_definitions (
+  guild_id text NOT NULL REFERENCES guilds(guild_id) ON DELETE RESTRICT,
+  rank_index integer NOT NULL CHECK (rank_index >= 0),
+  display_name text,
+  active boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (guild_id, rank_index)
+);
+
 CREATE TABLE IF NOT EXISTS authentication_attempts (
   attempt_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   state_hash text NOT NULL UNIQUE,
@@ -66,3 +104,9 @@ CREATE INDEX IF NOT EXISTS application_sessions_subject_id_idx
 
 CREATE INDEX IF NOT EXISTS characters_subject_id_idx
   ON characters(subject_id);
+
+CREATE INDEX IF NOT EXISTS guild_roster_memberships_current_idx
+  ON guild_roster_memberships(guild_id, currently_present);
+
+CREATE INDEX IF NOT EXISTS guild_roster_memberships_character_idx
+  ON guild_roster_memberships(region, realm_id, character_id);
