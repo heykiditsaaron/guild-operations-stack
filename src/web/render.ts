@@ -94,7 +94,8 @@ function renderMainPicker(viewer: WebViewer): string {
   if (!viewer.authenticated) return "";
 
   const characters = viewer.characters.map((character) => {
-    const selected = viewer.mainCharacter?.realmId === character.realmId &&
+    const selected = viewer.mainCharacter !== null &&
+      viewer.mainCharacter.realmId === character.realmId &&
       viewer.mainCharacter.characterId === character.characterId;
     const portrait = character.avatarUrl
       ? `<img src="${escapeHtml(character.avatarUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer">`
