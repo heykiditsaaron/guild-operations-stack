@@ -12,6 +12,7 @@
     "start": "node dist/server.js",
     "migrate": "tsx src/migrate.ts",
     "guild:sync": "tsx src/sync-guild.ts",
+    "guild:enrich": "tsx src/enrich-guild-characters.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
