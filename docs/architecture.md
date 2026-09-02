@@ -15,6 +15,12 @@ The system should be judged primarily by whether a capability helps to:
 - operate guild participation; or
 - preserve the history and results of that participation.
 
+A useful product test is:
+
+> Does this help establish authority to participate, enable guild participation, operate that participation, or preserve its history?
+
+If not, it probably does not belong.
+
 ## Architectural center
 
 The system has two related but distinct concerns:
@@ -46,6 +52,8 @@ Guild Operations then answers:
 
 > What does that member do, receive, join, claim, earn, and participate in within OH CRIT I Pulled!?
 
+The foundational identity and authority model exists to make that second question safe and durable. It is not the product destination by itself.
+
 ## Canonical subject
 
 The canonical operational subject is established from Blizzard-authenticated World of Warcraft identity.
@@ -56,8 +64,9 @@ Conceptually:
 GuildSubject
 ├── Blizzard principal
 ├── WoW accounts
-├── Blizzard-authoritative character roster
-└── guild-facing membership
+├── Blizzard-authoritative characters
+├── selected main
+└── optional Discord association
 ```
 
 The canonical subject is an internal continuity anchor. It is foundational, but it is not the primary user-facing product object.
@@ -79,23 +88,37 @@ The authenticated Blizzard account provides an authoritative roster of character
 
 The authentication subject is therefore primarily an authority boundary, not a rich profile surface.
 
-## Character representation
+## Character representation and recognition
 
-Character representation should remain deliberately light.
+Character representation should remain deliberately light and should favor **recognition cues** over profile completeness.
 
-Guild Operations needs enough character information for recognition and precise selection in participatory workflows, typically including:
+For Guild Operations, the most useful current recognition cues are the facts that answer how a member is encountered in normal guild play:
 
-- durable Blizzard character coordinate;
-- name;
-- realm;
-- class;
-- level;
-- optional portrait or avatar reference; and
-- optional link to Blizzard's own character profile surface.
+- character name;
+- class and active specialization, when available;
+- realm; and
+- current guild rank.
+
+Those cues are operationally meaningful for distinct reasons:
+
+```text
+class / specialization
+    → how the character primarily participates in gameplay
+
+realm
+    → where that character exists in WoW
+
+guild rank
+    → how that character currently participates in OH CRIT I Pulled!
+```
+
+Other Blizzard facts such as level, race, item level, achievements, and similar profile information may be legitimate observations but are incidental to this recognition purpose unless a concrete guild workflow requires them.
 
 Guild Operations should not recreate an Armory-style character profile. Rich character inspection already exists elsewhere and is outside this system's purpose.
 
 A portrait or avatar is useful because it improves quick recognition in selection interfaces; it is presentation enrichment, not identity-critical state.
+
+Recognition surfaces should prepare semantic styling seams when a known guild fact is likely to gain stronger recognition treatment later. For example, guild rank presentation may expose a stable rank-specific presentation hook without prematurely defining colors, badges, or other visual policy. Prepare the seam, not the speculative feature.
 
 ## Guild-facing membership
 
@@ -162,12 +185,14 @@ Guild 65431436 / Rank N
     ├── display_name
     ├── active/inactive presentation state
     ├── later: Discord role projection
-    └── later: member-facing permissions
+    └── member-facing capabilities
 ```
 
 Rank metadata must be keyed by the canonical numeric rank rather than inferred from currently populated roster values. The guild intentionally leaves rank `6` unused today, demonstrating that the observed rank set may be sparse.
 
-Discord roles and Guild Operations permissions may both project from the same rank metadata, but Discord role membership must not become backend authorization truth. System operator authority remains a separate first-party authorization concern and is not implied by WoW guild rank.
+Discord roles and Guild Operations capabilities may both project from the same rank metadata, but Discord role membership must not become backend authorization truth. System operator authority remains a separate first-party authorization concern and is not implied by WoW guild rank.
+
+Guild rank is also a valid member recognition cue. Presentation may eventually use rank names, colors, badges, or other distinctions, but those treatments are Guild Operations presentation policy layered over Blizzard's current numeric rank fact.
 
 ## Interface model
 
@@ -182,6 +207,14 @@ Expected interfaces include:
 No interface should become the sole keeper of meaningful guild operational state.
 
 Member-facing interfaces may display a small persistent member context or "member strip" so the user can recognize whom they are acting as while participating. That presentation is context for interaction, not a profile product.
+
+The member context should answer three progressively different questions without collapsing them into one generic account surface:
+
+```text
+Who am I presenting as?
+What is associated with me?
+What can I do to this session?
+```
 
 For web access, authentication begins with Blizzard/Battle.net authorization and resolves the authenticated user to the canonical WoW-rooted subject before establishing the application session.
 
@@ -209,13 +242,37 @@ Examples include:
 
 These activities may be synchronous or asynchronous. The system should allow the guild to continue participating as a community even when members are not simultaneously logged into World of Warcraft.
 
-## Initial implementation status
+Guild Operations preserves, enables, and enriches community participation. It does not replace the human and social processes that give that participation meaning.
 
-The first executable capability is complete:
+## Model maturity and feature pressure
 
-> Given successful Blizzard authentication, establish or resolve the canonical WoW-rooted subject.
+The foundational model is now sufficient to support concrete member-facing work. It establishes:
 
-The next executable capability resolves that subject against Blizzard's public OH CRIT I Pulled! roster so the backend can identify current guild characters and their canonical numeric ranks.
+- WoW-rooted subject continuity;
+- Blizzard account authority;
+- current guild authority;
+- durable character continuity;
+- selected-main presentation;
+- optional Discord association;
+- rank-derived Guild Operations capabilities;
+- external refresh and reconciliation boundaries; and
+- a renderer boundary in which interfaces project backend truth.
+
+Further generalized modeling should not be performed merely because another abstraction can be imagined.
+
+The next useful pressure should come from real guild participation features. Shared event, notification, audit, participation, or interface abstractions should emerge only when multiple concrete workflows demonstrate that they are actually shared.
+
+In short:
+
+> Build the guild activity. Let the common machinery reveal itself under pressure.
+
+## Current implementation direction
+
+The foundational authority and interface model is in place. The next product-level question is no longer primarily "who is this user?" but:
+
+> **What does a guild member get to do with Guild Operations?**
+
+Concrete participation features should now drive the next architectural discoveries.
 
 ## Workflow
 
