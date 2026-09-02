@@ -201,8 +201,9 @@ summary {
 }
 
 .me-menu-panel {
-  width: min(18rem, calc(100vw - 2rem));
-  min-width: 15rem;
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+  min-width: 11rem;
   padding: 0.25rem 0.9rem;
 }
 
