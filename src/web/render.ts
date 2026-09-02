@@ -10,14 +10,30 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
+export type WebViewerCharacter = {
+  characterId: string;
+  realmId: string;
+  name: string;
+  realmName: string | null;
+  rankIndex: number;
+  level: number | null;
+  className: string | null;
+  raceName: string | null;
+  activeSpecName: string | null;
+  avatarUrl: string | null;
+};
+
 export type WebViewer =
   | { authenticated: false }
   | {
       authenticated: true;
       mainCharacter: {
+        characterId: string;
+        realmId: string;
         name: string;
         avatarUrl: string | null;
       } | null;
+      characters: WebViewerCharacter[];
     };
 
 export type RenderPageInput = {
@@ -51,14 +67,73 @@ function renderMeControl(viewer: WebViewer): string {
 
   return `<details class="me-menu menu-surface">
     <summary class="me-control">
-      <span>${escapeHtml(label)}</span>
-      <span class="account-visual${viewer.mainCharacter?.avatarUrl ? " account-visual-portrait" : " account-visual-generic"}">${portrait}</span>
+      <span data-me-label>${escapeHtml(label)}</span>
+      <span class="account-visual${viewer.mainCharacter?.avatarUrl ? " account-visual-portrait" : " account-visual-generic"}" data-me-visual>${portrait}</span>
     </summary>
     <div class="menu-panel menu-panel-right">
-      <a href="/select-main">Select main</a>
+      <button type="button" data-open-main-picker>Select main</button>
       <button type="button" data-logout>Sign out</button>
     </div>
   </details>`;
+}
+
+function characterMeta(character: WebViewerCharacter): string {
+  const identity: string[] = [];
+  if (character.level !== null) identity.push(`Level ${character.level}`);
+  if (character.activeSpecName && character.className) {
+    identity.push(`${character.activeSpecName} ${character.className}`);
+  } else if (character.className) {
+    identity.push(character.className);
+  } else if (character.raceName) {
+    identity.push(character.raceName);
+  }
+  return identity.length ? identity.join(" · ") : "Character profile not enriched yet";
+}
+
+function renderMainPicker(viewer: WebViewer): string {
+  if (!viewer.authenticated) return "";
+
+  const characters = viewer.characters.map((character) => {
+    const selected = viewer.mainCharacter?.realmId === character.realmId &&
+      viewer.mainCharacter.characterId === character.characterId;
+    const portrait = character.avatarUrl
+      ? `<img src="${escapeHtml(character.avatarUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer">`
+      : `<span class="character-portrait-placeholder" aria-hidden="true">${userGlyph()}</span>`;
+    const location = character.realmName ?? `Realm ${character.realmId}`;
+
+    return `<button
+      type="button"
+      class="character-choice${selected ? " character-choice-current" : ""}"
+      data-select-main
+      data-character-id="${escapeHtml(character.characterId)}"
+      data-realm-id="${escapeHtml(character.realmId)}"
+      data-character-name="${escapeHtml(character.name)}"
+      data-avatar-url="${escapeHtml(character.avatarUrl ?? "")}">
+      <span class="character-portrait">${portrait}</span>
+      <span class="character-choice-copy">
+        <span class="character-choice-name">${escapeHtml(character.name)}${selected ? ' <span class="current-main-label">Current main</span>' : ""}</span>
+        <span class="character-choice-meta">${escapeHtml(characterMeta(character))}</span>
+        <span class="character-choice-submeta">${escapeHtml(location)} · Guild rank ${character.rankIndex}</span>
+      </span>
+    </button>`;
+  }).join("\n");
+
+  return `<dialog class="main-picker" data-main-picker aria-labelledby="main-picker-title">
+    <div class="main-picker-sheet">
+      <div class="main-picker-heading">
+        <div>
+          <p class="eyebrow">Your character</p>
+          <h2 id="main-picker-title">Select your main</h2>
+        </div>
+        <button type="button" class="dialog-close" data-close-main-picker aria-label="Close main character picker">×</button>
+      </div>
+      <p class="main-picker-intro">Choose the OH CRIT I Pulled! character you want Guild Operations to present as your current main.</p>
+      <div class="character-choices" data-character-choices>
+        ${characters || '<p class="main-picker-empty">No currently eligible guild characters were found.</p>'}
+      </div>
+      <p class="main-picker-status" data-main-picker-status aria-live="polite"></p>
+    </div>
+  </dialog>`;
 }
 
 function renderActionBar(viewer: WebViewer, pathname: string): string {
@@ -105,6 +180,7 @@ export function renderPage(assets: AssetRegistry, input: RenderPageInput): strin
     <main class="app-main">${input.body}</main>
     <footer class="app-footer">OH CRIT I Pulled! Guild Operations</footer>
   </div>
+  ${renderMainPicker(input.viewer)}
   <script src="${assetUrl(assets, "app.js")}" defer></script>
 </body>
 </html>`;
