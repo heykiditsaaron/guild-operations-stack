@@ -3,6 +3,8 @@ import { pool } from "./db.js";
 
 export type GuildCapability = string;
 
+export const GUILD_REFRESH_CAPABILITY = "guild.refresh";
+
 export type EffectiveGuildAuthority = {
   guildId: string;
   rankIndex: number;
