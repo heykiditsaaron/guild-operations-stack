@@ -200,13 +200,80 @@ summary {
   color: #aaa69c;
 }
 
+.me-menu-panel {
+  min-width: 15rem;
+  padding: 0.35rem 0.8rem;
+}
+
+.me-menu-section {
+  padding: 0.85rem 0.15rem;
+}
+
+.me-menu-section + .me-menu-section {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.me-character-summary {
+  display: grid;
+  min-width: 0;
+}
+
+.me-character-name,
+.me-character-meta,
+.me-character-realm {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.me-character-name {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.me-character-meta {
+  margin-top: 0.16rem;
+  color: #c9c5ba;
+  font-size: 0.82rem;
+}
+
+.me-character-realm {
+  margin-top: 0.08rem;
+  color: #858178;
+  font-size: 0.76rem;
+}
+
+.me-menu-panel .me-change-main {
+  width: auto;
+  min-height: 0;
+  margin-top: 0.62rem;
+  padding: 0;
+  border-radius: 0;
+  color: #aaa69c;
+  font-size: 0.76rem;
+  font-weight: 550;
+}
+
+.me-menu-panel .me-change-main:hover,
+.me-menu-panel .me-change-main:focus-visible {
+  background: transparent;
+  color: #e8c986;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.me-character-summary-empty .me-character-meta {
+  white-space: normal;
+  line-height: 1.4;
+}
+
 .discord-connection {
   min-height: 3.2rem;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 0.65rem;
-  padding: 0.65rem 0.85rem;
+  padding: 0.35rem 0;
 }
 
 .discord-connection-dot {
@@ -238,6 +305,39 @@ summary {
 .discord-connection-status {
   color: #8e8a81;
   font-size: 0.72rem;
+}
+
+.me-menu-panel .discord-connect {
+  min-height: 0;
+  padding: 0.35rem 0;
+  color: #c9c5ba;
+  font-size: 0.84rem;
+}
+
+.me-menu-panel .discord-connect:hover,
+.me-menu-panel .discord-connect:focus-visible {
+  background: transparent;
+  color: #f7f4ea;
+}
+
+.me-session-section {
+  padding-bottom: 0.55rem;
+}
+
+.me-menu-panel .me-sign-out {
+  min-height: 2.6rem;
+  justify-content: center;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  text-align: center;
+  font-weight: 650;
+}
+
+.me-menu-panel .me-sign-out:hover,
+.me-menu-panel .me-sign-out:focus-visible {
+  border-color: rgba(232, 201, 134, 0.24);
+  background: rgba(255, 255, 255, 0.075);
 }
 
 .page-header,
