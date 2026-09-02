@@ -1,0 +1,25 @@
+import cookie from "@fastify/cookie";
+import Fastify from "fastify";
+import { config } from "./config.js";
+import { pool } from "./db.js";
+import { registerAuthRoutes } from "./auth.js";
+
+const app = Fastify({ logger: true });
+await app.register(cookie);
+
+app.get("/health", async () => {
+  await pool.query("SELECT 1");
+  return { status: "ok" };
+});
+
+await registerAuthRoutes(app);
+
+const shutdown = async (): Promise<void> => {
+  await app.close();
+  await pool.end();
+};
+
+process.on("SIGINT", () => void shutdown());
+process.on("SIGTERM", () => void shutdown());
+
+await app.listen({ host: "0.0.0.0", port: config.port });
