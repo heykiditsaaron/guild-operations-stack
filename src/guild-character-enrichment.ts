@@ -1,4 +1,9 @@
-import { applicationAccessToken, acquireCharacterPresentation } from "./blizzard.js";
+import {
+  applicationAccessToken,
+  getJsonWithRetry,
+  type BlizzardCharacterMedia,
+  type BlizzardCharacterProfile,
+} from "./blizzard.js";
 import { config, type Region } from "./config.js";
 import { pool } from "./db.js";
 
@@ -14,13 +19,16 @@ export type GuildCharacterEnrichmentResult = {
   guildId: string;
   rosterCount: number;
   attempted: number;
-  succeeded: number;
-  failed: number;
+  profilesUpdated: number;
+  mediaUpdated: number;
+  failedProfiles: number;
+  failedMedia: number;
   apiCalls: number;
   failures: Array<{
     characterId: string;
     realmId: string;
     name: string;
+    stage: "profile" | "media";
     error: string;
   }>;
 };
@@ -56,8 +64,7 @@ function createRequestGate(intervalMs: number): () => Promise<void> {
 
   return () => {
     const scheduled = chain.then(async () => {
-      const now = Date.now();
-      const waitMs = Math.max(0, nextAt - now);
+      const waitMs = Math.max(0, nextAt - Date.now());
       if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, waitMs));
       nextAt = Date.now() + intervalMs;
     });
@@ -96,24 +103,28 @@ async function currentRosterCharacters(guildId: string): Promise<RosterCharacter
   });
 }
 
-async function persistCharacterPresentation(character: RosterCharacter, observedAt: Date, profile: Awaited<ReturnType<typeof acquireCharacterPresentation>>["profile"], media: Awaited<ReturnType<typeof acquireCharacterPresentation>>["media"]): Promise<void> {
-  const profileCharacterId = String(profile.id);
-  const profileRealmId = String(profile.realm.id);
-  if (profileCharacterId !== character.characterId || profileRealmId !== character.realmId) {
+function characterBaseUrl(character: RosterCharacter): string {
+  const realm = encodeURIComponent(character.realmSlug.toLowerCase());
+  const name = encodeURIComponent(character.characterName.toLowerCase());
+  return `https://${character.region}.api.blizzard.com/profile/wow/character/${realm}/${name}`;
+}
+
+async function persistProfile(
+  character: RosterCharacter,
+  profile: BlizzardCharacterProfile,
+  observedAt: Date,
+): Promise<void> {
+  if (String(profile.id) !== character.characterId || String(profile.realm.id) !== character.realmId) {
     throw new Error("Blizzard character profile did not corroborate roster character coordinate");
   }
-
-  const realmSlug = profile.realm.slug ?? character.realmSlug;
-  const assets = media.assets ?? [];
 
   await pool.query(
     `INSERT INTO wow_character_profiles (
        region, realm_id, character_id, name, realm_name, realm_slug,
        level, faction, race_id, race_name, class_id, class_name,
-       active_spec_id, active_spec_name, avatar_url, inset_url, main_url,
-       profile_payload, media_payload, profile_acquired_at, media_acquired_at
+       active_spec_id, active_spec_name, profile_payload, profile_acquired_at
      ) VALUES (
-       $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18::jsonb,$19::jsonb,$20,$20
+       $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb,$16
      )
      ON CONFLICT (region, realm_id, character_id) DO UPDATE SET
        name = EXCLUDED.name,
@@ -127,13 +138,8 @@ async function persistCharacterPresentation(character: RosterCharacter, observed
        class_name = EXCLUDED.class_name,
        active_spec_id = EXCLUDED.active_spec_id,
        active_spec_name = EXCLUDED.active_spec_name,
-       avatar_url = EXCLUDED.avatar_url,
-       inset_url = EXCLUDED.inset_url,
-       main_url = EXCLUDED.main_url,
        profile_payload = EXCLUDED.profile_payload,
-       media_payload = EXCLUDED.media_payload,
        profile_acquired_at = EXCLUDED.profile_acquired_at,
-       media_acquired_at = EXCLUDED.media_acquired_at,
        updated_at = now()`,
     [
       character.region,
@@ -141,7 +147,7 @@ async function persistCharacterPresentation(character: RosterCharacter, observed
       character.characterId,
       profile.name,
       localizedValue(profile.realm.name),
-      realmSlug,
+      profile.realm.slug ?? character.realmSlug,
       profile.level ?? null,
       factionValue(profile.faction),
       profile.race?.id != null ? String(profile.race.id) : null,
@@ -150,10 +156,40 @@ async function persistCharacterPresentation(character: RosterCharacter, observed
       localizedValue(profile.character_class?.name),
       profile.active_spec?.id != null ? String(profile.active_spec.id) : null,
       localizedValue(profile.active_spec?.name),
+      JSON.stringify(profile),
+      observedAt,
+    ],
+  );
+}
+
+async function persistMedia(
+  character: RosterCharacter,
+  media: BlizzardCharacterMedia,
+  observedAt: Date,
+): Promise<void> {
+  if (media.character?.id != null && String(media.character.id) !== character.characterId) {
+    throw new Error("Blizzard character media did not corroborate roster character coordinate");
+  }
+
+  const assets = media.assets ?? [];
+  await pool.query(
+    `UPDATE wow_character_profiles
+        SET avatar_url = $4,
+            inset_url = $5,
+            main_url = $6,
+            media_payload = $7::jsonb,
+            media_acquired_at = $8,
+            updated_at = now()
+      WHERE region = $1
+        AND realm_id = $2
+        AND character_id = $3`,
+    [
+      character.region,
+      character.realmId,
+      character.characterId,
       mediaUrl(assets, "avatar"),
       mediaUrl(assets, "inset"),
       mediaUrl(assets, "main-raw") ?? mediaUrl(assets, "main"),
-      JSON.stringify(profile),
       JSON.stringify(media),
       observedAt,
     ],
@@ -180,7 +216,8 @@ export async function enrichGuildCharacters(options: {
   const accessToken = await applicationAccessToken();
   const gate = createRequestGate(Math.ceil(1000 / requestsPerSecond));
   const failures: GuildCharacterEnrichmentResult["failures"] = [];
-  let succeeded = 0;
+  let profilesUpdated = 0;
+  let mediaUpdated = 0;
   let apiCalls = 0;
   let cursor = 0;
 
@@ -194,25 +231,38 @@ export async function enrichGuildCharacters(options: {
       const index = cursor;
       cursor += 1;
       if (index >= roster.length) return;
-
       const character = roster[index];
+      const base = characterBaseUrl(character);
+      const suffix = `namespace=profile-${character.region}&locale=en_US`;
+
+      let profileReady = false;
       try {
-        const presentation = await acquireCharacterPresentation(
-          {
-            region: character.region,
-            realmSlug: character.realmSlug,
-            characterName: character.characterName,
-          },
-          accessToken,
-          onRequest,
-        );
-        await persistCharacterPresentation(character, new Date(), presentation.profile, presentation.media);
-        succeeded += 1;
+        const profile = await getJsonWithRetry<BlizzardCharacterProfile>(`${base}?${suffix}`, accessToken, { onRequest });
+        await persistProfile(character, profile, new Date());
+        profilesUpdated += 1;
+        profileReady = true;
       } catch (error) {
         failures.push({
           characterId: character.characterId,
           realmId: character.realmId,
           name: character.characterName,
+          stage: "profile",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+
+      if (!profileReady) continue;
+
+      try {
+        const media = await getJsonWithRetry<BlizzardCharacterMedia>(`${base}/character-media?${suffix}`, accessToken, { onRequest });
+        await persistMedia(character, media, new Date());
+        mediaUpdated += 1;
+      } catch (error) {
+        failures.push({
+          characterId: character.characterId,
+          realmId: character.realmId,
+          name: character.characterName,
+          stage: "media",
           error: error instanceof Error ? error.message : String(error),
         });
       }
@@ -225,8 +275,10 @@ export async function enrichGuildCharacters(options: {
     guildId,
     rosterCount: roster.length,
     attempted: roster.length,
-    succeeded,
-    failed: failures.length,
+    profilesUpdated,
+    mediaUpdated,
+    failedProfiles: failures.filter((failure) => failure.stage === "profile").length,
+    failedMedia: failures.filter((failure) => failure.stage === "media").length,
     apiCalls,
     failures,
   };
