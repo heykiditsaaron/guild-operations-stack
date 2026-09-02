@@ -3,7 +3,6 @@ import Fastify from "fastify";
 import { config } from "./config.js";
 import { pool } from "./db.js";
 import { registerAuthRoutes } from "./auth.js";
-import { registerMainSelectionPage } from "./main-selection-page.js";
 import { loadAssetRegistry, registerAssetRoutes } from "./web/assets.js";
 import { registerHomePage } from "./web/pages/home.js";
 
@@ -26,7 +25,6 @@ await registerAssetRoutes(app, webAssets);
 await registerHomePage(app, webAssets);
 
 await registerAuthRoutes(app);
-await registerMainSelectionPage(app);
 
 const shutdown = async (): Promise<void> => {
   await app.close();
