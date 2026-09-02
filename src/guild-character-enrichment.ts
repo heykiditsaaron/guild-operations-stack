@@ -158,7 +158,9 @@ export async function guildCharactersNeedingEnrichment(
     const mediaSuppressed = !presentationChanged
       && unavailableStillCooling(row.media_last_failure_status, row.media_last_attempted_at);
     const needsProfile = presentationChanged || (row.profile_missing && !profileSuppressed);
-    const needsMedia = presentationChanged || (row.media_missing && !mediaSuppressed);
+    const profileAvailableOrRequested = !row.profile_missing || needsProfile;
+    const needsMedia = profileAvailableOrRequested
+      && (presentationChanged || (row.media_missing && !mediaSuppressed));
     return needsProfile || needsMedia ? [{ ...coordinate, needsProfile, needsMedia }] : [];
   });
 }
