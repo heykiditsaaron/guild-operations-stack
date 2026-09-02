@@ -38,6 +38,7 @@ export async function selectMainCharacter(
       AND grm.character_id = c.character_id
       AND grm.currently_present = true
      WHERE c.subject_id = $1
+       AND c.currently_controlled = true
        AND grm.guild_id = $2
        AND c.realm_id = $3
        AND c.character_id = $4`,
@@ -87,7 +88,7 @@ export async function mainCharacterForSubject(subjectId: string): Promise<Select
        c.name,
        c.realm_name,
        grm.rank_index,
-       (grm.currently_present IS TRUE) AS currently_eligible
+       (c.currently_controlled IS TRUE AND grm.currently_present IS TRUE) AS currently_eligible
      FROM subject_main_characters smc
      JOIN characters c
        ON c.subject_id = smc.subject_id
