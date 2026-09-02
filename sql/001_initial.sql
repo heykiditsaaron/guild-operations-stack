@@ -74,6 +74,32 @@ CREATE TABLE IF NOT EXISTS guild_roster_memberships (
   PRIMARY KEY (guild_id, region, realm_id, character_id)
 );
 
+CREATE TABLE IF NOT EXISTS wow_character_profiles (
+  region text NOT NULL,
+  realm_id text NOT NULL,
+  character_id text NOT NULL,
+  name text NOT NULL,
+  realm_name text,
+  realm_slug text NOT NULL,
+  level integer,
+  faction text,
+  race_id text,
+  race_name text,
+  class_id text,
+  class_name text,
+  active_spec_id text,
+  active_spec_name text,
+  avatar_url text,
+  inset_url text,
+  main_url text,
+  profile_payload jsonb NOT NULL,
+  media_payload jsonb,
+  profile_acquired_at timestamptz NOT NULL,
+  media_acquired_at timestamptz,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (region, realm_id, character_id)
+);
+
 CREATE TABLE IF NOT EXISTS guild_rank_definitions (
   guild_id text NOT NULL REFERENCES guilds(guild_id) ON DELETE RESTRICT,
   rank_index integer NOT NULL CHECK (rank_index >= 0),
@@ -127,3 +153,6 @@ CREATE INDEX IF NOT EXISTS guild_roster_memberships_current_idx
 
 CREATE INDEX IF NOT EXISTS guild_roster_memberships_character_idx
   ON guild_roster_memberships(region, realm_id, character_id);
+
+CREATE INDEX IF NOT EXISTS wow_character_profiles_name_idx
+  ON wow_character_profiles(region, realm_slug, name);
