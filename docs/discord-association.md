@@ -53,7 +53,7 @@ Discord association should have a deliberately small web footprint.
 
 When no Discord account is associated, the authenticated `Me` surface should expose an obvious `Connect Discord` action.
 
-When an account is associated, the same surface should show a compact connected state: a green association-status indicator, the stored Discord username, and `Connected` subtext.
+When an account is associated, the same surface should show a compact state: a green association-status indicator, the stored Discord username, and `Discord` subtext identifying the service.
 
 The green indicator means that the Discord association exists. It does not represent Discord online presence.
 
