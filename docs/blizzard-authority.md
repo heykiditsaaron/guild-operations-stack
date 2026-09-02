@@ -28,31 +28,122 @@ The World of Warcraft Account Profile endpoints require a user access token carr
 
 The important distinction is that this is user-authorized profile access, not ordinary application-level Game Data API access. A successful response therefore carries authority about which WoW profile data belongs to the authenticated Battle.net user.
 
+## Live OAuth probe
+
+A controlled authorization ceremony was completed against the Guild Operations Blizzard client.
+
+The authorization request required a `state` parameter. The callback returned the same value that was generated before authorization, confirming the expected CSRF-binding behavior.
+
+The authorization-code exchange succeeded and returned:
+
+```text
+token_type: bearer
+scope: wow.profile
+expires_in: approximately 24 hours
+```
+
+The probe then queried:
+
+- `GET https://oauth.battle.net/userinfo`
+- `GET https://us.api.blizzard.com/profile/user/wow?namespace=profile-us&locale=en_US`
+
+No credential, token, account identifier, BattleTag, realm name, or character name is recorded in this document.
+
+## Confirmed identity hierarchy
+
+The live `userinfo` response contained exactly the relevant identity fields:
+
+```text
+battletag
+id
+sub
+```
+
+The live WoW Account Profile response contained:
+
+```text
+_links
+collections
+houses
+id
+wow_accounts
+```
+
+Each returned WoW account had:
+
+```text
+id
+characters
+```
+
+The sampled character shape contained:
+
+```text
+character
+faction
+gender
+id
+level
+name
+playable_class
+playable_race
+protected_character
+realm
+```
+
+The live account used for this probe exposed one WoW account/license and twenty characters. That count is an observation from the probe, not a system invariant.
+
+## Principal identifier relationship
+
+The live probe established a particularly important relationship among Blizzard identifiers.
+
+Observed types:
+
+```text
+userinfo.id: integer
+userinfo.sub: string
+profile.id: integer
+wow_accounts[].id: integer
+```
+
+When compared by textual value:
+
+```text
+userinfo.id == userinfo.sub == profile.id
+```
+
+The profile-level identifier did **not** equal the returned `wow_accounts[].id`.
+
+This is strong evidence that `/profile/user/wow` is a WoW profile projection of the authenticated Battle.net principal rather than a representation of one specific WoW license/account. The subordinate `wow_accounts[]` records occupy a distinct identity layer beneath that principal.
+
+For Guild Operations, this materially strengthens the authenticated Blizzard principal as the continuity anchor and materially weakens any design that would use one arbitrary WoW license/account ID as the member root.
+
 ## Two relevant identity layers
 
-The authentication ceremony exposes two related but different layers.
-
-### Battle.net account identity
+### Authenticated Blizzard principal
 
 Battle.net's user-info endpoint returns an authenticated account identifier (`sub` / account id) and BattleTag.
 
-This is the identity of the Battle.net principal that completed the authorization ceremony. BattleTag is presentation data and must not be treated as the durable coordinate.
+The live probe confirmed that the numeric `userinfo.id`, textual `userinfo.sub`, and numeric top-level WoW Account Profile `id` carry the same identifier value.
 
-### World of Warcraft account profile
+BattleTag is presentation data and must not be treated as the durable coordinate.
 
-`GET /profile/user/wow` returns the authenticated user's WoW profile summary. Current API descriptions expose:
+### World of Warcraft account/license records
+
+`GET /profile/user/wow` returns the authenticated principal's WoW profile summary and contains subordinate `wow_accounts[]` records.
+
+Conceptually, the observed hierarchy is:
 
 ```text
-profile
-├── id
-└── wow_accounts[]
-    ├── id
-    └── characters[]
+Authenticated Blizzard principal
+└── WoW Account Profile projection
+    └── wow_accounts[]
+        └── characters[]
 ```
 
-A single authenticated Battle.net principal may therefore expose more than one WoW account/license, each with its own identifier and character set.
+A single authenticated principal may expose more than one WoW account/license. The probe account happened to expose one; the API shape itself remains plural.
 
-This distinction matters: `wow_accounts[].id` should not automatically be assumed to be the one canonical guild subject identifier.
+Therefore `wow_accounts[].id` must not be used as the canonical guild subject identifier.
 
 ## Character ownership
 
@@ -78,16 +169,13 @@ The durable coordinate must not silently assume that a numeric Blizzard identifi
 
 ## Current architectural conclusion
 
-The evidence does **not** support modeling one arbitrary `wow_accounts[].id` as the guild member root.
-
-The stronger candidate is the authenticated **WoW profile principal**: the Battle.net principal that has successfully authorized `wow.profile`, scoped into our WoW-only domain. Its WoW account/license records and characters are subordinate facts discovered through the Account Profile response.
+The live evidence supports modeling the canonical Guild Operations continuity anchor as the Blizzard-authenticated principal that has successfully demonstrated a WoW profile in the selected region.
 
 Conceptually:
 
 ```text
-Authenticated WoW profile subject
-├── Battle.net principal coordinate
-├── region
+Authenticated Blizzard principal
+├── region-bound successful WoW profile acquisition
 ├── WoW account/license(s)
 │   └── character(s)
 └── later: Discord resolver
@@ -99,36 +187,29 @@ A Discord identity remains incapable of establishing this root.
 
 ## Candidate durable coordinate
 
-Pending live-response verification, the safest candidate is a composite coordinate derived from:
+The strongest current candidate is:
 
 ```text
-Battle.net authenticated subject identifier + region
+Blizzard authenticated principal identifier + region
 ```
 
 with the successful `/profile/user/wow` response acting as the ceremony that admits that principal into Guild Operations as a WoW-rooted subject.
 
-The profile-level `id`, WoW-account/license IDs, and character IDs should be retained as Blizzard-authoritative subordinate coordinates once their exact live-response semantics are confirmed.
+The live probe confirmed that `userinfo.id`, `userinfo.sub`, and top-level `/profile/user/wow.id` are alternate representations of the same principal identifier value.
 
-We should **not yet name database fields or freeze a schema around these identifiers**.
+The subordinate WoW-account/license IDs and character IDs should be retained as Blizzard-authoritative coordinates for those subordinate objects.
 
-## What requires live verification
+We should still avoid freezing database field names until the remaining region and character-coordinate questions are resolved.
 
-Before schema work begins, perform one real authorization against our own Battle.net developer client and capture the structure — not secrets — of:
+## Remaining verification
 
-1. the token response and granted scopes;
-2. `/oauth/userinfo`;
-3. `/profile/user/wow?namespace=profile-us`;
-4. one returned character coordinate;
-5. if useful, that character's Blizzard-provided protected-character link.
+The root identity relationship is now substantially resolved. Remaining reconnaissance should be narrower:
 
-The test should answer:
-
-- Does `userinfo.sub` correspond directly to `userinfo.id`, and in what representation?
-- What precisely does the top-level `/profile/user/wow.id` identify?
-- What precisely does each `wow_accounts[].id` identify?
-- Are these IDs stable across repeated authorization?
-- Are any identifiers documented or observable as region-global rather than region-scoped?
-- Which native character identifiers are present directly in the Account Profile payload in the current Retail API?
+1. inspect one live character entry structurally and compare its direct `id`, nested `character` reference, `realm` reference, and `protected_character` reference without exposing their values;
+2. verify that the protected-character link resolves using the same realm and character IDs exposed in the parent profile response;
+3. repeat authorization/profile acquisition later to verify identifier stability rather than merely equality within one ceremony;
+4. determine whether Blizzard documents the principal identifier as globally unique or whether Guild Operations should permanently retain region as part of its canonical coordinate;
+5. determine how Guild Operations should handle a successful Blizzard principal whose selected regional WoW profile contains no relevant guild character.
 
 Only after those questions are answered should Guild Operations freeze the root persistence contract.
 
