@@ -30,6 +30,35 @@ Those are separate observations or authorization questions.
 
 Discord usernames, display names, server nicknames, avatars, and roles are not identity coordinates. The Discord user ID is the durable Discord coordinate.
 
+## Persisted Discord data
+
+The initial association persists only the Discord data required to make the resolver useful and the result understandable to the member:
+
+```text
+subject_id
+discord_user_id
+username
+connected_at
+```
+
+The Discord user ID is the durable association coordinate. The username is presentation metadata retained so a member can recognize which Discord account they connected; it is not identity truth.
+
+Guild Operations does not treat Discord as a profile domain. It should not retain a broad Discord user object merely because the OAuth response makes one available.
+
+Additional Discord data may be added later when a concrete Guild Operations feature creates a real requirement for it. The model is intentionally extensible, but Discord profile data is not promoted into the domain speculatively.
+
+## Web presentation
+
+Discord association should have a deliberately small web footprint.
+
+When no Discord account is associated, the authenticated `Me` surface should expose an obvious `Connect Discord` action.
+
+When an account is associated, the same surface should show a compact connected state: a green association-status indicator, the stored Discord username, and `Connected` subtext.
+
+The green indicator means that the Discord association exists. It does not represent Discord online presence.
+
+No dedicated Discord profile page is required for this slice.
+
 ## Ceremony
 
 Association begins from an authenticated Guild Operations session.
@@ -43,7 +72,8 @@ On callback, the server:
 3. exchanges the Discord authorization code server-side;
 4. obtains the authenticated Discord user identity;
 5. uses the Discord user ID as the association coordinate;
-6. applies the association conflict rules before persistence.
+6. retains the returned username only as minimal recognition metadata;
+7. applies the association conflict rules before persistence.
 
 Discord OAuth access credentials are ceremony material, not durable Guild Operations identity state. They are not retained merely to preserve the association.
 
