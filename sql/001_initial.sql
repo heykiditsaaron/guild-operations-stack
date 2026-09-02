@@ -110,6 +110,17 @@ CREATE TABLE IF NOT EXISTS guild_rank_definitions (
   PRIMARY KEY (guild_id, rank_index)
 );
 
+CREATE TABLE IF NOT EXISTS guild_rank_capabilities (
+  guild_id text NOT NULL,
+  rank_index integer NOT NULL,
+  capability text NOT NULL CHECK (length(capability) > 0),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (guild_id, rank_index, capability),
+  FOREIGN KEY (guild_id, rank_index)
+    REFERENCES guild_rank_definitions(guild_id, rank_index)
+    ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS subject_main_characters (
   subject_id uuid NOT NULL REFERENCES guild_subjects(subject_id) ON DELETE RESTRICT,
   guild_id text NOT NULL REFERENCES guilds(guild_id) ON DELETE RESTRICT,
