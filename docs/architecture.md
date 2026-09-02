@@ -126,6 +126,49 @@ This allows the system to distinguish between:
 
 The guild-facing subset is expected to be more operationally important than the subject's complete Blizzard character roster.
 
+## Guild authority
+
+Blizzard publishes two independent authority surfaces that Guild Operations can join:
+
+```text
+Authenticated Account Profile
+        ∩
+Public OH CRIT I Pulled! Guild Roster
+        ↓
+current guild characters controlled by the subject
+```
+
+Live reconnaissance proved that both surfaces expose the same durable character coordinate shape: region, realm id, and character id. Guild membership should therefore be resolved by those Blizzard-native coordinates rather than by character name.
+
+The canonical guild reference is Blizzard numeric guild id `65431436`. The guild's name, realm labels, faction, and similar fields are observed presentation state. They may change without changing the guild's identity.
+
+Roster observations are current Blizzard truth, not destructive history reconciliation. A character disappearing from a later roster observation should cease to be currently present without erasing historical Guild Operations activity involving that character or member.
+
+## Guild rank projection
+
+Blizzard publishes a numeric rank on each guild roster membership but does not expose OH CRIT I Pulled!'s custom rank names through the Guild Profile or Guild Roster surfaces observed in live reconnaissance.
+
+Therefore:
+
+> Blizzard owns the numeric guild rank fact. Guild Operations owns configurable meaning and presentation for that number outside WoW.
+
+Conceptually:
+
+```text
+Guild 65431436 / Rank N
+├── canonical
+│   └── rank_index = N
+└── Guild Operations metadata
+    ├── display_name
+    ├── active/inactive presentation state
+    ├── later: Discord role projection
+    └── later: member-facing permissions
+```
+
+Rank metadata must be keyed by the canonical numeric rank rather than inferred from currently populated roster values. The guild intentionally leaves rank `6` unused today, demonstrating that the observed rank set may be sparse.
+
+Discord roles and Guild Operations permissions may both project from the same rank metadata, but Discord role membership must not become backend authorization truth. System operator authority remains a separate first-party authorization concern and is not implied by WoW guild rank.
+
 ## Interface model
 
 The backend owns singular truthful operational state. Interfaces present and manipulate that state according to their medium.
@@ -172,7 +215,7 @@ The first executable capability is complete:
 
 > Given successful Blizzard authentication, establish or resolve the canonical WoW-rooted subject.
 
-The implementation has been validated against live Blizzard authentication and now provides the authority foundation required to resolve the authenticated subject into guild-facing membership and participation.
+The next executable capability resolves that subject against Blizzard's public OH CRIT I Pulled! roster so the backend can identify current guild characters and their canonical numeric ranks.
 
 ## Workflow
 
