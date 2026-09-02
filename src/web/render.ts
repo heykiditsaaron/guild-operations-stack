@@ -34,6 +34,9 @@ export type WebViewer =
         avatarUrl: string | null;
       } | null;
       characters: WebViewerCharacter[];
+      discordAssociation: {
+        username: string;
+      } | null;
     };
 
 export type RenderPageInput = {
@@ -50,6 +53,20 @@ function userGlyph(): string {
     <circle cx="12" cy="8" r="4"></circle>
     <path d="M4.8 20c.8-4 3.2-6 7.2-6s6.4 2 7.2 6"></path>
   </svg>`;
+}
+
+function renderDiscordAssociation(viewer: Extract<WebViewer, { authenticated: true }>, pathname: string): string {
+  if (!viewer.discordAssociation) {
+    return `<a href="/me/discord/connect?return_to=${encodeURIComponent(pathname)}">Connect Discord</a>`;
+  }
+
+  return `<div class="discord-connection" aria-label="Discord connected">
+    <span class="discord-connection-dot" aria-hidden="true"></span>
+    <span class="discord-connection-copy">
+      <span class="discord-connection-name">${escapeHtml(viewer.discordAssociation.username)}</span>
+      <span class="discord-connection-status">Connected</span>
+    </span>
+  </div>`;
 }
 
 function renderMeControl(viewer: WebViewer, pathname: string): string {
@@ -72,6 +89,7 @@ function renderMeControl(viewer: WebViewer, pathname: string): string {
     </summary>
     <div class="menu-panel menu-panel-right">
       <button type="button" data-open-main-picker>Select main</button>
+      ${renderDiscordAssociation(viewer, pathname)}
       <button type="button" data-logout>Sign out</button>
     </div>
   </details>`;
