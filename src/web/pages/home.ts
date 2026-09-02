@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedSubject, SESSION_COOKIE_NAME } from "../../auth.js";
+import { discordAssociationForSubject } from "../../discord.js";
 import { guildCharactersForSubject } from "../../guild.js";
 import { mainCharacterForSubject } from "../../main-character.js";
 import type { AssetRegistry } from "../assets.js";
@@ -9,9 +10,10 @@ async function viewerForHome(sessionToken: string | undefined): Promise<WebViewe
   const subject = await authenticatedSubject(sessionToken);
   if (!subject) return { authenticated: false };
 
-  const [mainCharacter, characters] = await Promise.all([
+  const [mainCharacter, characters, discordAssociation] = await Promise.all([
     mainCharacterForSubject(subject.subjectId),
     guildCharactersForSubject(subject.subjectId),
+    discordAssociationForSubject(subject.subjectId),
   ]);
 
   return {
@@ -36,6 +38,11 @@ async function viewerForHome(sessionToken: string | undefined): Promise<WebViewe
       activeSpecName: character.activeSpecName,
       avatarUrl: character.avatarUrl,
     })),
+    discordAssociation: discordAssociation
+      ? {
+          username: discordAssociation.username,
+        }
+      : null,
   };
 }
 
