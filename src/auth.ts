@@ -7,7 +7,7 @@ import { guildCharactersForSubject } from "./guild.js";
 import { mainCharacterForSubject, selectMainCharacter } from "./main-character.js";
 import { establishOrResolveSubject } from "./persistence.js";
 
-const SESSION_COOKIE = "guild_session";
+export const SESSION_COOKIE_NAME = "guild_session";
 
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
@@ -30,7 +30,7 @@ async function createSession(subjectId: string): Promise<string> {
 }
 
 function setSessionCookie(reply: FastifyReply, token: string): void {
-  reply.setCookie(SESSION_COOKIE, token, {
+  reply.setCookie(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: "lax",
     secure: config.sessionCookieSecure,
@@ -39,7 +39,7 @@ function setSessionCookie(reply: FastifyReply, token: string): void {
   });
 }
 
-async function authenticatedSubject(token: string | undefined): Promise<{
+export async function authenticatedSubject(token: string | undefined): Promise<{
   subjectId: string;
   region: Region;
   characterCount: number;
@@ -137,7 +137,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.get("/me", async (request, reply) => {
-    const subject = await authenticatedSubject(request.cookies[SESSION_COOKIE]);
+    const subject = await authenticatedSubject(request.cookies[SESSION_COOKIE_NAME]);
     if (!subject) return reply.code(401).send({ error: "not_authenticated" });
 
     const [guildCharacters, mainCharacter] = await Promise.all([
@@ -159,6 +159,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
               realm_name: mainCharacter.realmName,
               rank: mainCharacter.rankIndex,
               currently_eligible: mainCharacter.currentlyEligible,
+              avatar_url: mainCharacter.avatarUrl,
             }
           : null,
         characters: guildCharacters.map((character) => ({
@@ -180,7 +181,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.put("/me/main-character", async (request, reply) => {
-    const subject = await authenticatedSubject(request.cookies[SESSION_COOKIE]);
+    const subject = await authenticatedSubject(request.cookies[SESSION_COOKIE_NAME]);
     if (!subject) return reply.code(401).send({ error: "not_authenticated" });
 
     const body = request.body as { realm_id?: unknown; character_id?: unknown } | null;
@@ -202,19 +203,20 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
         realm_name: selected.realmName,
         rank: selected.rankIndex,
         currently_eligible: selected.currentlyEligible,
+        avatar_url: selected.avatarUrl,
       },
     });
   });
 
   app.post("/auth/logout", async (request, reply) => {
-    const token = request.cookies[SESSION_COOKIE];
+    const token = request.cookies[SESSION_COOKIE_NAME];
     if (token) {
       await pool.query(
         "UPDATE application_sessions SET revoked_at = now() WHERE token_hash = $1 AND revoked_at IS NULL",
         [sha256(token)],
       );
     }
-    reply.clearCookie(SESSION_COOKIE, { path: "/" });
+    reply.clearCookie(SESSION_COOKIE_NAME, { path: "/" });
     return reply.code(204).send();
   });
 }
