@@ -16,6 +16,13 @@ async function viewerForHome(sessionToken: string | undefined): Promise<WebViewe
     discordAssociationForSubject(subject.subjectId),
   ]);
 
+  const selectedCharacter = mainCharacter
+    ? characters.find((character) =>
+        character.realmId === mainCharacter.realmId &&
+        character.characterId === mainCharacter.characterId,
+      ) ?? null
+    : null;
+
   return {
     authenticated: true,
     mainCharacter: mainCharacter
@@ -23,6 +30,10 @@ async function viewerForHome(sessionToken: string | undefined): Promise<WebViewe
           characterId: mainCharacter.characterId,
           realmId: mainCharacter.realmId,
           name: mainCharacter.name,
+          realmName: selectedCharacter?.realmName ?? mainCharacter.realmName,
+          level: selectedCharacter?.level ?? null,
+          className: selectedCharacter?.className ?? null,
+          activeSpecName: selectedCharacter?.activeSpecName ?? null,
           avatarUrl: mainCharacter.avatarUrl,
         }
       : null,
