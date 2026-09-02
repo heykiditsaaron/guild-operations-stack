@@ -3,11 +3,21 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import { acquireAuthority, authorizationUrl, exchangeAuthorizationCode } from "./blizzard.js";
 import { config, parseRegion, type Region } from "./config.js";
 import { pool } from "./db.js";
+import { effectiveGuildAuthority } from "./guild-permissions.js";
 import { guildCharactersForSubject } from "./guild.js";
 import { mainCharacterForSubject, selectMainCharacter } from "./main-character.js";
 import { establishOrResolveSubject } from "./persistence.js";
 
 export const SESSION_COOKIE_NAME = "guild_session";
+
+type AuthenticationPurpose = "login" | "self_refresh";
+
+type AuthenticationAttempt = {
+  region: Region;
+  returnTo: string | null;
+  purpose: AuthenticationPurpose;
+  subjectId: string | null;
+};
 
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
@@ -72,18 +82,57 @@ export async function authenticatedSubject(token: string | undefined): Promise<{
   };
 }
 
-async function consumeAttempt(state: string): Promise<{ region: Region; returnTo: string | null } | null> {
-  const result = await pool.query<{ region: Region; return_to: string | null }>(
+async function createAttempt(input: AuthenticationAttempt): Promise<string> {
+  const state = randomBytes(32).toString("base64url");
+  await pool.query(
+    `INSERT INTO authentication_attempts (
+       state_hash, region, purpose, subject_id, return_to, expires_at
+     ) VALUES ($1, $2, $3, $4, $5, now() + ($6 * interval '1 minute'))`,
+    [
+      sha256(state),
+      input.region,
+      input.purpose,
+      input.subjectId,
+      input.returnTo,
+      config.authAttemptTtlMinutes,
+    ],
+  );
+  return state;
+}
+
+async function consumeAttempt(state: string): Promise<AuthenticationAttempt | null> {
+  const result = await pool.query<{
+    region: Region;
+    return_to: string | null;
+    purpose: AuthenticationPurpose;
+    subject_id: string | null;
+  }>(
     `UPDATE authentication_attempts
        SET consumed_at = now()
      WHERE state_hash = $1
        AND consumed_at IS NULL
        AND expires_at > now()
-     RETURNING region, return_to`,
+     RETURNING region, return_to, purpose, subject_id`,
     [sha256(state)],
   );
   if (!result.rowCount) return null;
-  return { region: result.rows[0].region, returnTo: result.rows[0].return_to };
+  return {
+    region: result.rows[0].region,
+    returnTo: result.rows[0].return_to,
+    purpose: result.rows[0].purpose,
+    subjectId: result.rows[0].subject_id,
+  };
+}
+
+async function subjectForBlizzardPrincipal(region: Region, principalId: string): Promise<string | null> {
+  const result = await pool.query<{ subject_id: string }>(
+    `SELECT subject_id
+       FROM blizzard_principals
+      WHERE region = $1
+        AND principal_id = $2`,
+    [region, principalId],
+  );
+  return result.rows[0]?.subject_id ?? null;
 }
 
 export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
@@ -92,14 +141,29 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
     const region = parseRegion(query.region ?? "us");
     if (!region) return reply.code(400).send({ error: "unsupported_region" });
 
-    const returnTo = safeReturnTo(query.return_to);
-    const state = randomBytes(32).toString("base64url");
-    await pool.query(
-      `INSERT INTO authentication_attempts (state_hash, region, return_to, expires_at)
-       VALUES ($1, $2, $3, now() + ($4 * interval '1 minute'))`,
-      [sha256(state), region, returnTo, config.authAttemptTtlMinutes],
-    );
+    const state = await createAttempt({
+      region,
+      returnTo: safeReturnTo(query.return_to),
+      purpose: "login",
+      subjectId: null,
+    });
+    return reply.redirect(authorizationUrl(state));
+  });
 
+  app.get("/me/refresh", async (request, reply) => {
+    const subject = await authenticatedSubject(request.cookies[SESSION_COOKIE_NAME]);
+    if (!subject) return reply.code(401).send({ error: "not_authenticated" });
+
+    const membership = await effectiveGuildAuthority(subject.subjectId);
+    if (!membership) return reply.code(403).send({ error: "current_guild_membership_required" });
+
+    const query = request.query as { return_to?: unknown };
+    const state = await createAttempt({
+      region: subject.region,
+      returnTo: safeReturnTo(query.return_to) ?? "/me",
+      purpose: "self_refresh",
+      subjectId: subject.subjectId,
+    });
     return reply.redirect(authorizationUrl(state));
   });
 
@@ -122,6 +186,31 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
     try {
       const accessToken = await exchangeAuthorizationCode(query.code);
       const authority = await acquireAuthority(attempt.region, accessToken);
+
+      if (attempt.purpose === "self_refresh") {
+        const subject = await authenticatedSubject(request.cookies[SESSION_COOKIE_NAME]);
+        if (!subject || !attempt.subjectId || subject.subjectId !== attempt.subjectId) {
+          return reply.code(401).send({ error: "self_refresh_session_mismatch" });
+        }
+
+        const membership = await effectiveGuildAuthority(subject.subjectId);
+        if (!membership) {
+          return reply.code(403).send({ error: "current_guild_membership_required" });
+        }
+
+        const authoritySubjectId = await subjectForBlizzardPrincipal(attempt.region, authority.principalId);
+        if (authoritySubjectId !== subject.subjectId) {
+          return reply.code(409).send({ error: "blizzard_principal_mismatch" });
+        }
+
+        await establishOrResolveSubject({
+          region: attempt.region,
+          principalId: authority.principalId,
+          profile: authority.profile,
+        });
+        return reply.redirect(attempt.returnTo ?? "/me");
+      }
+
       const subjectId = await establishOrResolveSubject({
         region: attempt.region,
         principalId: authority.principalId,
