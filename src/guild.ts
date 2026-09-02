@@ -2,6 +2,12 @@ import type { PoolClient } from "pg";
 import { acquireGuildAuthority, type BlizzardGuildProfile, type BlizzardGuildRoster } from "./blizzard.js";
 import { config, type Region } from "./config.js";
 import { pool, withTransaction } from "./db.js";
+import {
+  enrichGuildCharacters,
+  guildCharactersNeedingEnrichment,
+  type GuildCharacterCoordinate,
+} from "./guild-character-enrichment.js";
+import { GUILD_REFRESH_CAPABILITY } from "./guild-permissions.js";
 
 function factionValue(value: unknown): string | null {
   if (typeof value === "string") return value;
@@ -22,6 +28,10 @@ function localizedValue(value: unknown): string | null {
     return typeof first === "string" ? first : null;
   }
   return null;
+}
+
+function coordinateKey(coordinate: GuildCharacterCoordinate): string {
+  return `${coordinate.region}:${coordinate.realmId}:${coordinate.characterId}`;
 }
 
 async function persistGuild(
@@ -79,14 +89,47 @@ async function ensureObservedRankDefinition(
        updated_at = now()`,
     [guildId, rankIndex, `Rank ${rankIndex}`],
   );
+
+  if ([0, 1, 2].includes(rankIndex)) {
+    await client.query(
+      `INSERT INTO guild_rank_capabilities (guild_id, rank_index, capability)
+       VALUES ($1, $2, $3)
+       ON CONFLICT DO NOTHING`,
+      [guildId, rankIndex, GUILD_REFRESH_CAPABILITY],
+    );
+  }
 }
+
+type PersistRosterResult = {
+  observed: number;
+  changedPresentationCoordinates: GuildCharacterCoordinate[];
+};
 
 async function persistRoster(
   client: PoolClient,
   guildId: string,
   region: Region,
   roster: BlizzardGuildRoster,
-): Promise<number> {
+): Promise<PersistRosterResult> {
+  const existingResult = await client.query<{
+    region: Region;
+    realm_id: string;
+    character_id: string;
+    character_name: string;
+    realm_name: string | null;
+    realm_slug: string | null;
+    currently_present: boolean;
+  }>(
+    `SELECT region, realm_id, character_id, character_name, realm_name, realm_slug, currently_present
+       FROM guild_roster_memberships
+      WHERE guild_id = $1`,
+    [guildId],
+  );
+  const existing = new Map(existingResult.rows.map((row) => [
+    coordinateKey({ region: row.region, realmId: row.realm_id, characterId: row.character_id }),
+    row,
+  ]));
+
   await client.query(
     `UPDATE guild_roster_memberships
         SET currently_present = false
@@ -96,11 +139,32 @@ async function persistRoster(
   );
 
   const observedRanks = new Set<number>();
+  const changedPresentationCoordinates: GuildCharacterCoordinate[] = [];
   let observed = 0;
+
   for (const member of roster.members ?? []) {
     const character = member.character;
     if (!character?.id || !character.realm?.id || !character.name || !Number.isInteger(member.rank)) {
       throw new Error("Blizzard guild roster member omitted a required canonical coordinate or rank");
+    }
+
+    const coordinate: GuildCharacterCoordinate = {
+      region,
+      realmId: String(character.realm.id),
+      characterId: String(character.id),
+    };
+    const realmName = localizedValue(character.realm.name);
+    const realmSlug = character.realm.slug ?? null;
+    const previous = existing.get(coordinateKey(coordinate));
+
+    if (
+      !previous
+      || !previous.currently_present
+      || previous.character_name !== character.name
+      || previous.realm_name !== realmName
+      || previous.realm_slug !== realmSlug
+    ) {
+      changedPresentationCoordinates.push(coordinate);
     }
 
     await client.query(
@@ -118,12 +182,12 @@ async function persistRoster(
       [
         guildId,
         region,
-        String(character.realm.id),
-        String(character.id),
+        coordinate.realmId,
+        coordinate.characterId,
         member.rank,
         character.name,
-        localizedValue(character.realm.name),
-        character.realm.slug ?? null,
+        realmName,
+        realmSlug,
       ],
     );
     observedRanks.add(member.rank);
@@ -134,12 +198,20 @@ async function persistRoster(
     await ensureObservedRankDefinition(client, guildId, rankIndex);
   }
 
-  return observed;
+  return { observed, changedPresentationCoordinates };
 }
 
 export async function refreshGuildAuthority(): Promise<{
   guildId: string;
   rosterCount: number;
+  reconciliation: {
+    charactersTargeted: number;
+    profilesUpdated: number;
+    mediaUpdated: number;
+    failedProfiles: number;
+    failedMedia: number;
+    apiCalls: number;
+  };
 }> {
   const authority = await acquireGuildAuthority(config.guild);
 
@@ -153,11 +225,30 @@ export async function refreshGuildAuthority(): Promise<{
     throw new Error("Blizzard guild roster does not corroborate the configured guild id");
   }
 
-  return withTransaction(async (client) => {
+  const persisted = await withTransaction(async (client) => {
     const guildId = await persistGuild(client, config.guild.region, authority.profile);
-    const rosterCount = await persistRoster(client, guildId, config.guild.region, authority.roster);
-    return { guildId, rosterCount };
+    const roster = await persistRoster(client, guildId, config.guild.region, authority.roster);
+    return { guildId, roster };
   });
+
+  const targets = await guildCharactersNeedingEnrichment(
+    persisted.guildId,
+    persisted.roster.changedPresentationCoordinates,
+  );
+  const enrichment = await enrichGuildCharacters({ guildId: persisted.guildId, targets });
+
+  return {
+    guildId: persisted.guildId,
+    rosterCount: persisted.roster.observed,
+    reconciliation: {
+      charactersTargeted: enrichment.attempted,
+      profilesUpdated: enrichment.profilesUpdated,
+      mediaUpdated: enrichment.mediaUpdated,
+      failedProfiles: enrichment.failedProfiles,
+      failedMedia: enrichment.failedMedia,
+      apiCalls: enrichment.apiCalls,
+    },
+  };
 }
 
 export async function guildCharactersForSubject(subjectId: string): Promise<Array<{
