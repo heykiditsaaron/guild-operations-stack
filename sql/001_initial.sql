@@ -175,6 +175,23 @@ CREATE TABLE IF NOT EXISTS application_sessions (
   revoked_at timestamptz
 );
 
+CREATE TABLE IF NOT EXISTS discord_association_attempts (
+  attempt_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  state_hash text NOT NULL UNIQUE,
+  subject_id uuid NOT NULL REFERENCES guild_subjects(subject_id) ON DELETE RESTRICT,
+  return_to text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  expires_at timestamptz NOT NULL,
+  consumed_at timestamptz
+);
+
+CREATE TABLE IF NOT EXISTS discord_associations (
+  subject_id uuid PRIMARY KEY REFERENCES guild_subjects(subject_id) ON DELETE RESTRICT,
+  discord_user_id text NOT NULL UNIQUE,
+  username text NOT NULL,
+  connected_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS application_sessions_subject_id_idx
   ON application_sessions(subject_id);
 
