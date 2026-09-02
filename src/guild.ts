@@ -7,7 +7,6 @@ import {
   guildCharactersNeedingEnrichment,
   type GuildCharacterCoordinate,
 } from "./guild-character-enrichment.js";
-import { GUILD_REFRESH_CAPABILITY } from "./guild-permissions.js";
 
 function factionValue(value: unknown): string | null {
   if (typeof value === "string") return value;
@@ -30,8 +29,8 @@ function localizedValue(value: unknown): string | null {
   return null;
 }
 
-function coordinateKey(coordinate: GuildCharacterCoordinate): string {
-  return `${coordinate.region}:${coordinate.realmId}:${coordinate.characterId}`;
+function coordinateKey(character: GuildCharacterCoordinate): string {
+  return `${character.region}:${character.realmId}:${character.characterId}`;
 }
 
 async function persistGuild(
@@ -90,27 +89,25 @@ async function ensureObservedRankDefinition(
     [guildId, rankIndex, `Rank ${rankIndex}`],
   );
 
-  if ([0, 1, 2].includes(rankIndex)) {
+  if (rankIndex === 0 || rankIndex === 1 || rankIndex === 2) {
     await client.query(
       `INSERT INTO guild_rank_capabilities (guild_id, rank_index, capability)
-       VALUES ($1, $2, $3)
-       ON CONFLICT DO NOTHING`,
-      [guildId, rankIndex, GUILD_REFRESH_CAPABILITY],
+       VALUES ($1, $2, 'guild.refresh')
+       ON CONFLICT (guild_id, rank_index, capability) DO NOTHING`,
+      [guildId, rankIndex],
     );
   }
 }
-
-type PersistRosterResult = {
-  observed: number;
-  changedPresentationCoordinates: GuildCharacterCoordinate[];
-};
 
 async function persistRoster(
   client: PoolClient,
   guildId: string,
   region: Region,
   roster: BlizzardGuildRoster,
-): Promise<PersistRosterResult> {
+): Promise<{
+  observed: number;
+  changedPresentationCoordinates: GuildCharacterCoordinate[];
+}> {
   const existingResult = await client.query<{
     region: Region;
     realm_id: string;
@@ -211,6 +208,13 @@ export async function refreshGuildAuthority(): Promise<{
     failedProfiles: number;
     failedMedia: number;
     apiCalls: number;
+    failures: Array<{
+      characterId: string;
+      realmId: string;
+      name: string;
+      stage: "profile" | "media";
+      error: string;
+    }>;
   };
 }> {
   const authority = await acquireGuildAuthority(config.guild);
@@ -247,6 +251,7 @@ export async function refreshGuildAuthority(): Promise<{
       failedProfiles: enrichment.failedProfiles,
       failedMedia: enrichment.failedMedia,
       apiCalls: enrichment.apiCalls,
+      failures: enrichment.failures,
     },
   };
 }
