@@ -3,6 +3,7 @@ import Fastify from "fastify";
 import { config } from "./config.js";
 import { pool } from "./db.js";
 import { registerAuthRoutes } from "./auth.js";
+import { registerMainSelectionPage } from "./main-selection-page.js";
 
 const app = Fastify({
   logger: true,
@@ -19,6 +20,7 @@ app.get("/health", async () => {
 });
 
 await registerAuthRoutes(app);
+await registerMainSelectionPage(app);
 
 const shutdown = async (): Promise<void> => {
   await app.close();
