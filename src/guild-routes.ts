@@ -1,0 +1,41 @@
+import type { FastifyInstance } from "fastify";
+import { authenticatedSubject, SESSION_COOKIE_NAME } from "./auth.js";
+import { refreshGuildAuthority } from "./guild.js";
+import {
+  GUILD_REFRESH_CAPABILITY,
+  GuildCapabilityDeniedError,
+  requireGuildCapability,
+} from "./guild-permissions.js";
+
+export async function registerGuildRoutes(app: FastifyInstance): Promise<void> {
+  app.post("/guild/refresh", async (request, reply) => {
+    const subject = await authenticatedSubject(request.cookies[SESSION_COOKIE_NAME]);
+    if (!subject) return reply.code(401).send({ error: "not_authenticated" });
+
+    try {
+      const authority = await requireGuildCapability(subject.subjectId, GUILD_REFRESH_CAPABILITY);
+      const result = await refreshGuildAuthority();
+      return reply.send({
+        guild_id: result.guildId,
+        roster_count: result.rosterCount,
+        requested_by: {
+          subject_id: subject.subjectId,
+          effective_rank: authority.rankIndex,
+        },
+        reconciliation: {
+          characters_targeted: result.reconciliation.charactersTargeted,
+          profiles_updated: result.reconciliation.profilesUpdated,
+          media_updated: result.reconciliation.mediaUpdated,
+          failed_profiles: result.reconciliation.failedProfiles,
+          failed_media: result.reconciliation.failedMedia,
+          api_calls: result.reconciliation.apiCalls,
+        },
+      });
+    } catch (error) {
+      if (error instanceof GuildCapabilityDeniedError) {
+        return reply.code(403).send({ error: "guild_capability_required", capability: error.capability });
+      }
+      throw error;
+    }
+  });
+}
