@@ -52,9 +52,9 @@ function userGlyph(): string {
   </svg>`;
 }
 
-function renderMeControl(viewer: WebViewer): string {
+function renderMeControl(viewer: WebViewer, pathname: string): string {
   if (!viewer.authenticated) {
-    return `<a class="me-control" href="/auth/blizzard/start?return_to=/" aria-label="Sign in">
+    return `<a class="me-control" href="/auth/blizzard/start?return_to=${encodeURIComponent(pathname)}" aria-label="Sign in">
       <span>Sign in</span>
       <span class="account-visual account-visual-generic">${userGlyph()}</span>
     </a>`;
@@ -71,6 +71,7 @@ function renderMeControl(viewer: WebViewer): string {
       <span class="account-visual${viewer.mainCharacter?.avatarUrl ? " account-visual-portrait" : " account-visual-generic"}" data-me-visual>${portrait}</span>
     </summary>
     <div class="menu-panel menu-panel-right">
+      <button type="button" data-refresh-characters>Refresh characters</button>
       <button type="button" data-open-main-picker>Select main</button>
       <button type="button" data-logout>Sign out</button>
     </div>
@@ -119,7 +120,7 @@ function renderMainPicker(viewer: WebViewer): string {
     </button>`;
   }).join("\n");
 
-  return `<dialog class="main-picker" data-main-picker aria-labelledby="main-picker-title">
+  return `<dialog class="main-picker" data-main-picker data-has-main="${viewer.mainCharacter ? "true" : "false"}" aria-labelledby="main-picker-title">
     <div class="main-picker-sheet">
       <div class="main-picker-heading">
         <div>
@@ -129,6 +130,9 @@ function renderMainPicker(viewer: WebViewer): string {
         <button type="button" class="dialog-close" data-close-main-picker aria-label="Close main character picker">×</button>
       </div>
       <p class="main-picker-intro">Choose the OH CRIT I Pulled! character you want Guild Operations to present as your current main.</p>
+      <button type="button" class="refresh-characters-action" data-refresh-characters>
+        <span data-refresh-label>Refresh characters</span>
+      </button>
       <div class="character-choices" data-character-choices>
         ${characters || '<p class="main-picker-empty">No currently eligible guild characters were found.</p>'}
       </div>
@@ -154,7 +158,7 @@ function renderActionBar(viewer: WebViewer, pathname: string): string {
         <a href="/"${homeActive}>Home</a>
       </div>
       <div class="action-bar-spacer"></div>
-      ${renderMeControl(viewer)}
+      ${renderMeControl(viewer, pathname)}
     </div>
   </nav>`;
 }
