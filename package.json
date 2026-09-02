@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && mkdir -p dist/web/public && cp src/web/public/* dist/web/public/",
     "start": "node dist/server.js",
     "migrate": "tsx src/migrate.ts",
     "guild:sync": "tsx src/sync-guild.ts",
