@@ -70,19 +70,29 @@ export type BlizzardCharacterMedia = {
   assets?: Array<{ key?: string; value?: string }>;
 };
 
+export class BlizzardAuthorityRequestError extends Error {
+  readonly status: number;
+
+  constructor(status: number) {
+    super(`Blizzard authority request failed (${status})`);
+    this.name = "BlizzardAuthorityRequestError";
+    this.status = status;
+  }
+}
+
 const BLIZZARD_REQUESTS_PER_SECOND = 10;
 const BLIZZARD_REQUEST_INTERVAL_MS = Math.ceil(1000 / BLIZZARD_REQUESTS_PER_SECOND);
 let nextBlizzardRequestAt = 0;
 let blizzardRequestChain = Promise.resolve();
 
-async function waitForBlizzardRequestBudget(): Promise<void> {
+function waitForBlizzardRequestBudget(): Promise<void> {
   const scheduled = blizzardRequestChain.then(async () => {
     const waitMs = Math.max(0, nextBlizzardRequestAt - Date.now());
     if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, waitMs));
     nextBlizzardRequestAt = Date.now() + BLIZZARD_REQUEST_INTERVAL_MS;
   });
   blizzardRequestChain = scheduled.catch(() => undefined);
-  await scheduled;
+  return scheduled;
 }
 
 export function authorizationUrl(state: string): string {
@@ -147,7 +157,7 @@ export async function getJsonWithRetry<T>(
   options: { attempts?: number; onRequest?: () => Promise<void> | void } = {},
 ): Promise<T> {
   const attempts = options.attempts ?? 4;
-  let lastError: Error | null = null;
+  let lastError: BlizzardAuthorityRequestError | null = null;
 
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     await waitForBlizzardRequestBudget();
@@ -159,15 +169,14 @@ export async function getJsonWithRetry<T>(
 
     if (response.ok) return (await response.json()) as T;
 
-    if (response.status !== 429 && response.status < 500) {
-      throw new Error(`Blizzard authority request failed (${response.status})`);
-    }
+    const requestError = new BlizzardAuthorityRequestError(response.status);
+    if (response.status !== 429 && response.status < 500) throw requestError;
 
     const retryAfterSeconds = Number(response.headers.get("retry-after") ?? "0");
     const delayMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
       ? retryAfterSeconds * 1000
       : 500 * 2 ** (attempt - 1);
-    lastError = new Error(`Blizzard authority request failed (${response.status})`);
+    lastError = requestError;
     if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
 
