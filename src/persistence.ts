@@ -13,6 +13,17 @@ function factionValue(value: unknown): string | null {
   return null;
 }
 
+function localizedValue(value: unknown): string | null {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object") {
+    const localized = value as Record<string, unknown>;
+    if (typeof localized.en_US === "string") return localized.en_US;
+    const first = Object.values(localized).find((candidate) => typeof candidate === "string");
+    return typeof first === "string" ? first : null;
+  }
+  return null;
+}
+
 async function resolveOrCreateSubject(
   client: PoolClient,
   region: Region,
@@ -90,7 +101,7 @@ export async function establishOrResolveSubject(input: {
             String(character.realm.id),
             String(character.id),
             character.name,
-            character.realm.name ?? null,
+            localizedValue(character.realm.name),
             character.realm.slug ?? null,
             character.level ?? null,
             factionValue(character.faction),
