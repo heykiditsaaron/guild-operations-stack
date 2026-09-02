@@ -29,6 +29,10 @@ The right side of the action bar is the Me surface. A signed-out viewer receives
 
 The current Me menu contains only capabilities that already exist: selecting a main character and signing out.
 
+Main selection is a shell interaction rather than a separate application destination. The shell receives the subject's currently eligible guild characters as presentation-ready data, opens a responsive character picker over the current page, and submits the selected durable character coordinate to `PUT /me/main-character`. Successful selection updates the current Me presentation without navigating away from the active page. The backend remains the authority for eligibility and persistence.
+
+On mobile the picker is presented as a bottom sheet. On larger screens the same interaction is presented as a centered dialog. This is one interaction contract with responsive presentation, not two separate features.
+
 ## Application origin
 
 `APP_ORIGIN` is the canonical externally visible application origin. It contains only scheme, host, and optional port. Public application URLs are derived from it rather than hardcoded deployment addresses.
@@ -63,4 +67,4 @@ This makes stale CSS or JavaScript structurally unable to survive a content chan
 
 `GET /` is the first page rendered inside the shared application shell. Its navigation currently contains only Home.
 
-`/select-main` remains its existing standalone projection for now. The shell links to it from the Me menu without prematurely redesigning that page.
+The former standalone `/select-main` page has been retired. Main selection now belongs to the shared Me interaction surface and can remain available while the member stays on the page they were already using.
