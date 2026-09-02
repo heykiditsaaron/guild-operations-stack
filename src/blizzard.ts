@@ -11,7 +11,7 @@ export type BlizzardCharacter = {
   name: string;
   level?: number;
   faction?: { type?: string; name?: string } | string;
-  realm: { id: number | string; name?: string; slug?: string };
+  realm: { id: number | string; name?: string | Record<string, string>; slug?: string };
 };
 
 export type BlizzardWowAccount = {
@@ -22,6 +22,32 @@ export type BlizzardWowAccount = {
 export type BlizzardWowProfile = {
   id: number | string;
   wow_accounts?: BlizzardWowAccount[];
+};
+
+export type BlizzardGuildProfile = {
+  id: number | string;
+  name: string;
+  faction?: { type?: string; name?: string } | string;
+  realm: {
+    id: number | string;
+    name?: string | Record<string, string>;
+    slug?: string;
+  };
+  created_timestamp?: number;
+};
+
+export type BlizzardGuildRosterMember = {
+  character: BlizzardCharacter;
+  rank: number;
+};
+
+export type BlizzardGuildRoster = {
+  guild: {
+    id: number | string;
+    name?: string;
+    realm?: { id?: number | string; slug?: string };
+  };
+  members?: BlizzardGuildRosterMember[];
 };
 
 export function authorizationUrl(state: string): string {
@@ -63,6 +89,23 @@ export async function exchangeAuthorizationCode(code: string): Promise<string> {
   return payload.access_token;
 }
 
+async function applicationAccessToken(): Promise<string> {
+  const credentials = Buffer.from(`${config.blizzardClientId}:${config.blizzardClientSecret}`).toString("base64");
+  const response = await fetch("https://oauth.battle.net/token", {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${credentials}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({ grant_type: "client_credentials" }),
+  });
+
+  if (!response.ok) throw new Error(`Blizzard application token acquisition failed (${response.status})`);
+  const payload = (await response.json()) as { access_token?: string };
+  if (!payload.access_token) throw new Error("Blizzard application token response omitted access_token");
+  return payload.access_token;
+}
+
 async function getJson<T>(url: string, accessToken: string): Promise<T> {
   const response = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -89,4 +132,24 @@ export async function acquireAuthority(region: Region, accessToken: string): Pro
   }
 
   return { principalId: userId, profile };
+}
+
+export async function acquireGuildAuthority(target: {
+  region: Region;
+  realmSlug: string;
+  nameSlug: string;
+}): Promise<{
+  profile: BlizzardGuildProfile;
+  roster: BlizzardGuildRoster;
+}> {
+  const accessToken = await applicationAccessToken();
+  const base = `https://${target.region}.api.blizzard.com/data/wow/guild/${encodeURIComponent(target.realmSlug)}/${encodeURIComponent(target.nameSlug)}`;
+  const suffix = `namespace=profile-${target.region}&locale=en_US`;
+
+  const [profile, roster] = await Promise.all([
+    getJson<BlizzardGuildProfile>(`${base}?${suffix}`, accessToken),
+    getJson<BlizzardGuildRoster>(`${base}/roster?${suffix}`, accessToken),
+  ]);
+
+  return { profile, roster };
 }
