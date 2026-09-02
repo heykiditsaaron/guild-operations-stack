@@ -200,6 +200,46 @@ summary {
   color: #aaa69c;
 }
 
+.discord-connection {
+  min-height: 3.2rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 0.85rem;
+}
+
+.discord-connection-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: #7cc68d;
+  box-shadow: 0 0 0.8rem rgba(124, 198, 141, 0.42);
+}
+
+.discord-connection-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.08rem;
+}
+
+.discord-connection-name,
+.discord-connection-status {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.discord-connection-name {
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+
+.discord-connection-status {
+  color: #8e8a81;
+  font-size: 0.72rem;
+}
+
 .page-header,
 .app-main,
 .app-footer {
