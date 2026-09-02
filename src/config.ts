@@ -13,6 +13,17 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error("PORT must be a valid TCP port");
 }
 
+export const supportedRegions = new Set<Region>(["us", "eu", "kr", "tw"]);
+
+export function parseRegion(value: unknown): Region | null {
+  if (typeof value !== "string") return null;
+  const region = value.toLowerCase() as Region;
+  return supportedRegions.has(region) ? region : null;
+}
+
+const guildRegion = parseRegion(required("GUILD_REGION"));
+if (!guildRegion) throw new Error("GUILD_REGION must be a supported Blizzard region");
+
 export const config = {
   port,
   databaseUrl: required("DATABASE_URL"),
@@ -22,12 +33,10 @@ export const config = {
   sessionCookieSecure: (process.env.SESSION_COOKIE_SECURE ?? "false") === "true",
   authAttemptTtlMinutes: 10,
   sessionTtlDays: 30,
+  guild: {
+    id: required("GUILD_BLIZZARD_ID"),
+    region: guildRegion,
+    realmSlug: required("GUILD_REALM_SLUG"),
+    nameSlug: required("GUILD_NAME_SLUG"),
+  },
 } as const;
-
-export const supportedRegions = new Set<Region>(["us", "eu", "kr", "tw"]);
-
-export function parseRegion(value: unknown): Region | null {
-  if (typeof value !== "string") return null;
-  const region = value.toLowerCase() as Region;
-  return supportedRegions.has(region) ? region : null;
-}
