@@ -6,6 +6,48 @@ function closeOpenMenus() {
   });
 }
 
+function currentReturnTo() {
+  return `${window.location.pathname}${window.location.search}${window.location.hash}`;
+}
+
+function cleanCeremonyParams() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("refresh");
+  if (url.searchParams.get("select_main") !== "required") url.searchParams.delete("select_main");
+  window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+function setRefreshButtonsInProgress() {
+  document.querySelectorAll("[data-refresh-characters]").forEach((button) => {
+    if (!(button instanceof HTMLButtonElement)) return;
+    button.disabled = true;
+    const label = button.querySelector("[data-refresh-label]");
+    if (label instanceof HTMLElement) label.textContent = "Refresh in progress…";
+    else button.textContent = "Refresh in progress…";
+  });
+}
+
+function startCharacterRefresh() {
+  setRefreshButtonsInProgress();
+  closeOpenMenus();
+  window.location.assign(`/me/refresh?return_to=${encodeURIComponent(currentReturnTo())}`);
+}
+
+function requiredMainPicker() {
+  const picker = document.querySelector("[data-main-picker]");
+  if (!(picker instanceof HTMLDialogElement)) return null;
+  const params = new URLSearchParams(window.location.search);
+  return params.get("select_main") === "required" && picker.dataset.hasMain !== "true" ? picker : null;
+}
+
+function openRequiredMainPicker() {
+  const picker = requiredMainPicker();
+  if (!picker) return;
+  const closeButton = picker.querySelector("[data-close-main-picker]");
+  if (closeButton instanceof HTMLButtonElement) closeButton.hidden = true;
+  if (!picker.open) picker.showModal();
+}
+
 function setMainPresentation(button) {
   const label = document.querySelector("[data-me-label]");
   const visual = document.querySelector("[data-me-visual]");
@@ -80,8 +122,15 @@ async function saveMain(button) {
       name.appendChild(current);
     }
 
+    picker.dataset.hasMain = "true";
     setMainPresentation(button);
     status.textContent = "";
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete("select_main");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+    const closeButton = picker.querySelector("[data-close-main-picker]");
+    if (closeButton instanceof HTMLButtonElement) closeButton.hidden = false;
     picker.close();
   } catch {
     status.textContent = "Unable to select main character.";
@@ -93,6 +142,12 @@ async function saveMain(button) {
 document.addEventListener("click", (event) => {
   const target = event.target;
   if (!(target instanceof Element)) return;
+
+  const refresh = target.closest("[data-refresh-characters]");
+  if (refresh) {
+    startCharacterRefresh();
+    return;
+  }
 
   const logout = target.closest("[data-logout]");
   if (logout) {
@@ -113,22 +168,27 @@ document.addEventListener("click", (event) => {
   const closePicker = target.closest("[data-close-main-picker]");
   if (closePicker) {
     const picker = document.querySelector("[data-main-picker]");
-    if (picker instanceof HTMLDialogElement) picker.close();
+    if (picker instanceof HTMLDialogElement && !requiredMainPicker()) picker.close();
     return;
   }
 
   const selectMain = target.closest("[data-select-main]");
-  if (selectMain instanceof HTMLButtonElement) {
-    void saveMain(selectMain);
-  }
+  if (selectMain instanceof HTMLButtonElement) void saveMain(selectMain);
 });
 
 document.addEventListener("click", (event) => {
   const picker = event.target;
   if (!(picker instanceof HTMLDialogElement) || !picker.matches("[data-main-picker]")) return;
+  if (requiredMainPicker()) return;
   const rect = picker.getBoundingClientRect();
   const inside = event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
   if (!inside) picker.close();
+});
+
+document.addEventListener("cancel", (event) => {
+  const picker = event.target;
+  if (!(picker instanceof HTMLDialogElement) || !picker.matches("[data-main-picker]")) return;
+  if (requiredMainPicker()) event.preventDefault();
 });
 
 document.addEventListener("toggle", (event) => {
@@ -139,3 +199,10 @@ document.addEventListener("toggle", (event) => {
     if (details !== opened) details.removeAttribute("open");
   });
 }, true);
+
+const ceremonyParams = new URLSearchParams(window.location.search);
+if (ceremonyParams.get("refresh") === "failed") {
+  window.alert("Character refresh failed. Your existing character data has been left unchanged.");
+}
+cleanCeremonyParams();
+openRequiredMainPicker();
