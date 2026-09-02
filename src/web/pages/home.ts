@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedSubject, SESSION_COOKIE_NAME } from "../../auth.js";
+import { guildCharactersForSubject } from "../../guild.js";
 import { mainCharacterForSubject } from "../../main-character.js";
 import type { AssetRegistry } from "../assets.js";
 import { renderPage, type WebViewer } from "../render.js";
@@ -8,15 +9,33 @@ async function viewerForHome(sessionToken: string | undefined): Promise<WebViewe
   const subject = await authenticatedSubject(sessionToken);
   if (!subject) return { authenticated: false };
 
-  const mainCharacter = await mainCharacterForSubject(subject.subjectId);
+  const [mainCharacter, characters] = await Promise.all([
+    mainCharacterForSubject(subject.subjectId),
+    guildCharactersForSubject(subject.subjectId),
+  ]);
+
   return {
     authenticated: true,
     mainCharacter: mainCharacter
       ? {
+          characterId: mainCharacter.characterId,
+          realmId: mainCharacter.realmId,
           name: mainCharacter.name,
           avatarUrl: mainCharacter.avatarUrl,
         }
       : null,
+    characters: characters.map((character) => ({
+      characterId: character.characterId,
+      realmId: character.realmId,
+      name: character.name,
+      realmName: character.realmName,
+      rankIndex: character.rankIndex,
+      level: character.level,
+      className: character.className,
+      raceName: character.raceName,
+      activeSpecName: character.activeSpecName,
+      avatarUrl: character.avatarUrl,
+    })),
   };
 }
 
