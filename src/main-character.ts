@@ -9,6 +9,7 @@ export type SelectedMainCharacter = {
   realmName: string | null;
   rankIndex: number | null;
   currentlyEligible: boolean;
+  avatarUrl: string | null;
 };
 
 export async function selectMainCharacter(
@@ -23,6 +24,7 @@ export async function selectMainCharacter(
     character_name: string;
     realm_name: string | null;
     rank_index: number;
+    avatar_url: string | null;
   }>(
     `SELECT
        grm.guild_id,
@@ -30,13 +32,18 @@ export async function selectMainCharacter(
        grm.realm_id,
        grm.character_name,
        grm.realm_name,
-       grm.rank_index
+       grm.rank_index,
+       wcp.avatar_url
      FROM characters c
      JOIN guild_roster_memberships grm
        ON grm.region = c.region
       AND grm.realm_id = c.realm_id
       AND grm.character_id = c.character_id
       AND grm.currently_present = true
+     LEFT JOIN wow_character_profiles wcp
+       ON wcp.region = c.region
+      AND wcp.realm_id = c.realm_id
+      AND wcp.character_id = c.character_id
      WHERE c.subject_id = $1
        AND c.currently_controlled = true
        AND grm.guild_id = $2
@@ -68,6 +75,7 @@ export async function selectMainCharacter(
     realmName: character.realm_name,
     rankIndex: character.rank_index,
     currentlyEligible: true,
+    avatarUrl: character.avatar_url,
   };
 }
 
@@ -80,6 +88,7 @@ export async function mainCharacterForSubject(subjectId: string): Promise<Select
     realm_name: string | null;
     rank_index: number | null;
     currently_eligible: boolean;
+    avatar_url: string | null;
   }>(
     `SELECT
        smc.guild_id,
@@ -87,8 +96,9 @@ export async function mainCharacterForSubject(subjectId: string): Promise<Select
        smc.realm_id,
        c.name,
        c.realm_name,
-       grm.rank_index,
-       (c.currently_controlled IS TRUE AND grm.currently_present IS TRUE) AS currently_eligible
+       CASE WHEN grm.currently_present IS TRUE THEN grm.rank_index ELSE NULL END AS rank_index,
+       (c.currently_controlled IS TRUE AND grm.currently_present IS TRUE) AS currently_eligible,
+       wcp.avatar_url
      FROM subject_main_characters smc
      JOIN characters c
        ON c.subject_id = smc.subject_id
@@ -100,6 +110,10 @@ export async function mainCharacterForSubject(subjectId: string): Promise<Select
       AND grm.region = smc.region
       AND grm.realm_id = smc.realm_id
       AND grm.character_id = smc.character_id
+     LEFT JOIN wow_character_profiles wcp
+       ON wcp.region = smc.region
+      AND wcp.realm_id = smc.realm_id
+      AND wcp.character_id = smc.character_id
      WHERE smc.subject_id = $1
        AND smc.guild_id = $2`,
     [subjectId, config.guild.id],
@@ -115,5 +129,6 @@ export async function mainCharacterForSubject(subjectId: string): Promise<Select
     realmName: row.realm_name,
     rankIndex: row.rank_index,
     currentlyEligible: row.currently_eligible,
+    avatarUrl: row.avatar_url,
   };
 }
