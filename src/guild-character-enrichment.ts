@@ -13,9 +13,19 @@ export type GuildCharacterCoordinate = {
   characterId: string;
 };
 
+export type GuildCharacterEnrichmentTarget = GuildCharacterCoordinate & {
+  needsProfile: boolean;
+  needsMedia: boolean;
+};
+
 type RosterCharacter = GuildCharacterCoordinate & {
   characterName: string;
   realmSlug: string;
+};
+
+type ReconciliationCharacter = RosterCharacter & {
+  needsProfile: boolean;
+  needsMedia: boolean;
 };
 
 export type GuildCharacterEnrichmentResult = {
@@ -98,7 +108,7 @@ async function currentRosterCharacters(guildId: string): Promise<RosterCharacter
 export async function guildCharactersNeedingEnrichment(
   guildId: string,
   changedCoordinates: GuildCharacterCoordinate[] = [],
-): Promise<GuildCharacterCoordinate[]> {
+): Promise<GuildCharacterEnrichmentTarget[]> {
   const changed = new Set(changedCoordinates.map(coordinateKey));
   const result = await pool.query<{
     region: Region;
@@ -123,17 +133,19 @@ export async function guildCharactersNeedingEnrichment(
     [guildId],
   );
 
-  return result.rows
-    .filter((row) => row.profile_missing || row.media_missing || changed.has(coordinateKey({
+  return result.rows.flatMap((row) => {
+    const coordinate = {
       region: row.region,
       realmId: row.realm_id,
       characterId: row.character_id,
-    })))
-    .map((row) => ({
-      region: row.region,
-      realmId: row.realm_id,
-      characterId: row.character_id,
-    }));
+    };
+    const presentationChanged = changed.has(coordinateKey(coordinate));
+    const needsProfile = row.profile_missing || presentationChanged;
+    const needsMedia = row.media_missing || presentationChanged;
+    return needsProfile || needsMedia
+      ? [{ ...coordinate, needsProfile, needsMedia }]
+      : [];
+  });
 }
 
 function characterBaseUrl(character: RosterCharacter): string {
@@ -232,7 +244,7 @@ async function persistMedia(
 export async function enrichGuildCharacters(options: {
   guildId?: string;
   concurrency?: number;
-  coordinates?: GuildCharacterCoordinate[];
+  targets?: GuildCharacterEnrichmentTarget[];
 } = {}): Promise<GuildCharacterEnrichmentResult> {
   const guildId = options.guildId ?? config.guild.id;
   const concurrency = options.concurrency ?? 8;
@@ -242,12 +254,15 @@ export async function enrichGuildCharacters(options: {
   }
 
   const fullRoster = await currentRosterCharacters(guildId);
-  const requested = options.coordinates
-    ? new Set(options.coordinates.map(coordinateKey))
+  const requested = options.targets
+    ? new Map(options.targets.map((target) => [coordinateKey(target), target]))
     : null;
-  const roster = requested
-    ? fullRoster.filter((character) => requested.has(coordinateKey(character)))
-    : fullRoster;
+  const roster: ReconciliationCharacter[] = requested
+    ? fullRoster.flatMap((character) => {
+        const target = requested.get(coordinateKey(character));
+        return target ? [{ ...character, needsProfile: target.needsProfile, needsMedia: target.needsMedia }] : [];
+      })
+    : fullRoster.map((character) => ({ ...character, needsProfile: true, needsMedia: true }));
 
   if (roster.length === 0) {
     return {
@@ -283,23 +298,25 @@ export async function enrichGuildCharacters(options: {
       const base = characterBaseUrl(character);
       const suffix = `namespace=profile-${character.region}&locale=en_US`;
 
-      let profileReady = false;
-      try {
-        const profile = await getJsonWithRetry<BlizzardCharacterProfile>(`${base}?${suffix}`, accessToken, { onRequest });
-        await persistProfile(character, profile, new Date());
-        profilesUpdated += 1;
-        profileReady = true;
-      } catch (error) {
-        failures.push({
-          characterId: character.characterId,
-          realmId: character.realmId,
-          name: character.characterName,
-          stage: "profile",
-          error: error instanceof Error ? error.message : String(error),
-        });
+      let profileReady = !character.needsProfile;
+      if (character.needsProfile) {
+        try {
+          const profile = await getJsonWithRetry<BlizzardCharacterProfile>(`${base}?${suffix}`, accessToken, { onRequest });
+          await persistProfile(character, profile, new Date());
+          profilesUpdated += 1;
+          profileReady = true;
+        } catch (error) {
+          failures.push({
+            characterId: character.characterId,
+            realmId: character.realmId,
+            name: character.characterName,
+            stage: "profile",
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
       }
 
-      if (!profileReady) continue;
+      if (!character.needsMedia || !profileReady) continue;
 
       try {
         const media = await getJsonWithRetry<BlizzardCharacterMedia>(`${base}/character-media?${suffix}`, accessToken, { onRequest });
