@@ -4,7 +4,13 @@ import { config } from "./config.js";
 import { pool } from "./db.js";
 import { registerAuthRoutes } from "./auth.js";
 
-const app = Fastify({ logger: true });
+const app = Fastify({
+  logger: true,
+  // OAuth callbacks carry short-lived authorization codes and state in the
+  // query string. Keep framework request logging disabled so those values are
+  // never written to routine application logs.
+  disableRequestLogging: true,
+});
 await app.register(cookie);
 
 app.get("/health", async () => {
