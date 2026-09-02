@@ -118,6 +118,62 @@ This is strong evidence that `/profile/user/wow` is a WoW profile projection of 
 
 For Guild Operations, this materially strengthens the authenticated Blizzard principal as the continuity anchor and materially weakens any design that would use one arbitrary WoW license/account ID as the member root.
 
+## Character coordinate structure
+
+The live character entry confirmed that the direct character identifier is exposed as a numeric `characters[].id`.
+
+The associated references were shaped as:
+
+```text
+character
+└── href
+
+realm
+├── id
+├── key
+├── name
+└── slug
+
+protected_character
+└── href
+```
+
+The nested `character` object is therefore a link reference, not a second copy of the character identifier. The authoritative character identity data available directly in the parent response is the numeric character ID together with the realm coordinate.
+
+For Guild Operations, the safe character continuity coordinate is therefore:
+
+```text
+region + realm_id + character_id
+```
+
+Character name and realm slug remain presentation/discovery data rather than continuity anchors.
+
+## Identifier stability probe
+
+A second, independent Blizzard OAuth authorization ceremony was completed with a fresh `state`, fresh authorization code, fresh bearer token, and fresh calls to both `/oauth/userinfo` and `/profile/user/wow`.
+
+The second ceremony was compared to the first without recording any identifier values.
+
+Observed result:
+
+```text
+principal_stable: true
+profile_id_stable: true
+wow_account_ids_stable: true
+character_coordinates_stable: true
+first_character_count: 20
+second_character_count: 20
+```
+
+This confirms that, across two independent authorization ceremonies for the same Battle.net user:
+
+- the authenticated principal identifier remained stable;
+- the top-level WoW profile identifier remained stable;
+- the subordinate WoW account/license identifier set remained stable;
+- the returned character coordinates remained stable.
+
+This is sufficient live evidence for Guild Operations to treat these Blizzard-native identifiers as persisted continuity coordinates rather than merely ephemeral observations.
+
 ## Two relevant identity layers
 
 ### Authenticated Blizzard principal
@@ -155,7 +211,7 @@ The protected endpoint is addressed using:
 {realm-id}-{character-id}
 ```
 
-This gives Guild Operations a substantially stronger character coordinate than character name plus realm slug. Names can change; Blizzard-native IDs should be preferred wherever the live API confirms their semantics.
+This gives Guild Operations a substantially stronger character coordinate than character name plus realm slug. Names can change; Blizzard-native IDs should be preferred.
 
 For the initial project scope, Retail is the target. Classic behavior is not part of the root-object requirement.
 
@@ -185,9 +241,9 @@ This remains WoW-rooted operationally: Guild Operations does not create a subjec
 
 A Discord identity remains incapable of establishing this root.
 
-## Candidate durable coordinate
+## Durable coordinate contract
 
-The strongest current candidate is:
+The strongest current root coordinate is:
 
 ```text
 Blizzard authenticated principal identifier + region
@@ -195,23 +251,25 @@ Blizzard authenticated principal identifier + region
 
 with the successful `/profile/user/wow` response acting as the ceremony that admits that principal into Guild Operations as a WoW-rooted subject.
 
-The live probe confirmed that `userinfo.id`, `userinfo.sub`, and top-level `/profile/user/wow.id` are alternate representations of the same principal identifier value.
+The live probes established that:
 
-The subordinate WoW-account/license IDs and character IDs should be retained as Blizzard-authoritative coordinates for those subordinate objects.
+```text
+userinfo.id == userinfo.sub == profile.id
+```
 
-We should still avoid freezing database field names until the remaining region and character-coordinate questions are resolved.
+by identifier value, and that this value remains stable across independent authorization ceremonies.
+
+The subordinate WoW-account/license IDs and character coordinates likewise remained stable and can be retained as Blizzard-authoritative subordinate coordinates.
+
+The persistence model may now be designed around these relationships. Database field names and implementation details remain separate design decisions.
 
 ## Remaining verification
 
-The root identity relationship is now substantially resolved. Remaining reconnaissance should be narrower:
+The root identity and subordinate character coordinate questions are sufficiently resolved for persistence design. Remaining reconnaissance is narrower and no longer blocks the root model:
 
-1. inspect one live character entry structurally and compare its direct `id`, nested `character` reference, `realm` reference, and `protected_character` reference without exposing their values;
-2. verify that the protected-character link resolves using the same realm and character IDs exposed in the parent profile response;
-3. repeat authorization/profile acquisition later to verify identifier stability rather than merely equality within one ceremony;
-4. determine whether Blizzard documents the principal identifier as globally unique or whether Guild Operations should permanently retain region as part of its canonical coordinate;
-5. determine how Guild Operations should handle a successful Blizzard principal whose selected regional WoW profile contains no relevant guild character.
-
-Only after those questions are answered should Guild Operations freeze the root persistence contract.
+1. verify that a protected-character link resolves using the same realm and character IDs exposed in the parent profile response;
+2. determine whether Blizzard documents the principal identifier as globally unique or whether Guild Operations should permanently retain region as part of its canonical coordinate;
+3. determine how Guild Operations should handle a successful Blizzard principal whose selected regional WoW profile contains no relevant guild character.
 
 ## Sources used for reconnaissance
 
