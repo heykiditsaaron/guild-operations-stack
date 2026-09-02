@@ -2,13 +2,32 @@
 
 Guild Operations' web layer owns presentation composition and delivery. It does not redefine operational truth supplied by the backend.
 
-The initial renderer is intentionally small. `GET /` is the first web projection and exists primarily as a stable surface for growing presentation behavior.
+The renderer is intentionally small and grows with real application needs rather than predicted information architecture.
 
 ## Projection contract
 
 Routes acquire or assemble view data, then hand presentation-ready values to the renderer. Rendering code must not perform database queries, make authority decisions, or manufacture backend state.
 
 Presentation-owned content such as articles, announcements, and editorial material may follow different authority rules when those systems are introduced. That does not permit the web layer to counteract authoritative backend state.
+
+## Application shell
+
+The current shell is:
+
+```text
+Action bar
+Header
+Main
+Footer
+```
+
+The action bar is currently reserved for navigation and immediate user interactions. That is a first-design-phase choice rather than permanent doctrine; the shell may evolve when real needs justify it.
+
+Navigation is deliberately sparse. Mobile presents it through a hamburger menu and larger screens expose the same destinations directly. The renderer changes presentation across breakpoints, not navigation meaning.
+
+The right side of the action bar is the Me surface. A signed-out viewer receives a Blizzard sign-in action and generic account glyph. A signed-in viewer is projected from the authenticated GuildSubject and, when selected, presents the current main character name and Blizzard portrait. The selected main remains presentation/operational state and does not become canonical identity.
+
+The current Me menu contains only capabilities that already exist: selecting a main character and signing out.
 
 ## Application origin
 
@@ -42,4 +61,6 @@ This makes stale CSS or JavaScript structurally unable to survive a content chan
 
 ## Current scope
 
-The renderer currently owns only the new `/` splash page and its shared assets. `/select-main` remains untouched until its eventual place in the web application is deliberately designed.
+`GET /` is the first page rendered inside the shared application shell. Its navigation currently contains only Home.
+
+`/select-main` remains its existing standalone projection for now. The shell links to it from the Me menu without prematurely redesigning that page.
