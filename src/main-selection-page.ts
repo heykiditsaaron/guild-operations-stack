@@ -10,15 +10,19 @@ export async function registerMainSelectionPage(app: FastifyInstance): Promise<v
   <title>Select Main Character</title>
   <style>
     :root { color-scheme: dark; font-family: system-ui, sans-serif; }
-    body { max-width: 42rem; margin: 3rem auto; padding: 0 1rem; background: #111; color: #eee; }
+    body { max-width: 46rem; margin: 3rem auto; padding: 0 1rem; background: #111; color: #eee; }
     h1 { margin-bottom: .25rem; }
     .muted { color: #aaa; }
     #characters { display: grid; gap: .75rem; margin-top: 1.5rem; }
-    button { width: 100%; text-align: left; padding: 1rem; border: 1px solid #444; border-radius: .5rem; background: #1d1d1d; color: inherit; cursor: pointer; }
+    button { width: 100%; text-align: left; padding: .75rem; border: 1px solid #444; border-radius: .5rem; background: #1d1d1d; color: inherit; cursor: pointer; }
     button:hover { background: #292929; }
     button:disabled { cursor: wait; opacity: .6; }
-    .name { font-weight: 700; }
-    .meta { color: #aaa; margin-top: .25rem; }
+    .character { display: flex; align-items: center; gap: 1rem; }
+    .portrait { width: 64px; height: 64px; flex: 0 0 64px; border-radius: .35rem; object-fit: cover; background: #292929; }
+    .details { min-width: 0; }
+    .name { font-weight: 700; font-size: 1.05rem; }
+    .meta { color: #aaa; margin-top: .2rem; }
+    .submeta { color: #888; margin-top: .15rem; font-size: .9rem; }
     #status { margin-top: 1rem; min-height: 1.5rem; }
   </style>
 </head>
@@ -47,12 +51,51 @@ export async function registerMainSelectionPage(app: FastifyInstance): Promise<v
   }
   for (const character of me.guild.characters) {
     const button = document.createElement("button");
+    const row = document.createElement("div");
+    const details = document.createElement("div");
+    const name = document.createElement("div");
+    const meta = document.createElement("div");
+    const submeta = document.createElement("div");
     const selected = me.guild.main_character &&
       me.guild.main_character.realm_id === character.realm_id &&
       me.guild.main_character.character_id === character.character_id;
-    button.innerHTML = '<div class="name"></div><div class="meta"></div>';
-    button.querySelector(".name").textContent = character.name + (selected ? " — Current main" : "");
-    button.querySelector(".meta").textContent = "Realm " + character.realm_id + " · Guild rank " + character.rank;
+
+    row.className = "character";
+    details.className = "details";
+    name.className = "name";
+    meta.className = "meta";
+    submeta.className = "submeta";
+
+    if (character.avatar_url) {
+      const portrait = document.createElement("img");
+      portrait.className = "portrait";
+      portrait.src = character.avatar_url;
+      portrait.alt = "";
+      row.appendChild(portrait);
+    } else {
+      const portrait = document.createElement("div");
+      portrait.className = "portrait";
+      row.appendChild(portrait);
+    }
+
+    name.textContent = character.name + (selected ? " — Current main" : "");
+
+    const identity = [];
+    if (character.level != null) identity.push("Level " + character.level);
+    if (character.active_spec_name && character.class_name) identity.push(character.active_spec_name + " " + character.class_name);
+    else if (character.class_name) identity.push(character.class_name);
+    else if (character.race_name) identity.push(character.race_name);
+    meta.textContent = identity.length ? identity.join(" · ") : "Character profile not enriched yet";
+
+    const location = character.realm_name || ("Realm " + character.realm_id);
+    submeta.textContent = location + " · Guild rank " + character.rank;
+
+    details.appendChild(name);
+    details.appendChild(meta);
+    details.appendChild(submeta);
+    row.appendChild(details);
+    button.appendChild(row);
+
     button.onclick = async () => {
       for (const candidate of characters.querySelectorAll("button")) candidate.disabled = true;
       status.textContent = "Saving…";
