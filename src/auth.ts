@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import { acquireAuthority, authorizationUrl, exchangeAuthorizationCode } from "./blizzard.js";
 import { config, parseRegion, type Region } from "./config.js";
 import { pool } from "./db.js";
+import { guildCharactersForSubject } from "./guild.js";
 import { establishOrResolveSubject } from "./persistence.js";
 
 const SESSION_COOKIE = "guild_session";
@@ -122,10 +123,23 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
     );
     if (!result.rowCount) return reply.code(401).send({ error: "not_authenticated" });
 
+    const subjectId = result.rows[0].subject_id;
+    const guildCharacters = await guildCharactersForSubject(subjectId);
+
     return reply.send({
-      subject_id: result.rows[0].subject_id,
+      subject_id: subjectId,
       region: result.rows[0].region,
       character_count: Number(result.rows[0].character_count),
+      guild: {
+        guild_id: config.guild.id,
+        characters: guildCharacters.map((character) => ({
+          character_id: character.characterId,
+          realm_id: character.realmId,
+          name: character.name,
+          realm_name: character.realmName,
+          rank: character.rankIndex,
+        })),
+      },
     });
   });
 
