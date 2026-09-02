@@ -100,6 +100,18 @@ CREATE TABLE IF NOT EXISTS wow_character_profiles (
   PRIMARY KEY (region, realm_id, character_id)
 );
 
+CREATE TABLE IF NOT EXISTS wow_character_presentation_acquisition (
+  region text NOT NULL,
+  realm_id text NOT NULL,
+  character_id text NOT NULL,
+  profile_last_attempted_at timestamptz,
+  profile_last_failure_status integer,
+  media_last_attempted_at timestamptz,
+  media_last_failure_status integer,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (region, realm_id, character_id)
+);
+
 CREATE TABLE IF NOT EXISTS guild_rank_definitions (
   guild_id text NOT NULL REFERENCES guilds(guild_id) ON DELETE RESTRICT,
   rank_index integer NOT NULL CHECK (rank_index >= 0),
