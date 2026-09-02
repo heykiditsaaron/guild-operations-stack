@@ -66,6 +66,21 @@ async function persistGuild(
   return guildId;
 }
 
+async function ensureObservedRankDefinition(
+  client: PoolClient,
+  guildId: string,
+  rankIndex: number,
+): Promise<void> {
+  await client.query(
+    `INSERT INTO guild_rank_definitions (guild_id, rank_index, display_name, active)
+     VALUES ($1, $2, $3, true)
+     ON CONFLICT (guild_id, rank_index) DO UPDATE SET
+       active = true,
+       updated_at = now()`,
+    [guildId, rankIndex, `Rank ${rankIndex}`],
+  );
+}
+
 async function persistRoster(
   client: PoolClient,
   guildId: string,
@@ -80,6 +95,7 @@ async function persistRoster(
     [guildId],
   );
 
+  const observedRanks = new Set<number>();
   let observed = 0;
   for (const member of roster.members ?? []) {
     const character = member.character;
@@ -110,7 +126,12 @@ async function persistRoster(
         character.realm.slug ?? null,
       ],
     );
+    observedRanks.add(member.rank);
     observed += 1;
+  }
+
+  for (const rankIndex of observedRanks) {
+    await ensureObservedRankDefinition(client, guildId, rankIndex);
   }
 
   return observed;
