@@ -29,6 +29,12 @@ function safeReturnTo(value: unknown): string | null {
   return value;
 }
 
+function withQueryValue(path: string, key: string, value: string): string {
+  const url = new URL(path, config.appOrigin);
+  url.searchParams.set(key, value);
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
 async function createSession(subjectId: string): Promise<string> {
   const token = randomBytes(32).toString("base64url");
   await pool.query(
@@ -88,14 +94,7 @@ async function createAttempt(input: AuthenticationAttempt): Promise<string> {
     `INSERT INTO authentication_attempts (
        state_hash, region, purpose, subject_id, return_to, expires_at
      ) VALUES ($1, $2, $3, $4, $5, now() + ($6 * interval '1 minute'))`,
-    [
-      sha256(state),
-      input.region,
-      input.purpose,
-      input.subjectId,
-      input.returnTo,
-      config.authAttemptTtlMinutes,
-    ],
+    [sha256(state), input.region, input.purpose, input.subjectId, input.returnTo, config.authAttemptTtlMinutes],
   );
   return state;
 }
@@ -126,13 +125,22 @@ async function consumeAttempt(state: string): Promise<AuthenticationAttempt | nu
 
 async function subjectForBlizzardPrincipal(region: Region, principalId: string): Promise<string | null> {
   const result = await pool.query<{ subject_id: string }>(
-    `SELECT subject_id
-       FROM blizzard_principals
-      WHERE region = $1
-        AND principal_id = $2`,
+    `SELECT subject_id FROM blizzard_principals WHERE region = $1 AND principal_id = $2`,
     [region, principalId],
   );
   return result.rows[0]?.subject_id ?? null;
+}
+
+async function redirectAfterIdentityCeremony(
+  subjectId: string,
+  returnTo: string,
+  refreshResult?: "success" | "failed",
+): Promise<string> {
+  let destination = returnTo;
+  if (refreshResult) destination = withQueryValue(destination, "refresh", refreshResult);
+  const mainCharacter = await mainCharacterForSubject(subjectId);
+  if (!mainCharacter) destination = withQueryValue(destination, "select_main", "required");
+  return destination;
 }
 
 export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
@@ -160,7 +168,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
     const query = request.query as { return_to?: unknown };
     const state = await createAttempt({
       region: subject.region,
-      returnTo: safeReturnTo(query.return_to) ?? "/me",
+      returnTo: safeReturnTo(query.return_to) ?? "/",
       purpose: "self_refresh",
       subjectId: subject.subjectId,
     });
@@ -169,17 +177,22 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
 
   app.get("/auth/blizzard/callback", async (request, reply) => {
     const query = request.query as { state?: unknown; code?: unknown; error?: unknown };
-    if (typeof query.state !== "string") {
-      return reply.code(400).send({ error: "invalid_oauth_callback" });
-    }
+    if (typeof query.state !== "string") return reply.code(400).send({ error: "invalid_oauth_callback" });
 
     const attempt = await consumeAttempt(query.state);
     if (!attempt) return reply.code(400).send({ error: "invalid_or_expired_state" });
+    const returnTo = attempt.returnTo ?? "/";
 
     if (typeof query.error === "string") {
+      if (attempt.purpose === "self_refresh") {
+        return reply.redirect(withQueryValue(returnTo, "refresh", "failed"));
+      }
       return reply.code(401).send({ error: "blizzard_authorization_failed" });
     }
     if (typeof query.code !== "string") {
+      if (attempt.purpose === "self_refresh") {
+        return reply.redirect(withQueryValue(returnTo, "refresh", "failed"));
+      }
       return reply.code(400).send({ error: "invalid_oauth_callback" });
     }
 
@@ -190,17 +203,15 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       if (attempt.purpose === "self_refresh") {
         const subject = await authenticatedSubject(request.cookies[SESSION_COOKIE_NAME]);
         if (!subject || !attempt.subjectId || subject.subjectId !== attempt.subjectId) {
-          return reply.code(401).send({ error: "self_refresh_session_mismatch" });
+          return reply.redirect(withQueryValue(returnTo, "refresh", "failed"));
         }
 
         const membership = await effectiveGuildAuthority(subject.subjectId);
-        if (!membership) {
-          return reply.code(403).send({ error: "current_guild_membership_required" });
-        }
+        if (!membership) return reply.redirect(withQueryValue(returnTo, "refresh", "failed"));
 
         const authoritySubjectId = await subjectForBlizzardPrincipal(attempt.region, authority.principalId);
         if (authoritySubjectId !== subject.subjectId) {
-          return reply.code(409).send({ error: "blizzard_principal_mismatch" });
+          return reply.redirect(withQueryValue(returnTo, "refresh", "failed"));
         }
 
         await establishOrResolveSubject({
@@ -208,7 +219,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
           principalId: authority.principalId,
           profile: authority.profile,
         });
-        return reply.redirect(attempt.returnTo ?? "/me");
+        return reply.redirect(await redirectAfterIdentityCeremony(subject.subjectId, returnTo, "success"));
       }
 
       const subjectId = await establishOrResolveSubject({
@@ -218,9 +229,12 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       });
       const sessionToken = await createSession(subjectId);
       setSessionCookie(reply, sessionToken);
-      return reply.redirect(attempt.returnTo ?? "/me");
+      return reply.redirect(await redirectAfterIdentityCeremony(subjectId, returnTo));
     } catch (error) {
       request.log.error({ err: error }, "Blizzard authentication ceremony failed");
+      if (attempt.purpose === "self_refresh") {
+        return reply.redirect(withQueryValue(returnTo, "refresh", "failed"));
+      }
       return reply.code(500).send({ error: "authentication_ceremony_failed" });
     }
   });
@@ -279,9 +293,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
     }
 
     const selected = await selectMainCharacter(subject.subjectId, body.realm_id, body.character_id);
-    if (!selected) {
-      return reply.code(409).send({ error: "character_not_currently_eligible" });
-    }
+    if (!selected) return reply.code(409).send({ error: "character_not_currently_eligible" });
 
     return reply.send({
       guild_id: selected.guildId,
