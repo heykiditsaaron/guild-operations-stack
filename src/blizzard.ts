@@ -50,6 +50,26 @@ export type BlizzardGuildRoster = {
   members?: BlizzardGuildRosterMember[];
 };
 
+export type BlizzardCharacterProfile = {
+  id: number | string;
+  name: string;
+  level?: number;
+  faction?: { type?: string; name?: string } | string;
+  race?: { id?: number | string; name?: string | Record<string, string> };
+  character_class?: { id?: number | string; name?: string | Record<string, string> };
+  active_spec?: { id?: number | string; name?: string | Record<string, string> };
+  realm: {
+    id: number | string;
+    name?: string | Record<string, string>;
+    slug?: string;
+  };
+};
+
+export type BlizzardCharacterMedia = {
+  character?: { id?: number | string; name?: string };
+  assets?: Array<{ key?: string; value?: string }>;
+};
+
 export function authorizationUrl(state: string): string {
   const url = new URL("https://oauth.battle.net/authorize");
   url.searchParams.set("client_id", config.blizzardClientId);
@@ -89,7 +109,7 @@ export async function exchangeAuthorizationCode(code: string): Promise<string> {
   return payload.access_token;
 }
 
-async function applicationAccessToken(): Promise<string> {
+export async function applicationAccessToken(): Promise<string> {
   const credentials = Buffer.from(`${config.blizzardClientId}:${config.blizzardClientSecret}`).toString("base64");
   const response = await fetch("https://oauth.battle.net/token", {
     method: "POST",
@@ -112,6 +132,37 @@ async function getJson<T>(url: string, accessToken: string): Promise<T> {
   });
   if (!response.ok) throw new Error(`Blizzard authority request failed (${response.status})`);
   return (await response.json()) as T;
+}
+
+export async function getJsonWithRetry<T>(
+  url: string,
+  accessToken: string,
+  options: { attempts?: number; onRequest?: () => Promise<void> | void } = {},
+): Promise<T> {
+  const attempts = options.attempts ?? 4;
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    await options.onRequest?.();
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (response.ok) return (await response.json()) as T;
+
+    if (response.status !== 429 && response.status < 500) {
+      throw new Error(`Blizzard profile request failed (${response.status})`);
+    }
+
+    const retryAfterSeconds = Number(response.headers.get("retry-after") ?? "0");
+    const delayMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+      ? retryAfterSeconds * 1000
+      : 500 * 2 ** (attempt - 1);
+    lastError = new Error(`Blizzard profile request failed (${response.status})`);
+    if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+
+  throw lastError ?? new Error("Blizzard profile request failed");
 }
 
 export async function acquireAuthority(region: Region, accessToken: string): Promise<{
@@ -152,4 +203,19 @@ export async function acquireGuildAuthority(target: {
   ]);
 
   return { profile, roster };
+}
+
+export async function acquireCharacterPresentation(
+  target: { region: Region; realmSlug: string; characterName: string },
+  accessToken: string,
+  onRequest?: () => Promise<void> | void,
+): Promise<{ profile: BlizzardCharacterProfile; media: BlizzardCharacterMedia }> {
+  const realm = encodeURIComponent(target.realmSlug.toLowerCase());
+  const character = encodeURIComponent(target.characterName.toLowerCase());
+  const base = `https://${target.region}.api.blizzard.com/profile/wow/character/${realm}/${character}`;
+  const suffix = `namespace=profile-${target.region}&locale=en_US`;
+
+  const profile = await getJsonWithRetry<BlizzardCharacterProfile>(`${base}?${suffix}`, accessToken, { onRequest });
+  const media = await getJsonWithRetry<BlizzardCharacterMedia>(`${base}/character-media?${suffix}`, accessToken, { onRequest });
+  return { profile, media };
 }
