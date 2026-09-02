@@ -54,7 +54,9 @@ async function authenticatedSubject(token: string | undefined): Promise<{
     `SELECT s.subject_id, bp.region, count(c.character_record_id)::text AS character_count
        FROM application_sessions s
        JOIN blizzard_principals bp ON bp.subject_id = s.subject_id
-       LEFT JOIN characters c ON c.subject_id = s.subject_id
+       LEFT JOIN characters c
+         ON c.subject_id = s.subject_id
+        AND c.currently_controlled = true
       WHERE s.token_hash = $1
         AND s.revoked_at IS NULL
         AND s.expires_at > now()
@@ -165,6 +167,13 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
           name: character.name,
           realm_name: character.realmName,
           rank: character.rankIndex,
+          level: character.level,
+          class_name: character.className,
+          race_name: character.raceName,
+          active_spec_name: character.activeSpecName,
+          avatar_url: character.avatarUrl,
+          inset_url: character.insetUrl,
+          main_url: character.mainUrl,
         })),
       },
     });
