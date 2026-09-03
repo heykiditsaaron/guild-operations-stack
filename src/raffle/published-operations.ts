@@ -11,15 +11,24 @@ import {
 } from "./domain.js";
 import { publishRaffleEvent } from "./publisher.js";
 
-async function roundIdForClaim(claimId: string): Promise<string> {
-  const result = await pool.query<{ round_id: string }>(
-    `SELECT round_id FROM raffle_claims WHERE claim_id = $1`,
-    [claimId],
-  );
-  if (!result.rowCount) {
-    throw new Error(`Resolved raffle claim ${claimId} could not be read for publication`);
+async function publishClaimEvent(
+  kind: "raffle.claim.approved" | "raffle.claim.denied" | "raffle.claim.cancelled",
+  claimId: string,
+): Promise<void> {
+  try {
+    const result = await pool.query<{ round_id: string }>(
+      `SELECT round_id FROM raffle_claims WHERE claim_id = $1`,
+      [claimId],
+    );
+    const roundId = result.rows[0]?.round_id;
+    if (!roundId) {
+      console.error(`[raffle-publisher] claim ${claimId} could not be resolved for ${kind}`);
+      return;
+    }
+    await publishRaffleEvent({ kind, roundId, claimId });
+  } catch (error) {
+    console.error(`[raffle-publisher] claim ${claimId} could not be published for ${kind}`, error);
   }
-  return result.rows[0].round_id;
 }
 
 export async function cancelRaffleRound(actorSubjectId: string, roundId: string): Promise<RaffleRound> {
@@ -52,14 +61,12 @@ export async function submitRaffleClaim(
 
 export async function cancelOwnRaffleClaim(subjectId: string, claimId: string): Promise<void> {
   await cancelOwnRaffleClaimDomain(subjectId, claimId);
-  const roundId = await roundIdForClaim(claimId);
-  await publishRaffleEvent({ kind: "raffle.claim.cancelled", roundId, claimId });
+  await publishClaimEvent("raffle.claim.cancelled", claimId);
 }
 
 export async function approveRaffleClaim(actorSubjectId: string, claimId: string): Promise<void> {
   await approveRaffleClaimDomain(actorSubjectId, claimId);
-  const roundId = await roundIdForClaim(claimId);
-  await publishRaffleEvent({ kind: "raffle.claim.approved", roundId, claimId });
+  await publishClaimEvent("raffle.claim.approved", claimId);
 }
 
 export async function denyRaffleClaim(
@@ -68,8 +75,7 @@ export async function denyRaffleClaim(
   reasonInput: string,
 ): Promise<void> {
   await denyRaffleClaimDomain(actorSubjectId, claimId, reasonInput);
-  const roundId = await roundIdForClaim(claimId);
-  await publishRaffleEvent({ kind: "raffle.claim.denied", roundId, claimId });
+  await publishClaimEvent("raffle.claim.denied", claimId);
 }
 
 export async function drawRaffleRound(actorSubjectId: string, roundId: string): Promise<RaffleRound> {
@@ -77,7 +83,8 @@ export async function drawRaffleRound(actorSubjectId: string, roundId: string): 
 
   if (round.status === "drawn") {
     if (!round.winningClaimId) {
-      throw new Error(`Drawn raffle round ${round.roundId} has no winning claim`);
+      console.error(`[raffle-publisher] drawn raffle round ${round.roundId} has no winning claim to publish`);
+      return round;
     }
     await publishRaffleEvent({
       kind: "raffle.round.drawn",
