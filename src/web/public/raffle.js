@@ -95,6 +95,85 @@ async function cancelRaffleClaim(button) {
   }
 }
 
+async function createRaffleRound(form) {
+  const drawingInput = form.querySelector("[data-raffle-admin-drawing]");
+  const priceInput = form.querySelector("[data-raffle-admin-price]");
+  const winnerInput = form.querySelector("[data-raffle-admin-winner-percentage]");
+  const status = form.querySelector("[data-raffle-admin-status]");
+  const submitButton = form.querySelector('button[type="submit"]');
+
+  if (!(drawingInput instanceof HTMLInputElement)
+      || !(priceInput instanceof HTMLInputElement)
+      || !(winnerInput instanceof HTMLInputElement)
+      || !(status instanceof HTMLElement)
+      || !(submitButton instanceof HTMLButtonElement)) return;
+
+  const drawingMilliseconds = Date.parse(drawingInput.value);
+  const ticketPrice = Number(priceInput.value);
+  const winnerPercentage = Number(winnerInput.value);
+
+  if (!Number.isFinite(drawingMilliseconds)
+      || !Number.isSafeInteger(ticketPrice) || ticketPrice <= 0
+      || !Number.isInteger(winnerPercentage) || winnerPercentage < 1 || winnerPercentage > 100) {
+    status.textContent = "Enter a drawing time, positive whole-number ticket price, and winner share from 1 to 100.";
+    return;
+  }
+
+  submitButton.disabled = true;
+  status.textContent = "Creating raffle draft…";
+
+  try {
+    const response = await fetch("/raffle/rounds", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        drawing_at_unix: Math.floor(drawingMilliseconds / 1000),
+        ticket_price_gold: ticketPrice,
+        prize_kind: "gold",
+        winner_percentage: winnerPercentage,
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      status.textContent = result.message || result.error || "Unable to create raffle draft.";
+      return;
+    }
+
+    window.location.reload();
+  } catch {
+    status.textContent = "Unable to create raffle draft.";
+  } finally {
+    submitButton.disabled = false;
+  }
+}
+
+async function activateRaffleRound(button) {
+  const roundId = button.dataset.activateRaffleRound;
+  if (!roundId) return;
+
+  button.disabled = true;
+  const originalText = button.textContent;
+  button.textContent = "Opening raffle…";
+
+  try {
+    const response = await fetch(`/raffle/rounds/${encodeURIComponent(roundId)}/live`, {
+      method: "POST",
+    });
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      window.alert(result.message || result.error || "Unable to make raffle live.");
+      return;
+    }
+
+    window.location.assign("/events/raffle");
+  } catch {
+    window.alert("Unable to make raffle live.");
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
 document.querySelectorAll("[data-raffle-claim-form]").forEach((form) => {
   if (!(form instanceof HTMLFormElement)) return;
   refreshRafflePromise(form);
@@ -106,9 +185,24 @@ document.querySelectorAll("[data-raffle-claim-form]").forEach((form) => {
   });
 });
 
+document.querySelectorAll("[data-raffle-admin-create]").forEach((form) => {
+  if (!(form instanceof HTMLFormElement)) return;
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void createRaffleRound(form);
+  });
+});
+
 document.addEventListener("click", (event) => {
   const target = event.target;
   if (!(target instanceof Element)) return;
+
   const cancelButton = target.closest("[data-cancel-raffle-claim]");
-  if (cancelButton instanceof HTMLButtonElement) void cancelRaffleClaim(cancelButton);
+  if (cancelButton instanceof HTMLButtonElement) {
+    void cancelRaffleClaim(cancelButton);
+    return;
+  }
+
+  const activateButton = target.closest("[data-activate-raffle-round]");
+  if (activateButton instanceof HTMLButtonElement) void activateRaffleRound(activateButton);
 });
