@@ -83,6 +83,16 @@ function managementFacts(round: RaffleRound, metrics: ReturnType<typeof claimMet
   </dl>`;
 }
 
+function managementSignals(round: RaffleAdministrationRound): string {
+  return `<dl style="display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 1rem; margin: 0; color: #c9c5ba;">
+    <dt>Drawing deadline</dt><dd style="margin: 0;">${localTime(round.drawingAtUnix)}</dd>
+    <dt>Pending claims</dt><dd style="margin: 0;">${round.pendingClaimCount}</dd>
+    <dt>Approved claims</dt><dd style="margin: 0;">${round.approvedClaimCount}</dd>
+    <dt>Cancelled claims</dt><dd style="margin: 0;">${round.cancelledClaimCount}</dd>
+    <dt>Denied claims</dt><dd style="margin: 0;">${round.deniedClaimCount}</dd>
+  </dl>`;
+}
+
 function roundActions(round: RaffleRound): string {
   const terminal = round.status === "drawn" || round.status === "admin_cancelled" || round.status === "no_entry_cancelled";
   const activate = round.status === "created"
@@ -109,7 +119,7 @@ function roundList(rounds: RaffleAdministrationRound[], emptyText: string): stri
           <strong>${round.status === "live" ? "Live raffle" : round.status === "created" ? "Upcoming raffle" : "Closed raffle"}</strong>
           <span style="color: #aaa69c; font-size: 0.86rem;">${htmlText(roundStatusLabel(round))}</span>
         </div>
-        ${managementFacts(round, round)}
+        ${managementSignals(round)}
         ${roundActions(round)}
       </li>`).join("\n")}
   </ol>`;
