@@ -1,5 +1,24 @@
 document.documentElement.dataset.webRenderer = "ready";
 
+function formatViewerLocalTimes() {
+  document.querySelectorAll("time[data-local-time-unix]").forEach((element) => {
+    if (!(element instanceof HTMLTimeElement)) return;
+
+    const unixSeconds = Number(element.dataset.localTimeUnix);
+    if (!Number.isFinite(unixSeconds)) return;
+
+    const date = new Date(unixSeconds * 1000);
+    if (Number.isNaN(date.getTime())) return;
+
+    const dateStyle = element.dataset.localTimeDateStyle === "medium" ? "medium" : "full";
+    element.dateTime = date.toISOString();
+    element.textContent = new Intl.DateTimeFormat(undefined, {
+      dateStyle,
+      timeStyle: "short",
+    }).format(date);
+  });
+}
+
 function closeOpenMenus() {
   document.querySelectorAll("details.menu-surface[open]").forEach((details) => {
     details.removeAttribute("open");
@@ -230,6 +249,7 @@ const ceremonyParams = new URLSearchParams(window.location.search);
 if (ceremonyParams.get("refresh") === "failed") {
   window.alert("Character refresh failed. Your existing character data has been left unchanged.");
 }
+formatViewerLocalTimes();
 openRequestedMainPicker();
 cleanCeremonyParams();
 openRequiredMainPicker();
