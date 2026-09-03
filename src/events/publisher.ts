@@ -25,10 +25,6 @@ export type PublishedEvent =
       kind: "subject-member.joined" | "subject-member.left" | "subject-member.rank.changed";
       subjectId: string;
       guildId: string;
-    }
-  | {
-      kind: "guild.roster.changed";
-      guildId: string;
     };
 
 type BotGhostVariable = {
