@@ -218,6 +218,26 @@ What can I do to this session?
 
 For web access, authentication begins with Blizzard/Battle.net authorization and resolves the authenticated user to the canonical WoW-rooted subject before establishing the application session.
 
+### Time representation and presentation
+
+Time-bearing operational facts should be stored and transported as timezone-neutral instants, such as Unix timestamps, rather than as a server-local wall-clock interpretation.
+
+When a time is presented to a person, the interface should express that instant in the **viewer's local timezone** whenever the medium can determine it. In the web application, browser-side formatting should therefore be preferred over server-local date formatting for member- and administrator-facing timestamps.
+
+A local date/time input represents the entering person's local wall-clock choice and must be converted to the canonical timezone-neutral instant before it crosses the operational boundary.
+
+The distinction is:
+
+```text
+operational truth
+    → timezone-neutral instant
+
+human expression
+    → viewer-local date and time
+```
+
+Server/container timezone must not silently become presentation policy.
+
 ## Human authority
 
 Guild Operations automates persistence, procedure, visibility, and lifecycle management. It does not manufacture human judgment.
