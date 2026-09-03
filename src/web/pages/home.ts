@@ -28,11 +28,10 @@ function temporaryGuildRefreshControl(authenticated: boolean): string {
       <p class="eyebrow">Temporary operations control</p>
       <h2 id="guild-refresh-title">Guild roster refresh</h2>
       <p class="lede">Refresh Blizzard guild authority and reconcile the current roster.</p>
-      <form action="/guild/refresh" method="post">
-        <button type="submit" style="min-height: 2.8rem; padding: 0.65rem 0.9rem; border: 1px solid rgba(232,201,134,0.35); border-radius: 0.65rem; background: rgba(232,201,134,0.08); color: #e8c986; font: inherit; font-weight: 700; cursor: pointer;">
-          Refresh guild roster
-        </button>
-      </form>
+      <button type="button" data-refresh-guild style="min-height: 2.8rem; padding: 0.65rem 0.9rem; border: 1px solid rgba(232,201,134,0.35); border-radius: 0.65rem; background: rgba(232,201,134,0.08); color: #e8c986; font: inherit; font-weight: 700; cursor: pointer;">
+        Refresh guild roster
+      </button>
+      <p data-guild-refresh-status aria-live="polite"></p>
     </section>`;
 }
 
