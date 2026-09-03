@@ -1,8 +1,8 @@
 # Raffle
 
-The raffle is the first concrete Guild Operations participation capability.
+Raffle is a concrete Guild Operations participatory Event module for operating the guild raffle.
 
-It is deliberately modeled as a raffle-specific domain rather than as an instance of a generic event, workflow, participation, notification, or audit framework.
+It is deliberately modeled as a raffle-specific domain rather than as an instance of a generic event, workflow, participation, notification, or audit framework. In Guild Operations, **Events** is the product category for participatory guild activities. Raffle may also publish system events after authoritative raffle truth changes; those system events are a supporting integration boundary, not the Events product category itself.
 
 ## Purpose
 
@@ -48,14 +48,16 @@ A round is the bounded raffle drawing cycle.
 Its operating terms are intentionally small:
 
 - round ID;
-- approximate drawing time as a Unix timestamp;
+- drawing deadline as a timezone-neutral instant;
 - ticket price in gold;
 - prize kind;
 - winner percentage when the prize kind is gold.
 
-The configured drawing time is guideline metadata only. It does not automatically close claims, freeze participation, or initiate a draw.
+The configured drawing deadline is scheduling metadata only. It does not automatically close claims, freeze participation, mutate lifecycle state, or initiate a draw. Interfaces express that instant in the viewer's local timezone.
 
 Round terms may be changed while the round is still `created`. Once a round becomes `live`, its terms are fixed so claims preserve the terms under which they were made.
+
+At most one round may be `live` for the guild at a time. A `created` round is administrative preparation, not an active/public raffle.
 
 ### Round lifecycle
 
@@ -80,6 +82,8 @@ It means, approximately:
 
 > This guild member, acting through this controlled guild character, intends to deposit the gold corresponding to this many tickets for this round.
 
+A claim is not evidence that the deposit occurred and does not itself establish tickets.
+
 A claim records:
 
 - claim ID;
@@ -103,9 +107,9 @@ An unresolved claim may end in exactly one of three ways:
 - `denied`: explicit denying attendant, denial time, and mandatory reason;
 - `cancelled`: explicit claimant and cancellation time.
 
-Approval and ticket birth are one transactional consequence. There is no intermediate state in which an approval has been committed but its participation has not. If the transaction fails, the claim remains unresolved.
+Approval establishes the claim's raffle participation. Pending claims establish no tickets. A denial and a cancellation contribute no participation but remain durable records.
 
-A denial and a cancellation contribute no participation but remain durable records.
+Administrative cancellation of the parent round does not rewrite an approved claim into a cancelled claim. Approval remains evidence that the attendant confirmed the promised deposit and may therefore matter to later guild refund handling. Refund completion is not currently raffle state and must not be manufactured from cancellation history.
 
 ## Selection population
 
@@ -130,6 +134,20 @@ The completed round preserves:
 
 Those facts are sufficient to reconstruct why the selected position resolves to the winning claim while retaining the entire claim provenance behind the winner.
 
+## Prize model
+
+Prize kind is declarable raffle state. Gold is the first implemented prize kind, not the conceptual limit of the module.
+
+For a gold raffle:
+
+```text
+pot = approved ticket count * ticket price
+winner share = pot * winner percentage
+guild share = pot - winner share
+```
+
+Only approved claims contribute to the pot or prize projection.
+
 ## Historical behavior
 
 Claims do not disappear when a round concludes. They remain ordinary historical records.
@@ -140,8 +158,31 @@ The raffle intentionally derives as much as possible from a small set of authori
 
 ## Surface boundary
 
-The raffle domain does not own platform-specific presentation.
+The raffle domain owns raffle meaning. Interfaces own expression of that meaning.
 
-The native web application, Discord interactions, and later webhook publication are surfaces over the same backend operations and state. Discord association resolves an interaction to the existing Guild Operations subject; it does not create alternate raffle ownership or truth.
+Current web surfaces are:
 
-Rendered views and publishable webhook representations should be designed later around the stable raffle operations. They must not become separate owners of raffle state.
+- `/events/raffle` — current participatory raffle surface;
+- `/events/raffle/history` — completed and cancelled raffle history;
+- `/events/raffle/rules` — standing guild raffle rules and regulations;
+- `/events/raffle/admin` — authorized raffle operations;
+- `/events/raffle/admin/:roundId` — detailed round management and administrative ledger.
+
+Raffle is not permanently promoted in primary navigation. A live raffle may be promoted from the home surface; when no raffle is live there is no active raffle to promote.
+
+Discord and other subscribers remain interaction surfaces over the same backend truth. They do not become independent owners of raffle state.
+
+## System-event publication
+
+Raffle publishes system events when meaningful authoritative raffle reality successfully changes. A publication creates attention rather than truth: it carries the occurrence kind and small authority-oriented coordinates so a subscriber can query Guild Operations for current state.
+
+Failed attempts, authorization failures, database failures, transport failures, and other machinery errors are not raffle system events. Publication failure does not undo an authoritative raffle operation that already succeeded.
+
+The concrete references are separated by purpose:
+
+- `docs/publications/raffle.md` — the raffle system events currently published and their coordinates;
+- `docs/endpoints/raffle.md` — authoritative raffle HTTP query and operation contracts;
+- `docs/publication-model.md` — cross-cutting publication doctrine;
+- `docs/integrations/botghost.md` — current BotGhost transport variables and operator reference.
+
+This separation lets Raffle remain the owner of raffle truth while publication and external interaction remain projections over that truth.
