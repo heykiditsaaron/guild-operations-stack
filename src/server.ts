@@ -10,6 +10,7 @@ import { loadAssetRegistry, registerAssetRoutes } from "./web/assets.js";
 import { registerRaffleAdminPage } from "./web/pages/events/raffle/admin.js";
 import { registerRaffleHistoryPage } from "./web/pages/events/raffle/history.js";
 import { registerRafflePage } from "./web/pages/events/raffle/index.js";
+import { registerRaffleRulesPage } from "./web/pages/events/raffle/rules.js";
 import { registerHomePage } from "./web/pages/home.js";
 
 const app = Fastify({
@@ -31,6 +32,7 @@ await registerAssetRoutes(app, webAssets);
 await registerHomePage(app, webAssets);
 await registerRafflePage(app, webAssets);
 await registerRaffleHistoryPage(app, webAssets);
+await registerRaffleRulesPage(app, webAssets);
 await registerRaffleAdminPage(app, webAssets);
 
 await registerAuthRoutes(app);
