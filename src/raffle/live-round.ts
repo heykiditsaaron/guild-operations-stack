@@ -1,6 +1,35 @@
 import { config } from "../config.js";
 import { pool } from "../db.js";
-import { RaffleRuleError, raffleRound, type RaffleRound } from "./domain.js";
+import {
+  RaffleRuleError,
+  activateRaffleRound,
+  raffleRound,
+  type RaffleRound,
+} from "./domain.js";
+
+function isSingleLiveRoundViolation(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const databaseError = error as { code?: unknown; constraint?: unknown };
+  return databaseError.code === "23505"
+    && databaseError.constraint === "raffle_rounds_one_live_per_guild_idx";
+}
+
+export async function activateSingleRaffleRound(
+  actorSubjectId: string,
+  roundId: string,
+): Promise<RaffleRound> {
+  try {
+    return await activateRaffleRound(actorSubjectId, roundId);
+  } catch (error) {
+    if (isSingleLiveRoundViolation(error)) {
+      throw new RaffleRuleError(
+        "active_round_exists",
+        "Another raffle round is already live for the guild",
+      );
+    }
+    throw error;
+  }
+}
 
 export async function activeRaffleRound(): Promise<RaffleRound | null> {
   const result = await pool.query<{ round_id: string }>(
