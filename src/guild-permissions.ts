@@ -4,6 +4,7 @@ import { pool } from "./db.js";
 export type GuildCapability = string;
 
 export const GUILD_REFRESH_CAPABILITY = "guild.refresh";
+export const RAFFLE_ADMIN_CAPABILITY = "raffle.admin";
 
 export type EffectiveGuildAuthority = {
   guildId: string;
