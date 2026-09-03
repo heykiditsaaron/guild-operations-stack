@@ -72,7 +72,12 @@ export class RaffleRuleError extends Error {
   }
 }
 
-function validateTerms(terms: RaffleRoundTerms): Required<RaffleRoundTerms> {
+function validateTerms(terms: RaffleRoundTerms): {
+  drawingAtUnix: number;
+  ticketPriceGold: number;
+  prizeKind: string;
+  winnerPercentage: number | null;
+} {
   if (!Number.isInteger(terms.drawingAtUnix) || terms.drawingAtUnix < 0) {
     throw new RaffleRuleError("invalid_drawing_time", "Drawing time must be a non-negative Unix timestamp", 400);
   }
@@ -86,7 +91,12 @@ function validateTerms(terms: RaffleRoundTerms): Required<RaffleRoundTerms> {
 
   const winnerPercentage = terms.winnerPercentage ?? null;
   if (prizeKind === "gold") {
-    if (!Number.isInteger(winnerPercentage) || winnerPercentage < 1 || winnerPercentage > 100) {
+    if (
+      typeof winnerPercentage !== "number"
+      || !Number.isInteger(winnerPercentage)
+      || winnerPercentage < 1
+      || winnerPercentage > 100
+    ) {
       throw new RaffleRuleError(
         "invalid_winner_percentage",
         "Gold raffle winner percentage must be an integer from 1 through 100",

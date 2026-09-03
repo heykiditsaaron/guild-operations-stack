@@ -17,7 +17,9 @@ CREATE TABLE IF NOT EXISTS raffle_rounds (
   winning_claim_id uuid,
   CHECK (status IN ('created', 'live', 'drawn', 'admin_cancelled', 'no_entry_cancelled')),
   CHECK (
-    (prize_kind = 'gold' AND winner_percentage BETWEEN 1 AND 100)
+    (prize_kind = 'gold'
+      AND winner_percentage IS NOT NULL
+      AND winner_percentage BETWEEN 1 AND 100)
     OR (prize_kind <> 'gold' AND winner_percentage IS NULL)
   ),
   CHECK (
@@ -34,14 +36,18 @@ CREATE TABLE IF NOT EXISTS raffle_rounds (
     (status = 'drawn'
       AND live_by_subject_id IS NOT NULL AND live_at IS NOT NULL
       AND concluded_by_subject_id IS NOT NULL AND concluded_at IS NOT NULL
-      AND total_entries > 0 AND selected_index IS NOT NULL AND winning_claim_id IS NOT NULL)
+      AND total_entries IS NOT NULL AND total_entries > 0
+      AND selected_index IS NOT NULL AND winning_claim_id IS NOT NULL)
     OR
     (status = 'no_entry_cancelled'
       AND live_by_subject_id IS NOT NULL AND live_at IS NOT NULL
       AND concluded_by_subject_id IS NOT NULL AND concluded_at IS NOT NULL
-      AND total_entries = 0 AND selected_index IS NULL AND winning_claim_id IS NULL)
+      AND total_entries IS NOT NULL AND total_entries = 0
+      AND selected_index IS NULL AND winning_claim_id IS NULL)
     OR
     (status = 'admin_cancelled'
+      AND ((live_by_subject_id IS NULL AND live_at IS NULL)
+        OR (live_by_subject_id IS NOT NULL AND live_at IS NOT NULL))
       AND concluded_by_subject_id IS NOT NULL AND concluded_at IS NOT NULL
       AND total_entries IS NULL AND selected_index IS NULL AND winning_claim_id IS NULL)
   )
