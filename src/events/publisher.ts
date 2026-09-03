@@ -13,6 +13,22 @@ export type PublishedEvent =
       kind: "subject.main.changed";
       subjectId: string;
       guildId: string;
+    }
+  | {
+      kind: "character-member.joined" | "character-member.left" | "character-member.rank.changed";
+      guildId: string;
+      region: string;
+      realmId: string;
+      characterId: string;
+    }
+  | {
+      kind: "subject-member.joined" | "subject-member.left" | "subject-member.rank.changed";
+      subjectId: string;
+      guildId: string;
+    }
+  | {
+      kind: "guild.roster.changed";
+      guildId: string;
     };
 
 type BotGhostVariable = {
@@ -30,17 +46,14 @@ function variable(name: string, value: string): BotGhostVariable {
 }
 
 function variablesForEvent(event: PublishedEvent): BotGhostVariable[] {
-  const variables = [
-    variable("event_kind", event.kind),
-    variable("subject_id", event.subjectId),
-  ];
+  const variables = [variable("event_kind", event.kind)];
 
-  if ("discordUserId" in event) {
-    variables.push(variable("discord_user_id", event.discordUserId));
-  }
-  if ("guildId" in event) {
-    variables.push(variable("guild_id", event.guildId));
-  }
+  if ("subjectId" in event) variables.push(variable("subject_id", event.subjectId));
+  if ("discordUserId" in event) variables.push(variable("discord_user_id", event.discordUserId));
+  if ("guildId" in event) variables.push(variable("guild_id", event.guildId));
+  if ("region" in event) variables.push(variable("region", event.region));
+  if ("realmId" in event) variables.push(variable("realm_id", event.realmId));
+  if ("characterId" in event) variables.push(variable("character_id", event.characterId));
 
   return variables;
 }
