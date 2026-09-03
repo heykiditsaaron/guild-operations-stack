@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedSubject, SESSION_COOKIE_NAME } from "../../../../auth.js";
+import { RAFFLE_ADMIN_CAPABILITY, subjectHasGuildCapability } from "../../../../guild-permissions.js";
 import type { RaffleRound } from "../../../../raffle/domain.js";
 import { activeRaffleRound } from "../../../../raffle/live-round.js";
 import { raffleClaimsForMember, type RaffleMemberClaim } from "../../../../raffle/member-view.js";
@@ -145,10 +146,18 @@ export async function registerRafflePage(app: FastifyInstance, assets: AssetRegi
       authenticatedSubject(sessionToken),
       activeRaffleRound(),
     ]);
-    const claims = subject && liveRaffle
-      ? await raffleClaimsForMember(subject.subjectId, liveRaffle.roundId)
-      : [];
+    const [claims, isAdmin] = await Promise.all([
+      subject && liveRaffle
+        ? raffleClaimsForMember(subject.subjectId, liveRaffle.roundId)
+        : Promise.resolve([]),
+      subject
+        ? subjectHasGuildCapability(subject.subjectId, RAFFLE_ADMIN_CAPABILITY)
+        : Promise.resolve(false),
+    ]);
 
+    const adminLink = isAdmin
+      ? `<p style="width: min(100%, 46rem); margin: 2.5rem 0 0;"><a href="/events/raffle/admin">Administer raffle</a></p>`
+      : "";
     const raffleScript = `<script src="${assetUrl(assets, "raffle.js")}" defer></script>`;
     const html = renderPage(assets, {
       pathname: "/events/raffle",
@@ -161,7 +170,7 @@ export async function registerRafflePage(app: FastifyInstance, assets: AssetRegi
           <h1 id="page-title">Raffle</h1>
           <p class="lede">The guild raffle, operated and preserved through Guild Operations.</p>
         </div>`,
-      body: `${liveRaffle ? liveRoundBody(liveRaffle, viewer, claims) : noLiveRoundBody()}${raffleScript}`,
+      body: `${liveRaffle ? liveRoundBody(liveRaffle, viewer, claims) : noLiveRoundBody()}${adminLink}${raffleScript}`,
     });
 
     return reply
