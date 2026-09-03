@@ -1,66 +1,32 @@
 import type { FastifyInstance } from "fastify";
-import { authenticatedSubject, SESSION_COOKIE_NAME } from "../../auth.js";
-import { discordAssociationForSubject } from "../../discord.js";
-import { guildCharactersForSubject } from "../../guild.js";
-import { mainCharacterForSubject } from "../../main-character.js";
+import { SESSION_COOKIE_NAME } from "../../auth.js";
+import { activeRaffleRound } from "../../raffle/live-round.js";
 import type { AssetRegistry } from "../assets.js";
-import { renderPage, type WebViewer } from "../render.js";
+import { htmlText, renderPage } from "../render.js";
+import { viewerForRequest } from "../viewer.js";
 
-async function viewerForHome(sessionToken: string | undefined): Promise<WebViewer> {
-  const subject = await authenticatedSubject(sessionToken);
-  if (!subject) return { authenticated: false };
+function liveRafflePromotion(ticketPriceGold: string, drawingAtUnix: number): string {
+  const drawingAt = new Date(drawingAtUnix * 1000).toLocaleString("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
 
-  const [mainCharacter, characters, discordAssociation] = await Promise.all([
-    mainCharacterForSubject(subject.subjectId),
-    guildCharactersForSubject(subject.subjectId),
-    discordAssociationForSubject(subject.subjectId),
-  ]);
-
-  const selectedCharacter = mainCharacter
-    ? characters.find((character) =>
-        character.realmId === mainCharacter.realmId &&
-        character.characterId === mainCharacter.characterId,
-      ) ?? null
-    : null;
-
-  return {
-    authenticated: true,
-    mainCharacter: mainCharacter
-      ? {
-          characterId: mainCharacter.characterId,
-          realmId: mainCharacter.realmId,
-          name: mainCharacter.name,
-          realmName: selectedCharacter?.realmName ?? mainCharacter.realmName,
-          rankIndex: selectedCharacter?.rankIndex ?? mainCharacter.rankIndex,
-          level: selectedCharacter?.level ?? null,
-          className: selectedCharacter?.className ?? null,
-          activeSpecName: selectedCharacter?.activeSpecName ?? null,
-          avatarUrl: mainCharacter.avatarUrl,
-        }
-      : null,
-    characters: characters.map((character) => ({
-      characterId: character.characterId,
-      realmId: character.realmId,
-      name: character.name,
-      realmName: character.realmName,
-      rankIndex: character.rankIndex,
-      level: character.level,
-      className: character.className,
-      raceName: character.raceName,
-      activeSpecName: character.activeSpecName,
-      avatarUrl: character.avatarUrl,
-    })),
-    discordAssociation: discordAssociation
-      ? {
-          username: discordAssociation.username,
-        }
-      : null,
-  };
+  return `
+    <section class="home-panel" aria-labelledby="live-raffle-title">
+      <p class="eyebrow">Event live now</p>
+      <h2 id="live-raffle-title">Raffle is live</h2>
+      <p class="lede">Tickets are ${htmlText(ticketPriceGold)} gold each. Drawing guideline: ${htmlText(drawingAt)}.</p>
+      <p><a href="/events/raffle">View the raffle</a></p>
+    </section>`;
 }
 
 export async function registerHomePage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/", async (request, reply) => {
-    const viewer = await viewerForHome(request.cookies[SESSION_COOKIE_NAME]);
+    const [viewer, liveRaffle] = await Promise.all([
+      viewerForRequest(request.cookies[SESSION_COOKIE_NAME]),
+      activeRaffleRound(),
+    ]);
+
     const html = renderPage(assets, {
       pathname: "/",
       title: "OH CRIT I Pulled! Guild Operations",
@@ -73,6 +39,7 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
           <p class="lede">The guild exists in Azeroth. This is where its operations continue outside the game.</p>
         </div>`,
       body: `
+        ${liveRaffle ? liveRafflePromotion(liveRaffle.ticketPriceGold, liveRaffle.drawingAtUnix) : ""}
         <section class="home-panel" aria-labelledby="projection-status">
           <div class="status-line" id="projection-status">
             <span class="status-dot" aria-hidden="true"></span>
