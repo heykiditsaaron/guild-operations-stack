@@ -67,13 +67,13 @@ function renderDiscordAssociation(viewer: Extract<WebViewer, { authenticated: tr
 
   return `<div class="discord-connection" aria-label="Discord connected">
     <span class="discord-connection-dot" aria-hidden="true"></span>
-    <span class="discord-connection-copy">
+    <div class="discord-connection-copy">
       <span class="discord-connection-name">${escapeHtml(viewer.discordAssociation.username)}</span>
       <span class="discord-connection-status">Discord</span>
       <form method="post" action="/me/discord/disconnect?return_to=${encodeURIComponent(pathname)}">
         <button type="submit" class="me-change-main">Disconnect</button>
       </form>
-    </span>
+    </div>
   </div>`;
 }
 
