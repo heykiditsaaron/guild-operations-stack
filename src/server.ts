@@ -5,7 +5,7 @@ import { pool } from "./db.js";
 import { registerAuthRoutes } from "./auth.js";
 import { registerDiscordRoutes } from "./discord.js";
 import { registerGuildRoutes } from "./guild-routes.js";
-import { registerRaffleRoutes } from "./raffle-routes.js";
+import { registerRaffleRoutes } from "./raffle/routes.js";
 import { loadAssetRegistry, registerAssetRoutes } from "./web/assets.js";
 import { registerHomePage } from "./web/pages/home.js";
 
