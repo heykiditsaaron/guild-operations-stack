@@ -212,7 +212,7 @@ function renderActionBar(viewer: WebViewer, pathname: string): string {
         <summary class="icon-control" aria-label="Open navigation">
           <span></span><span></span><span></span>
         </summary>
-        <div class="menu-panel menu-panel-left">
+        <div class="menu-panel menu-panel-left mobile-nav-panel">
           <a href="/"${homeActive}>Home</a>
         </div>
       </details>
@@ -238,6 +238,7 @@ export function renderPage(assets: AssetRegistry, input: RenderPageInput): strin
   <meta name="description" content="${description}">
   <link rel="canonical" href="${canonicalUrl}">
   <link rel="stylesheet" href="${assetUrl(assets, "app.css")}">
+  <link rel="stylesheet" href="${assetUrl(assets, "navigation-shelves.css")}">
   <title>${title}</title>
 </head>
 <body>
@@ -249,6 +250,7 @@ export function renderPage(assets: AssetRegistry, input: RenderPageInput): strin
   </div>
   ${renderMainPicker(input.viewer)}
   <script src="${assetUrl(assets, "app.js")}" defer></script>
+  <script src="${assetUrl(assets, "navigation-shelves.js")}" defer></script>
 </body>
 </html>`;
 }
