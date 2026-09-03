@@ -3,7 +3,7 @@ import { authenticatedSubject, SESSION_COOKIE_NAME } from "../../../../auth.js";
 import type { RaffleRound } from "../../../../raffle/domain.js";
 import { activeRaffleRound } from "../../../../raffle/live-round.js";
 import { raffleClaimsForMember, type RaffleMemberClaim } from "../../../../raffle/member-view.js";
-import type { AssetRegistry } from "../../../assets.js";
+import { assetUrl, type AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage, type WebViewer } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
 
@@ -149,6 +149,7 @@ export async function registerRafflePage(app: FastifyInstance, assets: AssetRegi
       ? await raffleClaimsForMember(subject.subjectId, liveRaffle.roundId)
       : [];
 
+    const raffleScript = `<script src="${assetUrl(assets, "raffle.js")}" defer></script>`;
     const html = renderPage(assets, {
       pathname: "/events/raffle",
       title: "Raffle · OH CRIT I Pulled! Guild Operations",
@@ -160,7 +161,7 @@ export async function registerRafflePage(app: FastifyInstance, assets: AssetRegi
           <h1 id="page-title">Raffle</h1>
           <p class="lede">The guild raffle, operated and preserved through Guild Operations.</p>
         </div>`,
-      body: liveRaffle ? liveRoundBody(liveRaffle, viewer, claims) : noLiveRoundBody(),
+      body: `${liveRaffle ? liveRoundBody(liveRaffle, viewer, claims) : noLiveRoundBody()}${raffleScript}`,
     });
 
     return reply
