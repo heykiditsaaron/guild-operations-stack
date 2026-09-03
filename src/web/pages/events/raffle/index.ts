@@ -23,31 +23,35 @@ function prizeLabel(round: RaffleRound): string {
 }
 
 function sectionRule(): string {
-  return `<hr aria-hidden="true" style="margin: 2.5rem 0 0; border: 0; border-top: 1px solid rgba(238, 201, 124, 0.18);">`;
+  return `<hr aria-hidden="true" style="margin: 0 0 2.5rem; border: 0; border-top: 1px solid rgba(238, 201, 124, 0.18);">`;
 }
 
 function liveRoundBody(round: RaffleRound): string {
   return `
-    <section aria-labelledby="raffle-status" style="width: min(100%, 46rem);">
-      <div class="status-line" id="raffle-status">
-        <span class="status-dot" aria-hidden="true"></span>
-        <span>Raffle live</span>
-      </div>
-      <h2>${htmlText(round.ticketPriceGold)} gold per ticket</h2>
-      <p class="lede">${htmlText(prizeLabel(round))}</p>
-      <p>Drawing guideline: <strong>${htmlText(drawingLabel(round.drawingAtUnix))}</strong></p>
-      <p>The drawing time is informational. The raffle remains live until an attendant concludes it.</p>
+    <div style="width: min(100%, 46rem);">
       ${sectionRule()}
-    </section>`;
+      <section aria-labelledby="raffle-status">
+        <div class="status-line" id="raffle-status">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span>Raffle live</span>
+        </div>
+        <h2>${htmlText(round.ticketPriceGold)} gold per ticket</h2>
+        <p class="lede">${htmlText(prizeLabel(round))}</p>
+        <p>Drawing guideline: <strong>${htmlText(drawingLabel(round.drawingAtUnix))}</strong></p>
+        <p>The drawing time is informational. The raffle remains live until an attendant concludes it.</p>
+      </section>
+    </div>`;
 }
 
 function noLiveRoundBody(): string {
   return `
-    <section aria-labelledby="raffle-status" style="width: min(100%, 46rem);">
-      <h2 id="raffle-status">No raffle is live right now.</h2>
-      <p class="lede">When the guild opens a raffle, its current terms will appear here.</p>
+    <div style="width: min(100%, 46rem);">
       ${sectionRule()}
-    </section>`;
+      <section aria-labelledby="raffle-status">
+        <h2 id="raffle-status">No raffle is live right now.</h2>
+        <p class="lede">When the guild opens a raffle, its current terms will appear here.</p>
+      </section>
+    </div>`;
 }
 
 export async function registerRafflePage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
