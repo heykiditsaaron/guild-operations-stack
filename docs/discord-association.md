@@ -53,7 +53,7 @@ Discord association should have a deliberately small web footprint.
 
 When no Discord account is associated, the authenticated `Me` surface should expose an obvious `Connect Discord` action.
 
-When an account is associated, the same surface should show a compact state: a green association-status indicator, the stored Discord username, and `Discord` subtext identifying the service.
+When an account is associated, the same surface should show a compact state: a green association-status indicator, the stored Discord username, and `Discord` subtext identifying the service. The same compact state should expose a subordinate `Disconnect` action so the member can remove the optional association without affecting their Guild Operations subject or session.
 
 The green indicator means that the Discord association exists. It does not represent Discord online presence.
 
@@ -77,6 +77,8 @@ On callback, the server:
 
 Discord OAuth access credentials are ceremony material, not durable Guild Operations identity state. They are not retained merely to preserve the association.
 
+Disassociation is intentionally simpler. An authenticated member may remove the Discord association belonging to their current Guild Operations subject. The operation deletes only that association; it does not alter the subject, Blizzard authority, selected main, session, or historical guild activity. Repeating the operation when no association exists is harmless.
+
 ## Association law
 
 The relationship is one-to-one:
@@ -90,6 +92,8 @@ Association outcomes are deliberately narrow:
 - a Discord ID already associated with the same subject is idempotent success;
 - a Discord ID associated with another subject is a conflict and changes nothing;
 - a subject already associated with another Discord ID is a conflict and changes nothing.
+
+A subject may disassociate its currently attached Discord account. Once removed, that Discord user ID is no longer a resolver for the subject and either side is free to establish a later valid association through the normal proof ceremony.
 
 This slice defines no automatic reassignment, replacement, merge, or officer-mediated linking ceremony.
 
@@ -115,6 +119,6 @@ A later Discord interaction surface must still ask the backend whether the resol
 
 Discord association is distinct from Discord server membership. The association ceremony should not acquire broader Discord scopes merely because server membership may matter later.
 
-Discord association is also distinct from selected-main presentation. Changing a selected main must not alter the Discord association, and changing Discord presentation metadata must not alter the Guild Operations subject.
+Discord association is also distinct from selected-main presentation. Changing a selected main must not alter the Discord association, and changing or removing a Discord association must not alter the Guild Operations subject.
 
 The web application remains a first-class participation surface. Discord is an accelerator and an additional medium, not the owner of Guild Operations truth.
