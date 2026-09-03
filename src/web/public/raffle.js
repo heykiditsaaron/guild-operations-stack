@@ -174,6 +174,94 @@ async function activateRaffleRound(button) {
   }
 }
 
+async function cancelRaffleRound(button) {
+  const roundId = button.dataset.cancelRaffleRound;
+  if (!roundId) return;
+  if (!window.confirm("Cancel this raffle round? The round and its claims will remain in history.")) return;
+
+  button.disabled = true;
+  const originalText = button.textContent;
+  button.textContent = "Cancelling round…";
+
+  try {
+    const response = await fetch(`/raffle/rounds/${encodeURIComponent(roundId)}/cancel`, {
+      method: "POST",
+    });
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      window.alert(result.message || result.error || "Unable to cancel raffle round.");
+      return;
+    }
+
+    window.location.assign("/events/raffle/admin");
+  } catch {
+    window.alert("Unable to cancel raffle round.");
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
+async function approveRaffleClaim(button) {
+  const claimId = button.dataset.approveRaffleClaim;
+  if (!claimId) return;
+
+  button.disabled = true;
+  const originalText = button.textContent;
+  button.textContent = "Approving…";
+
+  try {
+    const response = await fetch(`/raffle/claims/${encodeURIComponent(claimId)}/approve`, {
+      method: "POST",
+    });
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      window.alert(result.message || result.error || "Unable to approve raffle claim.");
+      return;
+    }
+    window.location.reload();
+  } catch {
+    window.alert("Unable to approve raffle claim.");
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
+async function denyRaffleClaim(button) {
+  const claimId = button.dataset.denyRaffleClaim;
+  if (!claimId) return;
+
+  const reasonInput = document.querySelector(`[data-raffle-denial-reason="${CSS.escape(claimId)}"]`);
+  if (!(reasonInput instanceof HTMLInputElement) || !reasonInput.value.trim()) {
+    window.alert("Enter a denial reason before denying this claim.");
+    return;
+  }
+
+  button.disabled = true;
+  const originalText = button.textContent;
+  button.textContent = "Denying…";
+
+  try {
+    const response = await fetch(`/raffle/claims/${encodeURIComponent(claimId)}/deny`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: reasonInput.value.trim() }),
+    });
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+      window.alert(result.message || result.error || "Unable to deny raffle claim.");
+      return;
+    }
+    window.location.reload();
+  } catch {
+    window.alert("Unable to deny raffle claim.");
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
 document.querySelectorAll("[data-raffle-claim-form]").forEach((form) => {
   if (!(form instanceof HTMLFormElement)) return;
   refreshRafflePromise(form);
@@ -197,12 +285,30 @@ document.addEventListener("click", (event) => {
   const target = event.target;
   if (!(target instanceof Element)) return;
 
-  const cancelButton = target.closest("[data-cancel-raffle-claim]");
-  if (cancelButton instanceof HTMLButtonElement) {
-    void cancelRaffleClaim(cancelButton);
+  const cancelClaimButton = target.closest("[data-cancel-raffle-claim]");
+  if (cancelClaimButton instanceof HTMLButtonElement) {
+    void cancelRaffleClaim(cancelClaimButton);
     return;
   }
 
   const activateButton = target.closest("[data-activate-raffle-round]");
-  if (activateButton instanceof HTMLButtonElement) void activateRaffleRound(activateButton);
+  if (activateButton instanceof HTMLButtonElement) {
+    void activateRaffleRound(activateButton);
+    return;
+  }
+
+  const cancelRoundButton = target.closest("[data-cancel-raffle-round]");
+  if (cancelRoundButton instanceof HTMLButtonElement) {
+    void cancelRaffleRound(cancelRoundButton);
+    return;
+  }
+
+  const approveButton = target.closest("[data-approve-raffle-claim]");
+  if (approveButton instanceof HTMLButtonElement) {
+    void approveRaffleClaim(approveButton);
+    return;
+  }
+
+  const denyButton = target.closest("[data-deny-raffle-claim]");
+  if (denyButton instanceof HTMLButtonElement) void denyRaffleClaim(denyButton);
 });
