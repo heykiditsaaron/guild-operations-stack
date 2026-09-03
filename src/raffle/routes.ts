@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { authenticatedSubject, SESSION_COOKIE_NAME } from "./auth.js";
-import { GuildCapabilityDeniedError } from "./guild-permissions.js";
+import { authenticatedSubject, SESSION_COOKIE_NAME } from "../auth.js";
+import { GuildCapabilityDeniedError } from "../guild-permissions.js";
 import {
   RaffleRuleError,
   activateRaffleRound,
@@ -15,7 +15,7 @@ import {
   submitRaffleClaim,
   updateRaffleRound,
   type RaffleRoundTerms,
-} from "./raffle.js";
+} from "./domain.js";
 
 async function requireSubject(request: FastifyRequest, reply: FastifyReply): Promise<string | null> {
   const subject = await authenticatedSubject(request.cookies[SESSION_COOKIE_NAME]);
