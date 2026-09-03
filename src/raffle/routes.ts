@@ -7,19 +7,21 @@ import {
 } from "../guild-permissions.js";
 import {
   RaffleRuleError,
-  approveRaffleClaim,
-  cancelOwnRaffleClaim,
-  cancelRaffleRound,
   createRaffleRound,
-  denyRaffleClaim,
-  drawRaffleRound,
   raffleClaims,
   raffleRound,
-  submitRaffleClaim,
   updateRaffleRound,
   type RaffleRoundTerms,
 } from "./domain.js";
 import { activateSingleRaffleRound } from "./live-round.js";
+import {
+  approveRaffleClaim,
+  cancelOwnRaffleClaim,
+  cancelRaffleRound,
+  denyRaffleClaim,
+  drawRaffleRound,
+  submitRaffleClaim,
+} from "./published-operations.js";
 
 async function requireSubject(request: FastifyRequest, reply: FastifyReply): Promise<string | null> {
   const subject = await authenticatedSubject(request.cookies[SESSION_COOKIE_NAME]);
