@@ -2,6 +2,7 @@ import type { PoolClient } from "pg";
 import { acquireGuildAuthority, type BlizzardGuildProfile, type BlizzardGuildRoster } from "./blizzard.js";
 import { config, type Region } from "./config.js";
 import { pool, withTransaction } from "./db.js";
+import { publishEvent, type PublishedEvent } from "./events/publisher.js";
 import { GUILD_REFRESH_CAPABILITY, RAFFLE_ADMIN_CAPABILITY } from "./guild-permissions.js";
 import {
   enrichGuildCharacters,
@@ -34,6 +35,146 @@ function coordinateKey(character: GuildCharacterCoordinate): string {
   return `${character.region}:${character.realmId}:${character.characterId}`;
 }
 
+type CharacterMembershipState = GuildCharacterCoordinate & {
+  rankIndex: number;
+  characterName: string;
+  realmName: string | null;
+  realmSlug: string | null;
+};
+
+type SubjectMembershipState = {
+  subjectId: string;
+  rankIndex: number;
+};
+
+async function characterMembershipState(client: PoolClient, guildId: string): Promise<Map<string, CharacterMembershipState>> {
+  const result = await client.query<{
+    region: Region;
+    realm_id: string;
+    character_id: string;
+    rank_index: number;
+    character_name: string;
+    realm_name: string | null;
+    realm_slug: string | null;
+  }>(
+    `SELECT region, realm_id, character_id, rank_index, character_name, realm_name, realm_slug
+       FROM guild_roster_memberships
+      WHERE guild_id = $1
+        AND currently_present = true`,
+    [guildId],
+  );
+
+  return new Map(result.rows.map((row) => {
+    const state: CharacterMembershipState = {
+      region: row.region,
+      realmId: row.realm_id,
+      characterId: row.character_id,
+      rankIndex: row.rank_index,
+      characterName: row.character_name,
+      realmName: row.realm_name,
+      realmSlug: row.realm_slug,
+    };
+    return [coordinateKey(state), state];
+  }));
+}
+
+async function subjectMembershipState(client: PoolClient, guildId: string): Promise<Map<string, SubjectMembershipState>> {
+  const result = await client.query<{ subject_id: string; rank_index: number }>(
+    `SELECT c.subject_id, MIN(grm.rank_index)::integer AS rank_index
+       FROM characters c
+       JOIN guild_roster_memberships grm
+         ON grm.region = c.region
+        AND grm.realm_id = c.realm_id
+        AND grm.character_id = c.character_id
+        AND grm.currently_present = true
+      WHERE c.currently_controlled = true
+        AND grm.guild_id = $1
+      GROUP BY c.subject_id`,
+    [guildId],
+  );
+
+  return new Map(result.rows.map((row) => [row.subject_id, {
+    subjectId: row.subject_id,
+    rankIndex: row.rank_index,
+  }]));
+}
+
+function reconciliationPublications(
+  guildId: string,
+  beforeCharacters: Map<string, CharacterMembershipState>,
+  afterCharacters: Map<string, CharacterMembershipState>,
+  beforeSubjects: Map<string, SubjectMembershipState>,
+  afterSubjects: Map<string, SubjectMembershipState>,
+): PublishedEvent[] {
+  const publications: PublishedEvent[] = [];
+  let rosterChanged = false;
+
+  for (const [key, after] of afterCharacters) {
+    const before = beforeCharacters.get(key);
+    if (!before) {
+      publications.push({
+        kind: "character-member.joined",
+        guildId,
+        region: after.region,
+        realmId: after.realmId,
+        characterId: after.characterId,
+      });
+      rosterChanged = true;
+      continue;
+    }
+
+    if (before.rankIndex !== after.rankIndex) {
+      publications.push({
+        kind: "character-member.rank.changed",
+        guildId,
+        region: after.region,
+        realmId: after.realmId,
+        characterId: after.characterId,
+      });
+      rosterChanged = true;
+    }
+
+    if (
+      before.characterName !== after.characterName
+      || before.realmName !== after.realmName
+      || before.realmSlug !== after.realmSlug
+    ) {
+      rosterChanged = true;
+    }
+  }
+
+  for (const [key, before] of beforeCharacters) {
+    if (!afterCharacters.has(key)) {
+      publications.push({
+        kind: "character-member.left",
+        guildId,
+        region: before.region,
+        realmId: before.realmId,
+        characterId: before.characterId,
+      });
+      rosterChanged = true;
+    }
+  }
+
+  for (const [subjectId, after] of afterSubjects) {
+    const before = beforeSubjects.get(subjectId);
+    if (!before) {
+      publications.push({ kind: "subject-member.joined", subjectId, guildId });
+    } else if (before.rankIndex !== after.rankIndex) {
+      publications.push({ kind: "subject-member.rank.changed", subjectId, guildId });
+    }
+  }
+
+  for (const subjectId of beforeSubjects.keys()) {
+    if (!afterSubjects.has(subjectId)) {
+      publications.push({ kind: "subject-member.left", subjectId, guildId });
+    }
+  }
+
+  if (rosterChanged) publications.push({ kind: "guild.roster.changed", guildId });
+  return publications;
+}
+
 async function persistGuild(
   client: PoolClient,
   region: Region,
@@ -61,32 +202,17 @@ async function persistGuild(
        faction = EXCLUDED.faction,
        created_timestamp = EXCLUDED.created_timestamp,
        last_seen_at = now()`,
-    [
-      guildId,
-      region,
-      realmId,
-      profile.name,
-      realmName,
-      realmSlug,
-      factionValue(profile.faction),
-      profile.created_timestamp ?? null,
-    ],
+    [guildId, region, realmId, profile.name, realmName, realmSlug, factionValue(profile.faction), profile.created_timestamp ?? null],
   );
 
   return guildId;
 }
 
-async function ensureObservedRankDefinition(
-  client: PoolClient,
-  guildId: string,
-  rankIndex: number,
-): Promise<void> {
+async function ensureObservedRankDefinition(client: PoolClient, guildId: string, rankIndex: number): Promise<void> {
   await client.query(
     `INSERT INTO guild_rank_definitions (guild_id, rank_index, display_name, active)
      VALUES ($1, $2, $3, true)
-     ON CONFLICT (guild_id, rank_index) DO UPDATE SET
-       active = true,
-       updated_at = now()`,
+     ON CONFLICT (guild_id, rank_index) DO UPDATE SET active = true, updated_at = now()`,
     [guildId, rankIndex, `Rank ${rankIndex}`],
   );
 
@@ -102,41 +228,20 @@ async function ensureObservedRankDefinition(
   }
 }
 
-async function persistRoster(
-  client: PoolClient,
-  guildId: string,
-  region: Region,
-  roster: BlizzardGuildRoster,
-): Promise<{
+async function persistRoster(client: PoolClient, guildId: string, region: Region, roster: BlizzardGuildRoster): Promise<{
   observed: number;
   changedPresentationCoordinates: GuildCharacterCoordinate[];
 }> {
   const existingResult = await client.query<{
-    region: Region;
-    realm_id: string;
-    character_id: string;
-    character_name: string;
-    realm_name: string | null;
-    realm_slug: string | null;
-    currently_present: boolean;
+    region: Region; realm_id: string; character_id: string; character_name: string;
+    realm_name: string | null; realm_slug: string | null; currently_present: boolean;
   }>(
     `SELECT region, realm_id, character_id, character_name, realm_name, realm_slug, currently_present
-       FROM guild_roster_memberships
-      WHERE guild_id = $1`,
-    [guildId],
+       FROM guild_roster_memberships WHERE guild_id = $1`, [guildId],
   );
-  const existing = new Map(existingResult.rows.map((row) => [
-    coordinateKey({ region: row.region, realmId: row.realm_id, characterId: row.character_id }),
-    row,
-  ]));
+  const existing = new Map(existingResult.rows.map((row) => [coordinateKey({ region: row.region, realmId: row.realm_id, characterId: row.character_id }), row]));
 
-  await client.query(
-    `UPDATE guild_roster_memberships
-        SET currently_present = false
-      WHERE guild_id = $1
-        AND currently_present = true`,
-    [guildId],
-  );
+  await client.query(`UPDATE guild_roster_memberships SET currently_present = false WHERE guild_id = $1 AND currently_present = true`, [guildId]);
 
   const observedRanks = new Set<number>();
   const changedPresentationCoordinates: GuildCharacterCoordinate[] = [];
@@ -148,56 +253,30 @@ async function persistRoster(
       throw new Error("Blizzard guild roster member omitted a required canonical coordinate or rank");
     }
 
-    const coordinate: GuildCharacterCoordinate = {
-      region,
-      realmId: String(character.realm.id),
-      characterId: String(character.id),
-    };
+    const coordinate: GuildCharacterCoordinate = { region, realmId: String(character.realm.id), characterId: String(character.id) };
     const realmName = localizedValue(character.realm.name);
     const realmSlug = character.realm.slug ?? null;
     const previous = existing.get(coordinateKey(coordinate));
 
-    if (
-      !previous
-      || !previous.currently_present
-      || previous.character_name !== character.name
-      || previous.realm_name !== realmName
-      || previous.realm_slug !== realmSlug
-    ) {
+    if (!previous || !previous.currently_present || previous.character_name !== character.name || previous.realm_name !== realmName || previous.realm_slug !== realmSlug) {
       changedPresentationCoordinates.push(coordinate);
     }
 
     await client.query(
       `INSERT INTO guild_roster_memberships (
-         guild_id, region, realm_id, character_id, rank_index,
-         character_name, realm_name, realm_slug
+         guild_id, region, realm_id, character_id, rank_index, character_name, realm_name, realm_slug
        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
        ON CONFLICT (guild_id, region, realm_id, character_id) DO UPDATE SET
-         rank_index = EXCLUDED.rank_index,
-         character_name = EXCLUDED.character_name,
-         realm_name = EXCLUDED.realm_name,
-         realm_slug = EXCLUDED.realm_slug,
-         last_seen_at = now(),
-         currently_present = true`,
-      [
-        guildId,
-        region,
-        coordinate.realmId,
-        coordinate.characterId,
-        member.rank,
-        character.name,
-        realmName,
-        realmSlug,
-      ],
+         rank_index = EXCLUDED.rank_index, character_name = EXCLUDED.character_name,
+         realm_name = EXCLUDED.realm_name, realm_slug = EXCLUDED.realm_slug,
+         last_seen_at = now(), currently_present = true`,
+      [guildId, region, coordinate.realmId, coordinate.characterId, member.rank, character.name, realmName, realmSlug],
     );
     observedRanks.add(member.rank);
     observed += 1;
   }
 
-  for (const rankIndex of observedRanks) {
-    await ensureObservedRankDefinition(client, guildId, rankIndex);
-  }
-
+  for (const rankIndex of observedRanks) await ensureObservedRankDefinition(client, guildId, rankIndex);
   return { observed, changedPresentationCoordinates };
 }
 
@@ -205,43 +284,29 @@ export async function refreshGuildAuthority(): Promise<{
   guildId: string;
   rosterCount: number;
   reconciliation: {
-    charactersTargeted: number;
-    profilesUpdated: number;
-    mediaUpdated: number;
-    failedProfiles: number;
-    failedMedia: number;
-    apiCalls: number;
-    failures: Array<{
-      characterId: string;
-      realmId: string;
-      name: string;
-      stage: "profile" | "media";
-      error: string;
-    }>;
+    charactersTargeted: number; profilesUpdated: number; mediaUpdated: number;
+    failedProfiles: number; failedMedia: number; apiCalls: number;
+    failures: Array<{ characterId: string; realmId: string; name: string; stage: "profile" | "media"; error: string }>;
   };
 }> {
   const authority = await acquireGuildAuthority(config.guild);
-
-  if (String(authority.profile.id) !== config.guild.id) {
-    throw new Error(
-      `Configured guild locator resolved unexpected Blizzard guild id ${String(authority.profile.id)}`,
-    );
-  }
-
-  if (String(authority.roster.guild.id) !== config.guild.id) {
-    throw new Error("Blizzard guild roster does not corroborate the configured guild id");
-  }
+  if (String(authority.profile.id) !== config.guild.id) throw new Error(`Configured guild locator resolved unexpected Blizzard guild id ${String(authority.profile.id)}`);
+  if (String(authority.roster.guild.id) !== config.guild.id) throw new Error("Blizzard guild roster does not corroborate the configured guild id");
 
   const persisted = await withTransaction(async (client) => {
     const guildId = await persistGuild(client, config.guild.region, authority.profile);
+    const beforeCharacters = await characterMembershipState(client, guildId);
+    const beforeSubjects = await subjectMembershipState(client, guildId);
     const roster = await persistRoster(client, guildId, config.guild.region, authority.roster);
-    return { guildId, roster };
+    const afterCharacters = await characterMembershipState(client, guildId);
+    const afterSubjects = await subjectMembershipState(client, guildId);
+    const publications = reconciliationPublications(guildId, beforeCharacters, afterCharacters, beforeSubjects, afterSubjects);
+    return { guildId, roster, publications };
   });
 
-  const targets = await guildCharactersNeedingEnrichment(
-    persisted.guildId,
-    persisted.roster.changedPresentationCoordinates,
-  );
+  for (const publication of persisted.publications) await publishEvent(publication);
+
+  const targets = await guildCharactersNeedingEnrichment(persisted.guildId, persisted.roster.changedPresentationCoordinates);
   const enrichment = await enrichGuildCharacters({ guildId: persisted.guildId, targets });
 
   return {
@@ -260,79 +325,35 @@ export async function refreshGuildAuthority(): Promise<{
 }
 
 export async function guildCharactersForSubject(subjectId: string): Promise<Array<{
-  guildId: string;
-  characterId: string;
-  realmId: string;
-  name: string;
-  realmName: string | null;
-  rankIndex: number;
-  level: number | null;
-  className: string | null;
-  raceName: string | null;
-  activeSpecName: string | null;
-  avatarUrl: string | null;
-  insetUrl: string | null;
-  mainUrl: string | null;
+  guildId: string; characterId: string; realmId: string; name: string; realmName: string | null;
+  rankIndex: number; level: number | null; className: string | null; raceName: string | null;
+  activeSpecName: string | null; avatarUrl: string | null; insetUrl: string | null; mainUrl: string | null;
 }>> {
   const result = await pool.query<{
-    guild_id: string;
-    character_id: string;
-    realm_id: string;
-    character_name: string;
-    realm_name: string | null;
-    rank_index: number;
-    level: number | null;
-    class_name: string | null;
-    race_name: string | null;
-    active_spec_name: string | null;
-    avatar_url: string | null;
-    inset_url: string | null;
-    main_url: string | null;
+    guild_id: string; character_id: string; realm_id: string; character_name: string; realm_name: string | null;
+    rank_index: number; level: number | null; class_name: string | null; race_name: string | null;
+    active_spec_name: string | null; avatar_url: string | null; inset_url: string | null; main_url: string | null;
   }>(
-    `SELECT
-       grm.guild_id,
-       grm.character_id,
-       grm.realm_id,
+    `SELECT grm.guild_id, grm.character_id, grm.realm_id,
        COALESCE(wcp.name, grm.character_name) AS character_name,
        COALESCE(wcp.realm_name, grm.realm_name) AS realm_name,
-       grm.rank_index,
-       wcp.level,
-       wcp.class_name,
-       wcp.race_name,
-       wcp.active_spec_name,
-       wcp.avatar_url,
-       wcp.inset_url,
-       wcp.main_url
+       grm.rank_index, wcp.level, wcp.class_name, wcp.race_name, wcp.active_spec_name,
+       wcp.avatar_url, wcp.inset_url, wcp.main_url
      FROM characters c
      JOIN guild_roster_memberships grm
-       ON grm.region = c.region
-      AND grm.realm_id = c.realm_id
-      AND grm.character_id = c.character_id
-      AND grm.currently_present = true
+       ON grm.region = c.region AND grm.realm_id = c.realm_id AND grm.character_id = c.character_id AND grm.currently_present = true
      LEFT JOIN wow_character_profiles wcp
-       ON wcp.region = grm.region
-      AND wcp.realm_id = grm.realm_id
-      AND wcp.character_id = grm.character_id
-     WHERE c.subject_id = $1
-       AND c.currently_controlled = true
-       AND grm.guild_id = $2
+       ON wcp.region = grm.region AND wcp.realm_id = grm.realm_id AND wcp.character_id = grm.character_id
+     WHERE c.subject_id = $1 AND c.currently_controlled = true AND grm.guild_id = $2
      ORDER BY grm.rank_index, grm.character_name`,
     [subjectId, config.guild.id],
   );
 
   return result.rows.map((row) => ({
-    guildId: row.guild_id,
-    characterId: row.character_id,
-    realmId: row.realm_id,
-    name: row.character_name,
-    realmName: row.realm_name,
-    rankIndex: row.rank_index,
-    level: row.level,
-    className: row.class_name,
-    raceName: row.race_name,
-    activeSpecName: row.active_spec_name,
-    avatarUrl: row.avatar_url,
-    insetUrl: row.inset_url,
-    mainUrl: row.main_url,
+    guildId: row.guild_id, characterId: row.character_id, realmId: row.realm_id,
+    name: row.character_name, realmName: row.realm_name, rankIndex: row.rank_index,
+    level: row.level, className: row.class_name, raceName: row.race_name,
+    activeSpecName: row.active_spec_name, avatarUrl: row.avatar_url,
+    insetUrl: row.inset_url, mainUrl: row.main_url,
   }));
 }
