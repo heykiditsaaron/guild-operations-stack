@@ -5,6 +5,7 @@ import { pool } from "./db.js";
 import { registerAuthRoutes } from "./auth.js";
 import { registerDiscordRoutes } from "./discord.js";
 import { registerGuildRoutes } from "./guild-routes.js";
+import { registerRaffleQueryRoutes } from "./raffle/query-routes.js";
 import { registerRaffleRoutes } from "./raffle/routes.js";
 import { loadAssetRegistry, registerAssetRoutes } from "./web/assets.js";
 import { registerRaffleAdminPage } from "./web/pages/events/raffle/admin.js";
@@ -39,6 +40,7 @@ await registerAuthRoutes(app);
 await registerDiscordRoutes(app);
 await registerGuildRoutes(app);
 await registerRaffleRoutes(app);
+await registerRaffleQueryRoutes(app);
 
 const shutdown = async (): Promise<void> => {
   await app.close();
