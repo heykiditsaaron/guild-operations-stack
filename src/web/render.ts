@@ -70,9 +70,7 @@ function renderDiscordAssociation(viewer: Extract<WebViewer, { authenticated: tr
     <div class="discord-connection-copy">
       <span class="discord-connection-name">${escapeHtml(viewer.discordAssociation.username)}</span>
       <span class="discord-connection-status">Discord</span>
-      <form method="post" action="/me/discord/disconnect?return_to=${encodeURIComponent(pathname)}">
-        <button type="submit" class="me-change-main">Disconnect</button>
-      </form>
+      <button type="button" class="me-change-main" data-disconnect-discord data-return-to="${escapeHtml(pathname)}">Disconnect</button>
     </div>
   </div>`;
 }
