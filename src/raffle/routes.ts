@@ -3,7 +3,6 @@ import { authenticatedSubject, SESSION_COOKIE_NAME } from "../auth.js";
 import { GuildCapabilityDeniedError } from "../guild-permissions.js";
 import {
   RaffleRuleError,
-  activateRaffleRound,
   approveRaffleClaim,
   cancelOwnRaffleClaim,
   cancelRaffleRound,
@@ -16,6 +15,7 @@ import {
   updateRaffleRound,
   type RaffleRoundTerms,
 } from "./domain.js";
+import { activateSingleRaffleRound } from "./live-round.js";
 
 async function requireSubject(request: FastifyRequest, reply: FastifyReply): Promise<string | null> {
   const subject = await authenticatedSubject(request.cookies[SESSION_COOKIE_NAME]);
@@ -98,7 +98,7 @@ export async function registerRaffleRoutes(app: FastifyInstance): Promise<void> 
     const subjectId = await requireSubject(request, reply);
     if (!subjectId) return;
     try {
-      return await activateRaffleRound(subjectId, request.params.roundId);
+      return await activateSingleRaffleRound(subjectId, request.params.roundId);
     } catch (error) {
       if (sendDomainError(error, reply)) return;
       throw error;
