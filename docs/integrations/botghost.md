@@ -2,7 +2,7 @@
 
 This document is the practical operator reference for what Guild Operations currently sends to BotGhost.
 
-It is not the authoritative definition of event meaning or current Guild Operations state. Publication semantics live under `docs/publications/`; authoritative HTTP contracts live under `docs/endpoints/`.
+It is not the authoritative definition of publication meaning or current Guild Operations state. Publication catalogs live under `docs/publications/`; authoritative HTTP contracts live under `docs/endpoints/`; cross-cutting publication behavior lives in `docs/publication-model.md`.
 
 BotGhost receives attention signals and coordinates. When current truth matters, BotGhost should query Guild Operations rather than treating webhook variables as durable state.
 
@@ -22,11 +22,13 @@ Guild Operations sends BotGhost webhook payloads in this shape:
 }
 ```
 
-Every publication includes `{event_kind}`.
+`{event_kind}` is the current transport variable name used to carry the publication kind. Its implementation name does not make **Events** the owning domain category.
+
+Every current publication includes `{event_kind}`.
 
 The remaining variables depend on the publication.
 
-## Subject event webhook
+## Subject publication webhook
 
 Transport configuration:
 
@@ -34,6 +36,8 @@ Transport configuration:
 BOTGHOST_EVENTS_WEBHOOK_URL=<BotGhost webhook URL>
 BOTGHOST_API_KEY=<BotGhost API key>
 ```
+
+The webhook configuration name reflects the current implementation. The publications delivered through it are owned by Subject machinery.
 
 ### Subject variables
 
@@ -69,6 +73,8 @@ Preferred request header:
 ```http
 Authorization: Bearer <EVENT_QUERY_API_KEY>
 ```
+
+For the authoritative subject contract, see `docs/endpoints/subject.md`. For subject publication semantics, see `docs/publications/subject.md`.
 
 ## Raffle webhook
 
