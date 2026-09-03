@@ -8,18 +8,13 @@ import { assetUrl, type AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage, type WebViewer } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
 
-function drawingLabel(drawingAtUnix: number): string {
-  return new Date(drawingAtUnix * 1000).toLocaleString("en-US", {
-    dateStyle: "full",
-    timeStyle: "short",
-  });
+function localTime(unixSeconds: number, dateStyle: "full" | "medium" = "full"): string {
+  const instant = new Date(unixSeconds * 1000).toISOString();
+  return `<time datetime="${instant}" data-local-time-unix="${unixSeconds}" data-local-time-date-style="${dateStyle}">${instant}</time>`;
 }
 
-function claimTimeLabel(createdAt: Date): string {
-  return createdAt.toLocaleString("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+function claimTime(createdAt: Date): string {
+  return localTime(Math.floor(createdAt.getTime() / 1000), "medium");
 }
 
 function prizeLabel(round: RaffleRound): string {
@@ -54,7 +49,7 @@ function memberClaims(claims: RaffleMemberClaim[]): string {
           <strong>${htmlText(claim.characterName)} · ${claim.requestedTicketCount} ${claim.requestedTicketCount === 1 ? "ticket" : "tickets"}</strong>
           <span style="color: #aaa69c; font-size: 0.86rem;">${htmlText(claimResolution(claim))}</span>
         </div>
-        <p style="margin: 0.4rem 0 0; color: #c9c5ba;">Promised deposit: ${htmlText(claim.promisedGoldValue)} gold · ${htmlText(claimTimeLabel(claim.createdAt))}</p>
+        <p style="margin: 0.4rem 0 0; color: #c9c5ba;">Promised deposit: ${htmlText(claim.promisedGoldValue)} gold · ${claimTime(claim.createdAt)}</p>
         ${claim.denialReason ? `<p style="margin: 0.4rem 0 0; color: #c9c5ba;">Reason: ${htmlText(claim.denialReason)}</p>` : ""}
         ${claim.resolutionKind === null ? `<button type="button" data-cancel-raffle-claim="${htmlText(claim.claimId)}" style="margin-top: 0.7rem; min-height: 2.5rem; padding: 0.55rem 0.8rem; border: 1px solid rgba(255,255,255,0.12); border-radius: 0.65rem; background: rgba(255,255,255,0.035); color: inherit;">Cancel claim</button>` : ""}
       </li>`).join("\n")}
@@ -119,8 +114,8 @@ function liveRoundBody(round: RaffleRound, viewer: WebViewer, claims: RaffleMemb
         </div>
         <h2>${htmlText(round.ticketPriceGold)} gold per ticket</h2>
         <p class="lede">${htmlText(prizeLabel(round))}</p>
-        <p>Drawing guideline: <strong>${htmlText(drawingLabel(round.drawingAtUnix))}</strong></p>
-        <p>The drawing time is informational. The raffle remains live until an attendant concludes it.</p>
+        <p>Drawing deadline: <strong>${localTime(round.drawingAtUnix)}</strong></p>
+        <p>The deadline is informational. The raffle remains live until an attendant concludes it.</p>
       </section>
       <div style="margin-top: 2.5rem;">${sectionRule()}</div>
       ${participation(round, viewer, claims)}
