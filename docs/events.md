@@ -4,6 +4,8 @@ Guild Operations publishes meaningful operational occurrences after authoritativ
 
 Events create attention, not truth. They identify what changed and provide the smallest coordinates needed for a subscriber to query Guild Operations for current authoritative state.
 
+The canonical HTTP contract for subscriber query surfaces lives in `docs/events-endpoints.md`.
+
 ```text
 authoritative change
        ↓
@@ -61,6 +63,8 @@ Machine consumers may use:
 Authorization uses `EVENT_QUERY_API_KEY` in either the raw `Authorization` header or as a Bearer token.
 
 The query exposes only current subject projection needed by the initial event consumers: current Discord association and current selected-main projection. It does not grant operation authority.
+
+For request/response shapes, errors, and event-to-query mapping, see `docs/events-endpoints.md`.
 
 ## Coordinates that disappear
 
