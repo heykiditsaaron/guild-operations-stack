@@ -3,6 +3,7 @@ import type { FastifyInstance } from "fastify";
 import { authenticatedSubject, SESSION_COOKIE_NAME } from "./auth.js";
 import { config } from "./config.js";
 import { pool } from "./db.js";
+import { publishEvent } from "./events/publisher.js";
 
 const DISCORD_AUTHORIZE_URL = "https://discord.com/oauth2/authorize";
 const DISCORD_TOKEN_URL = "https://discord.com/api/oauth2/token";
@@ -204,7 +205,18 @@ export async function registerDiscordRoutes(app: FastifyInstance): Promise<void>
 
     const query = request.query as { return_to?: unknown };
     const returnTo = safeReturnTo(query.return_to) ?? "/";
-    await pool.query("DELETE FROM discord_associations WHERE subject_id = $1", [subject.subjectId]);
+    const deleted = await pool.query<{ discord_user_id: string }>(
+      "DELETE FROM discord_associations WHERE subject_id = $1 RETURNING discord_user_id",
+      [subject.subjectId],
+    );
+    const discordUserId = deleted.rows[0]?.discord_user_id;
+    if (discordUserId) {
+      await publishEvent({
+        kind: "subject.discord.unlinked",
+        subjectId: subject.subjectId,
+        discordUserId,
+      });
+    }
     return reply.redirect(returnTo);
   });
 
@@ -230,6 +242,13 @@ export async function registerDiscordRoutes(app: FastifyInstance): Promise<void>
       const user = await acquireDiscordUser(accessToken);
       const result = await establishAssociation(subject.subjectId, user);
       if (result === "conflict") return reply.redirect(withDiscordResult(returnTo, "conflict"));
+      if (result === "established") {
+        await publishEvent({
+          kind: "subject.discord.linked",
+          subjectId: subject.subjectId,
+          discordUserId: user.id,
+        });
+      }
       return reply.redirect(withDiscordResult(returnTo, "connected"));
     } catch (error) {
       request.log.error({ err: error }, "Discord association ceremony failed");
