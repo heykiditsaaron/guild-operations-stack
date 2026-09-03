@@ -89,12 +89,24 @@ Effective rank is the highest-authority rank among all of the subject's currentl
 
 A character rank change therefore does not necessarily produce a subject rank change.
 
-## Reconciliation boundary
+## Reconciliation boundaries
 
-Publications are calculated from before and after authoritative state inside reconciliation, but are transported only after the persistence transaction succeeds.
+Membership truth can change at two established reconciliation boundaries.
 
-Publication transport failure does not reverse the successfully established guild state.
+### Guild roster reconciliation
 
-A refresh that establishes no character-membership or subject-membership transition publishes nothing. Presentation-coordinate changes remain recognition enrichment concerns rather than membership publications.
+Guild roster reconciliation changes Blizzard-observed character-membership. Before and after character-membership and subject-membership are compared inside the persistence transaction. Publications are transported only after that transaction succeeds.
+
+A guild refresh that establishes no character-membership or subject-membership transition publishes nothing. Presentation-coordinate changes remain recognition enrichment concerns rather than membership publications.
 
 Character presentation enrichment remains downstream recognition enrichment and is not itself guild-membership truth.
+
+### Subject character-control reconciliation
+
+Subject establishment and refresh reconcile which Blizzard characters the subject currently controls. Character-membership itself does not change at this boundary, so it does not produce `character-member.*` publications.
+
+The changed control set can, however, change the subject's derived intersection with the current guild roster. Before and after subject-membership are therefore compared, and `subject-member.joined`, `subject-member.left`, or `subject-member.rank.changed` is published when that derived truth changes.
+
+A controlled non-guild character appearing or disappearing produces no subject-membership publication unless it changes that guild-relevant intersection.
+
+At both boundaries, publication transport failure does not reverse successfully established authoritative state.
