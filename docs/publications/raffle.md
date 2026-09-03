@@ -1,14 +1,20 @@
 # Raffle Publications
 
-This document is the canonical publication catalog for Guild Operations raffle events.
+This document is the canonical publication catalog for Guild Operations raffle system events.
 
-It answers what raffle machinery publishes after meaningful authoritative raffle truth changes. HTTP contracts live in `docs/endpoints/raffle.md`; the current BotGhost transport cheat sheet lives in `docs/integrations/botghost.md`.
+It answers which system events raffle machinery publishes after meaningful authoritative raffle truth changes, which coordinates those publications carry, and where a subscriber can query current authoritative raffle state afterward.
+
+The raffle module itself is described in `docs/raffle.md`. HTTP contracts live in `docs/endpoints/raffle.md`; cross-cutting publication doctrine lives in `docs/publication-model.md`; the current BotGhost transport cheat sheet lives in `docs/integrations/botghost.md`.
+
+The term **system event** here describes an operational occurrence published by Raffle. It is distinct from **Events**, the Guild Operations product category for participatory guild activities.
 
 ## Publication model
 
-Raffle publications are emitted only after the authoritative raffle operation succeeds. They carry semantic occurrence plus small coordinates rather than flattened raffle state.
+Raffle system events are published only after the authoritative raffle operation succeeds and meaningful raffle truth actually changes. They carry semantic occurrence plus small authority-oriented coordinates rather than flattened raffle state.
 
-Subscribers use those coordinates to query Guild Operations for current authoritative raffle reality. Publication failure does not undo a successful raffle operation.
+Subscribers use those coordinates to query Guild Operations for current authoritative raffle reality. The publication creates attention; the query establishes what is true now.
+
+A failed attempt to mutate raffle state publishes nothing. Publication delivery failure does not undo a successful raffle operation.
 
 ## Round publications
 
@@ -127,6 +133,8 @@ Follow-up query:
 GET /raffle/query/claims/:claimId
 ```
 
+A denial is a system event because the claim's authoritative resolution changed successfully. It is not a failed claim-submission attempt.
+
 ### `raffle.claim.cancelled`
 
 Published after a member successfully cancels their own unresolved claim.
@@ -155,4 +163,16 @@ GET /raffle/query/claims/:claimId
 | `raffle.round.cancelled` | `roundId` | `GET /raffle/query/rounds/:roundId` |
 | `raffle.round.no-entry-cancelled` | `roundId` | `GET /raffle/query/rounds/:roundId` |
 
-The publication says that meaningful raffle reality changed. The follow-up query answers what that raffle reality is now.
+## Non-publications
+
+The raffle publication catalog does not include failures of machinery or rejected attempts that establish no new raffle truth. Examples include:
+
+- rejected claim submission before a claim exists;
+- invalid request payload;
+- authorization failure;
+- database or network failure;
+- constraint violation;
+- BotGhost/webhook delivery failure;
+- unexpected exception or failed mutation attempt.
+
+Those belong to diagnostics or error logging rather than the raffle system-event publication stream.
