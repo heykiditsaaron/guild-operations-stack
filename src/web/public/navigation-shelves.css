@@ -1,0 +1,33 @@
+.mobile-nav-panel {
+  top: calc(100% + 0.625rem);
+  left: -1rem;
+  width: 100vw;
+  min-width: 0;
+  padding: 0.45rem 1rem 0.7rem;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0;
+  background: rgba(15, 16, 20, 0.98);
+  box-shadow: 0 1.2rem 2.5rem rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(18px);
+}
+
+.mobile-nav-panel a {
+  min-height: 3rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0;
+  border-left: 2px solid transparent;
+  color: #c9c5ba;
+}
+
+.mobile-nav-panel a[aria-current="page"] {
+  border-left-color: #e8c986;
+  background: rgba(255, 255, 255, 0.045);
+  color: #f7f4ea;
+}
+
+.mobile-nav-panel a:hover,
+.mobile-nav-panel a:focus-visible {
+  background: rgba(255, 255, 255, 0.055);
+  color: #f7f4ea;
+}
