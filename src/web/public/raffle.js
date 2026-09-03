@@ -262,6 +262,32 @@ async function denyRaffleClaim(button) {
   }
 }
 
+function setupRaffleCreationDisclosure() {
+  const heading = document.getElementById("create-round-heading");
+  const liveHeading = document.getElementById("live-raffle-heading");
+  const createSection = heading?.closest("section");
+  const liveSection = liveHeading?.closest("section");
+  if (!(createSection instanceof HTMLElement) || !(liveSection instanceof HTMLElement)) return;
+
+  createSection.hidden = true;
+
+  const action = document.createElement("button");
+  action.type = "button";
+  action.dataset.startRaffle = "true";
+  action.textContent = "Start a raffle";
+  action.style.minHeight = "2.8rem";
+  action.style.marginBottom = "2rem";
+  action.style.padding = "0.65rem 0.95rem";
+  action.style.border = "1px solid rgba(232,201,134,0.35)";
+  action.style.borderRadius = "0.7rem";
+  action.style.background = "rgba(232,201,134,0.08)";
+  action.style.color = "#e8c986";
+  action.style.fontWeight = "700";
+  action.style.cursor = "pointer";
+
+  liveSection.parentElement?.insertBefore(action, liveSection);
+}
+
 document.querySelectorAll("[data-raffle-claim-form]").forEach((form) => {
   if (!(form instanceof HTMLFormElement)) return;
   refreshRafflePromise(form);
@@ -281,9 +307,23 @@ document.querySelectorAll("[data-raffle-admin-create]").forEach((form) => {
   });
 });
 
+setupRaffleCreationDisclosure();
+
 document.addEventListener("click", (event) => {
   const target = event.target;
   if (!(target instanceof Element)) return;
+
+  const startButton = target.closest("[data-start-raffle]");
+  if (startButton instanceof HTMLButtonElement) {
+    const heading = document.getElementById("create-round-heading");
+    const section = heading?.closest("section");
+    if (section instanceof HTMLElement) {
+      section.hidden = !section.hidden;
+      startButton.textContent = section.hidden ? "Start a raffle" : "Hide raffle setup";
+      if (!section.hidden) section.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    return;
+  }
 
   const cancelClaimButton = target.closest("[data-cancel-raffle-claim]");
   if (cancelClaimButton instanceof HTMLButtonElement) {
