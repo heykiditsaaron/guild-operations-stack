@@ -2,6 +2,7 @@ import type { PoolClient } from "pg";
 import { acquireGuildAuthority, type BlizzardGuildProfile, type BlizzardGuildRoster } from "./blizzard.js";
 import { config, type Region } from "./config.js";
 import { pool, withTransaction } from "./db.js";
+import { GUILD_REFRESH_CAPABILITY, RAFFLE_ADMIN_CAPABILITY } from "./guild-permissions.js";
 import {
   enrichGuildCharacters,
   guildCharactersNeedingEnrichment,
@@ -90,12 +91,14 @@ async function ensureObservedRankDefinition(
   );
 
   if (rankIndex === 0 || rankIndex === 1 || rankIndex === 2) {
-    await client.query(
-      `INSERT INTO guild_rank_capabilities (guild_id, rank_index, capability)
-       VALUES ($1, $2, 'guild.refresh')
-       ON CONFLICT (guild_id, rank_index, capability) DO NOTHING`,
-      [guildId, rankIndex],
-    );
+    for (const capability of [GUILD_REFRESH_CAPABILITY, RAFFLE_ADMIN_CAPABILITY]) {
+      await client.query(
+        `INSERT INTO guild_rank_capabilities (guild_id, rank_index, capability)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (guild_id, rank_index, capability) DO NOTHING`,
+        [guildId, rankIndex, capability],
+      );
+    }
   }
 }
 
