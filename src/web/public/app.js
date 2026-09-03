@@ -6,13 +6,16 @@ function closeOpenMenus() {
   });
 }
 
-function currentReturnTo() {
-  return `${window.location.pathname}${window.location.search}${window.location.hash}`;
+function currentReturnTo(reopenMainPicker = false) {
+  const url = new URL(window.location.href);
+  if (reopenMainPicker) url.searchParams.set("main_picker", "open");
+  return `${url.pathname}${url.search}${url.hash}`;
 }
 
 function cleanCeremonyParams() {
   const url = new URL(window.location.href);
   url.searchParams.delete("refresh");
+  url.searchParams.delete("main_picker");
   if (url.searchParams.get("select_main") !== "required") url.searchParams.delete("select_main");
   window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
 }
@@ -30,7 +33,7 @@ function setRefreshButtonsInProgress() {
 function startCharacterRefresh() {
   setRefreshButtonsInProgress();
   closeOpenMenus();
-  window.location.assign(`/me/refresh?return_to=${encodeURIComponent(currentReturnTo())}`);
+  window.location.assign(`/me/refresh?return_to=${encodeURIComponent(currentReturnTo(true))}`);
 }
 
 function requiredMainPicker() {
@@ -38,6 +41,13 @@ function requiredMainPicker() {
   if (!(picker instanceof HTMLDialogElement)) return null;
   const params = new URLSearchParams(window.location.search);
   return params.get("select_main") === "required" && picker.dataset.hasMain !== "true" ? picker : null;
+}
+
+function openRequestedMainPicker() {
+  const picker = document.querySelector("[data-main-picker]");
+  if (!(picker instanceof HTMLDialogElement)) return;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("main_picker") === "open" && !picker.open) picker.showModal();
 }
 
 function openRequiredMainPicker() {
@@ -220,5 +230,6 @@ const ceremonyParams = new URLSearchParams(window.location.search);
 if (ceremonyParams.get("refresh") === "failed") {
   window.alert("Character refresh failed. Your existing character data has been left unchanged.");
 }
+openRequestedMainPicker();
 cleanCeremonyParams();
 openRequiredMainPicker();
