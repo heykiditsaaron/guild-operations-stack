@@ -1,7 +1,8 @@
 import type { PoolClient } from "pg";
-import type { Region } from "./config.js";
 import type { BlizzardWowProfile } from "./blizzard.js";
+import { config, type Region } from "./config.js";
 import { withTransaction } from "./db.js";
+import { publishEvent, type PublishedEvent } from "./events/publisher.js";
 
 function factionValue(value: unknown): string | null {
   if (typeof value === "string") return value;
@@ -54,13 +55,51 @@ async function resolveOrCreateSubject(
   return subjectId;
 }
 
+async function effectiveSubjectMembershipRank(
+  client: PoolClient,
+  subjectId: string,
+): Promise<number | null> {
+  const result = await client.query<{ rank_index: number | null }>(
+    `SELECT MIN(grm.rank_index)::integer AS rank_index
+       FROM characters c
+       JOIN guild_roster_memberships grm
+         ON grm.region = c.region
+        AND grm.realm_id = c.realm_id
+        AND grm.character_id = c.character_id
+        AND grm.currently_present = true
+      WHERE c.subject_id = $1
+        AND c.currently_controlled = true
+        AND grm.guild_id = $2`,
+    [subjectId, config.guild.id],
+  );
+  return result.rows[0]?.rank_index ?? null;
+}
+
+function subjectMembershipPublication(
+  subjectId: string,
+  beforeRank: number | null,
+  afterRank: number | null,
+): PublishedEvent | null {
+  if (beforeRank === null && afterRank !== null) {
+    return { kind: "subject-member.joined", subjectId, guildId: config.guild.id };
+  }
+  if (beforeRank !== null && afterRank === null) {
+    return { kind: "subject-member.left", subjectId, guildId: config.guild.id };
+  }
+  if (beforeRank !== null && afterRank !== null && beforeRank !== afterRank) {
+    return { kind: "subject-member.rank.changed", subjectId, guildId: config.guild.id };
+  }
+  return null;
+}
+
 export async function establishOrResolveSubject(input: {
   region: Region;
   principalId: string;
   profile: BlizzardWowProfile;
 }): Promise<string> {
-  return withTransaction(async (client) => {
+  const established = await withTransaction(async (client) => {
     const subjectId = await resolveOrCreateSubject(client, input.region, input.principalId);
+    const beforeMembershipRank = await effectiveSubjectMembershipRank(client, subjectId);
 
     // Preserve every previously observed character, but make the latest successful
     // Blizzard profile observation authoritative for current control.
@@ -121,7 +160,13 @@ export async function establishOrResolveSubject(input: {
       }
     }
 
+    const afterMembershipRank = await effectiveSubjectMembershipRank(client, subjectId);
+    const publication = subjectMembershipPublication(subjectId, beforeMembershipRank, afterMembershipRank);
+
     await client.query("UPDATE guild_subjects SET updated_at = now() WHERE subject_id = $1", [subjectId]);
-    return subjectId;
+    return { subjectId, publication };
   });
+
+  if (established.publication) await publishEvent(established.publication);
+  return established.subjectId;
 }
