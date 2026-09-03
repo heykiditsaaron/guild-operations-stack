@@ -2,7 +2,7 @@
 
 This document is the canonical HTTP endpoint reference for the Guild Operations raffle feature.
 
-It describes raffle query and operation surfaces only. It does not define Discord behavior, BotGhost commands, raffle UI presentation, or generic application API conventions. Raffle publications are cataloged separately in `docs/publications/raffle.md`.
+It describes raffle query and operation surfaces only. It does not define Discord behavior, BotGhost commands, raffle UI presentation, or generic application API conventions. Raffle system-event publications are cataloged separately in `docs/publications/raffle.md`; cross-cutting publication behavior lives in `docs/publication-model.md`.
 
 ## Authority classes
 
@@ -34,13 +34,13 @@ Machine query requests send:
 Authorization: Bearer <RAFFLE_QUERY_API_KEY>
 ```
 
-This credential grants no raffle operation authority. It exists so external systems that receive authoritative raffle coordinates can ask Guild Operations for the current authoritative raffle projection without acquiring a human session or `raffle.admin` capability.
+This credential grants no raffle operation authority. It exists so external systems that receive authoritative raffle publication coordinates can ask Guild Operations for the current authoritative raffle projection without acquiring a human session or `raffle.admin` capability.
 
 If the credential is not configured, machine query routes return `503 raffle_query_not_configured`. Missing or incorrect credentials return `401 raffle_query_authority_required`.
 
 ## Machine query endpoints
 
-These endpoints are the preferred read surface for non-browser systems.
+These endpoints are the preferred read surface for non-browser systems following raffle publication coordinates.
 
 ### GET `/raffle/query/live`
 
@@ -202,7 +202,7 @@ This is an administrative claim-ledger read. It must not be exposed merely becau
 
 ### POST `/raffle/rounds`
 
-Creates a prepared raffle round. Creation does not make the raffle live and does not publish a raffle operational event.
+Creates a prepared raffle round. Creation does not make the raffle live and does not establish one of the currently published raffle system events.
 
 Authority: `raffle.admin`.
 
@@ -235,7 +235,7 @@ Authority: `raffle.admin`.
 
 The guild may have at most one live raffle. A conflicting activation returns `409 active_round_exists`.
 
-Successful activation establishes authoritative raffle reality. See `docs/publications/raffle.md` for the publication contract.
+Successful activation establishes authoritative raffle reality. See `docs/publications/raffle.md` for the resulting system-event publication contract.
 
 ### POST `/raffle/rounds/:roundId/cancel`
 
@@ -275,7 +275,7 @@ Body:
 
 Success: `201` with the established claim.
 
-A rejected submission does not create a claim and therefore does not publish a raffle operational event.
+A rejected submission does not create a claim, so no raffle system event is established and nothing is published.
 
 ### POST `/raffle/claims/:claimId/cancel`
 
@@ -306,6 +306,14 @@ Body:
 ```
 
 Success: `204`.
+
+## Publication relationship
+
+Successful operations that establish a cataloged raffle system event publish only after authoritative raffle state has changed. The publication carries the occurrence kind and relevant raffle coordinates; it is not the authoritative state itself.
+
+External subscribers should use those coordinates with the machine query endpoints above to establish what raffle reality is current now. Publication delivery failure does not reverse a successful raffle operation.
+
+The canonical list of published raffle system events and their coordinates lives in `docs/publications/raffle.md`.
 
 ## Time values
 
