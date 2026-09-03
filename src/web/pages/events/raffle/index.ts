@@ -173,6 +173,14 @@ function noLiveRoundBody(): string {
     </div>`;
 }
 
+function raffleReferenceLinks(): string {
+  return `
+    <nav aria-label="Raffle information" style="display: flex; gap: 1.25rem; flex-wrap: wrap; margin-top: 1.25rem; font-size: 0.92rem;">
+      <a href="/events/raffle/history" style="color: #c9c5ba;">Raffle History</a>
+      <a href="/events/raffle/rules" style="color: #c9c5ba;">Rules &amp; Regulations</a>
+    </nav>`;
+}
+
 export async function registerRafflePage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/events/raffle", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
@@ -205,6 +213,7 @@ export async function registerRafflePage(app: FastifyInstance, assets: AssetRegi
           <p class="eyebrow">Events</p>
           <h1 id="page-title">Raffle</h1>
           <p class="lede">The guild raffle, operated and preserved through Guild Operations.</p>
+          ${raffleReferenceLinks()}
         </div>`,
       body: `${liveRaffle ? liveRoundBody(liveRaffle, viewer, claims) : noLiveRoundBody()}${raffleScript}`,
     });
