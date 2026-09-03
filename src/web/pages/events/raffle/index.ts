@@ -2,7 +2,10 @@ import type { FastifyInstance } from "fastify";
 import { authenticatedSubject, SESSION_COOKIE_NAME } from "../../../../auth.js";
 import { RAFFLE_ADMIN_CAPABILITY, subjectHasGuildCapability } from "../../../../guild-permissions.js";
 import type { RaffleRound } from "../../../../raffle/domain.js";
-import { activeRaffleRound } from "../../../../raffle/live-round.js";
+import {
+  activeRaffleRoundOverview,
+  type ActiveRaffleRoundOverview,
+} from "../../../../raffle/live-round.js";
 import { raffleClaimsForMember, type RaffleMemberClaim } from "../../../../raffle/member-view.js";
 import { assetUrl, type AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage, type WebViewer } from "../../../render.js";
@@ -15,6 +18,18 @@ function localTime(unixSeconds: number, dateStyle: "full" | "medium" = "full"): 
 
 function claimTime(createdAt: Date): string {
   return localTime(Math.floor(createdAt.getTime() / 1000), "medium");
+}
+
+function formatGold(value: bigint | string): string {
+  return BigInt(value).toLocaleString("en-US");
+}
+
+function goldRoundValues(round: ActiveRaffleRoundOverview): { pot: bigint; prize: bigint | null } {
+  const pot = BigInt(round.ticketPriceGold) * BigInt(round.approvedTicketCount);
+  const prize = round.prizeKind === "gold" && round.winnerPercentage !== null
+    ? (pot * BigInt(round.winnerPercentage)) / 100n
+    : null;
+  return { pot, prize };
 }
 
 function prizeLabel(round: RaffleRound): string {
@@ -56,15 +71,13 @@ function memberClaims(claims: RaffleMemberClaim[]): string {
   </ol>`;
 }
 
+function signedOutEntry(): string {
+  return `
+    <a href="/auth/blizzard/start?return_to=%2Fevents%2Fraffle" style="display: inline-flex; width: min(100%, 24rem); min-height: 3.5rem; align-items: center; justify-content: center; padding: 0.8rem 1.2rem; border: 1px solid rgba(232,201,134,0.45); border-radius: 0.75rem; background: rgba(232,201,134,0.10); color: #e8c986; font-weight: 700; text-decoration: none;">Sign in to enter raffle</a>`;
+}
+
 function participation(round: RaffleRound, viewer: WebViewer, claims: RaffleMemberClaim[]): string {
-  if (!viewer.authenticated) {
-    return `
-      <section aria-labelledby="participate-heading">
-        <h2 id="participate-heading">Participate</h2>
-        <p>Sign in with Blizzard to submit a raffle claim as one of your current guild characters.</p>
-        <a href="/auth/blizzard/start?return_to=%2Fevents%2Fraffle">Sign in to participate</a>
-      </section>`;
-  }
+  if (!viewer.authenticated) return signedOutEntry();
 
   const options = viewer.characters.map((character) => {
     const selected = viewer.mainCharacter !== null
@@ -103,20 +116,47 @@ function participation(round: RaffleRound, viewer: WebViewer, claims: RaffleMemb
     </section>`;
 }
 
-function liveRoundBody(round: RaffleRound, viewer: WebViewer, claims: RaffleMemberClaim[]): string {
+function roundOverview(round: ActiveRaffleRoundOverview): string {
+  const { pot, prize } = goldRoundValues(round);
+  const prizePrimary = prize === null
+    ? `<span style="font-size: clamp(1.4rem, 4vw, 2rem); font-weight: 700;">${htmlText(round.prizeKind)}</span>`
+    : `<span style="font-size: clamp(1.7rem, 5vw, 2.5rem); font-weight: 700;">${formatGold(prize)} gold</span>`;
+
+  return `
+    <section aria-labelledby="raffle-status">
+      <div class="status-line" id="raffle-status" style="margin-bottom: 1.5rem;">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span>Raffle live</span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <div>
+          <div style="color: #aaa69c; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.08em;">Tickets entered</div>
+          <div style="margin-top: 0.35rem; font-size: clamp(1.7rem, 5vw, 2.5rem); font-weight: 700;">${round.approvedTicketCount.toLocaleString("en-US")}</div>
+        </div>
+        <div>
+          <div style="color: #aaa69c; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.08em;">Current prize</div>
+          <div style="margin-top: 0.35rem;">${prizePrimary}</div>
+        </div>
+      </div>
+
+      <dl style="display: grid; grid-template-columns: minmax(8rem, 0.8fr) minmax(0, 1.2fr); gap: 0.85rem 1.25rem; margin: 0; padding: 1.35rem 0; border-top: 1px solid rgba(238,201,124,0.18); border-bottom: 1px solid rgba(238,201,124,0.18);">
+        <dt style="color: #aaa69c;">Current pot</dt>
+        <dd style="margin: 0; font-weight: 700;">${formatGold(pot)} gold</dd>
+        <dt style="color: #aaa69c;">Ticket price</dt>
+        <dd style="margin: 0; font-weight: 700;">${formatGold(round.ticketPriceGold)} gold</dd>
+        <dt style="color: #aaa69c;">Drawing deadline</dt>
+        <dd style="margin: 0; font-weight: 700;">${localTime(round.drawingAtUnix)}</dd>
+      </dl>
+      <p style="margin: 1rem 0 0; color: #aaa69c; line-height: 1.55;">${htmlText(prizeLabel(round))}</p>
+    </section>`;
+}
+
+function liveRoundBody(round: ActiveRaffleRoundOverview, viewer: WebViewer, claims: RaffleMemberClaim[]): string {
   return `
     <div style="width: min(100%, 46rem);">
       ${sectionRule()}
-      <section aria-labelledby="raffle-status">
-        <div class="status-line" id="raffle-status">
-          <span class="status-dot" aria-hidden="true"></span>
-          <span>Raffle live</span>
-        </div>
-        <h2>${htmlText(round.ticketPriceGold)} gold per ticket</h2>
-        <p class="lede">${htmlText(prizeLabel(round))}</p>
-        <p>Drawing deadline: <strong>${localTime(round.drawingAtUnix)}</strong></p>
-        <p>The deadline is informational. The raffle remains live until an attendant concludes it.</p>
-      </section>
+      ${roundOverview(round)}
       <div style="margin-top: 2.5rem;">${sectionRule()}</div>
       ${participation(round, viewer, claims)}
     </div>`;
@@ -139,7 +179,7 @@ export async function registerRafflePage(app: FastifyInstance, assets: AssetRegi
     const [viewer, subject, liveRaffle] = await Promise.all([
       viewerForRequest(sessionToken),
       authenticatedSubject(sessionToken),
-      activeRaffleRound(),
+      activeRaffleRoundOverview(),
     ]);
     const [claims, isAdmin] = await Promise.all([
       subject && liveRaffle

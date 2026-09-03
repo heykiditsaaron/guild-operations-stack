@@ -7,6 +7,10 @@ import {
   type RaffleRound,
 } from "./domain.js";
 
+export type ActiveRaffleRoundOverview = RaffleRound & {
+  approvedTicketCount: number;
+};
+
 function isSingleLiveRoundViolation(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const databaseError = error as { code?: unknown; constraint?: unknown };
@@ -50,4 +54,22 @@ export async function activeRaffleRound(): Promise<RaffleRound | null> {
   }
 
   return raffleRound(result.rows[0].round_id);
+}
+
+export async function activeRaffleRoundOverview(): Promise<ActiveRaffleRoundOverview | null> {
+  const round = await activeRaffleRound();
+  if (!round) return null;
+
+  const result = await pool.query<{ approved_ticket_count: number }>(
+    `SELECT COALESCE(SUM(requested_ticket_count), 0)::int AS approved_ticket_count
+       FROM raffle_claims
+      WHERE round_id = $1
+        AND resolution_kind = 'approved'`,
+    [round.roundId],
+  );
+
+  return {
+    ...round,
+    approvedTicketCount: Number(result.rows[0]?.approved_ticket_count ?? 0),
+  };
 }
