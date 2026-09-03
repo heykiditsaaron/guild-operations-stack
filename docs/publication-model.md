@@ -32,13 +32,23 @@ subscriber converges its local projection
 
 Subject publications concern durable Guild Operations subject state and Guild Operations-owned associations or preferences.
 
-A subject publication is not a report of every Blizzard-observed account or character change. Controlled characters outside the guild remain valid subject observations, but they are not member publications merely because they changed.
+A subject publication is not a report of every Blizzard-observed account or character change. Controlled characters outside the guild remain valid subject observations, but they are not membership publications merely because they changed.
 
-### Member
+### Character-membership
 
-Member publications concern the derived relationship between a subject and the guild. Current membership is established by the intersection of subject-controlled characters and the current Blizzard guild roster.
+Character-membership publications concern the Blizzard-observed relationship between a WoW character and the guild.
 
-Member publications should be emitted only at reconciliation boundaries where before/after member truth can be compared. Individual character or roster-row mutations are inputs, not automatically publications.
+A **character-member** is a character currently observed on the guild roster. Character-membership may exist without any known Guild Operations subject controlling that character.
+
+Roster observations are inputs to reconciliation. Publications are emitted only when reconciliation establishes a meaningful before/after character-membership transition such as join, leave, or rank change.
+
+### Subject-membership
+
+Subject-membership publications concern Guild Operations' derived relationship between a subject and the guild. Current subject-membership exists while at least one character currently controlled by the subject is currently a character-member.
+
+A **subject-member** is therefore not a separately persisted member object. Subject-membership is derived from controlled characters intersected with current character-membership.
+
+Subject-membership can change when either side of that intersection changes: Blizzard guild-roster reconciliation can change character-membership, and subject character-control reconciliation can change which character-members are currently controlled. Publications should be emitted only where before/after subject-membership truth can be compared.
 
 ### Guild
 
