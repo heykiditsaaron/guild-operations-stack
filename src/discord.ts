@@ -198,6 +198,16 @@ export async function registerDiscordRoutes(app: FastifyInstance): Promise<void>
     return reply.redirect(authorizationUrl(state));
   });
 
+  app.post("/me/discord/disconnect", async (request, reply) => {
+    const subject = await authenticatedSubject(request.cookies[SESSION_COOKIE_NAME]);
+    if (!subject) return reply.code(401).send({ error: "not_authenticated" });
+
+    const query = request.query as { return_to?: unknown };
+    const returnTo = safeReturnTo(query.return_to) ?? "/";
+    await pool.query("DELETE FROM discord_associations WHERE subject_id = $1", [subject.subjectId]);
+    return reply.redirect(returnTo);
+  });
+
   app.get("/auth/discord/callback", async (request, reply) => {
     const query = request.query as { state?: unknown; code?: unknown; error?: unknown };
     if (typeof query.state !== "string") return reply.code(400).send({ error: "invalid_oauth_callback" });
