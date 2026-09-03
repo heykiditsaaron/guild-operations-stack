@@ -107,7 +107,6 @@ function reconciliationPublications(
   afterSubjects: Map<string, SubjectMembershipState>,
 ): PublishedEvent[] {
   const publications: PublishedEvent[] = [];
-  let rosterChanged = false;
 
   for (const [key, after] of afterCharacters) {
     const before = beforeCharacters.get(key);
@@ -119,7 +118,6 @@ function reconciliationPublications(
         realmId: after.realmId,
         characterId: after.characterId,
       });
-      rosterChanged = true;
       continue;
     }
 
@@ -131,15 +129,6 @@ function reconciliationPublications(
         realmId: after.realmId,
         characterId: after.characterId,
       });
-      rosterChanged = true;
-    }
-
-    if (
-      before.characterName !== after.characterName
-      || before.realmName !== after.realmName
-      || before.realmSlug !== after.realmSlug
-    ) {
-      rosterChanged = true;
     }
   }
 
@@ -152,7 +141,6 @@ function reconciliationPublications(
         realmId: before.realmId,
         characterId: before.characterId,
       });
-      rosterChanged = true;
     }
   }
 
@@ -171,7 +159,6 @@ function reconciliationPublications(
     }
   }
 
-  if (rosterChanged) publications.push({ kind: "guild.roster.changed", guildId });
   return publications;
 }
 
