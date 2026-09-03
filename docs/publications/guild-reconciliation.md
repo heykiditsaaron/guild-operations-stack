@@ -89,22 +89,12 @@ Effective rank is the highest-authority rank among all of the subject's currentl
 
 A character rank change therefore does not necessarily produce a subject rank change.
 
-## Guild publication
-
-### `guild.roster.changed`
-
-Published once when reconciliation establishes any meaningful difference in the authoritative Blizzard roster: character join, character departure, numeric rank change, or roster presentation-coordinate change.
-
-Coordinates:
-
-- `guildId`
-
-A refresh that observes the same roster truth publishes nothing.
-
 ## Reconciliation boundary
 
 Publications are calculated from before and after authoritative state inside reconciliation, but are transported only after the persistence transaction succeeds.
 
 Publication transport failure does not reverse the successfully established guild state.
+
+A refresh that establishes no character-membership or subject-membership transition publishes nothing. Presentation-coordinate changes remain recognition enrichment concerns rather than membership publications.
 
 Character presentation enrichment remains downstream recognition enrichment and is not itself guild-membership truth.
