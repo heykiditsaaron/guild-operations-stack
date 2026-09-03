@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import type { FastifyInstance } from "fastify";
 import { config } from "../config.js";
 
-type AssetName = "app.css" | "app.js" | "raffle.js";
+type AssetName = "app.css" | "app.js" | "navigation-shelves.css" | "navigation-shelves.js" | "raffle.js";
 
 type WebAsset = {
   name: AssetName;
@@ -16,7 +16,9 @@ type WebAsset = {
 
 const assetDefinitions: Array<{ name: AssetName; contentType: string }> = [
   { name: "app.css", contentType: "text/css; charset=utf-8" },
+  { name: "navigation-shelves.css", contentType: "text/css; charset=utf-8" },
   { name: "app.js", contentType: "text/javascript; charset=utf-8" },
+  { name: "navigation-shelves.js", contentType: "text/javascript; charset=utf-8" },
   { name: "raffle.js", contentType: "text/javascript; charset=utf-8" },
 ];
 
