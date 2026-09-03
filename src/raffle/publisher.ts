@@ -89,6 +89,8 @@ export async function publishRaffleEvent(event: RafflePublishedEvent): Promise<v
     if (!response.ok) {
       throw new Error(`BotGhost responded with HTTP ${response.status}`);
     }
+
+    console.info(`[raffle-publisher] published ${event.kind}`);
   } catch (error) {
     console.error(`[raffle-publisher] publication failed for ${event.kind}`, error);
   }
