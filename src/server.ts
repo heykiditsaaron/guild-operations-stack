@@ -7,6 +7,7 @@ import { registerDiscordRoutes } from "./discord.js";
 import { registerGuildRoutes } from "./guild-routes.js";
 import { registerRaffleRoutes } from "./raffle/routes.js";
 import { loadAssetRegistry, registerAssetRoutes } from "./web/assets.js";
+import { registerRaffleAdminPage } from "./web/pages/events/raffle/admin.js";
 import { registerRafflePage } from "./web/pages/events/raffle/index.js";
 import { registerHomePage } from "./web/pages/home.js";
 
@@ -28,6 +29,7 @@ const webAssets = await loadAssetRegistry();
 await registerAssetRoutes(app, webAssets);
 await registerHomePage(app, webAssets);
 await registerRafflePage(app, webAssets);
+await registerRaffleAdminPage(app, webAssets);
 
 await registerAuthRoutes(app);
 await registerDiscordRoutes(app);
