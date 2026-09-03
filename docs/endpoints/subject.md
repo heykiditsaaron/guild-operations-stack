@@ -2,13 +2,13 @@
 
 This document is the canonical HTTP endpoint reference for Guild Operations subject machinery exposed to machine consumers.
 
-It describes the machine-readable query contract used by subscribers after receiving subject publication coordinates. The cross-cutting publication model is defined in `docs/publication-model.md`. The subject publication catalog lives in `docs/publications/subject.md`.
+It describes the machine-readable query contract used by subscribers after receiving subject and subject-membership publication coordinates. The cross-cutting publication model is defined in `docs/publication-model.md`. Publication catalogs live under `docs/publications/`.
 
 ## Authority class
 
-### Subject machine query authority
+### Machine query authority
 
-The current subject query endpoint uses a read-only machine credential configured as:
+The current query endpoints use a read-only machine credential configured as:
 
 ```text
 EVENT_QUERY_API_KEY=<secret>
@@ -22,116 +22,99 @@ Authorization: Bearer <EVENT_QUERY_API_KEY>
 
 or the raw configured value in the `Authorization` header.
 
-The configuration name reflects the current implementation and may be refined separately; it does not make Events a domain owner of this subject surface.
+The configuration name reflects the current implementation and may be refined separately; it does not make Events a domain owner of these surfaces.
 
-This credential grants no Guild Operations operation authority. It exists so external subscribers that receive subject publication coordinates can ask Guild Operations what is authoritative now without acquiring a human session.
+This credential grants no Guild Operations operation authority. It exists so external subscribers that receive publication coordinates can ask Guild Operations what is authoritative now without acquiring a human session.
 
-Missing or incorrect credentials return:
-
-```http
-401 Unauthorized
-```
-
-```json
-{ "error": "invalid_machine_authority" }
-```
+Missing or incorrect credentials return `401 Unauthorized` with `{ "error": "invalid_machine_authority" }`.
 
 ## Subject query
 
 ### GET `/events/query/subjects/:subjectId`
 
-Returns the current authoritative subject projection needed by the initial publication subscribers.
+Returns the current authoritative subject projection needed by publication subscribers.
 
-The route retains its current implementation path. This document names the owning machinery as Subject so the product term **Events** remains available for participatory, calendar-style guild Events.
-
-Authority: subject machine query authority.
+Authority: machine query authority.
 
 Path coordinate:
 
-- `subjectId` — canonical Guild Operations subject identifier supplied by a subject publication or another trusted Guild Operations coordinate.
+- `subjectId` — canonical Guild Operations subject identifier.
 
-Success:
-
-```http
-200 OK
-```
+The `guild.membership` projection is either the subject's current derived subject-membership or `null`. When present it contains the configured guild identifier and the subject's effective current rank: the highest-authority rank among currently controlled character-members.
 
 ```json
 {
   "subject_id": "0127694c-d28b-49eb-83ee-a190d313901f",
-  "discord": {
-    "discord_user_id": "187021259631099904",
-    "username": "hotdamnitsaaron",
-    "connected_at": "2026-09-03T09:32:34.677Z"
-  },
+  "discord": null,
   "guild": {
-    "main_character": {
+    "membership": {
       "guild_id": "65431436",
-      "character_id": "159969501",
-      "realm_id": "1136",
-      "name": "Chiwee",
-      "realm_name": "Aegwynn",
       "rank": 2,
-      "currently_eligible": true,
-      "avatar_url": "https://render.worldofwarcraft.com/us/character/aegwynn/221/159969501-avatar.jpg"
-    }
-  }
-}
-```
-
-The response is current state, not a reconstruction of the publication that caused the subscriber to query.
-
-### Discord projection
-
-`discord` is either the subject's current Guild Operations Discord association or `null` when no current association exists.
-
-```json
-{ "discord": null }
-```
-
-An unlink publication may still carry the removed `discordUserId` as an occurrence coordinate even though this query correctly returns `discord: null`. That disappearing coordinate lets a subscriber locate and remove a stale Discord-side projection while the query establishes what is true now.
-
-### Selected-main projection
-
-`guild.main_character` is either the subject's current selected-main projection or `null` when no main is selected.
-
-```json
-{
-  "guild": {
+      "rank_name": "Rank 2"
+    },
     "main_character": null
   }
 }
 ```
 
-The selected-main projection includes guild and WoW recognition coordinates plus current eligibility. Selection is a Guild Operations presentation preference; the response does not make selected main an identity or authorization primitive.
+The response is current state, not a reconstruction of the publication that caused the subscriber to query. Subject-membership is derived from currently controlled characters intersected with the current Blizzard guild roster. Capabilities are deliberately not exposed here; this projection answers current membership truth rather than granting or duplicating authorization.
 
-## Errors
+`discord` is either the subject's current Guild Operations Discord association or `null`. An unlink publication may carry the removed Discord coordinate even though the current query returns `null`.
 
-Unknown subject coordinate:
+`guild.main_character` remains the subject's current selected-main projection or `null`. Selection is a presentation preference, never identity or authorization.
 
-```http
-404 Not Found
-```
+Unknown subject coordinates return `404` with `{ "error": "subject_not_found" }`. Invalid subject coordinates return `400` with `{ "error": "invalid_subject_coordinate" }`.
+
+## Character-membership query
+
+### GET `/events/query/guilds/:guildId/character-members/:region/:realmId/:characterId`
+
+Returns current authoritative character-membership truth for exactly one Blizzard character coordinate. This is the follow-up query for `character-member.*` publications; it is intentionally not a whole-roster query.
+
+Authority: machine query authority.
+
+Path coordinates:
+
+- `guildId` — Guild Operations' configured Blizzard guild identifier.
+- `region` — Blizzard region (`us`, `eu`, `kr`, or `tw`).
+- `realmId` — Blizzard realm identifier.
+- `characterId` — Blizzard character identifier.
+
+Current character-member:
 
 ```json
-{ "error": "subject_not_found" }
+{
+  "guild_id": "65431436",
+  "region": "us",
+  "realm_id": "1136",
+  "character_id": "159969501",
+  "membership": {
+    "currently_present": true,
+    "rank": 2,
+    "character_name": "Chiwee",
+    "realm_name": "Aegwynn",
+    "realm_slug": "aegwynn"
+  }
+}
 ```
 
-An invalid or empty subject coordinate is rejected as:
-
-```http
-400 Bad Request
-```
+When that coordinate is not currently a character-member, the coordinate still resolves as a valid query and current membership is explicitly absent:
 
 ```json
-{ "error": "invalid_subject_coordinate" }
+{
+  "guild_id": "65431436",
+  "region": "us",
+  "realm_id": "1136",
+  "character_id": "159969501",
+  "membership": null
+}
 ```
 
-Unauthorized requests are rejected before subject lookup.
+That behavior is important for `character-member.left`: the publication supplies the affected coordinate, while the query establishes that the character is no longer currently present. Historical roster observations are not returned as current membership.
+
+An unsupported guild identifier returns `404` with `{ "error": "guild_not_found" }`. Malformed coordinates return `400` with `{ "error": "invalid_character_membership_coordinate" }`.
 
 ## Subscriber usage
-
-A subscriber should treat publications as attention signals rather than durable state snapshots:
 
 ```text
 receive publication
@@ -145,4 +128,4 @@ observe current authoritative state
 converge local projection
 ```
 
-A delayed or out-of-order publication therefore does not require the subscriber to replay stale state. The follow-up query establishes the current answer.
+Delayed or out-of-order publications therefore do not require a subscriber to replay stale state. The follow-up query establishes the current answer.
