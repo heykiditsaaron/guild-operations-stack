@@ -11,18 +11,13 @@ function sectionRule(): string {
   return `<hr aria-hidden="true" style="margin: 0 0 2.5rem; border: 0; border-top: 1px solid rgba(238, 201, 124, 0.18);">`;
 }
 
-function drawingLabel(drawingAtUnix: number): string {
-  return new Date(drawingAtUnix * 1000).toLocaleString("en-US", {
-    dateStyle: "full",
-    timeStyle: "short",
-  });
+function localTime(unixSeconds: number, dateStyle: "full" | "medium" = "full"): string {
+  const instant = new Date(unixSeconds * 1000).toISOString();
+  return `<time datetime="${instant}" data-local-time-unix="${unixSeconds}" data-local-time-date-style="${dateStyle}">${instant}</time>`;
 }
 
-function claimTimeLabel(createdAt: Date): string {
-  return createdAt.toLocaleString("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+function claimTime(createdAt: Date): string {
+  return localTime(Math.floor(createdAt.getTime() / 1000), "medium");
 }
 
 function roundStatusLabel(round: RaffleRound): string {
@@ -37,7 +32,7 @@ function roundSummary(round: RaffleRound): string {
   const split = round.prizeKind === "gold" && round.winnerPercentage !== null
     ? `${round.winnerPercentage}% winner share`
     : round.prizeKind;
-  return `${htmlText(round.ticketPriceGold)} gold per ticket · ${htmlText(split)} · ${htmlText(drawingLabel(round.drawingAtUnix))}`;
+  return `${htmlText(round.ticketPriceGold)} gold per ticket · ${htmlText(split)} · ${localTime(round.drawingAtUnix)}`;
 }
 
 function roundActions(round: RaffleRound): string {
@@ -113,7 +108,7 @@ function claimLedger(claims: RaffleClaim[], round: RaffleRound): string {
           <strong>${htmlText(claim.characterName)} · ${claim.requestedTicketCount} ${claim.requestedTicketCount === 1 ? "ticket" : "tickets"}</strong>
           <span style="color: #aaa69c; font-size: 0.86rem;">${htmlText(effectiveClaimStatus(claim, round))}</span>
         </div>
-        <p style="margin: 0.45rem 0 0; color: #c9c5ba; line-height: 1.55;">Promised deposit: ${htmlText(claim.promisedGoldValue)} gold · ${htmlText(claimTimeLabel(claim.createdAt))}</p>
+        <p style="margin: 0.45rem 0 0; color: #c9c5ba; line-height: 1.55;">Promised deposit: ${htmlText(claim.promisedGoldValue)} gold · ${claimTime(claim.createdAt)}</p>
         ${claim.denialReason ? `<p style="margin: 0.4rem 0 0; color: #c9c5ba;">Denial reason: ${htmlText(claim.denialReason)}</p>` : ""}
       </li>`).join("\n")}
   </ol>`;
@@ -128,7 +123,7 @@ function pendingClaims(claims: RaffleClaim[], round: RaffleRound): string {
       <li style="padding-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.07);">
         <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap;">
           <strong>${htmlText(claim.characterName)}</strong>
-          <span style="color: #aaa69c; font-size: 0.86rem;">${htmlText(claimTimeLabel(claim.createdAt))}</span>
+          <span style="color: #aaa69c; font-size: 0.86rem;">${claimTime(claim.createdAt)}</span>
         </div>
         <p style="margin: 0.45rem 0 0; color: #c9c5ba; line-height: 1.55;">${claim.requestedTicketCount} ${claim.requestedTicketCount === 1 ? "ticket" : "tickets"} · promised deposit ${htmlText(claim.promisedGoldValue)} gold</p>
         ${round.status === "live" ? `
@@ -152,7 +147,7 @@ function roundFacts(round: RaffleRound): string {
     <dt>Status</dt><dd style="margin: 0;">${htmlText(roundStatusLabel(round))}</dd>
     <dt>Prize kind</dt><dd style="margin: 0;">${htmlText(prize)}</dd>
     <dt>Ticket price</dt><dd style="margin: 0;">${htmlText(round.ticketPriceGold)} gold</dd>
-    <dt>Drawing deadline</dt><dd style="margin: 0;">${htmlText(drawingLabel(round.drawingAtUnix))}</dd>
+    <dt>Drawing deadline</dt><dd style="margin: 0;">${localTime(round.drawingAtUnix)}</dd>
     ${round.totalEntries !== null ? `<dt>Final entries</dt><dd style="margin: 0;">${round.totalEntries}</dd>` : ""}
   </dl>`;
 }
@@ -200,6 +195,12 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
       body: `
         <div style="width: min(100%, 46rem);">
           ${sectionRule()}
+          <section data-raffle-start-action style="margin-bottom: 2.5rem;">
+            <button type="button" data-toggle-raffle-setup style="min-height: 3rem; padding: 0.7rem 1rem; border: 1px solid rgba(232,201,134,0.35); border-radius: 0.7rem; background: rgba(232,201,134,0.08); color: #e8c986; font-weight: 700;">Start a raffle</button>
+            <div data-raffle-setup hidden style="margin-top: 1.5rem;">
+              ${createRoundForm()}
+            </div>
+          </section>
           <section aria-labelledby="live-raffle-heading">
             <h2 id="live-raffle-heading">Live raffle</h2>
             ${roundList(live, "There is no live raffle.")}
@@ -213,11 +214,6 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
           <section aria-labelledby="closed-raffles-heading">
             <h2 id="closed-raffles-heading">Closed raffles</h2>
             ${roundList(closed, "There are no closed raffles yet.")}
-          </section>
-          <div style="margin-top: 2.5rem;">${sectionRule()}</div>
-          <section aria-labelledby="create-round-heading">
-            <h2 id="create-round-heading">Prepare a raffle</h2>
-            ${createRoundForm()}
           </section>
         </div>
         <script src="${assetUrl(assets, "raffle.js")}" defer></script>`,
