@@ -1,5 +1,6 @@
 import { config } from "./config.js";
 import { pool } from "./db.js";
+import { publishEvent } from "./events/publisher.js";
 
 export type SelectedMainCharacter = {
   guildId: string;
@@ -55,17 +56,35 @@ export async function selectMainCharacter(
   if (!result.rowCount) return null;
   const character = result.rows[0];
 
-  await pool.query(
-    `INSERT INTO subject_main_characters (
-       subject_id, guild_id, region, realm_id, character_id
-     ) VALUES ($1,$2,$3,$4,$5)
-     ON CONFLICT (subject_id, guild_id) DO UPDATE SET
-       region = EXCLUDED.region,
-       realm_id = EXCLUDED.realm_id,
-       character_id = EXCLUDED.character_id,
-       selected_at = now()`,
-    [subjectId, config.guild.id, config.guild.region, realmId, characterId],
+  const existing = await pool.query<{ realm_id: string; character_id: string }>(
+    `SELECT realm_id, character_id
+       FROM subject_main_characters
+      WHERE subject_id = $1
+        AND guild_id = $2`,
+    [subjectId, config.guild.id],
   );
+  const previous = existing.rows[0];
+  const changed = !previous || previous.realm_id !== realmId || previous.character_id !== characterId;
+
+  if (changed) {
+    await pool.query(
+      `INSERT INTO subject_main_characters (
+         subject_id, guild_id, region, realm_id, character_id
+       ) VALUES ($1,$2,$3,$4,$5)
+       ON CONFLICT (subject_id, guild_id) DO UPDATE SET
+         region = EXCLUDED.region,
+         realm_id = EXCLUDED.realm_id,
+         character_id = EXCLUDED.character_id,
+         selected_at = now()`,
+      [subjectId, config.guild.id, config.guild.region, realmId, characterId],
+    );
+
+    await publishEvent({
+      kind: "subject.main.changed",
+      subjectId,
+      guildId: config.guild.id,
+    });
+  }
 
   return {
     guildId: character.guild_id,
