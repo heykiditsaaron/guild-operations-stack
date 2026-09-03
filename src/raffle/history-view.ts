@@ -34,10 +34,11 @@ export async function raffleHistory(): Promise<RaffleHistoryRound[]> {
   const result = await pool.query(
     `SELECT rr.*,
             COALESCE(SUM(rc.requested_ticket_count) FILTER (WHERE rc.resolution_kind = 'approved'), 0)::int AS approved_ticket_count,
-            MAX(winner.character_name) AS winner_character_name
+            MAX(winner_character.name) AS winner_character_name
        FROM raffle_rounds rr
        LEFT JOIN raffle_claims rc ON rc.round_id = rr.round_id
        LEFT JOIN raffle_claims winner ON winner.claim_id = rr.winning_claim_id
+       LEFT JOIN characters winner_character ON winner_character.character_record_id = winner.character_record_id
       WHERE rr.guild_id = $1
         AND rr.status IN ('drawn', 'admin_cancelled', 'no_entry_cancelled')
       GROUP BY rr.round_id
