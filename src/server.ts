@@ -4,6 +4,7 @@ import { config } from "./config.js";
 import { pool } from "./db.js";
 import { registerAuthRoutes } from "./auth.js";
 import { registerDiscordRoutes } from "./discord.js";
+import { registerEventQueryRoutes } from "./events/query-routes.js";
 import { registerGuildRoutes } from "./guild-routes.js";
 import { registerRaffleQueryRoutes } from "./raffle/query-routes.js";
 import { registerRaffleRoutes } from "./raffle/routes.js";
@@ -41,6 +42,7 @@ await registerDiscordRoutes(app);
 await registerGuildRoutes(app);
 await registerRaffleRoutes(app);
 await registerRaffleQueryRoutes(app);
+await registerEventQueryRoutes(app);
 
 const shutdown = async (): Promise<void> => {
   await app.close();
