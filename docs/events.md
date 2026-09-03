@@ -4,7 +4,11 @@ Guild Operations publishes meaningful operational occurrences after authoritativ
 
 Events create attention, not truth. They identify what changed and provide the smallest coordinates needed for a subscriber to query Guild Operations for current authoritative state.
 
-The canonical HTTP contract for subscriber query surfaces lives in `docs/events-endpoints.md`.
+Concrete references are separated by purpose:
+
+- `docs/publications/events.md` — what operational events are published and which coordinates they carry.
+- `docs/endpoints/events.md` — the authoritative HTTP query contract subscribers use afterward.
+- `docs/integrations/botghost.md` — practical BotGhost variables and follow-up requests for the current transport.
 
 ```text
 authoritative change
@@ -25,12 +29,6 @@ subscriber converges its local projection
 ### Subject
 
 Subject events concern durable Guild Operations subject state and Guild Operations-owned associations or preferences.
-
-Current events:
-
-- `subject.discord.linked`
-- `subject.discord.unlinked`
-- `subject.main.changed`
 
 A subject event is not a report of every Blizzard-observed account or character change. Controlled characters outside the guild remain valid subject observations, but they are not member events merely because they changed.
 
@@ -53,18 +51,6 @@ Guild events concern meaningful changes to the guild object or its authoritative
 - Publication failure does not undo a successful authoritative operation.
 - BotGhost is the first transport and subscriber surface, not the owner or semantic target of the event model.
 - Do not introduce a generic event bus until multiple concrete features demonstrate the need.
-
-## Subject query
-
-Machine consumers may use:
-
-`GET /events/query/subjects/:subjectId`
-
-Authorization uses `EVENT_QUERY_API_KEY` in either the raw `Authorization` header or as a Bearer token.
-
-The query exposes only current subject projection needed by the initial event consumers: current Discord association and current selected-main projection. It does not grant operation authority.
-
-For request/response shapes, errors, and event-to-query mapping, see `docs/events-endpoints.md`.
 
 ## Coordinates that disappear
 
