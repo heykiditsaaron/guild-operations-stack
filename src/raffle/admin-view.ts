@@ -28,10 +28,13 @@ export async function raffleRoundsForAdministration(): Promise<RaffleRound[]> {
     `SELECT *
        FROM raffle_rounds
       WHERE guild_id = $1
-        AND status IN ('created', 'live')
       ORDER BY
-        CASE WHEN status = 'live' THEN 0 ELSE 1 END,
-        created_at DESC,
+        CASE status
+          WHEN 'live' THEN 0
+          WHEN 'created' THEN 1
+          ELSE 2
+        END,
+        COALESCE(concluded_at, created_at) DESC,
         round_id DESC`,
     [config.guild.id],
   );
