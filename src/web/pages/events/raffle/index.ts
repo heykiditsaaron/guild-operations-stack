@@ -155,8 +155,8 @@ export async function registerRafflePage(app: FastifyInstance, assets: AssetRegi
         : Promise.resolve(false),
     ]);
 
-    const adminLink = isAdmin
-      ? `<p style="width: min(100%, 46rem); margin: 2.5rem 0 0;"><a href="/events/raffle/admin">Administer raffle</a></p>`
+    const manageRaffles = isAdmin
+      ? `<div style="margin-top: calc(-1 * clamp(2rem, 8vw, 5.5rem)); margin-bottom: clamp(2rem, 6vw, 3rem); font-size: 0.88rem;"><a href="/events/raffle/admin" style="color: #c9c5ba;">Manage Raffles</a></div>`
       : "";
     const raffleScript = `<script src="${assetUrl(assets, "raffle.js")}" defer></script>`;
     const html = renderPage(assets, {
@@ -165,12 +165,13 @@ export async function registerRafflePage(app: FastifyInstance, assets: AssetRegi
       description: "Current OH CRIT I Pulled! guild raffle information.",
       viewer,
       header: `
+        ${manageRaffles}
         <div class="home-header-copy">
           <p class="eyebrow">Events</p>
           <h1 id="page-title">Raffle</h1>
           <p class="lede">The guild raffle, operated and preserved through Guild Operations.</p>
         </div>`,
-      body: `${liveRaffle ? liveRoundBody(liveRaffle, viewer, claims) : noLiveRoundBody()}${adminLink}${raffleScript}`,
+      body: `${liveRaffle ? liveRoundBody(liveRaffle, viewer, claims) : noLiveRoundBody()}${raffleScript}`,
     });
 
     return reply
