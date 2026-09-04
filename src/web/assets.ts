@@ -11,7 +11,9 @@ export type AssetName =
   | "navigation-shelves.js"
   | "home-raffle.css"
   | "raffle.css"
+  | "raffle-admin.css"
   | "raffle.js"
+  | "raffle-entry.js"
   | "raffle-public.js"
   | "images/raffle/gold-sack.png";
 
@@ -28,9 +30,11 @@ const assetDefinitions: Array<{ name: AssetName; contentType: string }> = [
   { name: "navigation-shelves.css", contentType: "text/css; charset=utf-8" },
   { name: "home-raffle.css", contentType: "text/css; charset=utf-8" },
   { name: "raffle.css", contentType: "text/css; charset=utf-8" },
+  { name: "raffle-admin.css", contentType: "text/css; charset=utf-8" },
   { name: "app.js", contentType: "text/javascript; charset=utf-8" },
   { name: "navigation-shelves.js", contentType: "text/javascript; charset=utf-8" },
   { name: "raffle.js", contentType: "text/javascript; charset=utf-8" },
+  { name: "raffle-entry.js", contentType: "text/javascript; charset=utf-8" },
   { name: "raffle-public.js", contentType: "text/javascript; charset=utf-8" },
   { name: "images/raffle/gold-sack.png", contentType: "image/png" },
 ];
