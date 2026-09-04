@@ -28,12 +28,7 @@ function claimsList(claims: RaffleMemberClaim[]): string {
     return `<p class="raffle-status-copy">You have not submitted a claim for this raffle.</p>`;
   }
 
-  return `
-    <div class="raffle-claim-submitted" role="status">
-      <strong>Claim submitted</strong>
-      <span>Your raffle claim has been recorded. Its status will update here after an attendant reviews it.</span>
-    </div>
-    <ol class="raffle-claims-list">
+  return `<ol class="raffle-claims-list">
       ${claims.map((claim) => `
         <li class="raffle-claim-item">
           <div class="raffle-claim-heading">
@@ -82,7 +77,9 @@ export async function registerRaffleClaimsPage(app: FastifyInstance, assets: Ass
       scripts: ["raffle.js"],
       header: `
         <div class="raffle-page-header">
-          <a class="raffle-back-link" href="/events/raffle">← Back to raffle</a>
+          <nav class="raffle-context-nav" aria-label="Raffle navigation">
+            <a class="raffle-back-link" href="/events/raffle">← Back to raffle</a>
+          </nav>
           <p class="eyebrow">Events · Raffle</p>
           <h1 id="page-title">Claims</h1>
         </div>`,
