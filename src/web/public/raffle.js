@@ -1,3 +1,19 @@
+function formatRaffleAdminBreadcrumb() {
+  const breadcrumbTime = document.querySelector('nav[aria-label="Administrative breadcrumb"] time[data-local-time-unix]');
+  if (!(breadcrumbTime instanceof HTMLTimeElement)) return;
+
+  const unixSeconds = Number(breadcrumbTime.dataset.localTimeUnix);
+  if (!Number.isFinite(unixSeconds)) return;
+
+  const date = new Date(unixSeconds * 1000);
+  if (Number.isNaN(date.getTime())) return;
+
+  breadcrumbTime.textContent = `${new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+  }).format(date)} Raffle`;
+}
+
 function rafflePromiseText(form) {
   const countInput = form.querySelector("[data-raffle-ticket-count]");
   if (!(countInput instanceof HTMLInputElement)) return "";
@@ -364,3 +380,5 @@ document.addEventListener("click", (event) => {
   const denyButton = target.closest("[data-deny-raffle-claim]");
   if (denyButton instanceof HTMLButtonElement) void denyRaffleClaim(denyButton);
 });
+
+formatRaffleAdminBreadcrumb();
