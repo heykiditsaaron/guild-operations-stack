@@ -28,7 +28,7 @@ function temporaryGuildRefreshControl(authenticated: boolean): string {
       <p class="eyebrow">Temporary operations control</p>
       <h2 id="guild-refresh-title">Guild roster refresh</h2>
       <p class="lede">Refresh Blizzard guild authority and reconcile the current roster.</p>
-      <button type="button" data-refresh-guild style="min-height: 2.8rem; padding: 0.65rem 0.9rem; border: 1px solid rgba(232,201,134,0.35); border-radius: 0.65rem; background: rgba(232,201,134,0.08); color: #e8c986; font: inherit; font-weight: 700; cursor: pointer;">
+      <button class="home-guild-refresh-action" type="button" data-refresh-guild>
         Refresh guild roster
       </button>
       <p data-guild-refresh-status aria-live="polite"></p>
@@ -47,7 +47,7 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
       title: "OH CRIT I Pulled! Guild Operations",
       description: "Guild operations and community participation for OH CRIT I Pulled!",
       viewer,
-      stylesheets: liveRaffle ? ["home-raffle.css"] : undefined,
+      stylesheets: liveRaffle ? ["home.css", "home-raffle.css"] : ["home.css"],
       header: `
         <div class="home-header-copy">
           <p class="eyebrow">Guild Operations</p>
