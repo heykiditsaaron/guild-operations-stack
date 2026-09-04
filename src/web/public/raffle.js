@@ -274,7 +274,7 @@ async function updateRaffleRoundForm(form) {
 async function activateRaffleRound(button) {
   const roundId = button.dataset.activateRaffleRound;
   if (!roundId) return;
-  if (!window.confirm("Make this raffle live? Its terms will be locked and members will be able to participate.")) return;
+  if (!window.confirm("Open this raffle? Its terms will be locked and members will be able to participate.")) return;
 
   button.disabled = true;
   const originalText = button.textContent;
@@ -286,13 +286,13 @@ async function activateRaffleRound(button) {
     });
     if (!response.ok) {
       const result = await response.json().catch(() => ({}));
-      window.alert(result.message || result.error || "Unable to make raffle live.");
+      window.alert(result.message || result.error || "Unable to open raffle.");
       return;
     }
 
     window.location.assign(`/admin/raffle/${encodeURIComponent(roundId)}`);
   } catch {
-    window.alert("Unable to make raffle live.");
+    window.alert("Unable to open raffle.");
   } finally {
     button.disabled = false;
     button.textContent = originalText;
