@@ -1,6 +1,7 @@
 .env
 .env.*
 !.env.example
+botghost.env
 
 node_modules/
 dist/

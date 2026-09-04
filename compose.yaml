@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env
+      - botghost.env
     environment:
       DATABASE_URL: postgres://guild_operations:guild_operations@db:5432/guild_operations
     ports:
