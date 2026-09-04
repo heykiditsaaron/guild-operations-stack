@@ -53,7 +53,7 @@ Its operating terms are intentionally small:
 - prize kind;
 - winner percentage when the prize kind is gold.
 
-The configured drawing deadline is scheduling metadata only. It does not automatically close claims, freeze participation, mutate lifecycle state, or initiate a draw. Interfaces express that instant in the viewer's local timezone.
+The configured drawing deadline establishes the raffle's schedule but does not automatically mutate round lifecycle state or initiate a draw. New claim submission closes exactly one hour before the drawing deadline so raffle administrators have a dedicated adjudication window for pending claims. Interfaces express both instants in the viewer's local timezone.
 
 Round terms may be changed while the round is still `created`. Once a round becomes `live`, its terms are fixed so claims preserve the terms under which they were made.
 
@@ -95,9 +95,11 @@ A claim records:
 - creation time;
 - optional terminal resolution.
 
-A subject may create multiple claims in the same round, including multiple claims using the same character.
+A subject may create multiple claims in the same round, including multiple claims using the same character, while claim submission remains open.
 
-Claims are not rewritten to correct their original meaning. An unresolved claimant may cancel their own claim and create another one. The original cancelled claim remains historical truth.
+Claim admission closes one hour before the drawing deadline. This cutoff prevents new promises from arriving during the final adjudication window while leaving existing unresolved claims available for attendant approval or denial.
+
+Claims are not rewritten to correct their original meaning. An unresolved claimant may cancel their own claim and create another one while claim submission remains open. The original cancelled claim remains historical truth.
 
 ### Claim resolution
 
@@ -166,7 +168,7 @@ Current web surfaces are:
 - `/events/raffle/history` — completed and cancelled raffle history;
 - `/events/raffle/rules` — standing guild raffle rules and regulations;
 - `/events/raffle/admin` — authorized raffle operations;
-- `/events/raffle/admin/:roundId` — detailed round management and administrative ledger.
+- `/events/raffle/admin/:roundId` — detailed round management, claim adjudication, manual draw, and administrative ledger.
 
 Raffle is not permanently promoted in primary navigation. A live raffle may be promoted from the home surface; when no raffle is live there is no active raffle to promote.
 
@@ -175,6 +177,8 @@ Discord and other subscribers remain interaction surfaces over the same backend 
 ## System-event publication
 
 Raffle publishes system events when meaningful authoritative raffle reality successfully changes. A publication creates attention rather than truth: it carries the occurrence kind and small authority-oriented coordinates so a subscriber can query Guild Operations for current state.
+
+A successful manual draw publishes `raffle.round.drawn` with the winning claim coordinate. A manual draw with no approved entries publishes `raffle.round.no-entry-cancelled`. The draw UI invokes the same authoritative raffle operation and publication path as any other caller; it does not own separate draw truth.
 
 Failed attempts, authorization failures, database failures, transport failures, and other machinery errors are not raffle system events. Publication failure does not undo an authoritative raffle operation that already succeeded.
 
