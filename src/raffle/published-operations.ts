@@ -10,6 +10,7 @@ import {
   type RaffleRound,
 } from "./domain.js";
 import { publishRaffleEvent } from "./publisher.js";
+import { coupleGuildEventRegistration } from "./registered-operations.js";
 
 async function publishClaimEvent(
   kind: "raffle.claim.approved" | "raffle.claim.denied" | "raffle.claim.cancelled",
@@ -33,6 +34,7 @@ async function publishClaimEvent(
 
 export async function cancelRaffleRound(actorSubjectId: string, roundId: string): Promise<RaffleRound> {
   const round = await cancelRaffleRoundDomain(actorSubjectId, roundId);
+  await coupleGuildEventRegistration(round);
   await publishRaffleEvent({ kind: "raffle.round.cancelled", roundId: round.roundId });
   return round;
 }
@@ -80,6 +82,7 @@ export async function denyRaffleClaim(
 
 export async function drawRaffleRound(actorSubjectId: string, roundId: string): Promise<RaffleRound> {
   const round = await drawRaffleRoundDomain(actorSubjectId, roundId);
+  await coupleGuildEventRegistration(round);
 
   if (round.status === "drawn") {
     if (!round.winningClaimId) {

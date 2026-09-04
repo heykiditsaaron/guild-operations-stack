@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS guild_event_registrations (
-  guild_event_id uuid PRIMARY KEY,
+  guild_event_id text PRIMARY KEY CHECK (length(btrim(guild_event_id)) > 0),
   guild_event_kind text NOT NULL CHECK (length(btrim(guild_event_kind)) > 0),
   occurs_at_start_unix bigint NOT NULL CHECK (occurs_at_start_unix >= 0),
   occurs_at_end_unix bigint CHECK (occurs_at_end_unix IS NULL OR occurs_at_end_unix >= occurs_at_start_unix),
