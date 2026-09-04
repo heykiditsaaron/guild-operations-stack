@@ -1,5 +1,5 @@
 import { config } from "../config.js";
-import { assetUrl, type AssetRegistry } from "./assets.js";
+import { assetUrl, type AssetName, type AssetRegistry } from "./assets.js";
 
 function escapeHtml(value: string): string {
   return value
@@ -51,6 +51,8 @@ export type RenderPageInput = {
   header: string;
   body: string;
   viewer: WebViewer;
+  stylesheets?: AssetName[];
+  scripts?: AssetName[];
 };
 
 function userGlyph(): string {
@@ -229,6 +231,12 @@ export function renderPage(assets: AssetRegistry, input: RenderPageInput): strin
   const title = escapeHtml(input.title);
   const description = escapeHtml(input.description ?? "OH CRIT I Pulled! Guild Operations");
   const canonicalUrl = new URL(input.pathname, config.appOrigin).toString();
+  const stylesheets = (input.stylesheets ?? [])
+    .map((name) => `  <link rel="stylesheet" href="${assetUrl(assets, name)}">`)
+    .join("\n");
+  const scripts = (input.scripts ?? [])
+    .map((name) => `  <script src="${assetUrl(assets, name)}" defer></script>`)
+    .join("\n");
 
   return `<!doctype html>
 <html lang="en">
@@ -239,7 +247,7 @@ export function renderPage(assets: AssetRegistry, input: RenderPageInput): strin
   <link rel="canonical" href="${canonicalUrl}">
   <link rel="stylesheet" href="${assetUrl(assets, "app.css")}">
   <link rel="stylesheet" href="${assetUrl(assets, "navigation-shelves.css")}">
-  <title>${title}</title>
+${stylesheets ? `${stylesheets}\n` : ""}  <title>${title}</title>
 </head>
 <body>
   <div class="app-shell">
@@ -251,7 +259,7 @@ export function renderPage(assets: AssetRegistry, input: RenderPageInput): strin
   ${renderMainPicker(input.viewer)}
   <script src="${assetUrl(assets, "app.js")}" defer></script>
   <script src="${assetUrl(assets, "navigation-shelves.js")}" defer></script>
-</body>
+${scripts ? `${scripts}\n` : ""}</body>
 </html>`;
 }
 
