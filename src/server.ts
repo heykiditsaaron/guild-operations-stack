@@ -9,6 +9,7 @@ import { registerGuildRoutes } from "./guild-routes.js";
 import { registerRaffleQueryRoutes } from "./raffle/query-routes.js";
 import { registerRaffleRoutes } from "./raffle/routes.js";
 import { loadAssetRegistry, registerAssetRoutes } from "./web/assets.js";
+import { registerEventsPage } from "./web/pages/events/index.js";
 import { registerRaffleAdminPage } from "./web/pages/events/raffle/admin.js";
 import { registerRaffleClaimsPage } from "./web/pages/events/raffle/claims.js";
 import { registerRaffleEntryPage } from "./web/pages/events/raffle/enter.js";
@@ -34,6 +35,7 @@ app.get("/health", async () => {
 const webAssets = await loadAssetRegistry();
 await registerAssetRoutes(app, webAssets);
 await registerHomePage(app, webAssets);
+await registerEventsPage(app, webAssets);
 await registerRafflePage(app, webAssets);
 await registerRaffleEntryPage(app, webAssets);
 await registerRaffleClaimsPage(app, webAssets);
