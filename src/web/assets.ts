@@ -9,6 +9,7 @@ export type AssetName =
   | "app.js"
   | "navigation-shelves.css"
   | "navigation-shelves.js"
+  | "home-raffle.css"
   | "raffle.css"
   | "raffle.js"
   | "raffle-public.js"
@@ -25,6 +26,7 @@ type WebAsset = {
 const assetDefinitions: Array<{ name: AssetName; contentType: string }> = [
   { name: "app.css", contentType: "text/css; charset=utf-8" },
   { name: "navigation-shelves.css", contentType: "text/css; charset=utf-8" },
+  { name: "home-raffle.css", contentType: "text/css; charset=utf-8" },
   { name: "raffle.css", contentType: "text/css; charset=utf-8" },
   { name: "app.js", contentType: "text/javascript; charset=utf-8" },
   { name: "navigation-shelves.js", contentType: "text/javascript; charset=utf-8" },
