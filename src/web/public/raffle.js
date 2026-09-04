@@ -14,6 +14,39 @@ function formatRaffleAdminBreadcrumb() {
   }).format(date)} Raffle`;
 }
 
+function formatRaffleOverview() {
+  const list = document.querySelector(".raffle-overview-list");
+  if (!(list instanceof HTMLElement)) return;
+
+  const liveRound = list.querySelector(".raffle-overview-item-live");
+  if (liveRound instanceof HTMLElement && list.firstElementChild !== liveRound) {
+    list.prepend(liveRound);
+  }
+
+  list.querySelectorAll(".raffle-overview-identity").forEach((identity) => {
+    if (!(identity instanceof HTMLElement)) return;
+
+    const heading = identity.querySelector("h2");
+    const drawingTime = identity.querySelector("time[data-local-time-unix]");
+    if (!(heading instanceof HTMLHeadingElement) || !(drawingTime instanceof HTMLTimeElement)) return;
+
+    const unixSeconds = Number(drawingTime.dataset.localTimeUnix);
+    if (!Number.isFinite(unixSeconds)) return;
+
+    const date = new Date(unixSeconds * 1000);
+    if (Number.isNaN(date.getTime())) return;
+
+    heading.textContent = new Intl.DateTimeFormat(undefined, {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    }).format(date);
+
+    const drawingLine = drawingTime.closest("p");
+    if (drawingLine instanceof HTMLParagraphElement) drawingLine.remove();
+  });
+}
+
 function rafflePromiseText(form) {
   const countInput = form.querySelector("[data-raffle-ticket-count]");
   if (!(countInput instanceof HTMLInputElement)) return "";
@@ -382,3 +415,4 @@ document.addEventListener("click", (event) => {
 });
 
 formatRaffleAdminBreadcrumb();
+formatRaffleOverview();
