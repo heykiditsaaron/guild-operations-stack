@@ -63,45 +63,38 @@ function isHappeningNow(registration: GuildEventRegistration, nowUnix: number): 
   return start <= nowUnix && nowUnix <= end;
 }
 
-function renderEventCard(registration: GuildEventRegistration, happeningNow: boolean): string {
+function renderEventItem(registration: GuildEventRegistration): string {
   const presentation = presentationFor(registration);
   const title = htmlText(presentation.title);
   const category = htmlText(presentation.category);
   const content = `
-      <div class="events-card-heading">
-        <div>
-          <p class="events-card-category">${category}</p>
-          <h3>${title}</h3>
-        </div>
-        ${happeningNow ? '<span class="events-live-label">Happening now</span>' : ""}
+      <div class="events-item-copy">
+        <p class="events-item-category">${category}</p>
+        <h3>${title}</h3>
+        <div class="events-item-time">${eventTime(registration)}</div>
       </div>
-      <div class="events-card-time">${eventTime(registration)}</div>
-      ${presentation.href ? '<span class="events-card-action">View event <span aria-hidden="true">→</span></span>' : ""}`;
+      ${presentation.href ? '<span class="events-item-action">View event <span aria-hidden="true">→</span></span>' : ""}`;
 
   if (!presentation.href) {
-    return `<article class="events-card">${content}</article>`;
+    return `<article class="events-item">${content}</article>`;
   }
 
-  return `<a class="events-card events-card-link" href="${presentation.href}" aria-label="View ${title}">${content}</a>`;
+  return `<a class="events-item events-item-link" href="${presentation.href}" aria-label="View ${title}">${content}</a>`;
 }
 
 function renderSection(
   id: string,
   title: string,
-  intro: string,
   registrations: GuildEventRegistration[],
-  happeningNow: boolean,
+  state: "live" | "upcoming",
 ): string {
   if (!registrations.length) return "";
 
   return `
     <section class="events-section" aria-labelledby="${id}">
-      <div class="events-section-heading">
-        <h2 id="${id}">${title}</h2>
-        <p>${intro}</p>
-      </div>
+      <h2 class="events-status-banner events-status-banner-${state}" id="${id}">${title}</h2>
       <div class="events-list">
-        ${registrations.map((registration) => renderEventCard(registration, happeningNow)).join("\n")}
+        ${registrations.map(renderEventItem).join("\n")}
       </div>
     </section>`;
 }
@@ -130,20 +123,8 @@ export async function registerEventsPage(app: FastifyInstance, assets: AssetRegi
     const body = happeningNow.length || upcoming.length
       ? `
         <div class="events-discovery">
-          ${renderSection(
-            "events-happening-now",
-            "Happening now",
-            "Guild events whose registered time includes right now.",
-            happeningNow,
-            true,
-          )}
-          ${renderSection(
-            "events-coming-up",
-            "Coming up",
-            "Guild events with participation ahead.",
-            upcoming,
-            false,
-          )}
+          ${renderSection("events-happening-now", "Happening now", happeningNow, "live")}
+          ${renderSection("events-upcoming", "Upcoming", upcoming, "upcoming")}
         </div>`
       : emptyState();
 
