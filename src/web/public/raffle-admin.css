@@ -67,6 +67,12 @@
   );
 }
 
+.raffle-section-rule {
+  margin: 0 0 2.5rem;
+  border: 0;
+  border-top: 1px solid rgba(238, 201, 124, 0.18);
+}
+
 .raffle-overview-list {
   display: grid;
   gap: 0.55rem;
@@ -121,7 +127,9 @@
   font-size: 0.9rem;
 }
 
-.raffle-edit {
+.raffle-edit,
+.raffle-management,
+.raffle-admin-message {
   width: min(100%, 46rem);
 }
 
@@ -129,23 +137,32 @@
   margin-bottom: 1.5rem;
 }
 
-.raffle-edit-form {
+.raffle-edit-form,
+.raffle-setup-form {
   display: grid;
   gap: 1rem;
 }
 
-.raffle-edit-field {
+.raffle-setup-form {
+  margin-top: 1.25rem;
+}
+
+.raffle-edit-field,
+.raffle-setup-field {
   display: grid;
   gap: 0.4rem;
 }
 
-.raffle-edit-field > span {
+.raffle-edit-field > span,
+.raffle-setup-field > span {
   color: #c9c5ba;
   font-size: 0.9rem;
   font-weight: 700;
 }
 
-.raffle-edit-field input {
+.raffle-edit-field input,
+.raffle-setup-field input,
+.raffle-claim-denial-field input {
   min-height: 3rem;
   padding: 0.65rem;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -156,7 +173,14 @@
 
 .raffle-edit-note,
 .raffle-edit-attribution,
-.raffle-edit-status {
+.raffle-edit-status,
+.raffle-setup-note,
+.raffle-setup-status,
+.raffle-section-note,
+.raffle-control-note,
+.raffle-empty-note,
+.raffle-claim-meta,
+.raffle-claim-resolution {
   margin: 0;
   color: #aaa69c;
   line-height: 1.55;
@@ -173,12 +197,17 @@
   color: #c9c5ba;
 }
 
-.raffle-edit-actions {
+.raffle-edit-actions,
+.raffle-management-controls {
   display: flex;
   flex-wrap: wrap;
   gap: 0.8rem;
   align-items: center;
   margin-top: 1.4rem;
+}
+
+.raffle-management-controls {
+  margin-top: 1.25rem;
 }
 
 .raffle-edit-transition {
@@ -201,4 +230,134 @@
   margin-top: 2.25rem;
   padding-top: 1.5rem;
   border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.raffle-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.55rem 1rem;
+  margin: 0;
+  color: #c9c5ba;
+}
+
+.raffle-facts dd {
+  margin: 0;
+}
+
+.raffle-action-success {
+  border: 1px solid rgba(124, 198, 141, 0.35);
+  background: rgba(124, 198, 141, 0.07);
+  color: #b9dfc1;
+  font-weight: 700;
+}
+
+.raffle-operational-summary {
+  margin-bottom: 2.5rem;
+  padding: 1.15rem 1.25rem;
+  border-radius: 0.8rem;
+}
+
+.raffle-operational-summary h2 {
+  margin-top: 0;
+}
+
+.raffle-operational-summary p {
+  margin-bottom: 0;
+  color: #c9c5ba;
+}
+
+.raffle-operational-summary-attention {
+  border: 1px solid rgba(232, 201, 134, 0.22);
+  background: rgba(232, 201, 134, 0.055);
+}
+
+.raffle-operational-summary-clear {
+  border: 1px solid rgba(124, 198, 141, 0.18);
+  background: rgba(124, 198, 141, 0.045);
+}
+
+.raffle-operational-summary-prepared {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.raffle-operational-summary-prepared p {
+  color: #aaa69c;
+}
+
+.raffle-section-spacer {
+  margin-top: 2.5rem;
+}
+
+.raffle-claim-list,
+.raffle-claim-ledger {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.raffle-claim-list {
+  gap: 1.5rem;
+}
+
+.raffle-claim-ledger {
+  gap: 1.25rem;
+}
+
+.raffle-claim-item,
+.raffle-claim-ledger-item {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.raffle-claim-item {
+  padding-bottom: 1.5rem;
+}
+
+.raffle-claim-ledger-item {
+  padding-bottom: 1.25rem;
+}
+
+.raffle-claim-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.raffle-claim-status,
+.raffle-claim-time {
+  color: #aaa69c;
+  font-size: 0.86rem;
+}
+
+.raffle-claim-meta {
+  margin-top: 0.45rem;
+  color: #c9c5ba;
+}
+
+.raffle-claim-resolution,
+.raffle-claim-denial {
+  margin-top: 0.4rem;
+}
+
+.raffle-claim-denial {
+  color: #c9c5ba;
+}
+
+.raffle-claim-controls {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.raffle-claim-denial-field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.raffle-claim-denial-field > span {
+  color: #c9c5ba;
+  font-size: 0.9rem;
 }
