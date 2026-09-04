@@ -19,6 +19,26 @@ function refreshRafflePromise(form) {
   if (preview instanceof HTMLElement) preview.textContent = rafflePromiseText(form);
 }
 
+function showRaffleClaimSuccess(form) {
+  const success = document.createElement("div");
+  success.className = "raffle-entry-success";
+  success.setAttribute("role", "status");
+
+  const title = document.createElement("strong");
+  title.textContent = "Claim entered";
+
+  const copy = document.createElement("p");
+  copy.textContent = "Your claim has been recorded and is awaiting attendant review.";
+
+  const link = document.createElement("a");
+  link.className = "raffle-action raffle-action-secondary";
+  link.href = "/events/raffle/claims";
+  link.textContent = "View your claims";
+
+  success.append(title, copy, link);
+  form.replaceWith(success);
+}
+
 async function submitRaffleClaim(form) {
   const status = form.querySelector("[data-raffle-claim-status]");
   const characterSelect = form.querySelector("[data-raffle-character]");
@@ -67,7 +87,7 @@ async function submitRaffleClaim(form) {
       return;
     }
 
-    window.location.reload();
+    showRaffleClaimSuccess(form);
   } catch {
     status.textContent = "Unable to submit raffle claim.";
   } finally {
