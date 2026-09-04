@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
-import { SESSION_COOKIE_NAME } from "../../../../auth.js";
+import { authenticatedSubject, SESSION_COOKIE_NAME } from "../../../../auth.js";
+import { RAFFLE_ADMIN_CAPABILITY, subjectHasGuildCapability } from "../../../../guild-permissions.js";
 import { raffleClaimCutoffUnix, raffleClaimsAreOpen } from "../../../../raffle/domain.js";
 import {
   activeRaffleRoundOverview,
@@ -92,10 +93,14 @@ function noActiveRaffleBody(): string {
 export async function registerRafflePage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/events/raffle", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, liveRaffle] = await Promise.all([
+    const [viewer, liveRaffle, subject] = await Promise.all([
       viewerForRequest(sessionToken),
       activeRaffleRoundOverview(),
+      authenticatedSubject(sessionToken),
     ]);
+    const canAdministerRaffle = subject
+      ? await subjectHasGuildCapability(subject.subjectId, RAFFLE_ADMIN_CAPABILITY)
+      : false;
 
     const html = renderPage(assets, {
       pathname: "/events/raffle",
@@ -108,6 +113,10 @@ export async function registerRafflePage(app: FastifyInstance, assets: AssetRegi
         <div class="raffle-page-header">
           <p class="eyebrow">Events</p>
           <h1 id="page-title">Raffle</h1>
+          ${canAdministerRaffle ? `
+            <nav class="raffle-context-nav" aria-label="Raffle administration">
+              <a class="raffle-back-link" href="/admin/raffle">Administration →</a>
+            </nav>` : ""}
         </div>`,
       body: liveRaffle ? activeRaffleBody(liveRaffle, assets) : noActiveRaffleBody(),
     });
