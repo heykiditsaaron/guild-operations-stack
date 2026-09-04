@@ -5,7 +5,7 @@
   grid-template-rows: 1fr auto;
   overflow: hidden;
   width: min(100%, 52rem);
-  min-height: clamp(11rem, 26vw, 15rem);
+  min-height: clamp(8.5rem, 20vw, 11rem);
   margin-bottom: clamp(1.5rem, 5vw, 2.5rem);
   border: 1px solid rgba(238, 201, 124, 0.32);
   border-radius: 1.25rem;
@@ -40,16 +40,16 @@
 .home-raffle-promo-art {
   position: absolute;
   z-index: -1;
-  top: 50%;
-  right: clamp(-1rem, -2vw, -0.35rem);
-  width: clamp(10rem, 29vw, 16rem);
-  max-height: 16rem;
+  top: 44%;
+  right: clamp(-0.75rem, -1.5vw, -0.25rem);
+  width: clamp(8rem, 23vw, 12.5rem);
+  max-height: 12.5rem;
   object-fit: contain;
   object-position: center right;
   transform: translateY(-50%);
   pointer-events: none;
   user-select: none;
-  filter: drop-shadow(0 1.1rem 1.5rem rgba(0, 0, 0, 0.42));
+  filter: drop-shadow(0 0.9rem 1.25rem rgba(0, 0, 0, 0.42));
 }
 
 .home-raffle-promo-main {
@@ -57,8 +57,8 @@
   flex-direction: column;
   justify-content: center;
   min-height: 0;
-  padding: clamp(1.35rem, 4.5vw, 2rem);
-  padding-right: clamp(7.5rem, 28vw, 14rem);
+  padding: clamp(1rem, 3.5vw, 1.45rem);
+  padding-right: clamp(6.5rem, 23vw, 11rem);
 }
 
 .home-raffle-promo-kicker {
@@ -67,7 +67,7 @@
   gap: 0.5rem;
   margin: 0;
   color: #e8c986;
-  font-size: 0.74rem;
+  font-size: 0.7rem;
   font-weight: 800;
   letter-spacing: 0.15em;
   text-transform: uppercase;
@@ -85,9 +85,9 @@
 
 .home-raffle-promo-title {
   max-width: 25rem;
-  margin: 0.75rem 0 0;
+  margin: 0.45rem 0 0;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(2rem, 6vw, 3.35rem);
+  font-size: clamp(1.65rem, 5vw, 2.6rem);
   font-weight: 500;
   line-height: 0.98;
   letter-spacing: -0.025em;
@@ -98,17 +98,18 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  min-height: 3.35rem;
-  padding: 0.8rem clamp(1.35rem, 4.5vw, 2rem);
+  min-height: 2.75rem;
+  padding: 0.6rem clamp(1rem, 3.5vw, 1.45rem);
   border-top: 1px solid rgba(238, 201, 124, 0.17);
   background: rgba(232, 201, 134, 0.055);
   color: #e8c986;
+  font-size: 0.92rem;
   font-weight: 800;
 }
 
 .home-raffle-promo-cta-arrow {
   flex: 0 0 auto;
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   transition: transform 150ms ease;
 }
 
@@ -119,21 +120,22 @@
 
 @media (max-width: 34rem) {
   .home-raffle-promo {
-    min-height: 10.5rem;
+    min-height: 8rem;
   }
 
   .home-raffle-promo-main {
-    padding-right: 7.1rem;
+    padding-right: 6.25rem;
   }
 
   .home-raffle-promo-art {
-    right: -1.2rem;
-    width: 9.25rem;
+    top: 43%;
+    right: -1rem;
+    width: 8rem;
     opacity: 0.9;
   }
 
   .home-raffle-promo-title {
-    max-width: 12rem;
-    font-size: clamp(1.75rem, 8.5vw, 2.45rem);
+    max-width: 11rem;
+    font-size: clamp(1.5rem, 7.5vw, 2rem);
   }
 }
