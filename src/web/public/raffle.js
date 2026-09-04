@@ -385,11 +385,26 @@ async function denyRaffleClaim(button) {
   const claimId = button.dataset.denyRaffleClaim;
   if (!claimId) return;
 
+  const controls = button.closest(".raffle-claim-controls");
   const reasonInput = document.querySelector(`[data-raffle-denial-reason="${CSS.escape(claimId)}"]`);
-  if (!(reasonInput instanceof HTMLInputElement) || !reasonInput.value.trim()) {
-    window.alert("Enter a denial reason before denying this claim.");
+  if (!(controls instanceof HTMLElement) || !(reasonInput instanceof HTMLInputElement)) return;
+
+  if (!controls.classList.contains("raffle-claim-controls-denying")) {
+    controls.classList.add("raffle-claim-controls-denying");
+    reasonInput.required = true;
+    button.setAttribute("aria-expanded", "true");
+    button.textContent = "Confirm denial";
+    reasonInput.focus();
     return;
   }
+
+  if (!reasonInput.value.trim()) {
+    reasonInput.setCustomValidity("Enter a denial reason before denying this claim.");
+    reasonInput.reportValidity();
+    reasonInput.focus();
+    return;
+  }
+  reasonInput.setCustomValidity("");
 
   button.disabled = true;
   const originalText = button.textContent;
@@ -441,6 +456,12 @@ document.querySelectorAll("[data-raffle-admin-edit]").forEach((form) => {
     event.preventDefault();
     void updateRaffleRoundForm(form);
   });
+});
+
+document.addEventListener("input", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement) || !target.matches("[data-raffle-denial-reason]")) return;
+  target.setCustomValidity("");
 });
 
 document.addEventListener("click", (event) => {
