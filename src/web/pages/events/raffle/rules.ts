@@ -59,12 +59,10 @@ export async function registerRaffleRulesPage(app: FastifyInstance, assets: Asse
       title: "Rules and Regulations · OH CRIT I Pulled! Guild Operations",
       description: "Rules and regulations for OH CRIT I Pulled! guild raffles.",
       viewer,
+      secondaryNavigation: { kind: "back", label: "Back to raffle", href: "/events/raffle" },
       stylesheets: ["raffle.css"],
       header: `
         <div class="raffle-page-header">
-          <nav class="raffle-context-nav" aria-label="Raffle navigation">
-            <a class="raffle-back-link" href="/events/raffle">← Back to raffle</a>
-          </nav>
           <p class="eyebrow">Events · Raffle</p>
           <h1 id="page-title">Rules and Regulations</h1>
           <p class="lede">The standing rules for participating in guild raffles.</p>
