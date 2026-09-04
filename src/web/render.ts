@@ -239,6 +239,7 @@ export function renderPage(assets: AssetRegistry, input: RenderPageInput): strin
   <link rel="canonical" href="${canonicalUrl}">
   <link rel="stylesheet" href="${assetUrl(assets, "app.css")}">
   <link rel="stylesheet" href="${assetUrl(assets, "navigation-shelves.css")}">
+  <link rel="stylesheet" href="${assetUrl(assets, "raffle-admin.css")}">
   <title>${title}</title>
 </head>
 <body>
