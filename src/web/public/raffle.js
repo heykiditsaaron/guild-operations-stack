@@ -172,7 +172,7 @@ async function activateRaffleRound(button) {
       return;
     }
 
-    window.location.assign("/events/raffle");
+    window.location.assign(`/admin/raffle/${encodeURIComponent(roundId)}`);
   } catch {
     window.alert("Unable to make raffle live.");
   } finally {
@@ -200,7 +200,7 @@ async function drawRaffleRound(button) {
       return;
     }
 
-    window.location.assign(`/events/raffle/admin/${encodeURIComponent(roundId)}`);
+    window.location.assign(`/admin/raffle/${encodeURIComponent(roundId)}`);
   } catch {
     window.alert("Unable to draw raffle.");
   } finally {
@@ -228,7 +228,7 @@ async function cancelRaffleRound(button) {
       return;
     }
 
-    window.location.assign("/events/raffle/admin");
+    window.location.assign("/admin/raffle");
   } catch {
     window.alert("Unable to cancel raffle round.");
   } finally {
