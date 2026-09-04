@@ -433,15 +433,32 @@
 
 .raffle-claim-controls {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0.75rem;
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
 
+.raffle-claim-controls [data-approve-raffle-claim] {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.raffle-claim-controls [data-deny-raffle-claim] {
+  grid-column: 2;
+  grid-row: 1;
+}
+
 .raffle-claim-denial-field {
-  display: grid;
+  display: none;
+  grid-column: 1 / -1;
+  grid-row: 2;
   gap: 0.4rem;
+}
+
+.raffle-claim-controls-denying .raffle-claim-denial-field {
+  display: grid;
 }
 
 .raffle-claim-denial-field > span {
