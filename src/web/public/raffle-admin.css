@@ -103,6 +103,20 @@
   font-size: 0.9rem;
 }
 
+.raffle-overview-attribution {
+  display: grid;
+  gap: 0.2rem;
+  margin-top: 0.55rem;
+  color: #8f8b82;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.raffle-overview-attribution strong {
+  color: #c9c5ba;
+  font-weight: 700;
+}
+
 .raffle-overview-attention {
   margin-top: 0.8rem;
 }
