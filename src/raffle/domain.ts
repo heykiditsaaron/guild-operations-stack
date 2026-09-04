@@ -4,6 +4,8 @@ import { config } from "../config.js";
 import { pool, withTransaction } from "../db.js";
 import { RAFFLE_ADMIN_CAPABILITY, requireGuildCapability } from "../guild-permissions.js";
 
+export const RAFFLE_CLAIM_CUTOFF_SECONDS = 60 * 60;
+
 export type RaffleRoundStatus =
   | "created"
   | "live"
@@ -70,6 +72,14 @@ export class RaffleRuleError extends Error {
     this.code = code;
     this.statusCode = statusCode;
   }
+}
+
+export function raffleClaimCutoffUnix(drawingAtUnix: number): number {
+  return drawingAtUnix - RAFFLE_CLAIM_CUTOFF_SECONDS;
+}
+
+export function raffleClaimsAreOpen(drawingAtUnix: number, nowUnix: number = Math.floor(Date.now() / 1000)): boolean {
+  return nowUnix < raffleClaimCutoffUnix(drawingAtUnix);
 }
 
 function validateTerms(terms: RaffleRoundTerms): {
@@ -293,6 +303,12 @@ export async function submitRaffleClaim(
     const round = await lockedRound(client, roundId);
     if (round.status !== "live") {
       throw new RaffleRuleError("round_not_live", "Claims may only be submitted to a live raffle round");
+    }
+    if (!raffleClaimsAreOpen(Number(round.drawing_at_unix))) {
+      throw new RaffleRuleError(
+        "claim_submission_closed",
+        "Raffle claims close one hour before the drawing deadline so attendants can finish adjudication",
+      );
     }
 
     const characterResult = await client.query<{
