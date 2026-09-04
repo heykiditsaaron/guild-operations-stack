@@ -70,13 +70,11 @@ export async function registerRaffleEntryPage(app: FastifyInstance, assets: Asse
       title: "Enter Raffle · OH CRIT I Pulled! Guild Operations",
       description: "Enter the current OH CRIT I Pulled! guild raffle.",
       viewer,
+      secondaryNavigation: { kind: "back", label: "Back to raffle", href: "/events/raffle" },
       stylesheets: ["raffle.css"],
       scripts: ["raffle-entry.js"],
       header: `
         <div class="raffle-page-header">
-          <nav class="raffle-context-nav" aria-label="Raffle navigation">
-            <a class="raffle-back-link" href="/events/raffle">← Back to raffle</a>
-          </nav>
           <p class="eyebrow">Events · Raffle</p>
           <h1 id="page-title">Enter</h1>
         </div>`,
