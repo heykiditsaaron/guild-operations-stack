@@ -13,7 +13,7 @@ import {
   type RaffleClaim,
   type RaffleRound,
 } from "../../../../raffle/domain.js";
-import { assetUrl, type AssetRegistry } from "../../../assets.js";
+import type { AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
 
@@ -437,6 +437,7 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
         pathname: "/admin/raffle",
         title: "Raffle Administration · OH CRIT I Pulled! Guild Operations",
         viewer,
+        stylesheets: ["raffle-admin.css"],
         header: `<div class="home-header-copy">${adminBreadcrumb()}</div>`,
         body: `<div class="raffle-admin-message">${sectionRule()}<h2>Raffle administration is not available for this account.</h2></div>`,
       });
@@ -454,6 +455,8 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
       title: "Raffle Administration · OH CRIT I Pulled! Guild Operations",
       description: "Operate the OH CRIT I Pulled! guild raffle.",
       viewer,
+      stylesheets: ["raffle-admin.css"],
+      scripts: ["raffle.js"],
       header: `<div class="home-header-copy">${adminBreadcrumb()}</div>`,
       body: `<section class="raffle-admin-overview" aria-labelledby="raffle-overview-heading">
         <div class="raffle-overview-heading-row">
@@ -462,7 +465,7 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
         </div>
         <div class="raffle-setup" data-raffle-setup hidden>${createRoundForm()}</div>
         ${roundList(rounds, attributions)}
-      </section><script src="${assetUrl(assets, "raffle.js")}" defer></script>`,
+      </section>`,
     });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
@@ -475,6 +478,7 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
         pathname,
         title: "Raffle Administration · OH CRIT I Pulled! Guild Operations",
         viewer,
+        stylesheets: ["raffle-admin.css"],
         header: `<div class="home-header-copy">${adminBreadcrumb()}</div>`,
         body: `<div class="raffle-admin-message">${sectionRule()}<h2>Raffle administration is not available for this account.</h2></div>`,
       }));
@@ -485,6 +489,7 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
         pathname,
         title: "Raffle Not Found · OH CRIT I Pulled! Guild Operations",
         viewer,
+        stylesheets: ["raffle-admin.css"],
         header: `<div class="home-header-copy">${adminBreadcrumb()}</div>`,
         body: `<div class="raffle-admin-message">${sectionRule()}<h2>Raffle not found</h2><p>This raffle does not exist.</p></div>`,
       }));
@@ -508,13 +513,15 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
         title: "Edit Raffle · OH CRIT I Pulled! Guild Operations",
         description: "Configure an upcoming guild raffle before it opens.",
         viewer,
+        stylesheets: ["raffle-admin.css"],
+        scripts: ["raffle.js"],
         header: `<div class="home-header-copy">${adminBreadcrumb(round)}</div>`,
         body: `<section aria-labelledby="page-title">
           <div class="raffle-overview-heading-row">
             <h1 class="raffle-overview-title" id="page-title">Edit raffle</h1>
           </div>
           ${pendingRoundEditor(round, attributions)}
-        </section><script src="${assetUrl(assets, "raffle.js")}" defer></script>`,
+        </section>`,
       });
       return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
     }
@@ -527,6 +534,8 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
         title: "Manage Raffle · OH CRIT I Pulled! Guild Operations",
         description: "Operate the currently live guild raffle.",
         viewer,
+        stylesheets: ["raffle-admin.css"],
+        scripts: ["raffle.js"],
         header: `<div class="home-header-copy">${adminBreadcrumb(round)}</div>`,
         body: `<section class="raffle-live-page" aria-labelledby="page-title">
           <div class="raffle-overview-heading-row">
@@ -534,7 +543,7 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
             <a class="raffle-action raffle-action-secondary" href="/events/raffle">View public raffle ↗</a>
           </div>
           ${liveRoundManager(round, claims, metrics, attributions)}
-        </section><script src="${assetUrl(assets, "raffle.js")}" defer></script>`,
+        </section>`,
       });
       return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
     }
@@ -546,8 +555,10 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
       title: "Raffle Administration · OH CRIT I Pulled! Guild Operations",
       description: "Review a concluded guild raffle.",
       viewer,
+      stylesheets: ["raffle-admin.css"],
+      scripts: ["raffle.js"],
       header: `<div class="home-header-copy">${adminBreadcrumb(round)}</div>`,
-      body: `<section class="raffle-management" aria-labelledby="page-title"><div class="raffle-overview-heading-row"><h1 class="raffle-overview-title" id="page-title">Raffle record</h1></div>${sectionRule()}<section aria-labelledby="raffle-facts-heading"><h2 id="raffle-facts-heading">Raffle facts</h2>${managementFacts(round, metrics, attributions)}${controls}</section><div class="raffle-section-spacer">${sectionRule()}</div><section aria-labelledby="claim-ledger-heading"><h2 id="claim-ledger-heading">Claim ledger</h2><p class="raffle-section-note">Every claim submitted to this raffle remains visible with the outcome established before the raffle closed.</p>${claimLedger(claims, round, attributions)}</section></section><script src="${assetUrl(assets, "raffle.js")}" defer></script>`,
+      body: `<section class="raffle-management" aria-labelledby="page-title"><div class="raffle-overview-heading-row"><h1 class="raffle-overview-title" id="page-title">Raffle record</h1></div>${sectionRule()}<section aria-labelledby="raffle-facts-heading"><h2 id="raffle-facts-heading">Raffle facts</h2>${managementFacts(round, metrics, attributions)}${controls}</section><div class="raffle-section-spacer">${sectionRule()}</div><section aria-labelledby="claim-ledger-heading"><h2 id="claim-ledger-heading">Claim ledger</h2><p class="raffle-section-note">Every claim submitted to this raffle remains visible with the outcome established before the raffle closed.</p>${claimLedger(claims, round, attributions)}</section></section>`,
     });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
