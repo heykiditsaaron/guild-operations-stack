@@ -107,16 +107,15 @@ export async function registerRafflePage(app: FastifyInstance, assets: AssetRegi
       title: "Raffle · OH CRIT I Pulled! Guild Operations",
       description: "Current OH CRIT I Pulled! guild raffle information.",
       viewer,
+      secondaryNavigation: canAdministerRaffle
+        ? { kind: "back", label: "Raffle administration", href: "/admin/raffle" }
+        : undefined,
       stylesheets: ["raffle.css"],
       scripts: liveRaffle ? ["raffle-public.js"] : undefined,
       header: `
         <div class="raffle-page-header">
           <p class="eyebrow">Events</p>
           <h1 id="page-title">Raffle</h1>
-          ${canAdministerRaffle ? `
-            <nav class="raffle-context-nav" aria-label="Raffle administration">
-              <a class="raffle-back-link" href="/admin/raffle">Administration →</a>
-            </nav>` : ""}
         </div>`,
       body: liveRaffle ? activeRaffleBody(liveRaffle, assets) : noActiveRaffleBody(),
     });
