@@ -257,7 +257,7 @@ function pendingRoundEditor(round: RaffleRound, attributions: AttributionLookup)
       </div>
     </section>
     <div class="raffle-edit-cancel">
-      <button class="raffle-action raffle-action-tertiary" type="button" data-cancel-raffle-round="${htmlText(round.roundId)}">Cancel raffle</button>
+      <button class="raffle-action raffle-action-cancel" type="button" data-cancel-raffle-round="${htmlText(round.roundId)}">Cancel raffle</button>
     </div>
   </div>`;
 }
@@ -289,37 +289,82 @@ function claimLedger(claims: RaffleClaim[], round: RaffleRound, attributions: At
   </ol>`;
 }
 
-function pendingClaims(claims: RaffleClaim[], round: RaffleRound): string {
-  const pending = claims.filter((claim) => claim.resolutionKind === null);
-  if (pending.length === 0) return `<p class="raffle-empty-note">There are no claims awaiting review for this raffle.</p>`;
-  return `<ol class="raffle-claim-list">${pending.map((claim) => `<li class="raffle-claim-item">
+function liveClaimCard(claim: RaffleClaim, attributions: AttributionLookup): string {
+  const kind = claim.resolutionKind ?? "pending";
+  const label = kind === "pending"
+    ? "Pending"
+    : kind === "approved"
+      ? "Approved"
+      : kind === "denied"
+        ? "Denied"
+        : "Cancelled";
+  const resolutionAttribution = claimResolutionAttribution(claim, attributions);
+  const controls = kind === "pending"
+    ? `<div class="raffle-claim-controls">
+        <button class="raffle-action raffle-action-success" type="button" data-approve-raffle-claim="${htmlText(claim.claimId)}">Approve claim</button>
+        <label class="raffle-claim-denial-field">
+          <span>Denial reason</span>
+          <input data-raffle-denial-reason="${htmlText(claim.claimId)}" type="text">
+        </label>
+        <button class="raffle-action raffle-action-secondary" type="button" data-deny-raffle-claim="${htmlText(claim.claimId)}">Deny claim</button>
+      </div>`
+    : "";
+
+  return `<li class="raffle-claim-card raffle-claim-card-${kind}">
     <div class="raffle-claim-heading">
-      <strong>${htmlText(claim.characterName)}</strong>
-      <span class="raffle-claim-time">${eventTime(claim.createdAt)}</span>
+      <strong>${htmlText(claim.characterName)} · ${claim.requestedTicketCount} ${claim.requestedTicketCount === 1 ? "ticket" : "tickets"}</strong>
+      <span class="raffle-claim-status raffle-claim-status-${kind}">${label}</span>
     </div>
-    <p class="raffle-claim-meta">${claim.requestedTicketCount} ${claim.requestedTicketCount === 1 ? "ticket" : "tickets"} · promised deposit ${htmlText(claim.promisedGoldValue)} gold</p>
-    ${round.status === "live" ? `<div class="raffle-claim-controls">
-      <button class="raffle-action raffle-action-success" type="button" data-approve-raffle-claim="${htmlText(claim.claimId)}">Approve claim</button>
-      <label class="raffle-claim-denial-field">
-        <span>Denial reason</span>
-        <input data-raffle-denial-reason="${htmlText(claim.claimId)}" type="text">
-      </label>
-      <button class="raffle-action raffle-action-secondary" type="button" data-deny-raffle-claim="${htmlText(claim.claimId)}">Deny claim</button>
-    </div>` : `<p class="raffle-control-note">This raffle is not live, so its claims cannot be adjudicated.</p>`}
-  </li>`).join("\n")}</ol>`;
+    <p class="raffle-claim-meta">Promised deposit: ${htmlText(claim.promisedGoldValue)} gold · submitted ${eventTime(claim.createdAt)}</p>
+    ${resolutionAttribution ? `<p class="raffle-claim-resolution">${resolutionAttribution}</p>` : ""}
+    ${claim.denialReason ? `<p class="raffle-claim-denial">Reason: ${htmlText(claim.denialReason)}</p>` : ""}
+    ${controls}
+  </li>`;
 }
 
-function roundOperationalSummary(round: RaffleRound, metrics: ReturnType<typeof claimMetrics>): string {
-  if (round.status === "live" && metrics.pendingClaimCount > 0) {
-    return `<section class="raffle-operational-summary raffle-operational-summary-attention" aria-labelledby="raffle-attention-heading"><h2 id="raffle-attention-heading">${metrics.pendingClaimCount} ${metrics.pendingClaimCount === 1 ? "claim needs" : "claims need"} review</h2><p>Resolve every pending claim before drawing this raffle.</p></section>`;
-  }
-  if (round.status === "live") {
-    return `<section class="raffle-operational-summary raffle-operational-summary-clear" aria-labelledby="raffle-attention-heading"><h2 id="raffle-attention-heading">No claims need review</h2><p>This raffle has no unresolved claims and can proceed to drawing when the attendant is ready.</p></section>`;
-  }
-  if (round.status === "created") {
-    return `<section class="raffle-operational-summary raffle-operational-summary-prepared" aria-labelledby="raffle-attention-heading"><h2 id="raffle-attention-heading">Prepared raffle</h2><p>Review the raffle terms, then open it when it is ready for member participation.</p></section>`;
-  }
-  return "";
+function liveClaimGroup(
+  label: string,
+  kind: Exclude<RaffleClaim["resolutionKind"], null>,
+  claims: RaffleClaim[],
+  attributions: AttributionLookup,
+): string {
+  const groupedClaims = claims.filter((claim) => claim.resolutionKind === kind);
+  if (groupedClaims.length === 0) return "";
+
+  return `<section class="raffle-claim-group" aria-labelledby="raffle-${kind}-claims-heading">
+    <div class="raffle-claim-group-heading">
+      <h3 id="raffle-${kind}-claims-heading">${label}</h3>
+      <span class="raffle-claim-group-count">${groupedClaims.length}</span>
+    </div>
+    <ol class="raffle-claim-cards">
+      ${groupedClaims.map((claim) => liveClaimCard(claim, attributions)).join("\n")}
+    </ol>
+  </section>`;
+}
+
+function liveClaims(claims: RaffleClaim[], attributions: AttributionLookup): string {
+  if (claims.length === 0) return `<p class="raffle-empty-note">No claims have been submitted for this raffle.</p>`;
+
+  const pending = claims.filter((claim) => claim.resolutionKind === null);
+  const pendingGroup = pending.length === 0
+    ? ""
+    : `<section class="raffle-claim-group raffle-claim-group-pending" id="claims-needing-review" aria-labelledby="pending-claims-heading">
+        <div class="raffle-claim-group-heading">
+          <div>
+            <h3 id="pending-claims-heading">Needs review</h3>
+            <p>Confirm the promised bank deposit before approving each claim.</p>
+          </div>
+          <span class="raffle-claim-group-count">${pending.length}</span>
+        </div>
+        <ol class="raffle-claim-cards">
+          ${pending.map((claim) => liveClaimCard(claim, attributions)).join("\n")}
+        </ol>
+      </section>`;
+
+  return `${pendingGroup}
+    ${liveClaimGroup("Approved", "approved", claims, attributions)}
+    ${liveClaimGroup("Denied", "denied", claims, attributions)}
+    ${liveClaimGroup("Cancelled", "cancelled", claims, attributions)}`;
 }
 
 function liveRoundManager(
@@ -337,23 +382,14 @@ function liveRoundManager(
   const drawControl = metrics.pendingClaimCount === 0
     ? `<button class="raffle-action raffle-action-success" type="button" data-draw-raffle-round="${htmlText(round.roundId)}">Draw raffle</button>`
     : `<span class="raffle-control-note">Resolve all pending claims before drawing.</span>`;
+  const attention = metrics.pendingClaimCount > 0
+    ? `<a class="raffle-claim-attention raffle-claim-attention-active" href="#claims-needing-review"><strong>${metrics.pendingClaimCount} ${metrics.pendingClaimCount === 1 ? "claim needs" : "claims need"} attention</strong><span>View pending claims ↓</span></a>`
+    : `<div class="raffle-claim-attention raffle-claim-attention-clear"><strong>No claims need attention</strong></div>`;
 
   return `<div class="raffle-live-workspace">
     <div class="raffle-status-banner raffle-status-banner-live"><span>Live</span></div>
-    ${roundOperationalSummary(round, metrics)}
 
-    <section class="raffle-live-section" aria-labelledby="pending-claims-heading">
-      <div class="raffle-live-section-heading">
-        <div>
-          <h2 id="pending-claims-heading">Claims needing review</h2>
-          <p>${metrics.pendingClaimCount === 0 ? "Nothing needs officer attention right now." : "Confirm the promised bank deposit before approving each claim."}</p>
-        </div>
-        <span class="raffle-live-count">${metrics.pendingClaimCount}</span>
-      </div>
-      ${pendingClaims(claims, round)}
-    </section>
-
-    <section class="raffle-live-section" aria-labelledby="raffle-live-details-heading">
+    <section class="raffle-live-section raffle-live-details" aria-labelledby="raffle-live-details-heading">
       <h2 id="raffle-live-details-heading">Raffle details</h2>
       <dl class="raffle-live-facts">
         <dt>Drawing deadline</dt><dd>${localTime(round.drawingAtUnix)}</dd>
@@ -367,19 +403,19 @@ function liveRoundManager(
       ${openedBy}
     </section>
 
-    <section class="raffle-live-section" aria-labelledby="claim-ledger-heading">
-      <h2 id="claim-ledger-heading">Claim ledger</h2>
-      <p class="raffle-section-note">Every submitted claim remains visible with its current outcome.</p>
-      ${claimLedger(claims, round, attributions)}
-    </section>
-
     <section class="raffle-live-section raffle-live-actions" aria-labelledby="raffle-actions-heading">
       <h2 id="raffle-actions-heading">Raffle actions</h2>
       <p>Drawing concludes this raffle. Cancellation closes it without a winner.</p>
       <div class="raffle-management-controls">
         ${drawControl}
-        <button class="raffle-action raffle-action-tertiary" type="button" data-cancel-raffle-round="${htmlText(round.roundId)}">Cancel raffle</button>
+        <button class="raffle-action raffle-action-cancel" type="button" data-cancel-raffle-round="${htmlText(round.roundId)}">Cancel raffle</button>
       </div>
+      ${attention}
+    </section>
+
+    <section class="raffle-live-section raffle-live-claims" aria-labelledby="raffle-claims-heading">
+      <h2 id="raffle-claims-heading">Claims</h2>
+      ${liveClaims(claims, attributions)}
     </section>
   </div>`;
 }
@@ -504,7 +540,7 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
     }
 
     const terminal = round.status === "drawn" || round.status === "admin_cancelled" || round.status === "no_entry_cancelled";
-    const controls = terminal ? "" : `<div class="raffle-management-controls"><button class="raffle-action raffle-action-tertiary" type="button" data-cancel-raffle-round="${htmlText(round.roundId)}">Cancel raffle</button></div>`;
+    const controls = terminal ? "" : `<div class="raffle-management-controls"><button class="raffle-action raffle-action-cancel" type="button" data-cancel-raffle-round="${htmlText(round.roundId)}">Cancel raffle</button></div>`;
     const html = renderPage(assets, {
       pathname,
       title: "Raffle Administration · OH CRIT I Pulled! Guild Operations",
