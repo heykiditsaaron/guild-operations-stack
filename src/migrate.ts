@@ -4,7 +4,12 @@ import { dirname, resolve } from "node:path";
 import { pool } from "./db.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const migrationFiles = ["001_initial.sql", "002_raffle.sql", "003_raffle_single_live_round.sql"];
+const migrationFiles = [
+  "001_initial.sql",
+  "002_raffle.sql",
+  "003_raffle_single_live_round.sql",
+  "004_raffle_term_update_attribution.sql",
+];
 
 for (const migrationFile of migrationFiles) {
   const migrationPath = resolve(here, `../sql/${migrationFile}`);
