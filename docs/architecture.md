@@ -236,23 +236,24 @@ For web access, authentication begins with Blizzard/Battle.net authorization, re
 
 ### Time representation and presentation
 
-Time-bearing operational facts should be stored and transported as timezone-neutral instants, such as Unix timestamps, rather than as a server-local wall-clock interpretation.
+All persisted values that represent an instant in time **must be Unix timestamps**. Persistence must not encode a human-readable date/time string, server-local wall-clock value, or timezone-formatted representation in place of the canonical Unix value.
 
-When a time is presented to a person, the interface should express that instant in the **viewer's local timezone** whenever the medium can determine it. In the web application, browser-side formatting should therefore be preferred over server-local date formatting for member- and administrator-facing timestamps.
+Human-readable date and time are presentation. Interfaces derive them from the persisted Unix timestamp and should express the instant in the **viewer's local timezone** whenever the medium can determine it. In the web application, browser-side formatting should therefore be preferred over server-local date formatting for member- and administrator-facing timestamps.
 
-A local date/time input represents the entering person's local wall-clock choice and must be converted to the canonical timezone-neutral instant before it crosses the operational boundary.
+A local date/time input represents the entering person's local wall-clock choice and must be converted to the canonical Unix timestamp before persistence.
 
 The distinction is:
 
 ```text
-operational truth
-    → timezone-neutral instant
+persistence
+    → Unix timestamp
 
 human expression
+    → derive from Unix
     → viewer-local date and time
 ```
 
-Server/container timezone must not silently become presentation policy.
+Server/container timezone must not silently become persistence or presentation policy.
 
 ## Human authority
 
