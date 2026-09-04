@@ -30,6 +30,13 @@ async function submitRaffleClaim(form) {
       || !(countInput instanceof HTMLInputElement)
       || !(submitButton instanceof HTMLButtonElement)) return;
 
+  const cutoffUnix = Number(form.dataset.claimCutoffUnix || "0");
+  if (Number.isFinite(cutoffUnix) && cutoffUnix > 0 && Math.floor(Date.now() / 1000) >= cutoffUnix) {
+    status.textContent = "Claim submission has closed for this raffle.";
+    submitButton.disabled = true;
+    return;
+  }
+
   const option = characterSelect.selectedOptions[0];
   const realmId = option?.dataset.realmId;
   const characterId = option?.dataset.characterId;
@@ -174,6 +181,34 @@ async function activateRaffleRound(button) {
   }
 }
 
+async function drawRaffleRound(button) {
+  const roundId = button.dataset.drawRaffleRound;
+  if (!roundId) return;
+  if (!window.confirm("Draw this raffle now? This will permanently conclude the round.")) return;
+
+  button.disabled = true;
+  const originalText = button.textContent;
+  button.textContent = "Drawing…";
+
+  try {
+    const response = await fetch(`/raffle/rounds/${encodeURIComponent(roundId)}/draw`, {
+      method: "POST",
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      window.alert(result.message || result.error || "Unable to draw raffle.");
+      return;
+    }
+
+    window.location.assign(`/events/raffle/admin/${encodeURIComponent(roundId)}`);
+  } catch {
+    window.alert("Unable to draw raffle.");
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
 async function cancelRaffleRound(button) {
   const roundId = button.dataset.cancelRaffleRound;
   if (!roundId) return;
@@ -305,6 +340,12 @@ document.addEventListener("click", (event) => {
   const activateButton = target.closest("[data-activate-raffle-round]");
   if (activateButton instanceof HTMLButtonElement) {
     void activateRaffleRound(activateButton);
+    return;
+  }
+
+  const drawButton = target.closest("[data-draw-raffle-round]");
+  if (drawButton instanceof HTMLButtonElement) {
+    void drawRaffleRound(drawButton);
     return;
   }
 
