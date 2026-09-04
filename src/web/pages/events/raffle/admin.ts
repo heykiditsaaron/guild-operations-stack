@@ -1,6 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedSubject, SESSION_COOKIE_NAME } from "../../../../auth.js";
 import { RAFFLE_ADMIN_CAPABILITY, subjectHasGuildCapability } from "../../../../guild-permissions.js";
+import {
+  guildieAttributionsForSubjects,
+  type GuildieAttribution,
+} from "../../../../guildie-attribution.js";
 import { raffleRoundsForAdministration, type RaffleAdministrationRound } from "../../../../raffle/admin-view.js";
 import {
   raffleClaimCutoffUnix,
@@ -13,6 +17,8 @@ import { assetUrl, type AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
 
+type AttributionLookup = Map<string, GuildieAttribution>;
+
 function sectionRule(): string {
   return `<hr aria-hidden="true" style="margin: 0 0 2.5rem; border: 0; border-top: 1px solid rgba(238, 201, 124, 0.18);">`;
 }
@@ -22,8 +28,48 @@ function localTime(unixSeconds: number, dateStyle: "full" | "medium" = "full"): 
   return `<time datetime="${instant}" data-local-time-unix="${unixSeconds}" data-local-time-date-style="${dateStyle}">${instant}</time>`;
 }
 
-function claimTime(createdAt: Date): string {
-  return localTime(Math.floor(createdAt.getTime() / 1000), "medium");
+function eventTime(instant: Date): string {
+  return localTime(Math.floor(instant.getTime() / 1000), "medium");
+}
+
+function actorName(subjectId: string, attributions: AttributionLookup): string {
+  return htmlText(attributions.get(subjectId)?.displayName ?? `Guildie ${subjectId.slice(0, 8)}`);
+}
+
+function attributionFact(
+  label: string,
+  subjectId: string | null,
+  at: Date | null,
+  attributions: AttributionLookup,
+): string {
+  if (!subjectId || !at) return "";
+  return `<dt>${htmlText(label)}</dt><dd style="margin: 0;">${actorName(subjectId, attributions)} · ${eventTime(at)}</dd>`;
+}
+
+function roundOverviewAttribution(round: RaffleAdministrationRound, attributions: AttributionLookup): string {
+  const lines = [
+    `<span>Created by <strong>${actorName(round.createdBySubjectId, attributions)}</strong> · ${eventTime(round.createdAt)}</span>`,
+  ];
+  if (round.updatedBySubjectId && round.updatedAt) {
+    lines.push(`<span>Updated by <strong>${actorName(round.updatedBySubjectId, attributions)}</strong> · ${eventTime(round.updatedAt)}</span>`);
+  }
+  if (round.liveBySubjectId && round.liveAt) {
+    lines.push(`<span>Made live by <strong>${actorName(round.liveBySubjectId, attributions)}</strong> · ${eventTime(round.liveAt)}</span>`);
+  }
+  return `<div class="raffle-overview-attribution">${lines.join("")}</div>`;
+}
+
+function claimResolutionAttribution(claim: RaffleClaim, attributions: AttributionLookup): string {
+  if (claim.resolutionKind === "approved" && claim.approvedBySubjectId && claim.approvedAt) {
+    return `Approved by ${actorName(claim.approvedBySubjectId, attributions)} · ${eventTime(claim.approvedAt)}`;
+  }
+  if (claim.resolutionKind === "denied" && claim.deniedBySubjectId && claim.deniedAt) {
+    return `Denied by ${actorName(claim.deniedBySubjectId, attributions)} · ${eventTime(claim.deniedAt)}`;
+  }
+  if (claim.resolutionKind === "cancelled" && claim.cancelledBySubjectId && claim.cancelledAt) {
+    return `Cancelled by ${actorName(claim.cancelledBySubjectId, attributions)} · ${eventTime(claim.cancelledAt)}`;
+  }
+  return "";
 }
 
 function roundStatusLabel(round: RaffleRound): string {
@@ -75,16 +121,31 @@ function claimMetrics(claims: RaffleClaim[]): {
   });
 }
 
-function managementFacts(round: RaffleRound, metrics: ReturnType<typeof claimMetrics>): string {
+function managementFacts(
+  round: RaffleRound,
+  metrics: ReturnType<typeof claimMetrics>,
+  attributions: AttributionLookup,
+): string {
   const gold = round.prizeKind === "gold"
     ? goldMetrics(round.ticketPriceGold, round.winnerPercentage, metrics.approvedTicketCount)
     : null;
   const prize = round.prizeKind === "gold"
     ? `Gold${round.winnerPercentage !== null ? ` · ${round.winnerPercentage}% winner share` : ""}`
     : round.prizeKind;
+  const conclusionLabel = round.status === "drawn"
+    ? "Drawn by"
+    : round.status === "admin_cancelled"
+      ? "Cancelled by"
+      : round.status === "no_entry_cancelled"
+        ? "Closed by"
+        : "Concluded by";
 
   return `<dl style="display: grid; grid-template-columns: auto 1fr; gap: 0.55rem 1rem; margin: 0; color: #c9c5ba;">
     <dt>Status</dt><dd style="margin: 0;">${htmlText(roundStatusLabel(round))}</dd>
+    ${attributionFact("Created by", round.createdBySubjectId, round.createdAt, attributions)}
+    ${attributionFact("Updated by", round.updatedBySubjectId, round.updatedAt, attributions)}
+    ${attributionFact("Made live by", round.liveBySubjectId, round.liveAt, attributions)}
+    ${attributionFact(conclusionLabel, round.concludedBySubjectId, round.concludedAt, attributions)}
     <dt>Prize kind</dt><dd style="margin: 0;">${htmlText(prize)}</dd>
     <dt>Ticket price</dt><dd style="margin: 0;">${htmlText(round.ticketPriceGold)} gold</dd>
     <dt>Claims close</dt><dd style="margin: 0;">${localTime(raffleClaimCutoffUnix(round.drawingAtUnix))}</dd>
@@ -133,7 +194,7 @@ function roundActions(round: RaffleRound): string {
   </div>`;
 }
 
-function roundList(rounds: RaffleAdministrationRound[]): string {
+function roundList(rounds: RaffleAdministrationRound[], attributions: AttributionLookup): string {
   if (rounds.length === 0) return `<p class="raffle-overview-empty">There are no live or upcoming raffles.</p>`;
 
   return `<div class="raffle-overview-list">
@@ -146,6 +207,7 @@ function roundList(rounds: RaffleAdministrationRound[]): string {
           <h2>Raffle</h2>
           <p>Drawing ${localTime(round.drawingAtUnix, "medium")}</p>
         </div>
+        ${roundOverviewAttribution(round, attributions)}
         ${operationalSignal(round)}
         ${managementSignals(round)}
         ${roundActions(round)}
@@ -182,17 +244,20 @@ function effectiveClaimStatus(claim: RaffleClaim, round: RaffleRound): string {
   return "Awaiting attendant review";
 }
 
-function claimLedger(claims: RaffleClaim[], round: RaffleRound): string {
+function claimLedger(claims: RaffleClaim[], round: RaffleRound, attributions: AttributionLookup): string {
   if (claims.length === 0) return `<p style="color: #aaa69c;">No claims were submitted for this raffle.</p>`;
   return `<ol style="list-style: none; margin: 0; padding: 0; display: grid; gap: 1.25rem;">
-    ${claims.map((claim) => `<li style="padding-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.07);"><div style="display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap;"><strong>${htmlText(claim.characterName)} · ${claim.requestedTicketCount} ${claim.requestedTicketCount === 1 ? "ticket" : "tickets"}</strong><span style="color: #aaa69c; font-size: 0.86rem;">${htmlText(effectiveClaimStatus(claim, round))}</span></div><p style="margin: 0.45rem 0 0; color: #c9c5ba; line-height: 1.55;">Promised deposit: ${htmlText(claim.promisedGoldValue)} gold · ${claimTime(claim.createdAt)}</p>${claim.denialReason ? `<p style="margin: 0.4rem 0 0; color: #c9c5ba;">Denial reason: ${htmlText(claim.denialReason)}</p>` : ""}</li>`).join("\n")}
+    ${claims.map((claim) => {
+      const resolutionAttribution = claimResolutionAttribution(claim, attributions);
+      return `<li style="padding-bottom: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.07);"><div style="display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap;"><strong>${htmlText(claim.characterName)} · ${claim.requestedTicketCount} ${claim.requestedTicketCount === 1 ? "ticket" : "tickets"}</strong><span style="color: #aaa69c; font-size: 0.86rem;">${htmlText(effectiveClaimStatus(claim, round))}</span></div><p style="margin: 0.45rem 0 0; color: #c9c5ba; line-height: 1.55;">Promised deposit: ${htmlText(claim.promisedGoldValue)} gold · ${eventTime(claim.createdAt)}</p>${resolutionAttribution ? `<p style="margin: 0.4rem 0 0; color: #aaa69c;">${resolutionAttribution}</p>` : ""}${claim.denialReason ? `<p style="margin: 0.4rem 0 0; color: #c9c5ba;">Denial reason: ${htmlText(claim.denialReason)}</p>` : ""}</li>`;
+    }).join("\n")}
   </ol>`;
 }
 
 function pendingClaims(claims: RaffleClaim[], round: RaffleRound): string {
   const pending = claims.filter((claim) => claim.resolutionKind === null);
   if (pending.length === 0) return `<p style="color: #aaa69c;">There are no claims awaiting review for this raffle.</p>`;
-  return `<ol style="list-style: none; margin: 0; padding: 0; display: grid; gap: 1.5rem;">${pending.map((claim) => `<li style="padding-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.07);"><div style="display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap;"><strong>${htmlText(claim.characterName)}</strong><span style="color: #aaa69c; font-size: 0.86rem;">${claimTime(claim.createdAt)}</span></div><p style="margin: 0.45rem 0 0; color: #c9c5ba; line-height: 1.55;">${claim.requestedTicketCount} ${claim.requestedTicketCount === 1 ? "ticket" : "tickets"} · promised deposit ${htmlText(claim.promisedGoldValue)} gold</p>${round.status === "live" ? `<div style="display: grid; gap: 0.75rem; margin-top: 1rem;"><button type="button" data-approve-raffle-claim="${htmlText(claim.claimId)}" style="min-height: 2.7rem; padding: 0.65rem 0.85rem; border: 1px solid rgba(124,198,141,0.35); border-radius: 0.65rem; background: rgba(124,198,141,0.07); color: #b9dfc1; font-weight: 700;">Approve claim</button><label style="display: grid; gap: 0.4rem;"><span style="color: #c9c5ba; font-size: 0.9rem;">Denial reason</span><input data-raffle-denial-reason="${htmlText(claim.claimId)}" type="text" style="min-height: 2.8rem; padding: 0.65rem; border: 1px solid rgba(255,255,255,0.12); border-radius: 0.65rem; background: #17181d; color: inherit;"></label><button type="button" data-deny-raffle-claim="${htmlText(claim.claimId)}" style="min-height: 2.7rem; padding: 0.65rem 0.85rem; border: 1px solid rgba(255,255,255,0.14); border-radius: 0.65rem; background: rgba(255,255,255,0.035); color: #d8d4ca;">Deny claim</button></div>` : `<p style="margin: 0.8rem 0 0; color: #aaa69c;">This raffle is not live, so its claims cannot be adjudicated.</p>`}</li>`).join("\n")}</ol>`;
+  return `<ol style="list-style: none; margin: 0; padding: 0; display: grid; gap: 1.5rem;">${pending.map((claim) => `<li style="padding-bottom: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.07);"><div style="display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap;"><strong>${htmlText(claim.characterName)}</strong><span style="color: #aaa69c; font-size: 0.86rem;">${eventTime(claim.createdAt)}</span></div><p style="margin: 0.45rem 0 0; color: #c9c5ba; line-height: 1.55;">${claim.requestedTicketCount} ${claim.requestedTicketCount === 1 ? "ticket" : "tickets"} · promised deposit ${htmlText(claim.promisedGoldValue)} gold</p>${round.status === "live" ? `<div style="display: grid; gap: 0.75rem; margin-top: 1rem;"><button type="button" data-approve-raffle-claim="${htmlText(claim.claimId)}" style="min-height: 2.7rem; padding: 0.65rem 0.85rem; border: 1px solid rgba(124,198,141,0.35); border-radius: 0.65rem; background: rgba(124,198,141,0.07); color: #b9dfc1; font-weight: 700;">Approve claim</button><label style="display: grid; gap: 0.4rem;"><span style="color: #c9c5ba; font-size: 0.9rem;">Denial reason</span><input data-raffle-denial-reason="${htmlText(claim.claimId)}" type="text" style="min-height: 2.8rem; padding: 0.65rem; border: 1px solid rgba(255,255,255,0.12); border-radius: 0.65rem; background: #17181d; color: inherit;"></label><button type="button" data-deny-raffle-claim="${htmlText(claim.claimId)}" style="min-height: 2.7rem; padding: 0.65rem 0.85rem; border: 1px solid rgba(255,255,255,0.14); border-radius: 0.65rem; background: rgba(255,255,255,0.035); color: #d8d4ca;">Deny claim</button></div>` : `<p style="margin: 0.8rem 0 0; color: #aaa69c;">This raffle is not live, so its claims cannot be adjudicated.</p>`}</li>`).join("\n")}</ol>`;
 }
 
 function roundOperationalSummary(round: RaffleRound, metrics: ReturnType<typeof claimMetrics>): string {
@@ -227,6 +292,11 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
     const rounds = (await raffleRoundsForAdministration())
       .filter((round) => round.status === "live" || round.status === "created")
       .sort((a, b) => a.drawingAtUnix - b.drawingAtUnix);
+    const attributions = await guildieAttributionsForSubjects(rounds.flatMap((round) => [
+      round.createdBySubjectId,
+      round.updatedBySubjectId,
+      round.liveBySubjectId,
+    ]));
     const html = renderPage(assets, {
       pathname: "/admin/raffle", title: "Raffle Administration · OH CRIT I Pulled! Guild Operations", description: "Operate the OH CRIT I Pulled! guild raffle.", viewer,
       header: `<div class="home-header-copy">${adminBreadcrumb()}</div>`,
@@ -236,7 +306,7 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
           <button class="raffle-start-button" type="button" data-toggle-raffle-setup>Start new raffle</button>
         </div>
         <div class="raffle-setup" data-raffle-setup hidden>${createRoundForm()}</div>
-        ${roundList(rounds)}
+        ${roundList(rounds, attributions)}
       </section><script src="${assetUrl(assets, "raffle.js")}" defer></script>`,
     });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
@@ -249,6 +319,17 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
     const round = await raffleRound(request.params.roundId);
     if (!round) return reply.code(404).type("text/html; charset=utf-8").send(renderPage(assets, { pathname, title: "Raffle Not Found · OH CRIT I Pulled! Guild Operations", viewer, header: `<div class="home-header-copy">${adminBreadcrumb()}<h1 id="page-title">Raffle not found</h1></div>`, body: `<div style="width: min(100%, 46rem);">${sectionRule()}<p>This raffle does not exist.</p></div>` }));
     const claims = await raffleClaims(round.roundId);
+    const attributions = await guildieAttributionsForSubjects([
+      round.createdBySubjectId,
+      round.updatedBySubjectId,
+      round.liveBySubjectId,
+      round.concludedBySubjectId,
+      ...claims.flatMap((claim) => [
+        claim.approvedBySubjectId,
+        claim.deniedBySubjectId,
+        claim.cancelledBySubjectId,
+      ]),
+    ]);
     const metrics = claimMetrics(claims);
     const terminal = round.status === "drawn" || round.status === "admin_cancelled" || round.status === "no_entry_cancelled";
     const drawControl = round.status === "live"
@@ -263,7 +344,7 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
     const html = renderPage(assets, {
       pathname, title: "Raffle Administration · OH CRIT I Pulled! Guild Operations", description: "Review and operate a guild raffle.", viewer,
       header: `<div class="home-header-copy">${adminBreadcrumb(round)}<h1 id="page-title">Raffle management</h1><p class="lede">Drawing deadline: ${localTime(round.drawingAtUnix, "medium")}</p></div>`,
-      body: `<div style="width: min(100%, 46rem);">${sectionRule()}${roundOperationalSummary(round, metrics)}<section aria-labelledby="raffle-facts-heading"><h2 id="raffle-facts-heading">Raffle facts</h2>${managementFacts(round, metrics)}${controls}</section>${round.status === "live" ? `<div style="margin-top: 2.5rem;">${sectionRule()}</div><section aria-labelledby="pending-claims-heading"><h2 id="pending-claims-heading">Pending claims</h2>${pendingClaims(claims, round)}</section>` : ""}<div style="margin-top: 2.5rem;">${sectionRule()}</div><section aria-labelledby="claim-ledger-heading"><h2 id="claim-ledger-heading">Claim ledger</h2><p style="color: #aaa69c; line-height: 1.55;">Every claim submitted to this raffle remains visible with the outcome established before the raffle closed.</p>${claimLedger(claims, round)}</section></div><script src="${assetUrl(assets, "raffle.js")}" defer></script>`,
+      body: `<div style="width: min(100%, 46rem);">${sectionRule()}${roundOperationalSummary(round, metrics)}<section aria-labelledby="raffle-facts-heading"><h2 id="raffle-facts-heading">Raffle facts</h2>${managementFacts(round, metrics, attributions)}${controls}</section>${round.status === "live" ? `<div style="margin-top: 2.5rem;">${sectionRule()}</div><section aria-labelledby="pending-claims-heading"><h2 id="pending-claims-heading">Pending claims</h2>${pendingClaims(claims, round)}</section>` : ""}<div style="margin-top: 2.5rem;">${sectionRule()}</div><section aria-labelledby="claim-ledger-heading"><h2 id="claim-ledger-heading">Claim ledger</h2><p style="color: #aaa69c; line-height: 1.55;">Every claim submitted to this raffle remains visible with the outcome established before the raffle closed.</p>${claimLedger(claims, round, attributions)}</section></div><script src="${assetUrl(assets, "raffle.js")}" defer></script>`,
     });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
