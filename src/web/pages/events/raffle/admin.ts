@@ -35,10 +35,10 @@ function roundStatusLabel(round: RaffleRound): string {
 }
 
 function adminBreadcrumb(round?: RaffleRound): string {
-  return `<nav aria-label="Administrative breadcrumb" style="display: flex; gap: 0.45rem; align-items: center; flex-wrap: wrap; margin-bottom: 1rem; color: #aaa69c; font-size: 0.84rem; text-transform: uppercase; letter-spacing: 0.08em;">
+  return `<nav class="admin-breadcrumb" aria-label="Administrative breadcrumb">
     <span>Administration</span>
     <span aria-hidden="true">›</span>
-    ${round ? `<a href="/admin/raffle" style="color: #c9c5ba;">Raffle</a><span aria-hidden="true">›</span><span>${localTime(round.drawingAtUnix, "medium")}</span>` : `<span aria-current="page">Raffle</span>`}
+    ${round ? `<a href="/admin/raffle">Raffle</a><span aria-hidden="true">›</span><span>${localTime(round.drawingAtUnix, "medium")}</span>` : `<span aria-current="page">Raffle</span>`}
   </nav>`;
 }
 
@@ -99,55 +99,55 @@ function managementFacts(round: RaffleRound, metrics: ReturnType<typeof claimMet
 }
 
 function managementSignals(round: RaffleAdministrationRound): string {
-  return `<dl style="display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 1rem; margin: 0; color: #c9c5ba;">
-    <dt>Claims close</dt><dd style="margin: 0;">${localTime(raffleClaimCutoffUnix(round.drawingAtUnix))}</dd>
-    <dt>Drawing deadline</dt><dd style="margin: 0;">${localTime(round.drawingAtUnix)}</dd>
-    <dt>Approved tickets</dt><dd style="margin: 0;">${round.approvedTicketCount}</dd>
+  return `<dl class="raffle-overview-facts">
+    <dt>Claims close</dt><dd>${localTime(raffleClaimCutoffUnix(round.drawingAtUnix))}</dd>
+    <dt>Drawing deadline</dt><dd>${localTime(round.drawingAtUnix)}</dd>
+    <dt>Approved tickets</dt><dd>${round.approvedTicketCount}</dd>
   </dl>`;
 }
 
 function operationalSignal(round: RaffleAdministrationRound): string {
   if (round.status === "live" && round.pendingClaimCount > 0) {
-    return `<div style="margin: 1rem 0; padding: 0.9rem 1rem; border-left: 3px solid rgba(232,201,134,0.7); background: rgba(232,201,134,0.055);"><strong>${round.pendingClaimCount} ${round.pendingClaimCount === 1 ? "claim needs" : "claims need"} review</strong><div style="margin-top: 0.25rem; color: #aaa69c;">Resolve pending claims before the raffle can be drawn.</div></div>`;
+    return `<p class="raffle-overview-attention"><strong>${round.pendingClaimCount} ${round.pendingClaimCount === 1 ? "claim needs" : "claims need"} review</strong> · Resolve pending claims before the raffle can be drawn.</p>`;
   }
   if (round.status === "live") {
-    return `<div style="margin: 1rem 0; padding: 0.9rem 1rem; border-left: 3px solid rgba(124,198,141,0.65); background: rgba(124,198,141,0.05);"><strong>No claims need review</strong><div style="margin-top: 0.25rem; color: #aaa69c;">This raffle has no unresolved claims.</div></div>`;
+    return `<p class="raffle-overview-attention"><strong>No claims need review</strong> · This raffle has no unresolved claims.</p>`;
   }
-  return `<p style="margin: 1rem 0; color: #aaa69c;">Prepared and waiting to be made live.</p>`;
+  return `<p class="raffle-overview-attention">Prepared and waiting to be made live.</p>`;
 }
 
 function roundActions(round: RaffleRound): string {
   const activate = round.status === "created"
-    ? `<button type="button" data-activate-raffle-round="${htmlText(round.roundId)}" style="min-height: 2.6rem; padding: 0.6rem 0.85rem; border: 1px solid rgba(232,201,134,0.35); border-radius: 0.65rem; background: rgba(232,201,134,0.08); color: #e8c986; font-weight: 700;">Make raffle live</button>`
+    ? `<button class="raffle-action raffle-action-secondary" type="button" data-activate-raffle-round="${htmlText(round.roundId)}">Make raffle live</button>`
     : "";
   const viewPublic = round.status === "live"
-    ? `<a href="/events/raffle" style="display: inline-flex; min-height: 2.6rem; align-items: center; padding: 0.6rem 0.85rem; border: 1px solid rgba(255,255,255,0.12); border-radius: 0.65rem; color: #c9c5ba; text-decoration: none;">View public raffle ↗</a>`
+    ? `<a class="raffle-action raffle-action-secondary" href="/events/raffle">View public raffle ↗</a>`
     : "";
-  const cancel = `<button type="button" data-cancel-raffle-round="${htmlText(round.roundId)}" style="min-height: 2.6rem; padding: 0.6rem 0.85rem; border: 1px solid rgba(255,255,255,0.14); border-radius: 0.65rem; background: rgba(255,255,255,0.035); color: #d8d4ca;">Cancel raffle</button>`;
+  const cancel = `<button class="raffle-action raffle-action-tertiary" type="button" data-cancel-raffle-round="${htmlText(round.roundId)}">Cancel raffle</button>`;
 
-  return `<div style="display: flex; gap: 0.8rem; align-items: center; flex-wrap: wrap; margin-top: 1rem;">
-    <a href="/admin/raffle/${htmlText(round.roundId)}" style="display: inline-flex; min-height: 2.8rem; align-items: center; padding: 0.65rem 1rem; border: 1px solid rgba(232,201,134,0.45); border-radius: 0.7rem; background: rgba(232,201,134,0.10); color: #e8c986; font-weight: 700; text-decoration: none;">Manage raffle</a>
+  return `<div class="raffle-overview-actions">
+    <a class="raffle-action raffle-action-primary" href="/admin/raffle/${htmlText(round.roundId)}">Manage raffle</a>
     ${viewPublic}
     ${activate}
     ${cancel}
   </div>`;
 }
 
-function roundList(rounds: RaffleAdministrationRound[], emptyText: string): string {
-  if (rounds.length === 0) return `<p style="color: #aaa69c;">${htmlText(emptyText)}</p>`;
+function roundList(rounds: RaffleAdministrationRound[]): string {
+  if (rounds.length === 0) return `<p class="raffle-overview-empty">There are no live or upcoming raffles.</p>`;
 
-  return `<ol style="list-style: none; margin: 0; padding: 0; display: grid; gap: 1.75rem;">
+  return `<div class="raffle-overview-list">
     ${rounds.map((round) => `
-      <li style="padding: 1.25rem; border: 1px solid rgba(255,255,255,0.08); border-radius: 0.8rem; background: rgba(255,255,255,0.018);">
-        <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.9rem;">
-          <strong>${round.status === "live" ? "Live raffle" : "Upcoming raffle"}</strong>
-          <span style="color: #aaa69c; font-size: 0.86rem;">${htmlText(roundStatusLabel(round))}</span>
+      <article class="raffle-overview-item${round.status === "live" ? " raffle-overview-item-live" : ""}">
+        <div class="raffle-overview-item-heading">
+          <h2>${round.status === "live" ? "Live raffle" : "Upcoming raffle"}</h2>
+          ${round.status === "live" ? `<span class="raffle-live-indicator"><span class="status-dot" aria-hidden="true"></span>Live</span>` : `<span class="raffle-upcoming-indicator">Upcoming</span>`}
         </div>
         ${operationalSignal(round)}
         ${managementSignals(round)}
         ${roundActions(round)}
-      </li>`).join("\n")}
-  </ol>`;
+      </article>`).join("\n")}
+  </div>`;
 }
 
 function createRoundForm(): string {
@@ -218,16 +218,23 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
   app.get("/admin/raffle", async (request, reply) => {
     const { viewer, subject, authorized } = await adminContext(request.cookies[SESSION_COOKIE_NAME]);
     if (!authorized) {
-      const html = renderPage(assets, { pathname: "/admin/raffle", title: "Raffle Administration · OH CRIT I Pulled! Guild Operations", viewer, header: `<div class="home-header-copy">${adminBreadcrumb()}<h1 id="page-title">Raffle</h1></div>`, body: `<div style="width: min(100%, 46rem);">${sectionRule()}<h2>Raffle administration is not available for this account.</h2></div>` });
+      const html = renderPage(assets, { pathname: "/admin/raffle", title: "Raffle Administration · OH CRIT I Pulled! Guild Operations", viewer, header: `<div class="home-header-copy">${adminBreadcrumb()}</div>`, body: `<div style="width: min(100%, 46rem);">${sectionRule()}<h2>Raffle administration is not available for this account.</h2></div>` });
       return reply.code(subject ? 403 : 401).type("text/html; charset=utf-8").send(html);
     }
-    const rounds = await raffleRoundsForAdministration();
-    const live = rounds.filter((round) => round.status === "live");
-    const upcoming = rounds.filter((round) => round.status === "created");
+    const rounds = (await raffleRoundsForAdministration())
+      .filter((round) => round.status === "live" || round.status === "created")
+      .sort((a, b) => a.drawingAtUnix - b.drawingAtUnix);
     const html = renderPage(assets, {
       pathname: "/admin/raffle", title: "Raffle Administration · OH CRIT I Pulled! Guild Operations", description: "Operate the OH CRIT I Pulled! guild raffle.", viewer,
-      header: `<div class="home-header-copy">${adminBreadcrumb()}<h1 id="page-title">Raffle</h1><p class="lede">Current officer work for preparing and operating the guild raffle.</p></div>`,
-      body: `<div style="width: min(100%, 46rem);">${sectionRule()}<section data-raffle-start-action style="margin-bottom: 2.5rem;"><button type="button" data-toggle-raffle-setup style="min-height: 3rem; padding: 0.7rem 1rem; border: 1px solid rgba(232,201,134,0.35); border-radius: 0.7rem; background: rgba(232,201,134,0.08); color: #e8c986; font-weight: 700;">Start a raffle</button><div data-raffle-setup hidden style="margin-top: 1.5rem;">${createRoundForm()}</div></section><section aria-labelledby="live-raffle-heading"><h2 id="live-raffle-heading">Live raffle</h2>${roundList(live, "There is no live raffle.")}</section><div style="margin-top: 2.5rem;">${sectionRule()}</div><section aria-labelledby="upcoming-raffles-heading"><h2 id="upcoming-raffles-heading">Upcoming raffles</h2>${roundList(upcoming, "There are no upcoming raffles.")}</section></div><script src="${assetUrl(assets, "raffle.js")}" defer></script>`,
+      header: `<div class="home-header-copy">${adminBreadcrumb()}</div>`,
+      body: `<section class="raffle-admin-overview" aria-labelledby="raffle-overview-heading">
+        <div class="raffle-overview-heading-row">
+          <h1 class="raffle-overview-title" id="raffle-overview-heading">Raffle Overview</h1>
+          <button class="raffle-start-button" type="button" data-toggle-raffle-setup>Start new raffle</button>
+        </div>
+        <div class="raffle-setup" data-raffle-setup hidden>${createRoundForm()}</div>
+        ${roundList(rounds)}
+      </section><script src="${assetUrl(assets, "raffle.js")}" defer></script>`,
     });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
