@@ -1,5 +1,7 @@
 import { config } from "../config.js";
+import { discordAssociationForSubject } from "../discord.js";
 import { pool } from "../db.js";
+import { mainCharacterForSubject } from "../main-character.js";
 import type { RaffleClaimResolution } from "./domain.js";
 
 export type RaffleMemberClaim = {
@@ -12,8 +14,18 @@ export type RaffleMemberClaim = {
   promisedGoldValue: string;
   createdAt: Date;
   resolutionKind: RaffleClaimResolution;
+  resolutionActorLabel: string | null;
   denialReason: string | null;
 };
+
+async function subjectAttribution(subjectId: string): Promise<string> {
+  const [mainCharacter, discordAssociation] = await Promise.all([
+    mainCharacterForSubject(subjectId),
+    discordAssociationForSubject(subjectId),
+  ]);
+
+  return mainCharacter?.name ?? discordAssociation?.username ?? "Guild officer";
+}
 
 export async function raffleClaimsForMember(subjectId: string, roundId: string): Promise<RaffleMemberClaim[]> {
   const result = await pool.query(
@@ -24,6 +36,8 @@ export async function raffleClaimsForMember(subjectId: string, roundId: string):
        rc.promised_gold_value,
        rc.created_at,
        rc.resolution_kind,
+       rc.approved_by_subject_id,
+       rc.denied_by_subject_id,
        rc.denial_reason,
        c.character_id,
        c.realm_id,
@@ -44,16 +58,45 @@ export async function raffleClaimsForMember(subjectId: string, roundId: string):
     [roundId, subjectId, config.guild.id],
   );
 
-  return result.rows.map((row) => ({
-    claimId: String(row.claim_id),
-    roundId: String(row.round_id),
-    characterId: String(row.character_id),
-    realmId: String(row.realm_id),
-    characterName: String(row.character_name),
-    requestedTicketCount: Number(row.requested_ticket_count),
-    promisedGoldValue: String(row.promised_gold_value),
-    createdAt: row.created_at as Date,
-    resolutionKind: row.resolution_kind as RaffleClaimResolution,
-    denialReason: row.denial_reason === null ? null : String(row.denial_reason),
-  }));
+  const actorSubjectIds = new Set<string>();
+  for (const row of result.rows) {
+    const actorSubjectId = row.resolution_kind === "approved"
+      ? row.approved_by_subject_id
+      : row.resolution_kind === "denied"
+        ? row.denied_by_subject_id
+        : null;
+    if (actorSubjectId !== null) actorSubjectIds.add(String(actorSubjectId));
+  }
+
+  const attributionEntries = await Promise.all(
+    [...actorSubjectIds].map(async (actorSubjectId) => [
+      actorSubjectId,
+      await subjectAttribution(actorSubjectId),
+    ] as const),
+  );
+  const attributionBySubjectId = new Map(attributionEntries);
+
+  return result.rows.map((row) => {
+    const resolutionActorSubjectId = row.resolution_kind === "approved"
+      ? row.approved_by_subject_id
+      : row.resolution_kind === "denied"
+        ? row.denied_by_subject_id
+        : null;
+
+    return {
+      claimId: String(row.claim_id),
+      roundId: String(row.round_id),
+      characterId: String(row.character_id),
+      realmId: String(row.realm_id),
+      characterName: String(row.character_name),
+      requestedTicketCount: Number(row.requested_ticket_count),
+      promisedGoldValue: String(row.promised_gold_value),
+      createdAt: row.created_at as Date,
+      resolutionKind: row.resolution_kind as RaffleClaimResolution,
+      resolutionActorLabel: resolutionActorSubjectId === null
+        ? null
+        : attributionBySubjectId.get(String(resolutionActorSubjectId)) ?? "Guild officer",
+      denialReason: row.denial_reason === null ? null : String(row.denial_reason),
+    };
+  });
 }
