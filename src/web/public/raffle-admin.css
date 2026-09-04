@@ -260,6 +260,13 @@
   font-weight: 700;
 }
 
+.raffle-action-cancel {
+  border: 1px solid rgba(198, 105, 105, 0.34);
+  background: rgba(198, 105, 105, 0.07);
+  color: #e0aaaa;
+  font-weight: 700;
+}
+
 .raffle-operational-summary {
   margin-bottom: 2.5rem;
   padding: 1.15rem 1.25rem;
@@ -299,7 +306,8 @@
 }
 
 .raffle-claim-list,
-.raffle-claim-ledger {
+.raffle-claim-ledger,
+.raffle-claim-cards {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -310,12 +318,14 @@
   gap: 1rem;
 }
 
-.raffle-claim-ledger {
+.raffle-claim-ledger,
+.raffle-claim-cards {
   gap: 0.85rem;
 }
 
 .raffle-claim-item,
-.raffle-claim-ledger-item {
+.raffle-claim-ledger-item,
+.raffle-claim-card {
   position: relative;
   padding: 1rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -377,6 +387,31 @@
   text-transform: uppercase;
 }
 
+.raffle-claim-status-pending {
+  border-color: rgba(232, 201, 134, 0.28);
+  color: #e8c986;
+}
+
+.raffle-claim-status-approved {
+  border-color: rgba(124, 198, 141, 0.28);
+  color: #b9dfc1;
+}
+
+.raffle-claim-status-denied {
+  border-color: rgba(198, 143, 105, 0.28);
+  color: #d7b18f;
+}
+
+.raffle-claim-status-cancelled {
+  border-color: rgba(170, 166, 156, 0.22);
+  color: #aaa69c;
+}
+
+.raffle-claim-card-pending {
+  border-color: rgba(232, 201, 134, 0.2);
+  background: rgba(232, 201, 134, 0.035);
+}
+
 .raffle-claim-time {
   color: #8f8b82;
   font-size: 0.8rem;
@@ -436,9 +471,18 @@
   order: 3;
 }
 
+.raffle-live-workspace > * {
+  order: initial;
+}
+
 .raffle-live-section {
   padding: 2rem 0;
   border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.raffle-live-details {
+  padding-top: 0;
+  border-top: 0;
 }
 
 .raffle-live-section h2 {
@@ -449,7 +493,8 @@
 .raffle-live-section > p,
 .raffle-live-section-heading p,
 .raffle-live-actions > p,
-.raffle-live-attribution {
+.raffle-live-attribution,
+.raffle-claim-group-heading p {
   color: #aaa69c;
   line-height: 1.55;
 }
@@ -462,7 +507,8 @@
   margin-bottom: 1.25rem;
 }
 
-.raffle-live-section-heading p {
+.raffle-live-section-heading p,
+.raffle-claim-group-heading p {
   margin: 0.45rem 0 0;
 }
 
@@ -489,12 +535,85 @@
 }
 
 .raffle-live-actions {
-  padding-top: 0;
+  padding-top: 2rem;
   padding-bottom: 2rem;
-  border-top: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 0;
 }
 
 .raffle-live-actions > p {
   margin: 0.55rem 0 0;
+}
+
+.raffle-claim-attention {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  align-items: center;
+  margin-top: 1.35rem;
+  padding: 0.9rem 1rem;
+  border-radius: 0.7rem;
+  text-decoration: none;
+}
+
+.raffle-claim-attention-active {
+  border: 1px solid rgba(232, 201, 134, 0.22);
+  background: rgba(232, 201, 134, 0.045);
+  color: #e8c986;
+}
+
+.raffle-claim-attention-active span {
+  color: #c9c5ba;
+  font-size: 0.82rem;
+}
+
+.raffle-claim-attention-clear {
+  border: 1px solid rgba(124, 198, 141, 0.16);
+  background: rgba(124, 198, 141, 0.035);
+  color: #b9dfc1;
+}
+
+.raffle-live-claims > h2 {
+  margin-bottom: 1.35rem;
+}
+
+.raffle-claim-group + .raffle-claim-group {
+  margin-top: 2rem;
+}
+
+.raffle-claim-group-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.raffle-claim-group-heading h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.raffle-claim-group-count {
+  min-width: 1.75rem;
+  height: 1.75rem;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 0.45rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  color: #c9c5ba;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.raffle-claim-group-pending {
+  scroll-margin-top: 1.5rem;
+}
+
+@media (max-width: 40rem) {
+  .raffle-claim-attention {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
