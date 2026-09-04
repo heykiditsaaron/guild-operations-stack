@@ -76,13 +76,11 @@ export async function registerRaffleClaimsPage(app: FastifyInstance, assets: Ass
       title: "Raffle Claims · OH CRIT I Pulled! Guild Operations",
       description: "View your claims for the current OH CRIT I Pulled! guild raffle.",
       viewer,
+      secondaryNavigation: { kind: "back", label: "Back to raffle", href: "/events/raffle" },
       stylesheets: ["raffle.css"],
       scripts: ["raffle.js"],
       header: `
         <div class="raffle-page-header">
-          <nav class="raffle-context-nav" aria-label="Raffle navigation">
-            <a class="raffle-back-link" href="/events/raffle">← Back to raffle</a>
-          </nav>
           <p class="eyebrow">Events · Raffle</p>
           <h1 id="page-title">Claims</h1>
         </div>`,
