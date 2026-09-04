@@ -26,29 +26,64 @@ subscriber observes current truth
 subscriber converges its local projection
 ```
 
-## Publication scopes
+## Recognition and membership vocabulary
 
 ### Subject
 
-Subject publications concern durable Guild Operations subject state and Guild Operations-owned associations or preferences.
+A **Subject** is the durable recognition coordinate Guild Operations uses to resolve the same human across sessions, characters, and optional external associations. Subject is infrastructure; it is not the guild-facing name for the human member.
 
-A subject publication is not a report of every Blizzard-observed account or character change. Controlled characters outside the guild remain valid subject observations, but they are not membership publications merely because they changed.
+### Character
 
-### Character-membership
+A **Character** is a durable WoW character object. For guild participation, a Character is either currently present on the Blizzard guild roster with a Blizzard-owned numeric rank, or it is not.
 
-Character-membership publications concern the Blizzard-observed relationship between a WoW character and the guild.
+The current Character roster is dictated by the actual in-game guild environment. Guild Operations observes and reconciles that roster; it does not manufacture Character membership.
 
-A **character-member** is a character currently observed on the guild roster. Character-membership may exist without any known Guild Operations subject controlling that character.
+### Guildie
 
-Roster observations are inputs to reconciliation. Publications are emitted only when reconciliation establishes a meaningful before/after character-membership transition such as join, leave, or rank change.
+A **Guildie** is Guild Operations' durable human guild-member representation resolved through a Subject.
 
-### Subject-membership
+Guildie continuity is non-destructive. A Guildie does not cease to exist merely because none of their controlled Characters are currently on the guild roster.
 
-Subject-membership publications concern Guild Operations' derived relationship between a subject and the guild. Current subject-membership exists while at least one character currently controlled by the subject is currently a character-member.
+Current Guildie organizational membership is derived from controlled Characters intersecting the current Character roster:
 
-A **subject-member** is therefore not a separately persisted member object. Subject-membership is derived from controlled characters intersected with current character-membership.
+```text
+controlled Characters
+        ∩
+current Blizzard Character roster
+        ↓
+current Guildie organizational membership
+```
 
-Subject-membership can change when either side of that intersection changes: Blizzard guild-roster reconciliation can change character-membership, and subject character-control reconciliation can change which character-members are currently controlled. Publications should be emitted only where before/after subject-membership truth can be compared.
+A Guildie with at least one controlled Character on the current roster has a current participation surface. A Guildie with no controlled Characters on the current roster remains recognized but has no current guild participation surface or rank-derived authority.
+
+Effective Guildie rank is the highest-authority Blizzard rank among the Guildie's currently controlled roster Characters. Under the current Blizzard ordering, the lower numeric rank index has higher authority.
+
+## Publication scopes
+
+### Character publications
+
+Character publications concern meaningful changes to a Character's current Blizzard-observed guild-roster state:
+
+- `character.joined`
+- `character.left`
+- `character.rank.changed`
+
+A Character may be on the guild roster without any known Guildie controlling it.
+
+### Guildie publications
+
+Guildie publications concern meaningful Guild Operations state belonging to the human guild member, including current organizational participation state and Guild Operations-owned associations or preferences:
+
+- `guildie.joined`
+- `guildie.left`
+- `guildie.rank.changed`
+- `guildie.discord.linked`
+- `guildie.discord.unlinked`
+- `guildie.main.changed`
+
+`guildie.joined` and `guildie.left` are not object-creation or closeout states. They mean that the Guildie respectively acquired or lost a current participation surface because the controlled-Character intersection with the Character roster crossed between zero and at least one.
+
+Guildie state can change when either side of that intersection changes. Blizzard roster reconciliation can change Character state, while Blizzard account reconciliation can change which Characters are currently controlled by the Subject.
 
 ### Guild
 
@@ -68,4 +103,4 @@ Guild publications concern meaningful changes to the guild object or its authori
 
 A publication may include an affected coordinate that no longer appears in current state when a subscriber needs it to reconcile a projection.
 
-`subject.discord.unlinked`, for example, carries the removed Discord user ID. Querying the subject after unlink correctly returns no Discord association, but the subscriber still needs the old Discord coordinate to remove any stale Discord-side projection.
+`guildie.discord.unlinked`, for example, carries the removed Discord user ID. Querying the Guildie after unlink correctly returns no Discord association, but the subscriber still needs the old Discord coordinate to remove any stale Discord-side projection.

@@ -35,19 +35,19 @@ function coordinateKey(character: GuildCharacterCoordinate): string {
   return `${character.region}:${character.realmId}:${character.characterId}`;
 }
 
-type CharacterMembershipState = GuildCharacterCoordinate & {
+type CharacterRosterState = GuildCharacterCoordinate & {
   rankIndex: number;
   characterName: string;
   realmName: string | null;
   realmSlug: string | null;
 };
 
-type SubjectMembershipState = {
+type GuildieRosterState = {
   subjectId: string;
   rankIndex: number;
 };
 
-async function characterMembershipState(client: PoolClient, guildId: string): Promise<Map<string, CharacterMembershipState>> {
+async function characterRosterState(client: PoolClient, guildId: string): Promise<Map<string, CharacterRosterState>> {
   const result = await client.query<{
     region: Region;
     realm_id: string;
@@ -65,7 +65,7 @@ async function characterMembershipState(client: PoolClient, guildId: string): Pr
   );
 
   return new Map(result.rows.map((row) => {
-    const state: CharacterMembershipState = {
+    const state: CharacterRosterState = {
       region: row.region,
       realmId: row.realm_id,
       characterId: row.character_id,
@@ -78,7 +78,7 @@ async function characterMembershipState(client: PoolClient, guildId: string): Pr
   }));
 }
 
-async function subjectMembershipState(client: PoolClient, guildId: string): Promise<Map<string, SubjectMembershipState>> {
+async function guildieRosterState(client: PoolClient, guildId: string): Promise<Map<string, GuildieRosterState>> {
   const result = await client.query<{ subject_id: string; rank_index: number }>(
     `SELECT c.subject_id, MIN(grm.rank_index)::integer AS rank_index
        FROM characters c
@@ -101,10 +101,10 @@ async function subjectMembershipState(client: PoolClient, guildId: string): Prom
 
 function reconciliationPublications(
   guildId: string,
-  beforeCharacters: Map<string, CharacterMembershipState>,
-  afterCharacters: Map<string, CharacterMembershipState>,
-  beforeSubjects: Map<string, SubjectMembershipState>,
-  afterSubjects: Map<string, SubjectMembershipState>,
+  beforeCharacters: Map<string, CharacterRosterState>,
+  afterCharacters: Map<string, CharacterRosterState>,
+  beforeGuildies: Map<string, GuildieRosterState>,
+  afterGuildies: Map<string, GuildieRosterState>,
 ): PublishedEvent[] {
   const publications: PublishedEvent[] = [];
 
@@ -112,7 +112,7 @@ function reconciliationPublications(
     const before = beforeCharacters.get(key);
     if (!before) {
       publications.push({
-        kind: "character-member.joined",
+        kind: "character.joined",
         guildId,
         region: after.region,
         realmId: after.realmId,
@@ -123,7 +123,7 @@ function reconciliationPublications(
 
     if (before.rankIndex !== after.rankIndex) {
       publications.push({
-        kind: "character-member.rank.changed",
+        kind: "character.rank.changed",
         guildId,
         region: after.region,
         realmId: after.realmId,
@@ -135,7 +135,7 @@ function reconciliationPublications(
   for (const [key, before] of beforeCharacters) {
     if (!afterCharacters.has(key)) {
       publications.push({
-        kind: "character-member.left",
+        kind: "character.left",
         guildId,
         region: before.region,
         realmId: before.realmId,
@@ -144,18 +144,18 @@ function reconciliationPublications(
     }
   }
 
-  for (const [subjectId, after] of afterSubjects) {
-    const before = beforeSubjects.get(subjectId);
+  for (const [subjectId, after] of afterGuildies) {
+    const before = beforeGuildies.get(subjectId);
     if (!before) {
-      publications.push({ kind: "subject-member.joined", subjectId, guildId });
+      publications.push({ kind: "guildie.joined", subjectId, guildId });
     } else if (before.rankIndex !== after.rankIndex) {
-      publications.push({ kind: "subject-member.rank.changed", subjectId, guildId });
+      publications.push({ kind: "guildie.rank.changed", subjectId, guildId });
     }
   }
 
-  for (const subjectId of beforeSubjects.keys()) {
-    if (!afterSubjects.has(subjectId)) {
-      publications.push({ kind: "subject-member.left", subjectId, guildId });
+  for (const subjectId of beforeGuildies.keys()) {
+    if (!afterGuildies.has(subjectId)) {
+      publications.push({ kind: "guildie.left", subjectId, guildId });
     }
   }
 
@@ -282,12 +282,12 @@ export async function refreshGuildAuthority(): Promise<{
 
   const persisted = await withTransaction(async (client) => {
     const guildId = await persistGuild(client, config.guild.region, authority.profile);
-    const beforeCharacters = await characterMembershipState(client, guildId);
-    const beforeSubjects = await subjectMembershipState(client, guildId);
+    const beforeCharacters = await characterRosterState(client, guildId);
+    const beforeGuildies = await guildieRosterState(client, guildId);
     const roster = await persistRoster(client, guildId, config.guild.region, authority.roster);
-    const afterCharacters = await characterMembershipState(client, guildId);
-    const afterSubjects = await subjectMembershipState(client, guildId);
-    const publications = reconciliationPublications(guildId, beforeCharacters, afterCharacters, beforeSubjects, afterSubjects);
+    const afterCharacters = await characterRosterState(client, guildId);
+    const afterGuildies = await guildieRosterState(client, guildId);
+    const publications = reconciliationPublications(guildId, beforeCharacters, afterCharacters, beforeGuildies, afterGuildies);
     return { guildId, roster, publications };
   });
 
@@ -340,7 +340,6 @@ export async function guildCharactersForSubject(subjectId: string): Promise<Arra
     guildId: row.guild_id, characterId: row.character_id, realmId: row.realm_id,
     name: row.character_name, realmName: row.realm_name, rankIndex: row.rank_index,
     level: row.level, className: row.class_name, raceName: row.race_name,
-    activeSpecName: row.active_spec_name, avatarUrl: row.avatar_url,
-    insetUrl: row.inset_url, mainUrl: row.main_url,
+    activeSpecName: row.active_spec_name, avatarUrl: row.avatar_url, insetUrl: row.inset_url, mainUrl: row.main_url,
   }));
 }

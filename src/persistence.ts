@@ -55,7 +55,7 @@ async function resolveOrCreateSubject(
   return subjectId;
 }
 
-async function effectiveSubjectMembershipRank(
+async function effectiveGuildieRank(
   client: PoolClient,
   subjectId: string,
 ): Promise<number | null> {
@@ -75,19 +75,19 @@ async function effectiveSubjectMembershipRank(
   return result.rows[0]?.rank_index ?? null;
 }
 
-function subjectMembershipPublication(
+function guildiePublication(
   subjectId: string,
   beforeRank: number | null,
   afterRank: number | null,
 ): PublishedEvent | null {
   if (beforeRank === null && afterRank !== null) {
-    return { kind: "subject-member.joined", subjectId, guildId: config.guild.id };
+    return { kind: "guildie.joined", subjectId, guildId: config.guild.id };
   }
   if (beforeRank !== null && afterRank === null) {
-    return { kind: "subject-member.left", subjectId, guildId: config.guild.id };
+    return { kind: "guildie.left", subjectId, guildId: config.guild.id };
   }
   if (beforeRank !== null && afterRank !== null && beforeRank !== afterRank) {
-    return { kind: "subject-member.rank.changed", subjectId, guildId: config.guild.id };
+    return { kind: "guildie.rank.changed", subjectId, guildId: config.guild.id };
   }
   return null;
 }
@@ -99,7 +99,7 @@ export async function establishOrResolveSubject(input: {
 }): Promise<string> {
   const established = await withTransaction(async (client) => {
     const subjectId = await resolveOrCreateSubject(client, input.region, input.principalId);
-    const beforeMembershipRank = await effectiveSubjectMembershipRank(client, subjectId);
+    const beforeGuildieRank = await effectiveGuildieRank(client, subjectId);
 
     // Preserve every previously observed character, but make the latest successful
     // Blizzard profile observation authoritative for current control.
@@ -160,8 +160,8 @@ export async function establishOrResolveSubject(input: {
       }
     }
 
-    const afterMembershipRank = await effectiveSubjectMembershipRank(client, subjectId);
-    const publication = subjectMembershipPublication(subjectId, beforeMembershipRank, afterMembershipRank);
+    const afterGuildieRank = await effectiveGuildieRank(client, subjectId);
+    const publication = guildiePublication(subjectId, beforeGuildieRank, afterGuildieRank);
 
     await client.query("UPDATE guild_subjects SET updated_at = now() WHERE subject_id = $1", [subjectId]);
     return { subjectId, publication };
