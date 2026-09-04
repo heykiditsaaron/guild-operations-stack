@@ -8,6 +8,15 @@ function raffleCountdownText(secondsRemaining) {
   return days > 0 ? `${days}d ${clock}` : clock;
 }
 
+function closeHomeRafflePromotion(element) {
+  const promotion = element.closest("[data-home-raffle-promo]");
+  if (!(promotion instanceof HTMLAnchorElement)) return;
+
+  promotion.href = "/events/raffle";
+  const label = promotion.querySelector("[data-home-raffle-cta-label]");
+  if (label instanceof HTMLElement) label.textContent = "Entries closed · View raffle";
+}
+
 function refreshRaffleCountdown(element) {
   const cutoffUnix = Number(element.dataset.raffleCutoffUnix || "0");
   if (!Number.isFinite(cutoffUnix) || cutoffUnix <= 0) return false;
@@ -22,6 +31,7 @@ function refreshRaffleCountdown(element) {
     if (block instanceof HTMLElement) block.dataset.raffleClosed = "true";
     if (caption instanceof HTMLElement) caption.textContent = "Awaiting the officer-run drawing";
     if (entryAction instanceof HTMLElement) entryAction.hidden = true;
+    closeHomeRafflePromotion(element);
     return true;
   }
 
