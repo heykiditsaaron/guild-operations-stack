@@ -281,6 +281,58 @@ These activities may be synchronous or asynchronous. The system should allow the
 
 Guild Operations preserves, enables, and enriches community participation. It does not replace the human and social processes that give that participation meaning.
 
+## Guild Events
+
+A **guild event** is the internal domain representation of a guild-operated ceremony. Member-facing presentation should normally call these simply **Events**; the `guild_event` vocabulary exists to distinguish this domain concept from technical events used by system machinery.
+
+Guild Event Modules remain responsible for their own ceremony procedures. Raffle, Hidden in Plain Sight, fashion shows, awards, and other future ceremonies are not forced through a generic event procedure merely because they can all be discovered together.
+
+A Guild Event Module has one additional responsibility: it registers the metadata necessary for its ceremony to be discovered and represented outside the module.
+
+The required discovery metadata is deliberately small:
+
+```text
+guild_event_id
+    → which specific ceremony occurrence is this?
+
+guild_event_kind
+    → which ceremony/module class owns it?
+
+guild_event_occurs_at
+    → where does it exist in time?
+```
+
+`guild_event_occurs_at` follows the repository's Unix time persistence rule. One Unix value represents an instant; two Unix values represent a range from start to end.
+
+Modules may additionally register optional consumable metadata for richer projections. The owning module determines what information about itself is useful to expose. A projection may consume the metadata appropriate to its surface without requiring every Guild Event Module to satisfy a large universal presentation schema.
+
+Conceptually:
+
+```text
+Guild Event Module
+├── owns its ceremony procedure
+├── MUST register discovery identity
+│   ├── guild_event_id
+│   ├── guild_event_kind
+│   └── guild_event_occurs_at
+└── MAY register richer consumable metadata
+
+Guild Event Projection
+├── discovers registered guild events
+├── organizes them
+└── presents the metadata useful to its surface
+```
+
+The module is authoritative for both its procedure and its discovery declaration. The projection does not create, schedule, operate, judge, or otherwise own the ceremony. It asks, effectively, **"What's happening around here?"** while independently operated modules answer **"I'm happening around here."**
+
+This is therefore discovery and projection machinery, not a generic event engine.
+
+Guild Event organization should have **calendar semantics without requiring calendar presentation**. Time is the common coordinate by which independently meaningful ceremonies can be ordered, grouped, recognized as current or upcoming, and displayed together. A member-facing `/events` surface may therefore behave like a calendar while presenting guild-specific cards, sections, imagery, and participation routes instead of a conventional calendar grid.
+
+In short:
+
+> Guild Event Modules declare themselves. Guild Event projections discover, organize, and represent those declarations.
+
 ## Model maturity and feature pressure
 
 The foundational model is now sufficient to support concrete member-facing work. It establishes:
