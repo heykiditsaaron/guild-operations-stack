@@ -54,8 +54,14 @@ function variablesForEvent(event: PublishedEvent): BotGhostVariable[] {
   return variables;
 }
 
+function botGhostWebhookFor(event: PublishedEvent): string | undefined {
+  if (event.kind.startsWith("guildie.")) return process.env.BOTGHOST_GUILDIE_WEBHOOK_URL;
+  if (event.kind.startsWith("character.")) return process.env.BOTGHOST_CHARACTER_WEBHOOK_URL;
+  return undefined;
+}
+
 export async function publishEvent(event: PublishedEvent): Promise<void> {
-  const webhookUrl = process.env.BOTGHOST_EVENTS_WEBHOOK_URL;
+  const webhookUrl = botGhostWebhookFor(event);
   const apiKey = process.env.BOTGHOST_API_KEY;
 
   if (!webhookUrl || !apiKey) {
