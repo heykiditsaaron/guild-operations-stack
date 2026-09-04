@@ -32,6 +32,8 @@ export type RaffleRound = {
   winnerPercentage: number | null;
   createdBySubjectId: string;
   createdAt: Date;
+  updatedBySubjectId: string | null;
+  updatedAt: Date | null;
   liveBySubjectId: string | null;
   liveAt: Date | null;
   concludedBySubjectId: string | null;
@@ -140,6 +142,8 @@ function mapRound(row: Record<string, unknown>): RaffleRound {
     winnerPercentage: row.winner_percentage === null ? null : Number(row.winner_percentage),
     createdBySubjectId: String(row.created_by_subject_id),
     createdAt: row.created_at as Date,
+    updatedBySubjectId: row.updated_by_subject_id === null || row.updated_by_subject_id === undefined ? null : String(row.updated_by_subject_id),
+    updatedAt: row.updated_at as Date | null,
     liveBySubjectId: row.live_by_subject_id === null ? null : String(row.live_by_subject_id),
     liveAt: row.live_at as Date | null,
     concludedBySubjectId: row.concluded_by_subject_id === null ? null : String(row.concluded_by_subject_id),
@@ -241,10 +245,12 @@ export async function updateRaffleRound(
           SET drawing_at_unix = $2,
               ticket_price_gold = $3,
               prize_kind = $4,
-              winner_percentage = $5
+              winner_percentage = $5,
+              updated_by_subject_id = $6,
+              updated_at = now()
         WHERE round_id = $1
         RETURNING *`,
-      [roundId, terms.drawingAtUnix, String(terms.ticketPriceGold), terms.prizeKind, terms.winnerPercentage],
+      [roundId, terms.drawingAtUnix, String(terms.ticketPriceGold), terms.prizeKind, terms.winnerPercentage, actorSubjectId],
     );
     return mapRound(result.rows[0] as Record<string, unknown>);
   });
