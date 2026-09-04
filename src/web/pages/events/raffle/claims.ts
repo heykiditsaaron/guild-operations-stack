@@ -63,7 +63,10 @@ export async function registerRaffleClaimsPage(app: FastifyInstance, assets: Ass
     } else {
       const claims = await raffleClaimsForMember(subject.subjectId, liveRaffle.roundId);
       body = `<section class="raffle-workspace" aria-labelledby="raffle-claims-title">
-        <h2 id="raffle-claims-title">Your claims</h2>
+        <div class="raffle-claims-toolbar">
+          <h2 id="raffle-claims-title">Your claims</h2>
+          <a class="raffle-action raffle-action-secondary raffle-claims-new" href="/events/raffle/enter">Enter new claim</a>
+        </div>
         ${claimsList(claims)}
       </section>`;
     }
