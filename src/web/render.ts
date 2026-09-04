@@ -207,6 +207,9 @@ function renderMainPicker(viewer: WebViewer): string {
 
 function renderActionBar(viewer: WebViewer, pathname: string): string {
   const homeActive = pathname === "/" ? ' aria-current="page"' : "";
+  const eventsActive = pathname === "/events" || pathname.startsWith("/events/")
+    ? ' aria-current="page"'
+    : "";
 
   return `<nav class="action-bar" aria-label="Primary navigation">
     <div class="action-bar-inner">
@@ -216,10 +219,12 @@ function renderActionBar(viewer: WebViewer, pathname: string): string {
         </summary>
         <div class="menu-panel menu-panel-left mobile-nav-panel">
           <a href="/"${homeActive}>Home</a>
+          <a href="/events"${eventsActive}>Events</a>
         </div>
       </details>
       <div class="desktop-nav">
         <a href="/"${homeActive}>Home</a>
+        <a href="/events"${eventsActive}>Events</a>
       </div>
       <div class="action-bar-spacer"></div>
       ${renderMeControl(viewer, pathname)}
