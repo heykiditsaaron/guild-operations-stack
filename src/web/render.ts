@@ -44,6 +44,20 @@ export type WebViewer =
       } | null;
     };
 
+export type SecondaryNavigation =
+  | {
+      kind: "back";
+      label: string;
+      href: string;
+    }
+  | {
+      kind: "breadcrumb";
+      items: readonly {
+        label: string;
+        href?: string;
+      }[];
+    };
+
 export type RenderPageInput = {
   pathname: string;
   title: string;
@@ -51,6 +65,7 @@ export type RenderPageInput = {
   header: string;
   body: string;
   viewer: WebViewer;
+  secondaryNavigation?: SecondaryNavigation;
   stylesheets?: AssetName[];
   scripts?: AssetName[];
 };
@@ -232,6 +247,28 @@ function renderActionBar(viewer: WebViewer, pathname: string): string {
   </nav>`;
 }
 
+function renderSecondaryNavigation(navigation: SecondaryNavigation | undefined): string {
+  if (!navigation) return "";
+
+  if (navigation.kind === "back") {
+    return `<nav class="secondary-navigation secondary-navigation-back" aria-label="Secondary navigation">
+      <a href="${escapeHtml(navigation.href)}">← ${escapeHtml(navigation.label)}</a>
+    </nav>`;
+  }
+
+  if (navigation.items.length === 0) return "";
+  const items = navigation.items.map((item, index) => {
+    const terminal = index === navigation.items.length - 1;
+    const label = escapeHtml(item.label);
+    const content = item.href && !terminal
+      ? `<a href="${escapeHtml(item.href)}">${label}</a>`
+      : `<span${terminal ? ' aria-current="page"' : ""}>${label}</span>`;
+    return `${index > 0 ? '<span class="secondary-navigation-separator" aria-hidden="true">›</span>' : ""}${content}`;
+  }).join("");
+
+  return `<nav class="secondary-navigation secondary-navigation-breadcrumb" aria-label="Breadcrumb">${items}</nav>`;
+}
+
 export function renderPage(assets: AssetRegistry, input: RenderPageInput): string {
   const title = escapeHtml(input.title);
   const description = escapeHtml(input.description ?? "OH CRIT I Pulled! Guild Operations");
@@ -242,6 +279,7 @@ export function renderPage(assets: AssetRegistry, input: RenderPageInput): strin
   const scripts = (input.scripts ?? [])
     .map((name) => `  <script src="${assetUrl(assets, name)}" defer></script>`)
     .join("\n");
+  const secondaryNavigation = renderSecondaryNavigation(input.secondaryNavigation);
 
   return `<!doctype html>
 <html lang="en">
@@ -257,7 +295,8 @@ ${stylesheets ? `${stylesheets}\n` : ""}  <title>${title}</title>
 <body>
   <div class="app-shell">
     ${renderActionBar(input.viewer, input.pathname)}
-    <header class="page-header">${input.header}</header>
+    ${secondaryNavigation ? `<div class="secondary-navigation-zone">${secondaryNavigation}</div>` : ""}
+    <header class="page-header${secondaryNavigation ? " page-header-after-secondary-navigation" : ""}">${input.header}</header>
     <main class="app-main">${input.body}</main>
     <footer class="app-footer">OH CRIT I Pulled! Guild Operations</footer>
   </div>
