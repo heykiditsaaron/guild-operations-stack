@@ -70,8 +70,14 @@ function activeRaffleBody(round: ActiveRaffleRoundOverview, assets: AssetRegistr
       </div>
 
       <nav class="raffle-reference-links" aria-label="Raffle information">
-        <a class="raffle-reference-link" href="/events/raffle/history"><span>Previous Raffles</span><span aria-hidden="true">→</span></a>
-        <a class="raffle-reference-link" href="/events/raffle/rules"><span>Rules and Regulations</span><span aria-hidden="true">→</span></a>
+        <a class="raffle-reference-link" href="/events/raffle/history">
+          <span class="raffle-reference-title">Previous Raffles</span>
+          <span class="raffle-reference-arrow" aria-hidden="true">→</span>
+        </a>
+        <a class="raffle-reference-link" href="/events/raffle/rules">
+          <span class="raffle-reference-title">Rules and Regulations</span>
+          <span class="raffle-reference-arrow" aria-hidden="true">→</span>
+        </a>
       </nav>
     </div>`;
 }
