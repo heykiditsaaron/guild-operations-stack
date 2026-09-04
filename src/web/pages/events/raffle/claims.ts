@@ -13,8 +13,12 @@ function localTime(date: Date): string {
 }
 
 function claimResolution(claim: RaffleMemberClaim): string {
-  if (claim.resolutionKind === "approved") return "Approved · chances established";
-  if (claim.resolutionKind === "denied") return "Denied";
+  if (claim.resolutionKind === "approved") {
+    return claim.resolutionActorLabel ? `Approved by ${claim.resolutionActorLabel}` : "Approved";
+  }
+  if (claim.resolutionKind === "denied") {
+    return claim.resolutionActorLabel ? `Denied by ${claim.resolutionActorLabel}` : "Denied";
+  }
   if (claim.resolutionKind === "cancelled") return "Cancelled";
   return "Awaiting attendant review";
 }
@@ -24,18 +28,24 @@ function claimsList(claims: RaffleMemberClaim[]): string {
     return `<p class="raffle-status-copy">You have not submitted a claim for this raffle.</p>`;
   }
 
-  return `<ol class="raffle-claims-list">
-    ${claims.map((claim) => `
-      <li class="raffle-claim-item">
-        <div class="raffle-claim-heading">
-          <strong>${htmlText(claim.characterName)} · ${claim.requestedTicketCount} ${claim.requestedTicketCount === 1 ? "ticket" : "tickets"}</strong>
-          <span class="raffle-claim-state">${htmlText(claimResolution(claim))}</span>
-        </div>
-        <p class="raffle-claim-meta">Promised deposit: ${htmlText(claim.promisedGoldValue)} gold · ${localTime(claim.createdAt)}</p>
-        ${claim.denialReason ? `<p class="raffle-claim-reason">Reason: ${htmlText(claim.denialReason)}</p>` : ""}
-        ${claim.resolutionKind === null ? `<button class="raffle-claim-cancel" type="button" data-cancel-raffle-claim="${htmlText(claim.claimId)}">Cancel claim</button>` : ""}
-      </li>`).join("\n")}
-  </ol>`;
+  return `<>
+    <div class="raffle-claim-submitted" role="status">
+      <strong>Claim submitted</strong>
+      <span>Your raffle claim has been recorded. Its status will update here after an attendant reviews it.</span>
+    </div>
+    <ol class="raffle-claims-list">
+      ${claims.map((claim) => `
+        <li class="raffle-claim-item">
+          <div class="raffle-claim-heading">
+            <strong>${htmlText(claim.characterName)} · ${claim.requestedTicketCount} ${claim.requestedTicketCount === 1 ? "ticket" : "tickets"}</strong>
+            <span class="raffle-claim-state">${htmlText(claimResolution(claim))}</span>
+          </div>
+          <p class="raffle-claim-meta">Promised deposit: ${htmlText(claim.promisedGoldValue)} gold · ${localTime(claim.createdAt)}</p>
+          ${claim.denialReason ? `<p class="raffle-claim-reason">Reason: ${htmlText(claim.denialReason)}</p>` : ""}
+          ${claim.resolutionKind === null ? `<button class="raffle-claim-cancel" type="button" data-cancel-raffle-claim="${htmlText(claim.claimId)}">Cancel claim</button>` : ""}
+        </li>`).join("\n")}
+    </ol>
+  </>`;
 }
 
 export async function registerRaffleClaimsPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
@@ -73,9 +83,7 @@ export async function registerRaffleClaimsPage(app: FastifyInstance, assets: Ass
       scripts: ["raffle.js"],
       header: `
         <div class="raffle-page-header">
-          <nav class="raffle-context-nav" aria-label="Raffle navigation">
-            <a class="raffle-back-link" href="/events/raffle">← Back to raffle</a>
-          </nav>
+          <a class="raffle-back-link" href="/events/raffle">← Back to raffle</a>
           <p class="eyebrow">Events · Raffle</p>
           <h1 id="page-title">Claims</h1>
         </div>`,
