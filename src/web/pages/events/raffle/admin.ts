@@ -182,8 +182,8 @@ async function adminContext(sessionToken: string | undefined) {
 }
 
 export async function registerRaffleAdminPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
-  app.get("/events/raffle/admin", async (_request, reply) => reply.redirect(308, "/admin/raffle"));
-  app.get<{ Params: { roundId: string } }>("/events/raffle/admin/:roundId", async (request, reply) => reply.redirect(308, `/admin/raffle/${request.params.roundId}`));
+  app.get("/events/raffle/admin", async (_request, reply) => reply.redirect("/admin/raffle", 308));
+  app.get<{ Params: { roundId: string } }>("/events/raffle/admin/:roundId", async (request, reply) => reply.redirect(`/admin/raffle/${request.params.roundId}`, 308));
 
   app.get("/admin/raffle", async (request, reply) => {
     const { viewer, subject, authorized } = await adminContext(request.cookies[SESSION_COOKIE_NAME]);
