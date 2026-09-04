@@ -80,7 +80,7 @@ export async function selectMainCharacter(
     );
 
     await publishEvent({
-      kind: "subject.main.changed",
+      kind: "guildie.main.changed",
       subjectId,
       guildId: config.guild.id,
     });

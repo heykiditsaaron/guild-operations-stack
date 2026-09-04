@@ -212,7 +212,7 @@ export async function registerDiscordRoutes(app: FastifyInstance): Promise<void>
     const discordUserId = deleted.rows[0]?.discord_user_id;
     if (discordUserId) {
       await publishEvent({
-        kind: "subject.discord.unlinked",
+        kind: "guildie.discord.unlinked",
         subjectId: subject.subjectId,
         discordUserId,
       });
@@ -244,7 +244,7 @@ export async function registerDiscordRoutes(app: FastifyInstance): Promise<void>
       if (result === "conflict") return reply.redirect(withDiscordResult(returnTo, "conflict"));
       if (result === "established") {
         await publishEvent({
-          kind: "subject.discord.linked",
+          kind: "guildie.discord.linked",
           subjectId: subject.subjectId,
           discordUserId: user.id,
         });

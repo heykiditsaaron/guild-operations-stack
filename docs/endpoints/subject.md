@@ -1,12 +1,10 @@
-# Subject Endpoints
+# Guildie and Character Query Endpoints
 
-This document is the canonical HTTP endpoint reference for Guild Operations subject machinery exposed to machine consumers.
+This document is the canonical HTTP reference for the current machine-readable Guildie and Character projections used by publication subscribers.
 
-It describes the machine-readable query contract used by subscribers after receiving subject and subject-membership publication coordinates. The cross-cutting publication model is defined in `docs/publication-model.md`. Publication catalogs live under `docs/publications/`.
+The existing route paths remain keyed through Subject and character-membership terminology for compatibility. Their semantic meaning is now expressed using the established Subject / Character / Guildie model. Route and transport naming can be migrated separately without changing the authoritative model.
 
 ## Authority class
-
-### Machine query authority
 
 The current query endpoints use a read-only machine credential configured as:
 
@@ -14,33 +12,17 @@ The current query endpoints use a read-only machine credential configured as:
 EVENT_QUERY_API_KEY=<secret>
 ```
 
-Machine requests may send either:
-
-```http
-Authorization: Bearer <EVENT_QUERY_API_KEY>
-```
-
-or the raw configured value in the `Authorization` header.
-
-The configuration name reflects the current implementation and may be refined separately; it does not make Events a domain owner of these surfaces.
+Machine requests may send either `Authorization: Bearer <EVENT_QUERY_API_KEY>` or the raw configured value in the `Authorization` header.
 
 This credential grants no Guild Operations operation authority. It exists so external subscribers that receive publication coordinates can ask Guild Operations what is authoritative now without acquiring a human session.
 
-Missing or incorrect credentials return `401 Unauthorized` with `{ "error": "invalid_machine_authority" }`.
-
-## Subject query
+## Guildie query
 
 ### GET `/events/query/subjects/:subjectId`
 
-Returns the current authoritative subject projection needed by publication subscribers.
+Returns the current Guildie projection resolved through the durable `subjectId` recognition coordinate.
 
-Authority: machine query authority.
-
-Path coordinate:
-
-- `subjectId` — canonical Guild Operations subject identifier.
-
-The `guild.membership` projection is either the subject's current derived subject-membership or `null`. When present it contains the configured guild identifier and the subject's effective current rank: the highest-authority rank among currently controlled character-members.
+The response includes the current Discord association, selected-main projection, and current organizational membership. Current organizational membership is either present with effective rank or `null`.
 
 ```json
 {
@@ -57,30 +39,19 @@ The `guild.membership` projection is either the subject's current derived subjec
 }
 ```
 
-The response is current state, not a reconstruction of the publication that caused the subscriber to query. Subject-membership is derived from currently controlled characters intersected with the current Blizzard guild roster. Capabilities are deliberately not exposed here; this projection answers current membership truth rather than granting or duplicating authorization.
+`subject_id` identifies the Guildie; it does not make the returned Guildie state Subject-owned.
 
-`discord` is either the subject's current Guild Operations Discord association or `null`. An unlink publication may carry the removed Discord coordinate even though the current query returns `null`.
+A `null` membership does not mean the Guildie was deleted or closed. It means the Guildie currently controls no Character present on the Blizzard Character roster and therefore has no current guild participation surface or rank-derived authority.
 
-`guild.main_character` remains the subject's current selected-main projection or `null`. Selection is a presentation preference, never identity or authorization.
+Effective rank is the highest-authority rank among currently controlled roster Characters.
 
-Unknown subject coordinates return `404` with `{ "error": "subject_not_found" }`. Invalid subject coordinates return `400` with `{ "error": "invalid_subject_coordinate" }`.
+`discord` is either the Guildie's current Guild Operations Discord association or `null`. `guild.main_character` is the current selected-main projection or `null`. Selected main remains presentation preference, not identity or authorization.
 
-## Character-membership query
+## Character query
 
 ### GET `/events/query/guilds/:guildId/character-members/:region/:realmId/:characterId`
 
-Returns current authoritative character-membership truth for exactly one Blizzard character coordinate. This is the follow-up query for `character-member.*` publications; it is intentionally not a whole-roster query.
-
-Authority: machine query authority.
-
-Path coordinates:
-
-- `guildId` — Guild Operations' configured Blizzard guild identifier.
-- `region` — Blizzard region (`us`, `eu`, `kr`, or `tw`).
-- `realmId` — Blizzard realm identifier.
-- `characterId` — Blizzard character identifier.
-
-Current character-member:
+Returns current authoritative roster truth for exactly one Blizzard Character coordinate. This is the follow-up query for `character.*` publications; it is intentionally not a whole-roster query.
 
 ```json
 {
@@ -98,7 +69,7 @@ Current character-member:
 }
 ```
 
-When that coordinate is not currently a character-member, the coordinate still resolves as a valid query and current membership is explicitly absent:
+When the Character is not currently on the roster, the coordinate remains a valid query and current membership is absent:
 
 ```json
 {
@@ -110,9 +81,7 @@ When that coordinate is not currently a character-member, the coordinate still r
 }
 ```
 
-That behavior is important for `character-member.left`: the publication supplies the affected coordinate, while the query establishes that the character is no longer currently present. Historical roster observations are not returned as current membership.
-
-An unsupported guild identifier returns `404` with `{ "error": "guild_not_found" }`. Malformed coordinates return `400` with `{ "error": "invalid_character_membership_coordinate" }`.
+That behavior is important for `character.left`: the publication identifies the affected Character while the query establishes current absence.
 
 ## Subscriber usage
 
@@ -128,4 +97,4 @@ observe current authoritative state
 converge local projection
 ```
 
-Delayed or out-of-order publications therefore do not require a subscriber to replay stale state. The follow-up query establishes the current answer.
+Delayed or out-of-order publications therefore do not require replaying stale state.

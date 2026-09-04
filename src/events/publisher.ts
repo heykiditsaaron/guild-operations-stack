@@ -1,28 +1,28 @@
 export type PublishedEvent =
   | {
-      kind: "subject.discord.linked";
+      kind: "guildie.discord.linked";
       subjectId: string;
       discordUserId: string;
     }
   | {
-      kind: "subject.discord.unlinked";
+      kind: "guildie.discord.unlinked";
       subjectId: string;
       discordUserId: string;
     }
   | {
-      kind: "subject.main.changed";
+      kind: "guildie.main.changed";
       subjectId: string;
       guildId: string;
     }
   | {
-      kind: "character-member.joined" | "character-member.left" | "character-member.rank.changed";
+      kind: "character.joined" | "character.left" | "character.rank.changed";
       guildId: string;
       region: string;
       realmId: string;
       characterId: string;
     }
   | {
-      kind: "subject-member.joined" | "subject-member.left" | "subject-member.rank.changed";
+      kind: "guildie.joined" | "guildie.left" | "guildie.rank.changed";
       subjectId: string;
       guildId: string;
     };
