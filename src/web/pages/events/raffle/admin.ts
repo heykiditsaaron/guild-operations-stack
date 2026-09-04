@@ -138,10 +138,13 @@ function roundList(rounds: RaffleAdministrationRound[]): string {
 
   return `<div class="raffle-overview-list">
     ${rounds.map((round) => `
-      <article class="raffle-overview-item${round.status === "live" ? " raffle-overview-item-live" : ""}">
-        <div class="raffle-overview-item-heading">
-          <h2>${round.status === "live" ? "Live raffle" : "Upcoming raffle"}</h2>
-          ${round.status === "live" ? `<span class="raffle-live-indicator"><span class="status-dot" aria-hidden="true"></span>Live</span>` : `<span class="raffle-upcoming-indicator">Upcoming</span>`}
+      <article class="raffle-overview-item raffle-overview-item-${round.status === "live" ? "live" : "upcoming"}">
+        <div class="raffle-status-banner raffle-status-banner-${round.status === "live" ? "live" : "upcoming"}">
+          <span>${round.status === "live" ? "Live" : "Upcoming"}</span>
+        </div>
+        <div class="raffle-overview-identity">
+          <h2>Raffle</h2>
+          <p>Drawing ${localTime(round.drawingAtUnix, "medium")}</p>
         </div>
         ${operationalSignal(round)}
         ${managementSignals(round)}
