@@ -73,7 +73,9 @@ export async function registerRaffleClaimsPage(app: FastifyInstance, assets: Ass
       scripts: ["raffle.js"],
       header: `
         <div class="raffle-page-header">
-          <a class="raffle-back-link" href="/events/raffle">Current raffle</a>
+          <nav class="raffle-context-nav" aria-label="Raffle navigation">
+            <a class="raffle-back-link" href="/events/raffle">← Back to raffle</a>
+          </nav>
           <p class="eyebrow">Events · Raffle</p>
           <h1 id="page-title">Claims</h1>
         </div>`,
