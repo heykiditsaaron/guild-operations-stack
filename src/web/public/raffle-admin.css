@@ -120,3 +120,85 @@
   color: #aaa69c;
   font-size: 0.9rem;
 }
+
+.raffle-edit {
+  width: min(100%, 46rem);
+}
+
+.raffle-edit .raffle-status-banner {
+  margin-bottom: 1.5rem;
+}
+
+.raffle-edit-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.raffle-edit-field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.raffle-edit-field > span {
+  color: #c9c5ba;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.raffle-edit-field input {
+  min-height: 3rem;
+  padding: 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.65rem;
+  background: #17181d;
+  color: inherit;
+}
+
+.raffle-edit-note,
+.raffle-edit-attribution,
+.raffle-edit-status {
+  margin: 0;
+  color: #aaa69c;
+  line-height: 1.55;
+}
+
+.raffle-edit-attribution {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 1.1rem;
+  font-size: 0.86rem;
+}
+
+.raffle-edit-attribution strong {
+  color: #c9c5ba;
+}
+
+.raffle-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  align-items: center;
+  margin-top: 1.4rem;
+}
+
+.raffle-edit-transition {
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(238, 201, 124, 0.18);
+}
+
+.raffle-edit-transition h2 {
+  margin: 0;
+}
+
+.raffle-edit-transition p {
+  margin: 0.55rem 0 0;
+  color: #aaa69c;
+  line-height: 1.55;
+}
+
+.raffle-edit-cancel {
+  margin-top: 2.25rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}

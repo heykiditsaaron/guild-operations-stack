@@ -47,6 +47,20 @@ function formatRaffleOverview() {
   });
 }
 
+function localDateTimeInputValue(unixSeconds) {
+  const date = new Date(unixSeconds * 1000);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function initializeRaffleEditForm(form) {
+  const drawingInput = form.querySelector("[data-raffle-admin-drawing]");
+  const drawingUnix = Number(form.dataset.drawingUnix || "0");
+  if (!(drawingInput instanceof HTMLInputElement) || !Number.isFinite(drawingUnix) || drawingUnix <= 0) return;
+  drawingInput.value = localDateTimeInputValue(drawingUnix);
+}
+
 function rafflePromiseText(form) {
   const countInput = form.querySelector("[data-raffle-ticket-count]");
   if (!(countInput instanceof HTMLInputElement)) return "";
@@ -203,9 +217,64 @@ async function createRaffleRound(form) {
   }
 }
 
+async function updateRaffleRoundForm(form) {
+  const roundId = form.dataset.roundId;
+  const drawingInput = form.querySelector("[data-raffle-admin-drawing]");
+  const priceInput = form.querySelector("[data-raffle-admin-price]");
+  const winnerInput = form.querySelector("[data-raffle-admin-winner-percentage]");
+  const status = form.querySelector("[data-raffle-admin-status]");
+  const submitButton = form.querySelector('button[type="submit"]');
+
+  if (!roundId
+      || !(drawingInput instanceof HTMLInputElement)
+      || !(priceInput instanceof HTMLInputElement)
+      || !(winnerInput instanceof HTMLInputElement)
+      || !(status instanceof HTMLElement)
+      || !(submitButton instanceof HTMLButtonElement)) return;
+
+  const drawingMilliseconds = Date.parse(drawingInput.value);
+  const ticketPrice = Number(priceInput.value);
+  const winnerPercentage = Number(winnerInput.value);
+
+  if (!Number.isFinite(drawingMilliseconds)
+      || !Number.isSafeInteger(ticketPrice) || ticketPrice <= 0
+      || !Number.isInteger(winnerPercentage) || winnerPercentage < 1 || winnerPercentage > 100) {
+    status.textContent = "Enter a drawing time, positive whole-number ticket price, and winner share from 1 to 100.";
+    return;
+  }
+
+  submitButton.disabled = true;
+  status.textContent = "Saving changes…";
+
+  try {
+    const response = await fetch(`/raffle/rounds/${encodeURIComponent(roundId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        drawing_at_unix: Math.floor(drawingMilliseconds / 1000),
+        ticket_price_gold: ticketPrice,
+        prize_kind: "gold",
+        winner_percentage: winnerPercentage,
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      status.textContent = result.message || result.error || "Unable to save raffle changes.";
+      return;
+    }
+
+    window.location.reload();
+  } catch {
+    status.textContent = "Unable to save raffle changes.";
+  } finally {
+    submitButton.disabled = false;
+  }
+}
+
 async function activateRaffleRound(button) {
   const roundId = button.dataset.activateRaffleRound;
   if (!roundId) return;
+  if (!window.confirm("Make this raffle live? Its terms will be locked and members will be able to participate.")) return;
 
   button.disabled = true;
   const originalText = button.textContent;
@@ -362,6 +431,15 @@ document.querySelectorAll("[data-raffle-admin-create]").forEach((form) => {
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     void createRaffleRound(form);
+  });
+});
+
+document.querySelectorAll("[data-raffle-admin-edit]").forEach((form) => {
+  if (!(form instanceof HTMLFormElement)) return;
+  initializeRaffleEditForm(form);
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void updateRaffleRoundForm(form);
   });
 });
 

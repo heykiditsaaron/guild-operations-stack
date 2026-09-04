@@ -219,6 +219,49 @@ function createRoundForm(): string {
   </form>`;
 }
 
+function pendingRoundEditor(round: RaffleRound, attributions: AttributionLookup): string {
+  const updated = round.updatedBySubjectId && round.updatedAt
+    ? `<span>Last edited by <strong>${actorName(round.updatedBySubjectId, attributions)}</strong> · ${eventTime(round.updatedAt)}</span>`
+    : "";
+  return `<div class="raffle-edit">
+    ${sectionRule()}
+    <div class="raffle-status-banner raffle-status-banner-upcoming"><span>Upcoming</span></div>
+    <form class="raffle-edit-form" data-raffle-admin-edit data-round-id="${htmlText(round.roundId)}" data-drawing-unix="${round.drawingAtUnix}">
+      <label class="raffle-edit-field">
+        <span>Drawing deadline</span>
+        <input data-raffle-admin-drawing type="datetime-local" required>
+      </label>
+      <label class="raffle-edit-field">
+        <span>Ticket price (gold)</span>
+        <input data-raffle-admin-price type="number" min="1" step="1" inputmode="numeric" value="${htmlText(round.ticketPriceGold)}" required>
+      </label>
+      <label class="raffle-edit-field">
+        <span>Winner share (%)</span>
+        <input data-raffle-admin-winner-percentage type="number" min="1" max="100" step="1" inputmode="numeric" value="${round.winnerPercentage ?? 50}" required>
+      </label>
+      <p class="raffle-edit-note">Claims close automatically one hour before the drawing deadline. These terms remain editable until the raffle is made live.</p>
+      <div class="raffle-edit-actions">
+        <button class="raffle-action raffle-action-primary" type="submit">Save changes</button>
+      </div>
+      <p class="raffle-edit-status" data-raffle-admin-status aria-live="polite"></p>
+    </form>
+    <div class="raffle-edit-attribution">
+      <span>Created by <strong>${actorName(round.createdBySubjectId, attributions)}</strong> · ${eventTime(round.createdAt)}</span>
+      ${updated}
+    </div>
+    <section class="raffle-edit-transition" aria-labelledby="raffle-edit-live-heading">
+      <h2 id="raffle-edit-live-heading">Ready for members?</h2>
+      <p>Making this raffle live locks its terms and opens member participation.</p>
+      <div class="raffle-edit-actions">
+        <button class="raffle-action raffle-action-primary" type="button" data-activate-raffle-round="${htmlText(round.roundId)}">Make raffle live</button>
+      </div>
+    </section>
+    <div class="raffle-edit-cancel">
+      <button class="raffle-action raffle-action-tertiary" type="button" data-cancel-raffle-round="${htmlText(round.roundId)}">Cancel raffle</button>
+    </div>
+  </div>`;
+}
+
 function effectiveClaimStatus(claim: RaffleClaim, round: RaffleRound): string {
   if (claim.resolutionKind === "approved") return round.status === "admin_cancelled" ? "Approved · raffle later cancelled" : "Approved";
   if (claim.resolutionKind === "denied") return "Denied";
@@ -313,6 +356,19 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
         claim.cancelledBySubjectId,
       ]),
     ]);
+
+    if (round.status === "created") {
+      const html = renderPage(assets, {
+        pathname,
+        title: "Edit Raffle · OH CRIT I Pulled! Guild Operations",
+        description: "Configure an upcoming guild raffle before it becomes live.",
+        viewer,
+        header: `<div class="home-header-copy">${adminBreadcrumb(round)}<h1 id="page-title">Edit raffle</h1></div>`,
+        body: `${pendingRoundEditor(round, attributions)}<script src="${assetUrl(assets, "raffle.js")}" defer></script>`,
+      });
+      return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
+    }
+
     const metrics = claimMetrics(claims);
     const terminal = round.status === "drawn" || round.status === "admin_cancelled" || round.status === "no_entry_cancelled";
     const drawControl = round.status === "live"
@@ -323,7 +379,7 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
     const viewPublic = round.status === "live"
       ? `<a href="/events/raffle" style="display: inline-flex; min-height: 2.6rem; align-items: center; padding: 0.6rem 0.85rem; border: 1px solid rgba(255,255,255,0.12); border-radius: 0.65rem; color: #c9c5ba; text-decoration: none;">View public raffle ↗</a>`
       : "";
-    const controls = terminal ? "" : `<div style="display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: center; margin-top: 1.25rem;">${round.status === "created" ? `<button type="button" data-activate-raffle-round="${htmlText(round.roundId)}" style="min-height: 2.6rem; padding: 0.6rem 0.85rem; border: 1px solid rgba(232,201,134,0.35); border-radius: 0.65rem; background: rgba(232,201,134,0.08); color: #e8c986; font-weight: 700;">Make raffle live</button>` : ""}${drawControl}${viewPublic}<button type="button" data-cancel-raffle-round="${htmlText(round.roundId)}" style="min-height: 2.6rem; padding: 0.6rem 0.85rem; border: 1px solid rgba(255,255,255,0.14); border-radius: 0.65rem; background: rgba(255,255,255,0.035); color: #d8d4ca;">Cancel raffle</button></div>`;
+    const controls = terminal ? "" : `<div style="display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: center; margin-top: 1.25rem;">${drawControl}${viewPublic}<button type="button" data-cancel-raffle-round="${htmlText(round.roundId)}" style="min-height: 2.6rem; padding: 0.6rem 0.85rem; border: 1px solid rgba(255,255,255,0.14); border-radius: 0.65rem; background: rgba(255,255,255,0.035); color: #d8d4ca;">Cancel raffle</button></div>`;
     const html = renderPage(assets, {
       pathname, title: "Raffle Administration · OH CRIT I Pulled! Guild Operations", description: "Review and operate a guild raffle.", viewer,
       header: `<div class="home-header-copy">${adminBreadcrumb(round)}<h1 id="page-title">Raffle management</h1><p class="lede">Drawing deadline: ${localTime(round.drawingAtUnix, "medium")}</p></div>`,
