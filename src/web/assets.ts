@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import type { FastifyInstance } from "fastify";
 import { config } from "../config.js";
 
-type AssetName =
+export type AssetName =
   | "app.css"
   | "app.js"
   | "navigation-shelves.css"
