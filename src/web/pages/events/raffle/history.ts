@@ -1,8 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../../../auth.js";
 import { raffleHistory, type RaffleHistoryRound } from "../../../../raffle/history-view.js";
-import { htmlText, renderPage } from "../../../render.js";
 import type { AssetRegistry } from "../../../assets.js";
+import { htmlText, renderPage } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
 
 function localTime(date: Date): string {
@@ -34,33 +34,34 @@ function historicalValues(round: RaffleHistoryRound): { entries: number; pot: bi
   return { entries, pot, prize };
 }
 
+function historyFact(label: string, value: string): string {
+  return `<div class="raffle-history-fact"><dt>${htmlText(label)}</dt><dd>${value}</dd></div>`;
+}
+
 function historyEntry(round: RaffleHistoryRound): string {
   const { entries, pot, prize } = historicalValues(round);
   const concluded = round.concludedAt ? localTime(round.concludedAt) : "Unknown";
   const winner = round.status === "drawn" && round.winnerCharacterName
-    ? `<dt style="color: #aaa69c;">Winner</dt><dd style="margin: 0; font-weight: 700;">${htmlText(round.winnerCharacterName)}</dd>`
+    ? historyFact("Winner", htmlText(round.winnerCharacterName))
     : "";
   const prizeRow = prize !== null
-    ? `<dt style="color: #aaa69c;">Prize</dt><dd style="margin: 0; font-weight: 700;">${formatGold(prize)} gold</dd>`
+    ? historyFact("Prize", `${formatGold(prize)} gold`)
     : "";
   const potLabel = round.status === "drawn" ? "Final pot" : "Confirmed gold at closure";
   const entryLabel = round.status === "drawn" ? "Final entries" : "Approved tickets at closure";
 
   return `
-    <li style="padding: 1.5rem 0 1.75rem; border-bottom: 1px solid rgba(238,201,124,0.18);">
-      <div style="display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; flex-wrap: wrap; margin-bottom: 1.25rem;">
-        <strong style="font-size: 1.2rem;">${htmlText(statusLabel(round.status))}</strong>
-        <span style="color: #aaa69c; font-size: 0.9rem;">${concluded}</span>
+    <li class="raffle-history-item">
+      <div class="raffle-history-heading">
+        <strong>${htmlText(statusLabel(round.status))}</strong>
+        <span>${concluded}</span>
       </div>
-      <dl style="display: grid; grid-template-columns: minmax(9rem, 0.9fr) minmax(0, 1.1fr); gap: 0.7rem 1.25rem; margin: 0;">
+      <dl class="raffle-history-facts">
         ${winner}
-        <dt style="color: #aaa69c;">${entryLabel}</dt>
-        <dd style="margin: 0; font-weight: 700;">${entries.toLocaleString("en-US")}</dd>
-        <dt style="color: #aaa69c;">${potLabel}</dt>
-        <dd style="margin: 0; font-weight: 700;">${formatGold(pot)} gold</dd>
+        ${historyFact(entryLabel, entries.toLocaleString("en-US"))}
+        ${historyFact(potLabel, `${formatGold(pot)} gold`)}
         ${prizeRow}
-        <dt style="color: #aaa69c;">Ticket price</dt>
-        <dd style="margin: 0; font-weight: 700;">${formatGold(round.ticketPriceGold)} gold</dd>
+        ${historyFact("Ticket price", `${formatGold(round.ticketPriceGold)} gold`)}
       </dl>
     </li>`;
 }
@@ -68,18 +69,18 @@ function historyEntry(round: RaffleHistoryRound): string {
 function historyBody(rounds: RaffleHistoryRound[]): string {
   if (rounds.length === 0) {
     return `
-      <div style="width: min(100%, 46rem); border-top: 1px solid rgba(238,201,124,0.18); padding-top: 2rem;">
-        <h2>No completed raffles yet.</h2>
-        <p class="lede">Concluded and cancelled raffle rounds will be preserved here.</p>
-      </div>`;
+      <section class="raffle-reference-page raffle-reference-empty" aria-labelledby="raffle-history-empty-title">
+        <h2 id="raffle-history-empty-title">No previous raffles yet.</h2>
+        <p>Completed and cancelled raffle rounds will be preserved here.</p>
+      </section>`;
   }
 
   return `
-    <div style="width: min(100%, 46rem);">
-      <ol style="list-style: none; margin: 0; padding: 0; border-top: 1px solid rgba(238,201,124,0.18);">
+    <section class="raffle-reference-page" aria-label="Previous raffle rounds">
+      <ol class="raffle-history-list">
         ${rounds.map(historyEntry).join("\n")}
       </ol>
-    </div>`;
+    </section>`;
 }
 
 export async function registerRaffleHistoryPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
@@ -92,17 +93,18 @@ export async function registerRaffleHistoryPage(app: FastifyInstance, assets: As
 
     const html = renderPage(assets, {
       pathname: "/events/raffle/history",
-      title: "Raffle History · OH CRIT I Pulled! Guild Operations",
+      title: "Previous Raffles · OH CRIT I Pulled! Guild Operations",
       description: "Completed OH CRIT I Pulled! guild raffle rounds.",
       viewer,
+      stylesheets: ["raffle.css"],
       header: `
-        <div style="margin-top: calc(-1 * clamp(2rem, 8vw, 5.5rem)); margin-bottom: clamp(2rem, 6vw, 3rem); font-size: 0.88rem;">
-          <a href="/events/raffle" style="color: #c9c5ba;">Current raffle</a>
-        </div>
-        <div class="home-header-copy">
+        <div class="raffle-page-header">
+          <nav class="raffle-context-nav" aria-label="Raffle navigation">
+            <a class="raffle-back-link" href="/events/raffle">← Back to raffle</a>
+          </nav>
           <p class="eyebrow">Events · Raffle</p>
-          <h1 id="page-title">Raffle History</h1>
-          <p class="lede">The preserved ledger of completed and cancelled guild raffle rounds.</p>
+          <h1 id="page-title">Previous Raffles</h1>
+          <p class="lede">Completed and cancelled raffles, preserved as guild history.</p>
         </div>`,
       body: historyBody(rounds),
     });
