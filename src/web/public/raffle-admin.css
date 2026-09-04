@@ -129,11 +129,14 @@
 
 .raffle-edit,
 .raffle-management,
-.raffle-admin-message {
+.raffle-admin-message,
+.raffle-live-page,
+.raffle-live-workspace {
   width: min(100%, 46rem);
 }
 
-.raffle-edit .raffle-status-banner {
+.raffle-edit .raffle-status-banner,
+.raffle-live-workspace .raffle-status-banner {
   margin-bottom: 1.5rem;
 }
 
@@ -232,7 +235,8 @@
   border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
 
-.raffle-facts {
+.raffle-facts,
+.raffle-live-facts {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 0.55rem 1rem;
@@ -240,8 +244,13 @@
   color: #c9c5ba;
 }
 
-.raffle-facts dd {
+.raffle-facts dd,
+.raffle-live-facts dd {
   margin: 0;
+}
+
+.raffle-live-facts dt {
+  color: #8e8a81;
 }
 
 .raffle-action-success {
@@ -360,4 +369,72 @@
 .raffle-claim-denial-field > span {
   color: #c9c5ba;
   font-size: 0.9rem;
+}
+
+.raffle-live-workspace {
+  margin-top: 1.5rem;
+}
+
+.raffle-live-section {
+  padding: 2rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.raffle-live-section:first-of-type {
+  border-top: 0;
+}
+
+.raffle-live-section h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.raffle-live-section > p,
+.raffle-live-section-heading p,
+.raffle-live-actions > p,
+.raffle-live-attribution {
+  color: #aaa69c;
+  line-height: 1.55;
+}
+
+.raffle-live-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.raffle-live-section-heading p {
+  margin: 0.45rem 0 0;
+}
+
+.raffle-live-count {
+  min-width: 2rem;
+  height: 2rem;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 0.55rem;
+  border: 1px solid rgba(232, 201, 134, 0.22);
+  border-radius: 999px;
+  color: #e8c986;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.raffle-live-attribution {
+  margin: 1rem 0 0;
+  font-size: 0.86rem;
+}
+
+.raffle-live-attribution strong {
+  color: #c9c5ba;
+}
+
+.raffle-live-actions {
+  padding-bottom: 0;
+}
+
+.raffle-live-actions > p {
+  margin: 0.55rem 0 0;
 }
