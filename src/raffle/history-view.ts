@@ -18,6 +18,8 @@ function mapRound(row: Record<string, unknown>): RaffleHistoryRound {
     winnerPercentage: row.winner_percentage === null ? null : Number(row.winner_percentage),
     createdBySubjectId: String(row.created_by_subject_id),
     createdAt: row.created_at as Date,
+    updatedBySubjectId: row.updated_by_subject_id === null || row.updated_by_subject_id === undefined ? null : String(row.updated_by_subject_id),
+    updatedAt: row.updated_at as Date | null,
     liveBySubjectId: row.live_by_subject_id === null ? null : String(row.live_by_subject_id),
     liveAt: row.live_at as Date | null,
     concludedBySubjectId: row.concluded_by_subject_id === null ? null : String(row.concluded_by_subject_id),

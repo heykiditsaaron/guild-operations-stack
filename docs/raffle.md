@@ -162,13 +162,20 @@ The raffle intentionally derives as much as possible from a small set of authori
 
 The raffle domain owns raffle meaning. Interfaces own expression of that meaning.
 
-Current web surfaces are:
+Current participant-facing web surfaces are:
 
 - `/events/raffle` — current participatory raffle surface;
 - `/events/raffle/history` — completed and cancelled raffle history;
-- `/events/raffle/rules` — standing guild raffle rules and regulations;
-- `/events/raffle/admin` — authorized raffle operations;
-- `/events/raffle/admin/:roundId` — detailed round management, claim adjudication, manual draw, and administrative ledger.
+- `/events/raffle/rules` — standing guild raffle rules and regulations.
+
+Raffle administration is a distinct privileged projection over the same raffle truth:
+
+- `/admin/raffle` — current and preparatory raffle administration work;
+- `/admin/raffle/:roundId` — detailed raffle management, claim adjudication, manual draw, and administrative ledger.
+
+The former `/events/raffle/admin/*` paths are compatibility redirects rather than a second canonical administrative hierarchy. Raffle administration remains authorized through the existing `raffle.admin` capability.
+
+The administration root intentionally excludes concluded raffles because terminal rounds no longer represent active officer work. Their durable history remains available through the ordinary raffle history projection.
 
 Raffle is not permanently promoted in primary navigation. A live raffle may be promoted from the home surface; when no raffle is live there is no active raffle to promote.
 
