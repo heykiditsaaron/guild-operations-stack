@@ -210,7 +210,7 @@ export async function registerRafflePage(app: FastifyInstance, assets: AssetRegi
     ]);
 
     const manageRaffles = isAdmin
-      ? `<div style="margin-top: calc(-1 * clamp(2rem, 8vw, 5.5rem)); margin-bottom: clamp(2rem, 6vw, 3rem); font-size: 0.88rem;"><a href="/events/raffle/admin" style="color: #c9c5ba;">Manage Raffles</a></div>`
+      ? `<div style="margin-top: calc(-1 * clamp(2rem, 8vw, 5.5rem)); margin-bottom: clamp(2rem, 6vw, 3rem); font-size: 0.88rem;"><a href="/admin/raffle" style="color: #c9c5ba;">Raffle Administration</a></div>`
       : "";
     const raffleScript = `<script src="${assetUrl(assets, "raffle.js")}" defer></script>`;
     const html = renderPage(assets, {
