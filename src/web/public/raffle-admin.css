@@ -1,0 +1,102 @@
+.raffle-status-banner {
+  position: relative;
+  margin: 0 0 1.15rem;
+  padding: 0.55rem 0.7rem;
+  overflow: hidden;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.raffle-status-banner::before,
+.raffle-status-banner::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  pointer-events: none;
+}
+
+.raffle-status-banner::before {
+  top: 0;
+}
+
+.raffle-status-banner::after {
+  bottom: 0;
+}
+
+.raffle-status-banner-live {
+  color: #b9dfc1;
+  background: linear-gradient(
+    90deg,
+    rgba(124, 198, 141, 0.16) 0%,
+    rgba(124, 198, 141, 0.09) 52%,
+    rgba(124, 198, 141, 0) 100%
+  );
+}
+
+.raffle-status-banner-live::before,
+.raffle-status-banner-live::after {
+  background: linear-gradient(
+    90deg,
+    rgba(88, 145, 101, 0.62) 0%,
+    rgba(88, 145, 101, 0.24) 34%,
+    rgba(88, 145, 101, 0) 72%
+  );
+}
+
+.raffle-status-banner-upcoming {
+  color: #aaa69c;
+  background: linear-gradient(
+    90deg,
+    rgba(170, 166, 156, 0.11) 0%,
+    rgba(170, 166, 156, 0.06) 52%,
+    rgba(170, 166, 156, 0) 100%
+  );
+}
+
+.raffle-status-banner-upcoming::before,
+.raffle-status-banner-upcoming::after {
+  background: linear-gradient(
+    90deg,
+    rgba(110, 107, 101, 0.52) 0%,
+    rgba(110, 107, 101, 0.2) 34%,
+    rgba(110, 107, 101, 0) 72%
+  );
+}
+
+.raffle-overview-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.raffle-overview-item {
+  padding: 1.35rem 0 1.6rem;
+  border-bottom: 0;
+}
+
+.raffle-overview-item-live {
+  border-top: 0;
+}
+
+.raffle-overview-identity {
+  display: grid;
+  gap: 0.32rem;
+}
+
+.raffle-overview-identity h2 {
+  margin: 0;
+  font-size: 1.12rem;
+}
+
+.raffle-overview-identity p {
+  margin: 0;
+  color: #c9c5ba;
+  font-size: 0.9rem;
+}
+
+.raffle-overview-attention {
+  margin-top: 0.8rem;
+}
