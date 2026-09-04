@@ -47,16 +47,10 @@ function attributionFact(
 }
 
 function roundOverviewAttribution(round: RaffleAdministrationRound, attributions: AttributionLookup): string {
-  const lines = [
-    `<span>Created by <strong>${actorName(round.createdBySubjectId, attributions)}</strong> · ${eventTime(round.createdAt)}</span>`,
-  ];
-  if (round.updatedBySubjectId && round.updatedAt) {
-    lines.push(`<span>Updated by <strong>${actorName(round.updatedBySubjectId, attributions)}</strong> · ${eventTime(round.updatedAt)}</span>`);
+  if (round.status === "live" && round.liveBySubjectId) {
+    return `<div class="raffle-overview-attribution"><span>Made live by <strong>${actorName(round.liveBySubjectId, attributions)}</strong></span></div>`;
   }
-  if (round.liveBySubjectId && round.liveAt) {
-    lines.push(`<span>Made live by <strong>${actorName(round.liveBySubjectId, attributions)}</strong> · ${eventTime(round.liveAt)}</span>`);
-  }
-  return `<div class="raffle-overview-attribution">${lines.join("")}</div>`;
+  return `<div class="raffle-overview-attribution"><span>Created by <strong>${actorName(round.createdBySubjectId, attributions)}</strong></span></div>`;
 }
 
 function claimResolutionAttribution(claim: RaffleClaim, attributions: AttributionLookup): string {
@@ -160,37 +154,27 @@ function managementFacts(
 }
 
 function managementSignals(round: RaffleAdministrationRound): string {
-  return `<dl class="raffle-overview-facts">
-    <dt>Claims close</dt><dd>${localTime(raffleClaimCutoffUnix(round.drawingAtUnix))}</dd>
-    <dt>Drawing deadline</dt><dd>${localTime(round.drawingAtUnix)}</dd>
-    <dt>Approved tickets</dt><dd>${round.approvedTicketCount}</dd>
-  </dl>`;
+  if (round.status !== "live") return "";
+  return `<p class="raffle-overview-participation">${round.approvedTicketCount} approved ${round.approvedTicketCount === 1 ? "ticket" : "tickets"}</p>`;
 }
 
 function operationalSignal(round: RaffleAdministrationRound): string {
-  if (round.status === "live" && round.pendingClaimCount > 0) {
-    return `<p class="raffle-overview-attention"><strong>${round.pendingClaimCount} ${round.pendingClaimCount === 1 ? "claim needs" : "claims need"} review</strong> · Resolve pending claims before the raffle can be drawn.</p>`;
+  if (round.status !== "live") return "";
+  if (round.pendingClaimCount > 0) {
+    return `<p class="raffle-overview-attention"><strong>${round.pendingClaimCount} ${round.pendingClaimCount === 1 ? "claim needs" : "claims need"} review</strong></p>`;
   }
-  if (round.status === "live") {
-    return `<p class="raffle-overview-attention"><strong>No claims need review</strong> · This raffle has no unresolved claims.</p>`;
-  }
-  return `<p class="raffle-overview-attention">Prepared and waiting to be made live.</p>`;
+  return `<p class="raffle-overview-attention"><strong>No claims need review</strong></p>`;
 }
 
 function roundActions(round: RaffleRound): string {
-  const activate = round.status === "created"
-    ? `<button class="raffle-action raffle-action-secondary" type="button" data-activate-raffle-round="${htmlText(round.roundId)}">Make raffle live</button>`
-    : "";
   const viewPublic = round.status === "live"
     ? `<a class="raffle-action raffle-action-secondary" href="/events/raffle">View public raffle ↗</a>`
     : "";
-  const cancel = `<button class="raffle-action raffle-action-tertiary" type="button" data-cancel-raffle-round="${htmlText(round.roundId)}">Cancel raffle</button>`;
+  const primaryLabel = round.status === "live" ? "Manage raffle" : "Edit raffle";
 
   return `<div class="raffle-overview-actions">
-    <a class="raffle-action raffle-action-primary" href="/admin/raffle/${htmlText(round.roundId)}">Manage raffle</a>
+    <a class="raffle-action raffle-action-primary" href="/admin/raffle/${htmlText(round.roundId)}">${primaryLabel}</a>
     ${viewPublic}
-    ${activate}
-    ${cancel}
   </div>`;
 }
 
@@ -294,7 +278,6 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
       .sort((a, b) => a.drawingAtUnix - b.drawingAtUnix);
     const attributions = await guildieAttributionsForSubjects(rounds.flatMap((round) => [
       round.createdBySubjectId,
-      round.updatedBySubjectId,
       round.liveBySubjectId,
     ]));
     const html = renderPage(assets, {
