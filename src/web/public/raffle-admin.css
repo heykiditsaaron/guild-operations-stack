@@ -81,6 +81,12 @@
   border-top: 0;
 }
 
+.raffle-overview-list:has(.raffle-overview-item-live)
+  .raffle-overview-item-upcoming
+  [data-activate-raffle-round] {
+  display: none;
+}
+
 .raffle-overview-identity {
   display: grid;
   gap: 0.32rem;
