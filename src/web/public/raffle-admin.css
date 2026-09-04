@@ -81,12 +81,6 @@
   border-top: 0;
 }
 
-.raffle-overview-list:has(.raffle-overview-item-live)
-  .raffle-overview-item-upcoming
-  [data-activate-raffle-round] {
-  display: none;
-}
-
 .raffle-overview-identity {
   display: grid;
   gap: 0.32rem;
@@ -118,5 +112,11 @@
 }
 
 .raffle-overview-attention {
-  margin-top: 0.8rem;
+  margin: 0.8rem 0 0;
+}
+
+.raffle-overview-participation {
+  margin: 0.35rem 0 0;
+  color: #aaa69c;
+  font-size: 0.9rem;
 }
