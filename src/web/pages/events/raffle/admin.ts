@@ -48,7 +48,7 @@ function attributionFact(
 
 function roundOverviewAttribution(round: RaffleAdministrationRound, attributions: AttributionLookup): string {
   if (round.status === "live" && round.liveBySubjectId) {
-    return `<div class="raffle-overview-attribution"><span>Made live by <strong>${actorName(round.liveBySubjectId, attributions)}</strong></span></div>`;
+    return `<div class="raffle-overview-attribution"><span>Opened by <strong>${actorName(round.liveBySubjectId, attributions)}</strong></span></div>`;
   }
   return `<div class="raffle-overview-attribution"><span>Created by <strong>${actorName(round.createdBySubjectId, attributions)}</strong></span></div>`;
 }
@@ -138,7 +138,7 @@ function managementFacts(
     <dt>Status</dt><dd style="margin: 0;">${htmlText(roundStatusLabel(round))}</dd>
     ${attributionFact("Created by", round.createdBySubjectId, round.createdAt, attributions)}
     ${attributionFact("Updated by", round.updatedBySubjectId, round.updatedAt, attributions)}
-    ${attributionFact("Made live by", round.liveBySubjectId, round.liveAt, attributions)}
+    ${attributionFact("Opened by", round.liveBySubjectId, round.liveAt, attributions)}
     ${attributionFact(conclusionLabel, round.concludedBySubjectId, round.concludedAt, attributions)}
     <dt>Prize kind</dt><dd style="margin: 0;">${htmlText(prize)}</dd>
     <dt>Ticket price</dt><dd style="margin: 0;">${htmlText(round.ticketPriceGold)} gold</dd>
@@ -213,7 +213,7 @@ function createRoundForm(): string {
       <span>Winner share (%)</span>
       <input data-raffle-admin-winner-percentage type="number" min="1" max="100" step="1" value="50" inputmode="numeric" required style="min-height: 3rem; padding: 0.65rem; border: 1px solid rgba(255,255,255,0.12); border-radius: 0.65rem; background: #17181d; color: inherit;">
     </label>
-    <p style="margin: 0; color: #aaa69c; line-height: 1.55;">Creating a raffle prepares it only. Members will not see or participate in it until an attendant explicitly makes it live. New claims close automatically one hour before the drawing deadline.</p>
+    <p style="margin: 0; color: #aaa69c; line-height: 1.55;">Creating a raffle prepares it only. Members will not see or participate in it until an attendant explicitly opens it. New claims close automatically one hour before the drawing deadline.</p>
     <button type="submit" style="min-height: 3rem; padding: 0.7rem 1rem; border: 1px solid rgba(232,201,134,0.35); border-radius: 0.7rem; background: rgba(232,201,134,0.08); color: #e8c986; font-weight: 700;">Create raffle draft</button>
     <p data-raffle-admin-status aria-live="polite" style="min-height: 1.25rem; margin: 0; color: #aaa69c;"></p>
   </form>`;
@@ -239,7 +239,7 @@ function pendingRoundEditor(round: RaffleRound, attributions: AttributionLookup)
         <span>Winner share (%)</span>
         <input data-raffle-admin-winner-percentage type="number" min="1" max="100" step="1" inputmode="numeric" value="${round.winnerPercentage ?? 50}" required>
       </label>
-      <p class="raffle-edit-note">Claims close automatically one hour before the drawing deadline. These terms remain editable until the raffle is made live.</p>
+      <p class="raffle-edit-note">Claims close automatically one hour before the drawing deadline. These terms remain editable until the raffle is opened.</p>
       <div class="raffle-edit-actions">
         <button class="raffle-action raffle-action-primary" type="submit">Save changes</button>
       </div>
@@ -249,11 +249,11 @@ function pendingRoundEditor(round: RaffleRound, attributions: AttributionLookup)
       <span>Created by <strong>${actorName(round.createdBySubjectId, attributions)}</strong> · ${eventTime(round.createdAt)}</span>
       ${updated}
     </div>
-    <section class="raffle-edit-transition" aria-labelledby="raffle-edit-live-heading">
-      <h2 id="raffle-edit-live-heading">Ready for members?</h2>
-      <p>Making this raffle live locks its terms and opens member participation.</p>
+    <section class="raffle-edit-transition" aria-labelledby="raffle-edit-open-heading">
+      <h2 id="raffle-edit-open-heading">Ready for members?</h2>
+      <p>Opening this raffle locks its terms and allows members to participate.</p>
       <div class="raffle-edit-actions">
-        <button class="raffle-action raffle-action-primary" type="button" data-activate-raffle-round="${htmlText(round.roundId)}">Make raffle live</button>
+        <button class="raffle-action raffle-action-primary" type="button" data-activate-raffle-round="${htmlText(round.roundId)}">Open raffle</button>
       </div>
     </section>
     <div class="raffle-edit-cancel">
@@ -295,7 +295,7 @@ function roundOperationalSummary(round: RaffleRound, metrics: ReturnType<typeof 
     return `<section aria-labelledby="raffle-attention-heading" style="margin-bottom: 2.5rem; padding: 1.15rem 1.25rem; border: 1px solid rgba(124,198,141,0.18); border-radius: 0.8rem; background: rgba(124,198,141,0.045);"><h2 id="raffle-attention-heading" style="margin-top: 0;">No claims need review</h2><p style="margin-bottom: 0; color: #c9c5ba;">This raffle has no unresolved claims and can proceed to drawing when the attendant is ready.</p></section>`;
   }
   if (round.status === "created") {
-    return `<section aria-labelledby="raffle-attention-heading" style="margin-bottom: 2.5rem; padding: 1.15rem 1.25rem; border: 1px solid rgba(255,255,255,0.08); border-radius: 0.8rem; background: rgba(255,255,255,0.02);"><h2 id="raffle-attention-heading" style="margin-top: 0;">Prepared raffle</h2><p style="margin-bottom: 0; color: #c9c5ba;">Review the raffle terms, then make it live when it is ready for member participation.</p></section>`;
+    return `<section aria-labelledby="raffle-attention-heading" style="margin-bottom: 2.5rem; padding: 1.15rem 1.25rem; border: 1px solid rgba(255,255,255,0.08); border-radius: 0.8rem; background: rgba(255,255,255,0.02);"><h2 id="raffle-attention-heading" style="margin-top: 0;">Prepared raffle</h2><p style="margin-bottom: 0; color: #aaa69c;">Review the raffle terms, then open it when it is ready for member participation.</p></section>`;
   }
   return "";
 }
@@ -361,9 +361,9 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
       const html = renderPage(assets, {
         pathname,
         title: "Edit Raffle · OH CRIT I Pulled! Guild Operations",
-        description: "Configure an upcoming guild raffle before it becomes live.",
+        description: "Configure an upcoming guild raffle before it opens.",
         viewer,
-        header: `<div class="home-header-copy">${adminBreadcrumb(round)}<h1 id="page-title">Edit raffle</h1></div>`,
+        header: `<div class="home-header-copy"><h1 class="raffle-overview-title" id="page-title">Edit raffle</h1></div>`,
         body: `${pendingRoundEditor(round, attributions)}<script src="${assetUrl(assets, "raffle.js")}" defer></script>`,
       });
       return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
