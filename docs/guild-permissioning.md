@@ -1,15 +1,17 @@
 # Guild Permissioning
 
-Guild Operations derives member-facing authorization from current Blizzard guild membership, but Blizzard rank numbers are not themselves application permissions.
+Guild Operations derives Guildie-facing authorization from current Blizzard Character roster membership, but Blizzard rank numbers are not themselves application permissions.
 
 ## Authority source
 
-For a Guild Operations subject, effective guild authority is determined from characters that are both:
+For a Guildie, effective guild authority is determined from Characters that are both:
 
-- currently controlled by the subject, and
-- currently present in the configured guild roster.
+- currently controlled by that Guildie, resolved through the durable Subject coordinate; and
+- currently present in the configured Blizzard Character roster.
 
-If more than one qualifying character exists, the lowest Blizzard `rank_index` is the highest-authority membership and is used as the subject's effective guild rank.
+If more than one qualifying Character exists, the lowest Blizzard `rank_index` is the highest-authority membership and is used as the Guildie's effective guild rank.
+
+If no controlled Character is currently on the Character roster, the Guildie remains durable and recognized but has no current guild participation surface and no rank-derived authority.
 
 Selected main character is presentation state only and never participates in authorization.
 
@@ -25,16 +27,18 @@ An unobserved rank can remain absent. In particular, rank 6 does not need to be 
 
 Application behavior authorizes against explicit capabilities rather than rank-number comparisons.
 
-`guild_rank_capabilities` maps a guild rank definition to domain capabilities. Application machinery asks whether the subject possesses a capability; it does not ask whether the subject is, for example, rank 2 or better.
+`guild_rank_capabilities` maps a guild rank definition to domain capabilities. Application machinery asks whether the operating Guildie possesses a capability; it does not ask whether the Guildie is, for example, rank 2 or better.
 
 A rank's capability set is explicit. No implicit numeric inheritance is assumed by the permission resolver.
 
 The effective authorization path is:
 
 ```text
-current controlled characters
+Guildie's currently controlled Characters
         intersect
-current guild roster membership
+current Blizzard Character roster
+        ↓
+current Guildie participation surface
         ↓
 highest-authority Blizzard rank
         ↓
@@ -45,8 +49,10 @@ explicit capability grants
 authorization decision
 ```
 
-This permits future changes to rank names and capability policy without changing Blizzard-derived membership facts.
+The application session continues to resolve through `subject_id`; that coordinate identifies which Guildie is operating. Capabilities are derived from current backend truth and are not properties of Subject recognition itself.
+
+This permits future changes to rank names and capability policy without changing Blizzard-derived Character roster facts or durable Guildie continuity.
 
 ## Current scope
 
-This layer covers guild-rank-equivalent authorization only. System/operator authorization is intentionally outside the current scope.
+This layer covers guild-rank-equivalent Guildie authorization only. System/operator authorization is intentionally outside the current scope.
