@@ -455,26 +455,6 @@
   margin-top: 1.5rem;
 }
 
-.raffle-live-workspace > .raffle-status-banner {
-  order: 0;
-}
-
-.raffle-live-workspace > .raffle-operational-summary {
-  order: 1;
-}
-
-.raffle-live-workspace > .raffle-live-actions {
-  order: 2;
-}
-
-.raffle-live-workspace > .raffle-live-section:not(.raffle-live-actions) {
-  order: 3;
-}
-
-.raffle-live-workspace > * {
-  order: initial;
-}
-
 .raffle-live-section {
   padding: 2rem 0;
   border-top: 1px solid rgba(255, 255, 255, 0.07);
@@ -482,6 +462,7 @@
 
 .raffle-live-details {
   padding-top: 0;
+  padding-bottom: 0;
   border-top: 0;
 }
 
@@ -492,7 +473,6 @@
 
 .raffle-live-section > p,
 .raffle-live-section-heading p,
-.raffle-live-actions > p,
 .raffle-live-attribution,
 .raffle-claim-group-heading p {
   color: #aaa69c;
@@ -535,14 +515,18 @@
 }
 
 .raffle-live-actions {
-  padding-top: 2rem;
-  padding-bottom: 2rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 1.35rem 0 2rem;
+  border-top: 0;
   border-bottom: 0;
 }
 
+.raffle-live-actions > h2,
 .raffle-live-actions > p {
-  margin: 0.55rem 0 0;
+  display: none;
+}
+
+.raffle-live-actions .raffle-management-controls {
+  margin-top: 0;
 }
 
 .raffle-claim-attention {
@@ -550,7 +534,7 @@
   justify-content: space-between;
   gap: 0.75rem 1rem;
   align-items: center;
-  margin-top: 1.35rem;
+  margin-top: 1rem;
   padding: 0.9rem 1rem;
   border-radius: 0.7rem;
   text-decoration: none;
@@ -571,6 +555,10 @@
   border: 1px solid rgba(124, 198, 141, 0.16);
   background: rgba(124, 198, 141, 0.035);
   color: #b9dfc1;
+}
+
+.raffle-live-claims {
+  padding-top: 2rem;
 }
 
 .raffle-live-claims > h2 {
