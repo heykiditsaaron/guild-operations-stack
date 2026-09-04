@@ -1,7 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedSubject, SESSION_COOKIE_NAME } from "../../../../auth.js";
 import { RAFFLE_ADMIN_CAPABILITY, subjectHasGuildCapability } from "../../../../guild-permissions.js";
-import type { RaffleRound } from "../../../../raffle/domain.js";
+import {
+  raffleClaimCutoffUnix,
+  raffleClaimsAreOpen,
+  type RaffleRound,
+} from "../../../../raffle/domain.js";
 import {
   activeRaffleRoundOverview,
   type ActiveRaffleRoundOverview,
@@ -77,7 +81,10 @@ function signedOutEntry(): string {
 }
 
 function participation(round: RaffleRound, viewer: WebViewer, claims: RaffleMemberClaim[]): string {
-  if (!viewer.authenticated) return signedOutEntry();
+  const claimsOpen = raffleClaimsAreOpen(round.drawingAtUnix);
+  if (!viewer.authenticated) {
+    return `<section aria-labelledby="participate-heading"><h2 id="participate-heading">Participate</h2>${claimsOpen ? signedOutEntry() : `<p style="color: #aaa69c; line-height: 1.55;">Claim submission has closed for this raffle. Attendants now have the final hour before the drawing deadline to resolve pending claims.</p>`}</section>`;
+  }
 
   const options = viewer.characters.map((character) => {
     const selected = viewer.mainCharacter !== null
@@ -87,8 +94,10 @@ function participation(round: RaffleRound, viewer: WebViewer, claims: RaffleMemb
     return `<option data-realm-id="${htmlText(character.realmId)}" data-character-id="${htmlText(character.characterId)}"${selected ? " selected" : ""}>${htmlText(character.name)} — ${htmlText(realm)}</option>`;
   }).join("\n");
 
-  const form = options
-    ? `<form data-raffle-claim-form data-round-id="${htmlText(round.roundId)}" data-ticket-price="${htmlText(round.ticketPriceGold)}" style="display: grid; gap: 1rem; margin-top: 1.25rem;">
+  const form = !claimsOpen
+    ? `<p style="color: #aaa69c; line-height: 1.55;">Claim submission has closed for this raffle. Attendants now have the final hour before the drawing deadline to resolve pending claims.</p>`
+    : options
+      ? `<form data-raffle-claim-form data-round-id="${htmlText(round.roundId)}" data-ticket-price="${htmlText(round.ticketPriceGold)}" data-claim-cutoff-unix="${raffleClaimCutoffUnix(round.drawingAtUnix)}" style="display: grid; gap: 1rem; margin-top: 1.25rem;">
         <label style="display: grid; gap: 0.4rem;">
           <span>Character</span>
           <select data-raffle-character style="min-height: 3rem; padding: 0.65rem; border: 1px solid rgba(255,255,255,0.12); border-radius: 0.65rem; background: #17181d; color: inherit;">${options}</select>
@@ -102,7 +111,7 @@ function participation(round: RaffleRound, viewer: WebViewer, claims: RaffleMemb
         <button type="submit" style="min-height: 3rem; padding: 0.7rem 1rem; border: 1px solid rgba(232,201,134,0.35); border-radius: 0.7rem; background: rgba(232,201,134,0.08); color: #e8c986; font-weight: 700;">Submit claim</button>
         <p data-raffle-claim-status aria-live="polite" style="min-height: 1.25rem; margin: 0; color: #aaa69c;"></p>
       </form>`
-    : `<p style="color: #aaa69c;">No currently eligible guild characters are available for a raffle claim.</p>`;
+      : `<p style="color: #aaa69c;">No currently eligible guild characters are available for a raffle claim.</p>`;
 
   return `
     <section aria-labelledby="participate-heading">
@@ -145,6 +154,8 @@ function roundOverview(round: ActiveRaffleRoundOverview): string {
         <dd style="margin: 0; font-weight: 700;">${formatGold(pot)} gold</dd>
         <dt style="color: #aaa69c;">Ticket price</dt>
         <dd style="margin: 0; font-weight: 700;">${formatGold(round.ticketPriceGold)} gold</dd>
+        <dt style="color: #aaa69c;">Claims close</dt>
+        <dd style="margin: 0; font-weight: 700;">${localTime(raffleClaimCutoffUnix(round.drawingAtUnix))}</dd>
         <dt style="color: #aaa69c;">Drawing deadline</dt>
         <dd style="margin: 0; font-weight: 700;">${localTime(round.drawingAtUnix)}</dd>
       </dl>
