@@ -2,7 +2,13 @@ import type { FastifyInstance } from "fastify";
 import { authenticatedSubject, SESSION_COOKIE_NAME } from "../../../../auth.js";
 import { RAFFLE_ADMIN_CAPABILITY, subjectHasGuildCapability } from "../../../../guild-permissions.js";
 import { raffleRoundsForAdministration, type RaffleAdministrationRound } from "../../../../raffle/admin-view.js";
-import { raffleClaims, raffleRound, type RaffleClaim, type RaffleRound } from "../../../../raffle/domain.js";
+import {
+  raffleClaimCutoffUnix,
+  raffleClaims,
+  raffleRound,
+  type RaffleClaim,
+  type RaffleRound,
+} from "../../../../raffle/domain.js";
 import { assetUrl, type AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
@@ -73,6 +79,7 @@ function managementFacts(round: RaffleRound, metrics: ReturnType<typeof claimMet
     <dt>Status</dt><dd style="margin: 0;">${htmlText(roundStatusLabel(round))}</dd>
     <dt>Prize kind</dt><dd style="margin: 0;">${htmlText(prize)}</dd>
     <dt>Ticket price</dt><dd style="margin: 0;">${htmlText(round.ticketPriceGold)} gold</dd>
+    <dt>Claims close</dt><dd style="margin: 0;">${localTime(raffleClaimCutoffUnix(round.drawingAtUnix))}</dd>
     <dt>Drawing deadline</dt><dd style="margin: 0;">${localTime(round.drawingAtUnix)}</dd>
     <dt>Total claims</dt><dd style="margin: 0;">${metrics.claimCount}</dd>
     <dt>Claim status</dt><dd style="margin: 0;">${metrics.pendingClaimCount} pending · ${metrics.approvedClaimCount} approved · ${metrics.cancelledClaimCount} cancelled · ${metrics.deniedClaimCount} denied</dd>
@@ -85,6 +92,7 @@ function managementFacts(round: RaffleRound, metrics: ReturnType<typeof claimMet
 
 function managementSignals(round: RaffleAdministrationRound): string {
   return `<dl style="display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 1rem; margin: 0; color: #c9c5ba;">
+    <dt>Claims close</dt><dd style="margin: 0;">${localTime(raffleClaimCutoffUnix(round.drawingAtUnix))}</dd>
     <dt>Drawing deadline</dt><dd style="margin: 0;">${localTime(round.drawingAtUnix)}</dd>
     <dt>Pending claims</dt><dd style="margin: 0;">${round.pendingClaimCount}</dd>
     <dt>Approved claims</dt><dd style="margin: 0;">${round.approvedClaimCount}</dd>
@@ -139,7 +147,7 @@ function createRoundForm(): string {
       <span>Winner share (%)</span>
       <input data-raffle-admin-winner-percentage type="number" min="1" max="100" step="1" value="50" inputmode="numeric" required style="min-height: 3rem; padding: 0.65rem; border: 1px solid rgba(255,255,255,0.12); border-radius: 0.65rem; background: #17181d; color: inherit;">
     </label>
-    <p style="margin: 0; color: #aaa69c; line-height: 1.55;">Creating a round prepares it only. Members will not see or participate in it until an attendant explicitly makes it live.</p>
+    <p style="margin: 0; color: #aaa69c; line-height: 1.55;">Creating a round prepares it only. Members will not see or participate in it until an attendant explicitly makes it live. New claims close automatically one hour before the drawing deadline.</p>
     <button type="submit" style="min-height: 3rem; padding: 0.7rem 1rem; border: 1px solid rgba(232,201,134,0.35); border-radius: 0.7rem; background: rgba(232,201,134,0.08); color: #e8c986; font-weight: 700;">Create raffle draft</button>
     <p data-raffle-admin-status aria-live="polite" style="min-height: 1.25rem; margin: 0; color: #aaa69c;"></p>
   </form>`;
@@ -201,7 +209,12 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
     const claims = await raffleClaims(round.roundId);
     const metrics = claimMetrics(claims);
     const terminal = round.status === "drawn" || round.status === "admin_cancelled" || round.status === "no_entry_cancelled";
-    const controls = terminal ? "" : `<div style="display: flex; gap: 0.8rem; flex-wrap: wrap; margin-top: 1.25rem;">${round.status === "created" ? `<button type="button" data-activate-raffle-round="${htmlText(round.roundId)}" style="min-height: 2.6rem; padding: 0.6rem 0.85rem; border: 1px solid rgba(232,201,134,0.35); border-radius: 0.65rem; background: rgba(232,201,134,0.08); color: #e8c986; font-weight: 700;">Make raffle live</button>` : ""}<button type="button" data-cancel-raffle-round="${htmlText(round.roundId)}" style="min-height: 2.6rem; padding: 0.6rem 0.85rem; border: 1px solid rgba(255,255,255,0.14); border-radius: 0.65rem; background: rgba(255,255,255,0.035); color: #d8d4ca;">Cancel round</button></div>`;
+    const drawControl = round.status === "live"
+      ? metrics.pendingClaimCount === 0
+        ? `<button type="button" data-draw-raffle-round="${htmlText(round.roundId)}" style="min-height: 2.6rem; padding: 0.6rem 0.85rem; border: 1px solid rgba(124,198,141,0.35); border-radius: 0.65rem; background: rgba(124,198,141,0.07); color: #b9dfc1; font-weight: 700;">Draw raffle</button>`
+        : `<span style="color: #aaa69c; line-height: 1.45;">Resolve all pending claims before drawing.</span>`
+      : "";
+    const controls = terminal ? "" : `<div style="display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: center; margin-top: 1.25rem;">${round.status === "created" ? `<button type="button" data-activate-raffle-round="${htmlText(round.roundId)}" style="min-height: 2.6rem; padding: 0.6rem 0.85rem; border: 1px solid rgba(232,201,134,0.35); border-radius: 0.65rem; background: rgba(232,201,134,0.08); color: #e8c986; font-weight: 700;">Make raffle live</button>` : ""}${drawControl}<button type="button" data-cancel-raffle-round="${htmlText(round.roundId)}" style="min-height: 2.6rem; padding: 0.6rem 0.85rem; border: 1px solid rgba(255,255,255,0.14); border-radius: 0.65rem; background: rgba(255,255,255,0.035); color: #d8d4ca;">Cancel round</button></div>`;
     const html = renderPage(assets, {
       pathname, title: "Raffle Round Administration · OH CRIT I Pulled! Guild Operations", description: "Review and operate a guild raffle round.", viewer,
       header: `<div class="home-header-copy"><p class="eyebrow">Events · Raffle · Administration</p><h1 id="page-title">Round</h1><p class="lede">${terminal ? "Inspect the preserved raffle record." : "Review claims against the WoW guild-bank ledger and operate this raffle round."}</p></div>`,
