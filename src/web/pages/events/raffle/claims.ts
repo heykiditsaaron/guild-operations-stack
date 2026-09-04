@@ -28,7 +28,7 @@ function claimsList(claims: RaffleMemberClaim[]): string {
     return `<p class="raffle-status-copy">You have not submitted a claim for this raffle.</p>`;
   }
 
-  return `<>
+  return `
     <div class="raffle-claim-submitted" role="status">
       <strong>Claim submitted</strong>
       <span>Your raffle claim has been recorded. Its status will update here after an attendant reviews it.</span>
@@ -44,8 +44,7 @@ function claimsList(claims: RaffleMemberClaim[]): string {
           ${claim.denialReason ? `<p class="raffle-claim-reason">Reason: ${htmlText(claim.denialReason)}</p>` : ""}
           ${claim.resolutionKind === null ? `<button class="raffle-claim-cancel" type="button" data-cancel-raffle-claim="${htmlText(claim.claimId)}">Cancel claim</button>` : ""}
         </li>`).join("\n")}
-    </ol>
-  </>`;
+    </ol>`;
 }
 
 export async function registerRaffleClaimsPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
