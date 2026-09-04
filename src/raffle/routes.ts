@@ -7,10 +7,8 @@ import {
 } from "../guild-permissions.js";
 import {
   RaffleRuleError,
-  createRaffleRound,
   raffleClaims,
   raffleRound,
-  updateRaffleRound,
   type RaffleRoundTerms,
 } from "./domain.js";
 import { activateSingleRaffleRound } from "./live-round.js";
@@ -22,6 +20,10 @@ import {
   drawRaffleRound,
   submitRaffleClaim,
 } from "./published-operations.js";
+import {
+  createRegisteredRaffleRound,
+  updateRegisteredRaffleRound,
+} from "./registered-operations.js";
 
 async function requireSubject(request: FastifyRequest, reply: FastifyReply): Promise<string | null> {
   const subject = await authenticatedSubject(request.cookies[SESSION_COOKIE_NAME]);
@@ -81,7 +83,7 @@ export async function registerRaffleRoutes(app: FastifyInstance): Promise<void> 
     const subjectId = await requireSubject(request, reply);
     if (!subjectId) return;
     try {
-      const round = await createRaffleRound(subjectId, roundTerms(bodyObject(request.body)));
+      const round = await createRegisteredRaffleRound(subjectId, roundTerms(bodyObject(request.body)));
       return reply.code(201).send(round);
     } catch (error) {
       if (sendDomainError(error, reply)) return;
@@ -93,7 +95,7 @@ export async function registerRaffleRoutes(app: FastifyInstance): Promise<void> 
     const subjectId = await requireSubject(request, reply);
     if (!subjectId) return;
     try {
-      return await updateRaffleRound(subjectId, request.params.roundId, roundTerms(bodyObject(request.body)));
+      return await updateRegisteredRaffleRound(subjectId, request.params.roundId, roundTerms(bodyObject(request.body)));
     } catch (error) {
       if (sendDomainError(error, reply)) return;
       throw error;
