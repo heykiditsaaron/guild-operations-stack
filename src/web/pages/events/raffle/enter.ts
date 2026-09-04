@@ -71,7 +71,7 @@ export async function registerRaffleEntryPage(app: FastifyInstance, assets: Asse
       description: "Enter the current OH CRIT I Pulled! guild raffle.",
       viewer,
       stylesheets: ["raffle.css"],
-      scripts: ["raffle.js"],
+      scripts: ["raffle-entry.js"],
       header: `
         <div class="raffle-page-header">
           <nav class="raffle-context-nav" aria-label="Raffle navigation">

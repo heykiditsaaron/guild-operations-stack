@@ -1,3 +1,66 @@
+function formatRaffleAdminBreadcrumb() {
+  const breadcrumbTime = document.querySelector('nav[aria-label="Administrative breadcrumb"] time[data-local-time-unix]');
+  if (!(breadcrumbTime instanceof HTMLTimeElement)) return;
+
+  const unixSeconds = Number(breadcrumbTime.dataset.localTimeUnix);
+  if (!Number.isFinite(unixSeconds)) return;
+
+  const date = new Date(unixSeconds * 1000);
+  if (Number.isNaN(date.getTime())) return;
+
+  breadcrumbTime.textContent = `${new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+  }).format(date)} Raffle`;
+}
+
+function formatRaffleOverview() {
+  const list = document.querySelector(".raffle-overview-list");
+  if (!(list instanceof HTMLElement)) return;
+
+  const liveRound = list.querySelector(".raffle-overview-item-live");
+  if (liveRound instanceof HTMLElement && list.firstElementChild !== liveRound) {
+    list.prepend(liveRound);
+  }
+
+  list.querySelectorAll(".raffle-overview-identity").forEach((identity) => {
+    if (!(identity instanceof HTMLElement)) return;
+
+    const heading = identity.querySelector("h2");
+    const drawingTime = identity.querySelector("time[data-local-time-unix]");
+    if (!(heading instanceof HTMLHeadingElement) || !(drawingTime instanceof HTMLTimeElement)) return;
+
+    const unixSeconds = Number(drawingTime.dataset.localTimeUnix);
+    if (!Number.isFinite(unixSeconds)) return;
+
+    const date = new Date(unixSeconds * 1000);
+    if (Number.isNaN(date.getTime())) return;
+
+    heading.textContent = new Intl.DateTimeFormat(undefined, {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    }).format(date);
+
+    const drawingLine = drawingTime.closest("p");
+    if (drawingLine instanceof HTMLParagraphElement) drawingLine.remove();
+  });
+}
+
+function localDateTimeInputValue(unixSeconds) {
+  const date = new Date(unixSeconds * 1000);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function initializeRaffleEditForm(form) {
+  const drawingInput = form.querySelector("[data-raffle-admin-drawing]");
+  const drawingUnix = Number(form.dataset.drawingUnix || "0");
+  if (!(drawingInput instanceof HTMLInputElement) || !Number.isFinite(drawingUnix) || drawingUnix <= 0) return;
+  drawingInput.value = localDateTimeInputValue(drawingUnix);
+}
+
 function rafflePromiseText(form) {
   const countInput = form.querySelector("[data-raffle-ticket-count]");
   if (!(countInput instanceof HTMLInputElement)) return "";
@@ -17,26 +80,6 @@ function rafflePromiseText(form) {
 function refreshRafflePromise(form) {
   const preview = form.querySelector("[data-raffle-promise]");
   if (preview instanceof HTMLElement) preview.textContent = rafflePromiseText(form);
-}
-
-function showRaffleClaimSuccess(form) {
-  const success = document.createElement("div");
-  success.className = "raffle-entry-success";
-  success.setAttribute("role", "status");
-
-  const title = document.createElement("strong");
-  title.textContent = "Claim entered";
-
-  const copy = document.createElement("p");
-  copy.textContent = "Your claim has been recorded and is awaiting attendant review.";
-
-  const link = document.createElement("a");
-  link.className = "raffle-action raffle-action-secondary";
-  link.href = "/events/raffle/claims";
-  link.textContent = "View your claims";
-
-  success.append(title, copy, link);
-  form.replaceWith(success);
 }
 
 async function submitRaffleClaim(form) {
@@ -87,7 +130,7 @@ async function submitRaffleClaim(form) {
       return;
     }
 
-    showRaffleClaimSuccess(form);
+    window.location.reload();
   } catch {
     status.textContent = "Unable to submit raffle claim.";
   } finally {
@@ -174,9 +217,64 @@ async function createRaffleRound(form) {
   }
 }
 
+async function updateRaffleRoundForm(form) {
+  const roundId = form.dataset.roundId;
+  const drawingInput = form.querySelector("[data-raffle-admin-drawing]");
+  const priceInput = form.querySelector("[data-raffle-admin-price]");
+  const winnerInput = form.querySelector("[data-raffle-admin-winner-percentage]");
+  const status = form.querySelector("[data-raffle-admin-status]");
+  const submitButton = form.querySelector('button[type="submit"]');
+
+  if (!roundId
+      || !(drawingInput instanceof HTMLInputElement)
+      || !(priceInput instanceof HTMLInputElement)
+      || !(winnerInput instanceof HTMLInputElement)
+      || !(status instanceof HTMLElement)
+      || !(submitButton instanceof HTMLButtonElement)) return;
+
+  const drawingMilliseconds = Date.parse(drawingInput.value);
+  const ticketPrice = Number(priceInput.value);
+  const winnerPercentage = Number(winnerInput.value);
+
+  if (!Number.isFinite(drawingMilliseconds)
+      || !Number.isSafeInteger(ticketPrice) || ticketPrice <= 0
+      || !Number.isInteger(winnerPercentage) || winnerPercentage < 1 || winnerPercentage > 100) {
+    status.textContent = "Enter a drawing time, positive whole-number ticket price, and winner share from 1 to 100.";
+    return;
+  }
+
+  submitButton.disabled = true;
+  status.textContent = "Saving changes…";
+
+  try {
+    const response = await fetch(`/raffle/rounds/${encodeURIComponent(roundId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        drawing_at_unix: Math.floor(drawingMilliseconds / 1000),
+        ticket_price_gold: ticketPrice,
+        prize_kind: "gold",
+        winner_percentage: winnerPercentage,
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      status.textContent = result.message || result.error || "Unable to save raffle changes.";
+      return;
+    }
+
+    window.location.reload();
+  } catch {
+    status.textContent = "Unable to save raffle changes.";
+  } finally {
+    submitButton.disabled = false;
+  }
+}
+
 async function activateRaffleRound(button) {
   const roundId = button.dataset.activateRaffleRound;
   if (!roundId) return;
+  if (!window.confirm("Open this raffle? Its terms will be locked and members will be able to participate.")) return;
 
   button.disabled = true;
   const originalText = button.textContent;
@@ -188,13 +286,13 @@ async function activateRaffleRound(button) {
     });
     if (!response.ok) {
       const result = await response.json().catch(() => ({}));
-      window.alert(result.message || result.error || "Unable to make raffle live.");
+      window.alert(result.message || result.error || "Unable to open raffle.");
       return;
     }
 
-    window.location.assign("/events/raffle");
+    window.location.assign(`/admin/raffle/${encodeURIComponent(roundId)}`);
   } catch {
-    window.alert("Unable to make raffle live.");
+    window.alert("Unable to open raffle.");
   } finally {
     button.disabled = false;
     button.textContent = originalText;
@@ -220,7 +318,7 @@ async function drawRaffleRound(button) {
       return;
     }
 
-    window.location.assign(`/events/raffle/admin/${encodeURIComponent(roundId)}`);
+    window.location.assign(`/admin/raffle/${encodeURIComponent(roundId)}`);
   } catch {
     window.alert("Unable to draw raffle.");
   } finally {
@@ -248,7 +346,7 @@ async function cancelRaffleRound(button) {
       return;
     }
 
-    window.location.assign("/events/raffle/admin");
+    window.location.assign("/admin/raffle");
   } catch {
     window.alert("Unable to cancel raffle round.");
   } finally {
@@ -287,11 +385,26 @@ async function denyRaffleClaim(button) {
   const claimId = button.dataset.denyRaffleClaim;
   if (!claimId) return;
 
+  const controls = button.closest(".raffle-claim-controls");
   const reasonInput = document.querySelector(`[data-raffle-denial-reason="${CSS.escape(claimId)}"]`);
-  if (!(reasonInput instanceof HTMLInputElement) || !reasonInput.value.trim()) {
-    window.alert("Enter a denial reason before denying this claim.");
+  if (!(controls instanceof HTMLElement) || !(reasonInput instanceof HTMLInputElement)) return;
+
+  if (!controls.classList.contains("raffle-claim-controls-denying")) {
+    controls.classList.add("raffle-claim-controls-denying");
+    reasonInput.required = true;
+    button.setAttribute("aria-expanded", "true");
+    button.textContent = "Confirm denial";
+    reasonInput.focus();
     return;
   }
+
+  if (!reasonInput.value.trim()) {
+    reasonInput.setCustomValidity("Enter a denial reason before denying this claim.");
+    reasonInput.reportValidity();
+    reasonInput.focus();
+    return;
+  }
+  reasonInput.setCustomValidity("");
 
   button.disabled = true;
   const originalText = button.textContent;
@@ -334,6 +447,21 @@ document.querySelectorAll("[data-raffle-admin-create]").forEach((form) => {
     event.preventDefault();
     void createRaffleRound(form);
   });
+});
+
+document.querySelectorAll("[data-raffle-admin-edit]").forEach((form) => {
+  if (!(form instanceof HTMLFormElement)) return;
+  initializeRaffleEditForm(form);
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void updateRaffleRoundForm(form);
+  });
+});
+
+document.addEventListener("input", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement) || !target.matches("[data-raffle-denial-reason]")) return;
+  target.setCustomValidity("");
 });
 
 document.addEventListener("click", (event) => {
@@ -384,3 +512,6 @@ document.addEventListener("click", (event) => {
   const denyButton = target.closest("[data-deny-raffle-claim]");
   if (denyButton instanceof HTMLButtonElement) void denyRaffleClaim(denyButton);
 });
+
+formatRaffleAdminBreadcrumb();
+formatRaffleOverview();
