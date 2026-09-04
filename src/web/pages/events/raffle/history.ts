@@ -96,12 +96,10 @@ export async function registerRaffleHistoryPage(app: FastifyInstance, assets: As
       title: "Previous Raffles · OH CRIT I Pulled! Guild Operations",
       description: "Completed OH CRIT I Pulled! guild raffle rounds.",
       viewer,
+      secondaryNavigation: { kind: "back", label: "Back to raffle", href: "/events/raffle" },
       stylesheets: ["raffle.css"],
       header: `
         <div class="raffle-page-header">
-          <nav class="raffle-context-nav" aria-label="Raffle navigation">
-            <a class="raffle-back-link" href="/events/raffle">← Back to raffle</a>
-          </nav>
           <p class="eyebrow">Events · Raffle</p>
           <h1 id="page-title">Previous Raffles</h1>
           <p class="lede">Completed and cancelled raffles, preserved as guild history.</p>
