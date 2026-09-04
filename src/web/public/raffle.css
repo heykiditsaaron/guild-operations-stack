@@ -1,0 +1,344 @@
+.raffle-page-header {
+  width: min(100%, 46rem);
+}
+
+.raffle-back-link,
+.raffle-reference-link {
+  color: #c9c5ba;
+  font-size: 0.9rem;
+  text-underline-offset: 0.18em;
+}
+
+.raffle-back-link:hover,
+.raffle-back-link:focus-visible,
+.raffle-reference-link:hover,
+.raffle-reference-link:focus-visible {
+  color: #f7f4ea;
+}
+
+.raffle-public-shell {
+  width: min(100%, 52rem);
+}
+
+.raffle-empty-state {
+  width: min(100%, 46rem);
+  padding-top: 2rem;
+  border-top: 1px solid rgba(238, 201, 124, 0.18);
+}
+
+.raffle-empty-state h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.8rem, 6vw, 2.7rem);
+  font-weight: 500;
+}
+
+.raffle-plaque-wrap {
+  padding-top: clamp(2.5rem, 8vw, 4.75rem);
+}
+
+.raffle-plaque {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+  padding: clamp(1.4rem, 5vw, 2.25rem);
+  border: 1px solid rgba(238, 201, 124, 0.3);
+  border-radius: 1.35rem;
+  background:
+    radial-gradient(circle at 78% 0%, rgba(216, 156, 51, 0.14), transparent 18rem),
+    linear-gradient(145deg, rgba(43, 35, 24, 0.96), rgba(19, 19, 22, 0.98) 62%);
+  box-shadow:
+    0 1.5rem 4.5rem rgba(0, 0, 0, 0.32),
+    inset 0 1px rgba(255, 255, 255, 0.035);
+}
+
+.raffle-plaque-art {
+  position: absolute;
+  z-index: -1;
+  top: clamp(-3.4rem, -7vw, -2rem);
+  right: clamp(-1.15rem, -2vw, -0.35rem);
+  width: clamp(9rem, 28vw, 16rem);
+  max-height: 16rem;
+  object-fit: contain;
+  object-position: top right;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 1.2rem 1.7rem rgba(0, 0, 0, 0.38));
+}
+
+.raffle-plaque-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 34rem;
+}
+
+.raffle-live-kicker,
+.raffle-plaque-label {
+  margin: 0;
+  color: #e8c986;
+  font-size: 0.76rem;
+  font-weight: 750;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.raffle-live-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding-right: 7rem;
+}
+
+.raffle-live-kicker::before {
+  content: "";
+  width: 0.55rem;
+  height: 0.55rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #7cc68d;
+  box-shadow: 0 0 1rem rgba(124, 198, 141, 0.52);
+}
+
+.raffle-countdown-block {
+  margin-top: clamp(1.75rem, 6vw, 2.7rem);
+}
+
+.raffle-countdown {
+  display: block;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.8rem, 11vw, 5.25rem);
+  line-height: 0.9;
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+}
+
+.raffle-countdown-caption {
+  display: block;
+  margin-top: 0.6rem;
+  color: #aaa69c;
+  font-size: 0.9rem;
+}
+
+.raffle-countdown-block[data-raffle-closed="true"] .raffle-countdown {
+  font-size: clamp(2rem, 8vw, 3.7rem);
+  letter-spacing: -0.03em;
+}
+
+.raffle-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin: clamp(2rem, 7vw, 3rem) 0 0;
+}
+
+.raffle-stat {
+  min-width: 0;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(238, 201, 124, 0.17);
+}
+
+.raffle-stat-value {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: clamp(1.5rem, 5vw, 2.35rem);
+  font-weight: 750;
+  line-height: 1.05;
+}
+
+.raffle-drawing {
+  margin-top: clamp(1.8rem, 6vw, 2.5rem);
+}
+
+.raffle-drawing time {
+  display: block;
+  margin-top: 0.42rem;
+  color: #f7f4ea;
+  font-size: clamp(1rem, 3.5vw, 1.18rem);
+  font-weight: 700;
+}
+
+.raffle-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: clamp(2rem, 7vw, 3rem);
+}
+
+.raffle-action {
+  min-height: 3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.72rem 1rem;
+  border: 1px solid rgba(232, 201, 134, 0.34);
+  border-radius: 0.75rem;
+  background: rgba(232, 201, 134, 0.08);
+  color: #e8c986;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.raffle-action:hover,
+.raffle-action:focus-visible {
+  border-color: rgba(232, 201, 134, 0.56);
+  background: rgba(232, 201, 134, 0.13);
+}
+
+.raffle-action-secondary {
+  border-color: rgba(255, 255, 255, 0.11);
+  background: rgba(255, 255, 255, 0.035);
+  color: #f7f4ea;
+}
+
+.raffle-action-secondary:hover,
+.raffle-action-secondary:focus-visible {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.065);
+}
+
+.raffle-reference-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.2rem;
+  margin-top: 1.25rem;
+  padding: 0 0.15rem;
+}
+
+.raffle-workspace {
+  width: min(100%, 46rem);
+  padding-top: 2rem;
+  border-top: 1px solid rgba(238, 201, 124, 0.18);
+}
+
+.raffle-workspace h2 {
+  margin-top: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.8rem, 6vw, 2.6rem);
+}
+
+.raffle-workspace-intro,
+.raffle-workspace-note,
+.raffle-claim-meta,
+.raffle-claim-reason,
+.raffle-status-copy {
+  color: #aaa69c;
+  line-height: 1.55;
+}
+
+.raffle-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.raffle-form label {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.raffle-form select,
+.raffle-form input {
+  min-height: 3rem;
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.65rem;
+  background: #17181d;
+  color: inherit;
+}
+
+.raffle-form button,
+.raffle-claim-cancel {
+  min-height: 3rem;
+  padding: 0.7rem 1rem;
+  border: 1px solid rgba(232, 201, 134, 0.35);
+  border-radius: 0.7rem;
+  background: rgba(232, 201, 134, 0.08);
+  color: #e8c986;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.raffle-form button:disabled,
+.raffle-claim-cancel:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.raffle-form-status,
+.raffle-promise {
+  min-height: 1.25rem;
+  margin: 0;
+  color: #aaa69c;
+}
+
+.raffle-claims-list {
+  list-style: none;
+  display: grid;
+  gap: 0;
+  margin: 1.25rem 0 0;
+  padding: 0;
+}
+
+.raffle-claim-item {
+  padding: 1.2rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.raffle-claim-item:first-child {
+  padding-top: 0;
+}
+
+.raffle-claim-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
+}
+
+.raffle-claim-state {
+  color: #aaa69c;
+  font-size: 0.86rem;
+}
+
+.raffle-claim-meta,
+.raffle-claim-reason {
+  margin: 0.42rem 0 0;
+}
+
+.raffle-claim-cancel {
+  min-height: 2.5rem;
+  margin-top: 0.75rem;
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.035);
+  color: inherit;
+}
+
+@media (max-width: 34rem) {
+  .raffle-plaque {
+    padding-top: 1.55rem;
+  }
+
+  .raffle-plaque-art {
+    top: -2.5rem;
+    right: -0.65rem;
+    width: 9rem;
+  }
+
+  .raffle-live-kicker {
+    padding-right: 5.5rem;
+  }
+
+  .raffle-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .raffle-actions {
+    display: grid;
+  }
+
+  .raffle-action {
+    width: 100%;
+  }
+}
