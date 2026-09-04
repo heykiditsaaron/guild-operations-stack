@@ -331,6 +331,24 @@
   color: #aaa69c;
 }
 
+.raffle-claims-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.raffle-claims-toolbar h2 {
+  margin: 0;
+}
+
+.raffle-claims-new {
+  min-height: 2.5rem;
+  padding: 0.55rem 0.8rem;
+  font-size: 0.9rem;
+  flex: 0 0 auto;
+}
+
 .raffle-claims-list {
   list-style: none;
   display: grid;
@@ -404,6 +422,10 @@
 
   .raffle-action {
     width: 100%;
+  }
+
+  .raffle-claims-toolbar .raffle-action {
+    width: auto;
   }
 
   .raffle-entry-success .raffle-action {
