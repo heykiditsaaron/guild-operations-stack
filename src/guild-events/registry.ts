@@ -10,10 +10,25 @@ export type GuildEventRegistrationInput = {
   guildEventCategory?: string | null;
 };
 
-export type GuildEventRegistration = GuildEventRegistrationInput & {
+export type GuildEventRegistration = {
+  guildEventId: string;
+  guildEventKind: string;
+  guildEventOccursAt: GuildEventOccursAt;
+  guildEventCategory: string | null;
   discoverable: boolean;
   registeredAtUnix: number;
   updatedAtUnix: number;
+};
+
+type GuildEventRegistrationRow = {
+  guild_event_id: string;
+  guild_event_kind: string;
+  occurs_at_start_unix: string;
+  occurs_at_end_unix: string | null;
+  guild_event_category: string | null;
+  discoverable: boolean;
+  registered_at_unix: string;
+  updated_at_unix: string;
 };
 
 function validateUnix(value: number, field: string): void {
@@ -23,6 +38,9 @@ function validateUnix(value: number, field: string): void {
 }
 
 function normalizeRegistration(input: GuildEventRegistrationInput): GuildEventRegistrationInput {
+  const guildEventId = input.guildEventId.trim();
+  if (!guildEventId) throw new Error("guildEventId is required");
+
   const guildEventKind = input.guildEventKind.trim();
   if (!guildEventKind) throw new Error("guildEventKind is required");
 
@@ -39,10 +57,24 @@ function normalizeRegistration(input: GuildEventRegistrationInput): GuildEventRe
 
   const category = input.guildEventCategory?.trim() || null;
   return {
-    guildEventId: input.guildEventId,
+    guildEventId,
     guildEventKind,
     guildEventOccursAt: end === undefined ? [start] : [start, end],
     guildEventCategory: category,
+  };
+}
+
+function mapRegistration(row: GuildEventRegistrationRow): GuildEventRegistration {
+  const start = Number(row.occurs_at_start_unix);
+  const end = row.occurs_at_end_unix === null ? null : Number(row.occurs_at_end_unix);
+  return {
+    guildEventId: row.guild_event_id,
+    guildEventKind: row.guild_event_kind,
+    guildEventOccursAt: end === null ? [start] : [start, end],
+    guildEventCategory: row.guild_event_category,
+    discoverable: row.discoverable,
+    registeredAtUnix: Number(row.registered_at_unix),
+    updatedAtUnix: Number(row.updated_at_unix),
   };
 }
 
@@ -93,4 +125,27 @@ export async function withdrawGuildEventRegistration(
       WHERE guild_event_id = $1`,
     [guildEventId, nowUnix],
   );
+}
+
+export async function guildEventRegistration(
+  guildEventId: string,
+): Promise<GuildEventRegistration | null> {
+  const result = await pool.query<GuildEventRegistrationRow>(
+    `SELECT *
+       FROM guild_event_registrations
+      WHERE guild_event_id = $1`,
+    [guildEventId],
+  );
+  const row = result.rows[0];
+  return row ? mapRegistration(row) : null;
+}
+
+export async function discoverableGuildEventRegistrations(): Promise<GuildEventRegistration[]> {
+  const result = await pool.query<GuildEventRegistrationRow>(
+    `SELECT *
+       FROM guild_event_registrations
+      WHERE discoverable = true
+      ORDER BY occurs_at_start_unix ASC, guild_event_id ASC`,
+  );
+  return result.rows.map(mapRegistration);
 }
