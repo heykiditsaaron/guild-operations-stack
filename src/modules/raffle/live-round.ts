@@ -21,11 +21,11 @@ function isSingleLiveRoundViolation(error: unknown): boolean {
 }
 
 export async function activateSingleRaffleRound(
-  actorSubjectId: string,
+  actorGuildieId: string,
   roundId: string,
 ): Promise<RaffleRound> {
   try {
-    const round = await activateRaffleRound(actorSubjectId, roundId);
+    const round = await activateRaffleRound(actorGuildieId, roundId);
     await coupleGuildEventListing(round);
     await publishRaffleEvent({ kind: "raffle.round.live", roundId: round.roundId });
     return round;
