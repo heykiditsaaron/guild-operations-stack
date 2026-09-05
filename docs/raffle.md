@@ -39,7 +39,9 @@ Guild Operations is authoritative for:
 - the deterministic construction of a round's selection population;
 - execution and preservation of the manual draw result.
 
-The current guild policy grants raffle administration to ranks 0, 1, and 2 through the explicit `raffle.admin` capability. Raffle code authorizes against the capability rather than interpreting numeric ranks itself.
+Raffle owns the `raffle.admin` authorization policy because it governs raffle-specific procedure. The current guild policy grants that module capability to Guildies whose globally derived effective Blizzard rank is 0, 1, or 2. Raffle consumes globally authoritative Guildie, Character-control, roster, and rank facts as inputs; it does not own, duplicate, or reinterpret those facts as raffle state.
+
+Raffle code authorizes against `raffle.admin` rather than scattering numeric rank comparisons through the module. The current implementation still provisions `raffle.admin` through the global `guild_rank_capabilities` machinery. That provisioning path is conformity debt against the module-ownership boundary and should be corrected when raffle administration is next revised; it does not make `raffle.admin` a globally owned permission.
 
 ## Round
 
@@ -185,7 +187,7 @@ Raffle administration is a distinct privileged projection over the same raffle t
 - `/admin/raffle` — current and preparatory raffle administration work;
 - `/admin/raffle/:roundId` — detailed raffle management, claim adjudication, manual draw, and administrative ledger.
 
-The former `/events/raffle/admin/*` paths are compatibility redirects rather than a second canonical administrative hierarchy. Raffle administration remains authorized through the existing `raffle.admin` capability.
+The former `/events/raffle/admin/*` paths are compatibility redirects rather than a second canonical administrative hierarchy. Raffle administration remains authorized through the module-owned `raffle.admin` capability.
 
 The administration root intentionally excludes concluded raffles because terminal rounds no longer represent active officer work. Their durable history remains available through the ordinary raffle history projection.
 

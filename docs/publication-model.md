@@ -4,7 +4,7 @@ Guild Operations publishes meaningful operational occurrences after authoritativ
 
 A publication creates attention, not truth. It identifies what changed and provides the smallest coordinates needed for a subscriber to query Guild Operations for current authoritative state.
 
-This terminology deliberately avoids using **Events** as the name of the publication mechanism. In Guild Operations, **Events** is reserved for the participatory, calendar-style activities the guild runs.
+This terminology deliberately avoids using **Events** as the name of the publication mechanism. In Guild Operations, a **Guild Event** is a concrete occurrence that an appropriate participation module may establish through the shared Guild Event Listing contract. Modules own their participation capabilities and procedures; Guild Events are discoverable occurrences of those capabilities, not containers for the modules themselves.
 
 Concrete references are separated by purpose:
 

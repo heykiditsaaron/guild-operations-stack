@@ -65,6 +65,8 @@ A module owns permission policy that is specific to that module. It may derive a
 
 A module-specific capability does not become a global capability merely because it has a capability name. Module policy does not need to be persisted in `guild_rank_capabilities` when the module can evaluate that policy directly from current authoritative facts.
 
+`raffle.admin` is a current concrete example. The capability and the policy that grants it belong to the Raffle module because they authorize raffle-specific procedure. Raffle derives that decision from globally owned effective guild-rank truth. The current implementation still provisions `raffle.admin` through the global `guild_rank_capabilities` machinery; that implementation path is conformity debt, not a transfer of permission-policy ownership to the global layer.
+
 Global and module-specific permissioning may coexist. Ownership determines which layer defines and provisions the permission rule.
 
 Modules should not duplicate globally owned Guildie, Character, roster, rank, or authority state in order to evaluate local authorization. Conversely, the global permission layer should not accumulate module-specific policy merely because it already provides reusable authorization machinery.

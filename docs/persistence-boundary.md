@@ -6,6 +6,8 @@ Define the persistence behavior required to establish and preserve Guildie conti
 
 This document is deliberately narrower than the application's complete global persistence model.
 
+Timestamp-like fields shown here describe semantic time relationships rather than SQL storage types. They inherit the application-wide persistence convention in `docs/global-persistence.md`: persisted instants use Unix time, while human-readable date and time belong to presentation. Existing legacy timestamp columns remain conformity debt where documented.
+
 ## Persisted objects
 
 The root Blizzard-authenticated persistence slice contains:

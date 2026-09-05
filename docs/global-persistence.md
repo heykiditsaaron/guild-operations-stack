@@ -170,7 +170,7 @@ Blizzard remains authoritative for facts such as:
 
 Guild Operations may persist observations of those facts because they are needed to operate the guild organization outside WoW. Persisting an observation does not make Guild Operations authoritative for the underlying Blizzard fact.
 
-Guild Operations is authoritative for facts and meanings it establishes itself, including Guildie continuity, selected-main preference, Discord association, globally defined application permissions, shared registry state, and module-owned participation outcomes.
+Guild Operations is authoritative for facts and meanings it establishes itself, including Guildie continuity, selected-main preference, Discord association, globally defined permissions for globally owned operations, shared registry state, and module-owned participation outcomes.
 
 ## Persist actual objects and relationships
 
