@@ -25,6 +25,13 @@ function goldPrize(round: ActiveRaffleRoundOverview): bigint | null {
   return (pot * BigInt(round.winnerPercentage)) / 100n;
 }
 
+function configuredPrize(round: ActiveRaffleRoundOverview): string {
+  if (round.prizeKind === "gold") {
+    return round.winnerPercentage === null ? "Gold" : `${round.winnerPercentage}% of the pot`;
+  }
+  return round.prizeDescription ?? round.prizeKind;
+}
+
 function referenceLinks(): string {
   return `<nav class="raffle-reference-links" aria-label="Raffle information">
     <a class="raffle-reference-link" href="/events/raffle/history">
@@ -42,9 +49,9 @@ function activeRaffleBody(round: ActiveRaffleRoundOverview, assets: AssetRegistr
   const cutoffUnix = raffleClaimCutoffUnix(round.drawingAtUnix);
   const claimsOpen = raffleClaimsAreOpen(round.drawingAtUnix);
   const prize = goldPrize(round);
-  const prizeValue = prize === null
-    ? htmlText(round.prizeKind)
-    : `${formatGold(prize)} gold`;
+  const prizeValue = round.prizeKind === "gold" && prize !== null
+    ? `${formatGold(prize)} gold`
+    : htmlText(configuredPrize(round));
 
   return `
     <div class="raffle-public-shell">
@@ -107,7 +114,7 @@ function listedRaffleBody(round: ActiveRaffleRoundOverview, assets: AssetRegistr
               </div>
               <div class="raffle-stat">
                 <span class="raffle-plaque-label">Prize</span>
-                <strong class="raffle-stat-value">${htmlText(round.prizeKind)}${round.winnerPercentage === null ? "" : ` · ${round.winnerPercentage}%`}</strong>
+                <strong class="raffle-stat-value">${htmlText(configuredPrize(round))}</strong>
               </div>
             </div>
           </div>
