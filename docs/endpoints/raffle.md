@@ -16,7 +16,9 @@ Member session authority is used for member-owned raffle participation and for b
 
 ### `raffle.admin`
 
-A signed-in Guildie whose current guild authority resolves to the `raffle.admin` capability.
+A signed-in Guildie whose current guild authority satisfies the Raffle module's `raffle.admin` policy.
+
+Raffle owns this policy. It currently derives administration authority from the Guildie's effective Blizzard guild rank: rank indexes `0`, `1`, and `2` may administer raffles. `raffle.admin` is not persisted as a global guild capability assignment.
 
 This authority is required for raffle preparation, activation, adjudication, drawing, administrative cancellation, and claim-ledger inspection.
 
@@ -34,9 +36,27 @@ Machine query requests send:
 Authorization: Bearer <RAFFLE_QUERY_API_KEY>
 ```
 
-This credential grants no raffle operation authority. It exists so external systems that receive authoritative raffle publication coordinates can ask Guild Operations for the current authoritative raffle projection without acquiring a human session or `raffle.admin` capability.
+This credential grants no raffle operation authority. It exists so external systems that receive authoritative raffle publication coordinates can ask Guild Operations for the current authoritative raffle projection without acquiring a human session or `raffle.admin` authority.
 
 If the credential is not configured, machine query routes return `503 raffle_query_not_configured`. Missing or incorrect credentials return `401 raffle_query_authority_required`.
+
+## Raffle lifecycle projection
+
+A raffle round exposes lifecycle and conclusion separately.
+
+`status` is one of:
+
+- `listed`
+- `live`
+- `concluded`
+
+`conclusion` is `null` until the round concludes. A concluded round has one of:
+
+- `drawn`
+- `operator_cancelled`
+- `no_participation`
+
+Creation is an operation that establishes a `listed` round; `created` is not a lifecycle state.
 
 ## Machine query endpoints
 
@@ -55,6 +75,7 @@ Response:
   "round": {
     "roundId": "...",
     "status": "live",
+    "conclusion": null,
     "drawingAtUnix": 0,
     "ticketPriceGold": "1000",
     "prizeKind": "gold",
@@ -98,7 +119,7 @@ Authority: raffle machine query authority.
 Success:
 
 ```json
-{ "round": { "...": "same round projection as /raffle/query/live" } }
+{ "round": { "...": "same round projection as /raffle/query/live, including status and conclusion" } }
 ```
 
 Not found:
@@ -107,7 +128,7 @@ Not found:
 { "error": "round_not_found" }
 ```
 
-A drawn round may additionally contain:
+A round concluded by drawing has `status: "concluded"` and `conclusion: "drawn"`, and may additionally contain:
 
 ```json
 {
@@ -136,6 +157,7 @@ Response:
     "claimId": "...",
     "roundId": "...",
     "roundStatus": "live",
+    "roundConclusion": null,
     "character": {
       "characterId": "...",
       "name": "Character",
@@ -171,7 +193,7 @@ These routes primarily support Guild Operations browser/application interactions
 
 ### GET `/raffle/rounds/:roundId`
 
-Returns the domain round object for an authenticated Guildie.
+Returns the domain round object for an authenticated Guildie, including separate `status` and `conclusion` values.
 
 Authority: member session.
 
@@ -185,7 +207,7 @@ Not found:
 
 Returns every claim for the specified round.
 
-Authority: member session plus `raffle.admin`.
+Authority: member session plus Raffle module `raffle.admin` authority.
 
 Response:
 
@@ -202,7 +224,7 @@ This is an administrative claim-ledger read. It must not be exposed merely becau
 
 ### POST `/raffle/rounds`
 
-Creates a prepared raffle round. Creation does not make the raffle live and does not establish one of the currently published raffle system events.
+Creates a raffle round and establishes it immediately as `listed`. A listed round is an upcoming participatory occurrence: it may be discovered and its terms may still be edited, but claims are not accepted until it becomes live.
 
 Authority: `raffle.admin`.
 
@@ -217,43 +239,80 @@ Body:
 }
 ```
 
-Success: `201` with the created round.
+Success: `201` with the listed round.
+
+The Raffle module establishes the corresponding Guild Event Listing in the same database transaction as the round. If listing establishment fails, round creation fails rather than leaving the Registry out of sync.
 
 ### PATCH `/raffle/rounds/:roundId`
 
-Updates terms of a prepared round. Terms are locked once the round becomes live.
+Updates terms of a listed round. Terms are locked once the round becomes live.
 
 Authority: `raffle.admin`.
 
 Body: same terms shape as round creation.
 
+The updated raffle truth and its updated Guild Event Listing commit together.
+
 ### POST `/raffle/rounds/:roundId/live`
 
-Makes a prepared raffle live.
+Transitions a listed raffle to `live`.
 
 Authority: `raffle.admin`.
 
 The guild may have at most one live raffle. A conflicting activation returns `409 active_round_exists`.
 
-Successful activation establishes authoritative raffle reality. See `docs/publications/raffle.md` for the resulting system-event publication contract.
+The live transition and the corresponding Guild Event Listing update commit together. Publication, where configured, occurs only after that authoritative transaction succeeds.
 
 ### POST `/raffle/rounds/:roundId/cancel`
 
-Administratively cancels a created or live round while preserving it and its claims as raffle history.
+Administratively concludes a listed or live round with:
+
+```json
+{
+  "status": "concluded",
+  "conclusion": "operator_cancelled"
+}
+```
 
 Authority: `raffle.admin`.
 
-See `docs/publications/raffle.md` for the resulting publication.
+Operator cancellation is a short-circuited conclusion. It revokes participation eligibility before intended resolution. Raffle therefore withdraws its Guild Event Listing in the same transaction that records the conclusion.
+
+Cancellation does not rewrite claims or other pre-conclusion raffle state. Unresolved claims may remain unresolved because the preserved round is an audit record, not a cleaned-up reconstruction.
 
 ### POST `/raffle/rounds/:roundId/draw`
 
-Manually concludes a live raffle.
+Manually resolves a live raffle.
 
 Authority: `raffle.admin`.
 
 Drawing refuses to proceed while unresolved claims exist.
 
-The resulting publication depends on whether approved entries exist. See `docs/publications/raffle.md`.
+The authoritative drawing population is derived deterministically from approved claims. Claims themselves are not rewritten by drawing.
+
+If the derived ticket population is non-empty, the result is:
+
+```json
+{
+  "status": "concluded",
+  "conclusion": "drawn"
+}
+```
+
+The round records the total population, selected index, and winning claim as draw evidence.
+
+If the derived ticket population is empty, the result is:
+
+```json
+{
+  "status": "concluded",
+  "conclusion": "no_participation"
+}
+```
+
+`no_participation` is not cancellation. No draw-result fields are invented for the empty population; the zero population remains reconstructable from preserved claim truth.
+
+Both normal conclusions retain and update the raffle's Guild Event Listing to the best-known occurrence range. The raffle conclusion and listing update commit together.
 
 ## Claim operations
 
@@ -277,6 +336,8 @@ Success: `201` with the established claim.
 
 The claim preserves two different relationships: the claimant Guildie and the participating Character. Those roles are not collapsed into a generic Subject coordinate.
 
+A claim is promissory. Approval establishes immutable ticket weight; the individual ticket units are derived from approved claim truth rather than persisted independently.
+
 A rejected submission does not create a claim, so no raffle system event is established and nothing is published.
 
 ### POST `/raffle/claims/:claimId/cancel`
@@ -287,6 +348,8 @@ Authority: member session; Guildie claim ownership is enforced by the domain.
 
 Success: `204`.
 
+An approved claim cannot be cancelled or withdrawn. Once approval establishes ticket weight, that weight remains part of the round's drawing basis.
+
 ### POST `/raffle/claims/:claimId/approve`
 
 Records an attendant judgment that the claim's promised guild-bank deposit was fulfilled.
@@ -294,6 +357,8 @@ Records an attendant judgment that the claim's promised guild-bank deposit was f
 Authority: `raffle.admin`.
 
 Success: `204`.
+
+Approval is immutable.
 
 ### POST `/raffle/claims/:claimId/deny`
 
@@ -311,16 +376,18 @@ Success: `204`.
 
 ## Publication relationship
 
-Successful operations that establish a cataloged raffle system event publish only after authoritative raffle state has changed. The publication carries the occurrence kind and relevant raffle coordinates; it is not the authoritative state itself.
+Successful operations may publish only after authoritative raffle state has changed. Publication is not authoritative raffle state and publication failure does not reverse a successful raffle operation.
 
-External subscribers should use those coordinates with the machine query endpoints above to establish what raffle reality is current now. Publication delivery failure does not reverse a successful raffle operation.
+The ownership and transport architecture for raffle publications remains under evaluation. The existing publication surface is therefore provisional and must not be treated as a reason to duplicate raffle truth outside the module.
 
-The canonical list of published raffle system events and their coordinates lives in `docs/publications/raffle.md`.
+The current catalog of published raffle system events and their coordinates lives in `docs/publications/raffle.md`.
 
 ## Time values
 
-All HTTP time values that represent operational instants use Unix seconds. Consumers decide how to express those instants to humans in the viewer's local timezone.
+All HTTP and persisted raffle time values that represent operational instants use Unix seconds. Consumers decide how to express those instants to humans in the viewer's local timezone.
 
 `datetime-local` is a browser input concern only and is converted to a timezone-neutral instant before a raffle operation crosses the backend boundary.
+
+Server or container timezone is not raffle persistence or presentation policy.
 
 `Subject` is not an endpoint authority class or response identity. It remains contextual language only.
