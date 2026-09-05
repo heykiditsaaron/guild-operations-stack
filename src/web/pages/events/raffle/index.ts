@@ -3,6 +3,7 @@ import { SESSION_COOKIE_NAME } from "../../../../auth.js";
 import { raffleClaimCutoffUnix, raffleClaimsAreOpen } from "../../../../modules/raffle/domain.js";
 import {
   activeRaffleRoundOverview,
+  nextListedRaffleRoundOverview,
   type ActiveRaffleRoundOverview,
 } from "../../../../modules/raffle/live-round.js";
 import { assetUrl, type AssetRegistry } from "../../../assets.js";
@@ -22,6 +23,19 @@ function goldPrize(round: ActiveRaffleRoundOverview): bigint | null {
   if (round.prizeKind !== "gold" || round.winnerPercentage === null) return null;
   const pot = BigInt(round.ticketPriceGold) * BigInt(round.approvedTicketCount);
   return (pot * BigInt(round.winnerPercentage)) / 100n;
+}
+
+function referenceLinks(): string {
+  return `<nav class="raffle-reference-links" aria-label="Raffle information">
+    <a class="raffle-reference-link" href="/events/raffle/history">
+      <span class="raffle-reference-title">Previous Raffles</span>
+      <span class="raffle-reference-arrow" aria-hidden="true">→</span>
+    </a>
+    <a class="raffle-reference-link" href="/events/raffle/rules">
+      <span class="raffle-reference-title">Rules and Regulations</span>
+      <span class="raffle-reference-arrow" aria-hidden="true">→</span>
+    </a>
+  </nav>`;
 }
 
 function activeRaffleBody(round: ActiveRaffleRoundOverview, assets: AssetRegistry): string {
@@ -69,33 +83,62 @@ function activeRaffleBody(round: ActiveRaffleRoundOverview, assets: AssetRegistr
         </section>
       </div>
 
-      <nav class="raffle-reference-links" aria-label="Raffle information">
-        <a class="raffle-reference-link" href="/events/raffle/history">
-          <span class="raffle-reference-title">Previous Raffles</span>
-          <span class="raffle-reference-arrow" aria-hidden="true">→</span>
-        </a>
-        <a class="raffle-reference-link" href="/events/raffle/rules">
-          <span class="raffle-reference-title">Rules and Regulations</span>
-          <span class="raffle-reference-arrow" aria-hidden="true">→</span>
-        </a>
-      </nav>
+      ${referenceLinks()}
+    </div>`;
+}
+
+function listedRaffleBody(round: ActiveRaffleRoundOverview, assets: AssetRegistry): string {
+  return `
+    <div class="raffle-public-shell">
+      <div class="raffle-plaque-wrap">
+        <section class="raffle-plaque" aria-labelledby="raffle-upcoming-title">
+          <img class="raffle-plaque-art" src="${assetUrl(assets, "images/raffle/gold-sack.png")}" alt="" aria-hidden="true">
+          <div class="raffle-plaque-copy">
+            <p class="raffle-live-kicker" id="raffle-upcoming-title">Upcoming raffle</p>
+            <p class="raffle-status-copy">This raffle has been announced but is not open for participation yet.</p>
+            <div class="raffle-drawing">
+              <p class="raffle-plaque-label">Estimated drawing time</p>
+              ${localTime(round.drawingAtUnix)}
+            </div>
+            <div class="raffle-stats">
+              <div class="raffle-stat">
+                <span class="raffle-plaque-label">Ticket price</span>
+                <strong class="raffle-stat-value">${formatGold(round.ticketPriceGold)} gold</strong>
+              </div>
+              <div class="raffle-stat">
+                <span class="raffle-plaque-label">Prize</span>
+                <strong class="raffle-stat-value">${htmlText(round.prizeKind)}${round.winnerPercentage === null ? "" : ` · ${round.winnerPercentage}%`}</strong>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      ${referenceLinks()}
     </div>`;
 }
 
 function noActiveRaffleBody(): string {
   return `
     <section class="raffle-empty-state" aria-labelledby="raffle-empty-title">
-      <h2 id="raffle-empty-title">No active raffle.</h2>
+      <h2 id="raffle-empty-title">No active or upcoming raffle.</h2>
     </section>`;
 }
 
 export async function registerRafflePage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/events/raffle", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, liveRaffle] = await Promise.all([
+    const [viewer, liveRaffle, listedRaffle] = await Promise.all([
       viewerForRequest(sessionToken),
       activeRaffleRoundOverview(),
+      nextListedRaffleRoundOverview(),
     ]);
+
+    const body = liveRaffle
+      ? activeRaffleBody(liveRaffle, assets)
+      : listedRaffle
+        ? listedRaffleBody(listedRaffle, assets)
+        : noActiveRaffleBody();
 
     const html = renderPage(assets, {
       pathname: "/events/raffle",
@@ -116,7 +159,7 @@ export async function registerRafflePage(app: FastifyInstance, assets: AssetRegi
           <p class="eyebrow">Events</p>
           <h1 id="page-title">Raffle</h1>
         </div>`,
-      body: liveRaffle ? activeRaffleBody(liveRaffle, assets) : noActiveRaffleBody(),
+      body,
     });
 
     return reply
