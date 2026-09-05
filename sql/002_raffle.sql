@@ -102,11 +102,21 @@ CREATE TABLE IF NOT EXISTS raffle_claims (
   )
 );
 
-ALTER TABLE raffle_rounds
-  ADD CONSTRAINT raffle_rounds_winning_claim_fk
-  FOREIGN KEY (winning_claim_id)
-  REFERENCES raffle_claims(claim_id)
-  ON DELETE RESTRICT;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+      FROM pg_constraint
+     WHERE conname = 'raffle_rounds_winning_claim_fk'
+       AND conrelid = 'raffle_rounds'::regclass
+  ) THEN
+    ALTER TABLE raffle_rounds
+      ADD CONSTRAINT raffle_rounds_winning_claim_fk
+      FOREIGN KEY (winning_claim_id)
+      REFERENCES raffle_claims(claim_id)
+      ON DELETE RESTRICT;
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS raffle_rounds_guild_status_idx
   ON raffle_rounds(guild_id, status);
