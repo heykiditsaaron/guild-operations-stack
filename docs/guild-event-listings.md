@@ -49,6 +49,26 @@ These are the irreducible coordinates of a listing:
 
 The owning module determines the truthful temporal shape for each concrete occurrence. The registry does not derive temporal meaning from module state.
 
+### Best-known temporal truth
+
+`guild_event_occurs_at` is mutable operational truth, not an immutable copy of the first schedule ever registered.
+
+Guild-operated ceremonies may depend on human scheduling and best-attempt adherence rather than deterministic automation. A scheduled or estimated boundary is therefore authoritative while it is the best truth the owning module has established. When the module later establishes an observed boundary, it may re-establish the same Guild Event Listing with the more accurate Unix value.
+
+Conceptually:
+
+```text
+future or not-yet-observed boundary
+    → scheduled / estimated Unix
+
+observed boundary becomes available
+    → actual Unix supersedes the estimate
+```
+
+This is not historical rewriting. The Guild Event Listing is a projection of the module's best currently established temporal truth. Ceremony-specific history remains owned by the module, while the registry exposes the current listing truth consumers should use.
+
+The same Guild Event kind may therefore legitimately change shape or values over its lifecycle. For example, a raffle round may be listed initially as an expected drawing instant, become a live range from actual opening time through expected drawing time, and after conclusion expose the actual live-to-conclusion range.
+
 A valid listing may contain only these required coordinates. Such a listing may be less expressive to a particular consumer, but it remains a complete Guild Event Listing.
 
 ## Optional contract fields
@@ -84,6 +104,8 @@ There is no arbitrary metadata bag. A new optional field belongs in the contract
 Modules own participation truth and procedure. They decide whether a concrete Guild Event exists and establish the listing coordinates they can truthfully provide.
 
 A module may establish, re-establish, or withdraw a Guild Event Listing as its owned truth changes. The registry does not interrogate the module to derive those changes.
+
+Re-establishing a listing with more accurate occurrence time is expected behavior when a module replaces scheduled or estimated boundaries with observed ones. The module remains responsible for deciding when that newer temporal truth exists.
 
 Listing a Guild Event does not transfer ownership of the module's procedure, participation truth, or ceremony-specific historical meaning to the registry.
 
