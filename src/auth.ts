@@ -4,9 +4,9 @@ import { acquireAuthority, authorizationUrl, exchangeAuthorizationCode } from ".
 import { config, parseRegion, type Region } from "./config.js";
 import { pool } from "./db.js";
 import { effectiveGuildAuthority } from "./guild-permissions.js";
-import { guildCharactersForSubject } from "./guild.js";
-import { mainCharacterForSubject, selectMainCharacter } from "./main-character.js";
-import { establishOrResolveSubject } from "./persistence.js";
+import { guildCharactersForGuildie } from "./guild.js";
+import { mainCharacterForGuildie, selectMainCharacter } from "./main-character.js";
+import { establishOrResolveGuildie } from "./persistence.js";
 
 export const SESSION_COOKIE_NAME = "guild_session";
 
@@ -16,7 +16,7 @@ type AuthenticationAttempt = {
   region: Region;
   returnTo: string | null;
   purpose: AuthenticationPurpose;
-  subjectId: string | null;
+  guildieId: string | null;
 };
 
 function sha256(value: string): string {
@@ -35,12 +35,12 @@ function withQueryValue(path: string, key: string, value: string): string {
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
-async function createSession(subjectId: string): Promise<string> {
+async function createSession(guildieId: string): Promise<string> {
   const token = randomBytes(32).toString("base64url");
   await pool.query(
-    `INSERT INTO application_sessions (subject_id, token_hash, expires_at)
+    `INSERT INTO application_sessions (guildie_id, token_hash, expires_at)
      VALUES ($1, $2, now() + ($3 * interval '1 day'))`,
-    [subjectId, sha256(token), config.sessionTtlDays],
+    [guildieId, sha256(token), config.sessionTtlDays],
   );
   return token;
 }
@@ -55,34 +55,34 @@ function setSessionCookie(reply: FastifyReply, token: string): void {
   });
 }
 
-export async function authenticatedSubject(token: string | undefined): Promise<{
-  subjectId: string;
+export async function authenticatedGuildie(token: string | undefined): Promise<{
+  guildieId: string;
   region: Region;
   characterCount: number;
 } | null> {
   if (!token) return null;
 
   const result = await pool.query<{
-    subject_id: string;
+    guildie_id: string;
     region: Region;
     character_count: string;
   }>(
-    `SELECT s.subject_id, bp.region, count(c.character_record_id)::text AS character_count
+    `SELECT s.guildie_id, bp.region, count(c.character_record_id)::text AS character_count
        FROM application_sessions s
-       JOIN blizzard_principals bp ON bp.subject_id = s.subject_id
+       JOIN blizzard_principals bp ON bp.guildie_id = s.guildie_id
        LEFT JOIN characters c
-         ON c.subject_id = s.subject_id
+         ON c.guildie_id = s.guildie_id
         AND c.currently_controlled = true
       WHERE s.token_hash = $1
         AND s.revoked_at IS NULL
         AND s.expires_at > now()
-      GROUP BY s.subject_id, bp.region`,
+      GROUP BY s.guildie_id, bp.region`,
     [sha256(token)],
   );
 
   if (!result.rowCount) return null;
   return {
-    subjectId: result.rows[0].subject_id,
+    guildieId: result.rows[0].guildie_id,
     region: result.rows[0].region,
     characterCount: Number(result.rows[0].character_count),
   };
@@ -92,9 +92,9 @@ async function createAttempt(input: AuthenticationAttempt): Promise<string> {
   const state = randomBytes(32).toString("base64url");
   await pool.query(
     `INSERT INTO authentication_attempts (
-       state_hash, region, purpose, subject_id, return_to, expires_at
+       state_hash, region, purpose, guildie_id, return_to, expires_at
      ) VALUES ($1, $2, $3, $4, $5, now() + ($6 * interval '1 minute'))`,
-    [sha256(state), input.region, input.purpose, input.subjectId, input.returnTo, config.authAttemptTtlMinutes],
+    [sha256(state), input.region, input.purpose, input.guildieId, input.returnTo, config.authAttemptTtlMinutes],
   );
   return state;
 }
@@ -104,14 +104,14 @@ async function consumeAttempt(state: string): Promise<AuthenticationAttempt | nu
     region: Region;
     return_to: string | null;
     purpose: AuthenticationPurpose;
-    subject_id: string | null;
+    guildie_id: string | null;
   }>(
     `UPDATE authentication_attempts
        SET consumed_at = now()
      WHERE state_hash = $1
        AND consumed_at IS NULL
        AND expires_at > now()
-     RETURNING region, return_to, purpose, subject_id`,
+     RETURNING region, return_to, purpose, guildie_id`,
     [sha256(state)],
   );
   if (!result.rowCount) return null;
@@ -119,26 +119,26 @@ async function consumeAttempt(state: string): Promise<AuthenticationAttempt | nu
     region: result.rows[0].region,
     returnTo: result.rows[0].return_to,
     purpose: result.rows[0].purpose,
-    subjectId: result.rows[0].subject_id,
+    guildieId: result.rows[0].guildie_id,
   };
 }
 
-async function subjectForBlizzardPrincipal(region: Region, principalId: string): Promise<string | null> {
-  const result = await pool.query<{ subject_id: string }>(
-    `SELECT subject_id FROM blizzard_principals WHERE region = $1 AND principal_id = $2`,
+async function guildieForBlizzardPrincipal(region: Region, principalId: string): Promise<string | null> {
+  const result = await pool.query<{ guildie_id: string }>(
+    `SELECT guildie_id FROM blizzard_principals WHERE region = $1 AND principal_id = $2`,
     [region, principalId],
   );
-  return result.rows[0]?.subject_id ?? null;
+  return result.rows[0]?.guildie_id ?? null;
 }
 
 async function redirectAfterIdentityCeremony(
-  subjectId: string,
+  guildieId: string,
   returnTo: string,
   refreshResult?: "success" | "failed",
 ): Promise<string> {
   let destination = returnTo;
   if (refreshResult) destination = withQueryValue(destination, "refresh", refreshResult);
-  const mainCharacter = await mainCharacterForSubject(subjectId);
+  const mainCharacter = await mainCharacterForGuildie(guildieId);
   if (!mainCharacter) destination = withQueryValue(destination, "select_main", "required");
   return destination;
 }
@@ -153,24 +153,24 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       region,
       returnTo: safeReturnTo(query.return_to),
       purpose: "login",
-      subjectId: null,
+      guildieId: null,
     });
     return reply.redirect(authorizationUrl(state));
   });
 
   app.get("/me/refresh", async (request, reply) => {
-    const subject = await authenticatedSubject(request.cookies[SESSION_COOKIE_NAME]);
-    if (!subject) return reply.code(401).send({ error: "not_authenticated" });
+    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
+    if (!guildie) return reply.code(401).send({ error: "not_authenticated" });
 
-    const membership = await effectiveGuildAuthority(subject.subjectId);
+    const membership = await effectiveGuildAuthority(guildie.guildieId);
     if (!membership) return reply.code(403).send({ error: "current_guild_membership_required" });
 
     const query = request.query as { return_to?: unknown };
     const state = await createAttempt({
-      region: subject.region,
+      region: guildie.region,
       returnTo: safeReturnTo(query.return_to) ?? "/",
       purpose: "self_refresh",
-      subjectId: subject.subjectId,
+      guildieId: guildie.guildieId,
     });
     return reply.redirect(authorizationUrl(state));
   });
@@ -201,35 +201,35 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       const authority = await acquireAuthority(attempt.region, accessToken);
 
       if (attempt.purpose === "self_refresh") {
-        const subject = await authenticatedSubject(request.cookies[SESSION_COOKIE_NAME]);
-        if (!subject || !attempt.subjectId || subject.subjectId !== attempt.subjectId) {
+        const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
+        if (!guildie || !attempt.guildieId || guildie.guildieId !== attempt.guildieId) {
           return reply.redirect(withQueryValue(returnTo, "refresh", "failed"));
         }
 
-        const membership = await effectiveGuildAuthority(subject.subjectId);
+        const membership = await effectiveGuildAuthority(guildie.guildieId);
         if (!membership) return reply.redirect(withQueryValue(returnTo, "refresh", "failed"));
 
-        const authoritySubjectId = await subjectForBlizzardPrincipal(attempt.region, authority.principalId);
-        if (authoritySubjectId !== subject.subjectId) {
+        const authorityGuildieId = await guildieForBlizzardPrincipal(attempt.region, authority.principalId);
+        if (authorityGuildieId !== guildie.guildieId) {
           return reply.redirect(withQueryValue(returnTo, "refresh", "failed"));
         }
 
-        await establishOrResolveSubject({
+        await establishOrResolveGuildie({
           region: attempt.region,
           principalId: authority.principalId,
           profile: authority.profile,
         });
-        return reply.redirect(await redirectAfterIdentityCeremony(subject.subjectId, returnTo, "success"));
+        return reply.redirect(await redirectAfterIdentityCeremony(guildie.guildieId, returnTo, "success"));
       }
 
-      const subjectId = await establishOrResolveSubject({
+      const guildieId = await establishOrResolveGuildie({
         region: attempt.region,
         principalId: authority.principalId,
         profile: authority.profile,
       });
-      const sessionToken = await createSession(subjectId);
+      const sessionToken = await createSession(guildieId);
       setSessionCookie(reply, sessionToken);
-      return reply.redirect(await redirectAfterIdentityCeremony(subjectId, returnTo));
+      return reply.redirect(await redirectAfterIdentityCeremony(guildieId, returnTo));
     } catch (error) {
       request.log.error({ err: error }, "Blizzard authentication ceremony failed");
       if (attempt.purpose === "self_refresh") {
@@ -240,18 +240,18 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.get("/me", async (request, reply) => {
-    const subject = await authenticatedSubject(request.cookies[SESSION_COOKIE_NAME]);
-    if (!subject) return reply.code(401).send({ error: "not_authenticated" });
+    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
+    if (!guildie) return reply.code(401).send({ error: "not_authenticated" });
 
     const [guildCharacters, mainCharacter] = await Promise.all([
-      guildCharactersForSubject(subject.subjectId),
-      mainCharacterForSubject(subject.subjectId),
+      guildCharactersForGuildie(guildie.guildieId),
+      mainCharacterForGuildie(guildie.guildieId),
     ]);
 
     return reply.send({
-      subject_id: subject.subjectId,
-      region: subject.region,
-      character_count: subject.characterCount,
+      guildie_id: guildie.guildieId,
+      region: guildie.region,
+      character_count: guildie.characterCount,
       guild: {
         guild_id: config.guild.id,
         main_character: mainCharacter
@@ -284,15 +284,15 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.put("/me/main-character", async (request, reply) => {
-    const subject = await authenticatedSubject(request.cookies[SESSION_COOKIE_NAME]);
-    if (!subject) return reply.code(401).send({ error: "not_authenticated" });
+    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
+    if (!guildie) return reply.code(401).send({ error: "not_authenticated" });
 
     const body = request.body as { realm_id?: unknown; character_id?: unknown } | null;
     if (!body || typeof body.realm_id !== "string" || typeof body.character_id !== "string") {
       return reply.code(400).send({ error: "invalid_character_coordinate" });
     }
 
-    const selected = await selectMainCharacter(subject.subjectId, body.realm_id, body.character_id);
+    const selected = await selectMainCharacter(guildie.guildieId, body.realm_id, body.character_id);
     if (!selected) return reply.code(409).send({ error: "character_not_currently_eligible" });
 
     return reply.send({
