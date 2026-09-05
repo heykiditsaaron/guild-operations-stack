@@ -352,10 +352,10 @@ summary {
 
 .secondary-navigation {
   width: min(100%, 46rem);
+  min-width: 0;
   min-height: 1.35rem;
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 0.5rem;
   color: #aaa69c;
   font-size: 0.84rem;
@@ -372,15 +372,51 @@ summary {
   color: #f7f4ea;
 }
 
+.secondary-navigation-back a {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .secondary-navigation-breadcrumb {
-  color: #e8c986;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  color: #aaa69c;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
+.secondary-navigation-breadcrumb > a,
+.secondary-navigation-breadcrumb > span:not([aria-current="page"]):not(.secondary-navigation-separator) {
+  flex: 0 0 auto;
+  color: #aaa69c;
+}
+
+.secondary-navigation-breadcrumb [aria-current="page"] {
+  min-width: 0;
+  overflow: hidden;
+  color: #e8c986;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .secondary-navigation-separator {
+  flex: 0 0 auto;
   color: #77736b;
+}
+
+@media (max-width: 40rem) {
+  .secondary-navigation-breadcrumb > :nth-last-child(n + 4) {
+    display: none;
+  }
+
+  .secondary-navigation-breadcrumb:has(> :nth-child(4))::before {
+    content: "…";
+    flex: 0 0 auto;
+    color: #77736b;
+  }
 }
 
 .page-header {
