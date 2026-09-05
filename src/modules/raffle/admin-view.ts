@@ -11,26 +11,35 @@ export type RaffleAdministrationRound = RaffleRound & {
   approvedTicketCount: number;
 };
 
+function nullableNumber(value: unknown): number | null {
+  return value === null || value === undefined ? null : Number(value);
+}
+
+function nullableString(value: unknown): string | null {
+  return value === null || value === undefined ? null : String(value);
+}
+
 function mapRound(row: Record<string, unknown>): RaffleAdministrationRound {
   return {
     roundId: String(row.round_id),
     guildId: String(row.guild_id),
     status: row.status as RaffleRound["status"],
+    conclusion: row.conclusion as RaffleRound["conclusion"],
     drawingAtUnix: Number(row.drawing_at_unix),
     ticketPriceGold: String(row.ticket_price_gold),
     prizeKind: String(row.prize_kind),
-    winnerPercentage: row.winner_percentage === null ? null : Number(row.winner_percentage),
+    winnerPercentage: nullableNumber(row.winner_percentage),
     createdByGuildieId: String(row.created_by_guildie_id),
-    createdAt: row.created_at as Date,
-    updatedByGuildieId: row.updated_by_guildie_id === null || row.updated_by_guildie_id === undefined ? null : String(row.updated_by_guildie_id),
-    updatedAt: row.updated_at as Date | null,
-    liveByGuildieId: row.live_by_guildie_id === null ? null : String(row.live_by_guildie_id),
-    liveAt: row.live_at as Date | null,
-    concludedByGuildieId: row.concluded_by_guildie_id === null ? null : String(row.concluded_by_guildie_id),
-    concludedAt: row.concluded_at as Date | null,
-    totalEntries: row.total_entries === null ? null : Number(row.total_entries),
-    selectedIndex: row.selected_index === null ? null : Number(row.selected_index),
-    winningClaimId: row.winning_claim_id === null ? null : String(row.winning_claim_id),
+    createdAtUnix: Number(row.created_at_unix),
+    updatedByGuildieId: nullableString(row.updated_by_guildie_id),
+    updatedAtUnix: nullableNumber(row.updated_at_unix),
+    liveByGuildieId: nullableString(row.live_by_guildie_id),
+    liveAtUnix: nullableNumber(row.live_at_unix),
+    concludedByGuildieId: nullableString(row.concluded_by_guildie_id),
+    concludedAtUnix: nullableNumber(row.concluded_at_unix),
+    totalEntries: nullableNumber(row.total_entries),
+    selectedIndex: nullableNumber(row.selected_index),
+    winningClaimId: nullableString(row.winning_claim_id),
     claimCount: Number(row.claim_count),
     pendingClaimCount: Number(row.pending_claim_count),
     approvedClaimCount: Number(row.approved_claim_count),
@@ -56,10 +65,10 @@ export async function raffleRoundsForAdministration(): Promise<RaffleAdministrat
       ORDER BY
         CASE rr.status
           WHEN 'live' THEN 0
-          WHEN 'created' THEN 1
+          WHEN 'listed' THEN 1
           ELSE 2
         END,
-        COALESCE(rr.concluded_at, rr.created_at) DESC,
+        COALESCE(rr.concluded_at_unix, rr.created_at_unix) DESC,
         rr.round_id DESC`,
     [config.guild.id],
   );
