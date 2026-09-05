@@ -15,6 +15,7 @@ export type AssetName =
   | "admin.css"
   | "raffle.css"
   | "raffle-admin.css"
+  | "raffle-winner.css"
   | "raffle.js"
   | "raffle-entry.js"
   | "raffle-public.js"
@@ -37,6 +38,7 @@ const assetDefinitions: Array<{ name: AssetName; contentType: string }> = [
   { name: "admin.css", contentType: "text/css; charset=utf-8" },
   { name: "raffle.css", contentType: "text/css; charset=utf-8" },
   { name: "raffle-admin.css", contentType: "text/css; charset=utf-8" },
+  { name: "raffle-winner.css", contentType: "text/css; charset=utf-8" },
   { name: "app.js", contentType: "text/javascript; charset=utf-8" },
   { name: "navigation-shelves.js", contentType: "text/javascript; charset=utf-8" },
   { name: "raffle.js", contentType: "text/javascript; charset=utf-8" },
