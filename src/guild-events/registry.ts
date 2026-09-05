@@ -3,28 +3,34 @@ import { pool } from "../db.js";
 
 export type GuildEventOccursAt = readonly [number] | readonly [number, number];
 
-export type GuildEventRegistrationInput = {
+export type GuildEventListingInput = {
   guildEventId: string;
   guildEventKind: string;
   guildEventOccursAt: GuildEventOccursAt;
+  guildEventTitle?: string | null;
+  guildEventDestination?: string | null;
   guildEventCategory?: string | null;
 };
 
-export type GuildEventRegistration = {
+export type GuildEventListing = {
   guildEventId: string;
   guildEventKind: string;
   guildEventOccursAt: GuildEventOccursAt;
+  guildEventTitle: string | null;
+  guildEventDestination: string | null;
   guildEventCategory: string | null;
   discoverable: boolean;
   registeredAtUnix: number;
   updatedAtUnix: number;
 };
 
-type GuildEventRegistrationRow = {
+type GuildEventListingRow = {
   guild_event_id: string;
   guild_event_kind: string;
   occurs_at_start_unix: string;
   occurs_at_end_unix: string | null;
+  guild_event_title: string | null;
+  guild_event_destination: string | null;
   guild_event_category: string | null;
   discoverable: boolean;
   registered_at_unix: string;
@@ -37,7 +43,11 @@ function validateUnix(value: number, field: string): void {
   }
 }
 
-function normalizeRegistration(input: GuildEventRegistrationInput): GuildEventRegistrationInput {
+function optionalListingText(value: string | null | undefined): string | null {
+  return value?.trim() || null;
+}
+
+function normalizeListing(input: GuildEventListingInput): GuildEventListingInput {
   const guildEventId = input.guildEventId.trim();
   if (!guildEventId) throw new Error("guildEventId is required");
 
@@ -55,22 +65,25 @@ function normalizeRegistration(input: GuildEventRegistrationInput): GuildEventRe
     if (end < start) throw new Error("guildEventOccursAt end must not precede start");
   }
 
-  const category = input.guildEventCategory?.trim() || null;
   return {
     guildEventId,
     guildEventKind,
     guildEventOccursAt: end === undefined ? [start] : [start, end],
-    guildEventCategory: category,
+    guildEventTitle: optionalListingText(input.guildEventTitle),
+    guildEventDestination: optionalListingText(input.guildEventDestination),
+    guildEventCategory: optionalListingText(input.guildEventCategory),
   };
 }
 
-function mapRegistration(row: GuildEventRegistrationRow): GuildEventRegistration {
+function mapListing(row: GuildEventListingRow): GuildEventListing {
   const start = Number(row.occurs_at_start_unix);
   const end = row.occurs_at_end_unix === null ? null : Number(row.occurs_at_end_unix);
   return {
     guildEventId: row.guild_event_id,
     guildEventKind: row.guild_event_kind,
     guildEventOccursAt: end === null ? [start] : [start, end],
+    guildEventTitle: row.guild_event_title,
+    guildEventDestination: row.guild_event_destination,
     guildEventCategory: row.guild_event_category,
     discoverable: row.discoverable,
     registeredAtUnix: Number(row.registered_at_unix),
@@ -78,41 +91,45 @@ function mapRegistration(row: GuildEventRegistrationRow): GuildEventRegistration
   };
 }
 
-export async function establishGuildEventRegistration(
-  input: GuildEventRegistrationInput,
+export async function establishGuildEventListing(
+  input: GuildEventListingInput,
   client: PoolClient | null = null,
 ): Promise<void> {
-  const registration = normalizeRegistration(input);
+  const listing = normalizeListing(input);
   const nowUnix = Math.floor(Date.now() / 1000);
   const executor = client ?? pool;
-  const [start, end] = registration.guildEventOccursAt;
+  const [start, end] = listing.guildEventOccursAt;
 
   await executor.query(
     `INSERT INTO guild_event_registrations (
        guild_event_id, guild_event_kind,
        occurs_at_start_unix, occurs_at_end_unix,
-       guild_event_category, discoverable,
-       registered_at_unix, updated_at_unix
-     ) VALUES ($1,$2,$3,$4,$5,true,$6,$6)
+       guild_event_title, guild_event_destination, guild_event_category,
+       discoverable, registered_at_unix, updated_at_unix
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,true,$8,$8)
      ON CONFLICT (guild_event_id) DO UPDATE
        SET guild_event_kind = EXCLUDED.guild_event_kind,
            occurs_at_start_unix = EXCLUDED.occurs_at_start_unix,
            occurs_at_end_unix = EXCLUDED.occurs_at_end_unix,
+           guild_event_title = EXCLUDED.guild_event_title,
+           guild_event_destination = EXCLUDED.guild_event_destination,
            guild_event_category = EXCLUDED.guild_event_category,
            discoverable = true,
            updated_at_unix = EXCLUDED.updated_at_unix`,
     [
-      registration.guildEventId,
-      registration.guildEventKind,
+      listing.guildEventId,
+      listing.guildEventKind,
       start,
       end ?? null,
-      registration.guildEventCategory ?? null,
+      listing.guildEventTitle ?? null,
+      listing.guildEventDestination ?? null,
+      listing.guildEventCategory ?? null,
       nowUnix,
     ],
   );
 }
 
-export async function withdrawGuildEventRegistration(
+export async function withdrawGuildEventListing(
   guildEventId: string,
   client: PoolClient | null = null,
 ): Promise<void> {
@@ -127,25 +144,25 @@ export async function withdrawGuildEventRegistration(
   );
 }
 
-export async function guildEventRegistration(
+export async function guildEventListing(
   guildEventId: string,
-): Promise<GuildEventRegistration | null> {
-  const result = await pool.query<GuildEventRegistrationRow>(
+): Promise<GuildEventListing | null> {
+  const result = await pool.query<GuildEventListingRow>(
     `SELECT *
        FROM guild_event_registrations
       WHERE guild_event_id = $1`,
     [guildEventId],
   );
   const row = result.rows[0];
-  return row ? mapRegistration(row) : null;
+  return row ? mapListing(row) : null;
 }
 
-export async function discoverableGuildEventRegistrations(): Promise<GuildEventRegistration[]> {
-  const result = await pool.query<GuildEventRegistrationRow>(
+export async function discoverableGuildEventListings(): Promise<GuildEventListing[]> {
+  const result = await pool.query<GuildEventListingRow>(
     `SELECT *
        FROM guild_event_registrations
       WHERE discoverable = true
       ORDER BY occurs_at_start_unix ASC, guild_event_id ASC`,
   );
-  return result.rows.map(mapRegistration);
+  return result.rows.map(mapListing);
 }
