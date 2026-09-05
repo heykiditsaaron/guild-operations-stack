@@ -10,6 +10,7 @@ const migrationFiles = [
   "002_raffle.sql",
   "005_guild_event_registry.sql",
   "007_guild_event_listing_projection.sql",
+  "008_raffle_round_title.sql",
 ];
 
 for (const migrationFile of migrationFiles) {
