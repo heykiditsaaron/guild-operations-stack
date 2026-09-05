@@ -12,7 +12,7 @@ export type RaffleMemberClaim = {
   characterName: string;
   requestedTicketCount: number;
   promisedGoldValue: string;
-  createdAt: Date;
+  createdAtUnix: number;
   resolutionKind: RaffleClaimResolution;
   resolutionActorLabel: string | null;
   denialReason: string | null;
@@ -34,7 +34,7 @@ export async function raffleClaimsForMember(guildieId: string, roundId: string):
        rc.round_id,
        rc.requested_ticket_count,
        rc.promised_gold_value,
-       rc.created_at,
+       rc.created_at_unix,
        rc.resolution_kind,
        rc.approved_by_guildie_id,
        rc.denied_by_guildie_id,
@@ -54,7 +54,7 @@ export async function raffleClaimsForMember(guildieId: string, roundId: string):
       AND grm.character_id = c.character_id
     WHERE rc.round_id = $1
       AND rc.claimant_guildie_id = $2
-    ORDER BY rc.created_at DESC, rc.claim_id DESC`,
+    ORDER BY rc.created_at_unix DESC, rc.claim_id DESC`,
     [roundId, guildieId, config.guild.id],
   );
 
@@ -91,7 +91,7 @@ export async function raffleClaimsForMember(guildieId: string, roundId: string):
       characterName: String(row.character_name),
       requestedTicketCount: Number(row.requested_ticket_count),
       promisedGoldValue: String(row.promised_gold_value),
-      createdAt: row.created_at as Date,
+      createdAtUnix: Number(row.created_at_unix),
       resolutionKind: row.resolution_kind as RaffleClaimResolution,
       resolutionActorLabel: resolutionActorGuildieId === null
         ? null
