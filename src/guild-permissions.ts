@@ -14,7 +14,7 @@ export type EffectiveGuildAuthority = {
 };
 
 export async function effectiveGuildAuthority(
-  subjectId: string,
+  guildieId: string,
   guildId: string = config.guild.id,
 ): Promise<EffectiveGuildAuthority | null> {
   const rankResult = await pool.query<{
@@ -33,12 +33,12 @@ export async function effectiveGuildAuthority(
      LEFT JOIN guild_rank_definitions grd
        ON grd.guild_id = grm.guild_id
       AND grd.rank_index = grm.rank_index
-     WHERE c.subject_id = $1
+     WHERE c.guildie_id = $1
        AND c.currently_controlled = true
        AND grm.guild_id = $2
      ORDER BY grm.rank_index ASC
      LIMIT 1`,
-    [subjectId, guildId],
+    [guildieId, guildId],
   );
 
   const rank = rankResult.rows[0];
@@ -61,21 +61,21 @@ export async function effectiveGuildAuthority(
   };
 }
 
-export async function subjectHasGuildCapability(
-  subjectId: string,
+export async function guildieHasGuildCapability(
+  guildieId: string,
   capability: GuildCapability,
   guildId: string = config.guild.id,
 ): Promise<boolean> {
-  const authority = await effectiveGuildAuthority(subjectId, guildId);
+  const authority = await effectiveGuildAuthority(guildieId, guildId);
   return authority?.capabilities.includes(capability) ?? false;
 }
 
 export async function requireGuildCapability(
-  subjectId: string,
+  guildieId: string,
   capability: GuildCapability,
   guildId: string = config.guild.id,
 ): Promise<EffectiveGuildAuthority> {
-  const authority = await effectiveGuildAuthority(subjectId, guildId);
+  const authority = await effectiveGuildAuthority(guildieId, guildId);
 
   if (!authority || !authority.capabilities.includes(capability)) {
     throw new GuildCapabilityDeniedError(guildId, capability);
@@ -89,7 +89,7 @@ export class GuildCapabilityDeniedError extends Error {
   readonly capability: GuildCapability;
 
   constructor(guildId: string, capability: GuildCapability) {
-    super(`Subject lacks required guild capability: ${capability}`);
+    super(`Guildie lacks required guild capability: ${capability}`);
     this.name = "GuildCapabilityDeniedError";
     this.guildId = guildId;
     this.capability = capability;
