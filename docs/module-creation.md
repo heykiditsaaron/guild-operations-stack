@@ -18,6 +18,8 @@ The `src/modules/` container does not imply a generic module loader, registry, l
 
 A module owns the persistence of the participation truth it establishes. It does not duplicate persistence owned globally by Guild Operations.
 
+The application-wide ownership boundary is defined in [`global-persistence.md`](global-persistence.md). Module authors should orient against that shared state rather than recreate it locally.
+
 Global Guild Operations owns shared authoritative facts and objects such as Guildies, controlled Characters, current Blizzard guild roster observations, Blizzard rank observations, and other application-wide authority state.
 
 A module may reference those globally owned objects while persisting the module-specific meaning of their participation. Referencing a Guildie, Character, guild, rank, or other global coordinate does not transfer ownership of that object or fact to the module.
