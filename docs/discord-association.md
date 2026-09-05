@@ -2,7 +2,7 @@
 
 Discord association lets an existing Guildie prove control of a Discord account and attach that account as an optional interaction coordinate.
 
-The Guildie is resolved through Guild Operations' durable Subject coordinate. Discord does not establish the Subject or create an independent canonical member. Canonical recognition remains rooted in Blizzard-authenticated World of Warcraft continuity.
+The Guildie is identified by Guild Operations' durable `guildie_id`. Discord does not establish the Guildie or create an independent canonical member. Guildie establishment remains rooted in Blizzard-authenticated World of Warcraft account authority.
 
 ## Product role
 
@@ -24,7 +24,7 @@ The association ceremony answers one question:
 
 > Which existing Guildie has proven control of this Discord account?
 
-The durable implementation coordinate for that Guildie is currently `subject_id`.
+The durable implementation coordinate for that Guildie is `guildie_id`.
 
 The ceremony does not answer whether that Discord account is currently present in the guild Discord server, what Discord roles it has, whether the Guildie currently has a participation surface, or what Guild Operations actions the Guildie may perform.
 
@@ -37,13 +37,13 @@ Discord usernames, display names, server nicknames, avatars, and roles are not i
 The initial association persists only the Discord data required to make the resolver useful and the result understandable to the Guildie:
 
 ```text
-subject_id
+guildie_id
 discord_user_id
 username
 connected_at
 ```
 
-`subject_id` is the durable Subject coordinate through which the Guildie is resolved. The Discord user ID is the durable Discord association coordinate. The username is presentation metadata retained so a Guildie can recognize which Discord account they connected; it is not identity truth.
+`guildie_id` identifies the Guildie. The Discord user ID is the durable Discord association coordinate. The username is presentation metadata retained so a Guildie can recognize which Discord account they connected; it is not identity truth.
 
 Guild Operations does not treat Discord as a profile domain. It should not retain a broad Discord user object merely because the OAuth response makes one available.
 
@@ -55,7 +55,7 @@ Discord association should have a deliberately small web footprint.
 
 When no Discord account is associated, the authenticated `Me` surface should expose an obvious `Connect Discord` action.
 
-When an account is associated, the same surface should show a compact state: a green association-status indicator, the stored Discord username, and `Discord` subtext identifying the service. The same compact state should expose a subordinate `Disconnect` action so the Guildie can remove the optional association without affecting Subject recognition, Guildie continuity, or the application session.
+When an account is associated, the same surface should show a compact state: a green association-status indicator, the stored Discord username, and `Discord` subtext identifying the service. The same compact state should expose a subordinate `Disconnect` action so the Guildie can remove the optional association without affecting Guildie continuity or the application session.
 
 The green indicator means that the Discord association exists. It does not represent Discord online presence.
 
@@ -65,27 +65,27 @@ No dedicated Discord profile page is required for this slice.
 
 Association begins from an authenticated Guild Operations session.
 
-The application session resolves to `subject_id`, which identifies the operating Guildie. The server creates a short-lived OAuth attempt bound to that `subject_id`, then redirects the Guildie through Discord's authorization-code ceremony with only the identity scope required to obtain the authenticated Discord user.
+The application session resolves to `guildie_id`. The server creates a short-lived OAuth attempt bound to that Guildie, then redirects the Guildie through Discord's authorization-code ceremony with only the identity scope required to obtain the authenticated Discord user.
 
 On callback, the server:
 
 1. consumes and validates the short-lived OAuth state;
-2. verifies the browser still carries the same Guild Operations Subject session that initiated the ceremony;
+2. verifies the browser still carries the same Guild Operations Guildie session that initiated the ceremony;
 3. exchanges the Discord authorization code server-side;
 4. obtains the authenticated Discord user identity;
 5. uses the Discord user ID as the association coordinate;
 6. retains the returned username only as minimal recognition metadata;
 7. applies the association conflict rules before persistence.
 
-Discord OAuth access credentials are ceremony material, not durable Guild Operations identity state. They are not retained merely to preserve the association.
+Discord OAuth access credentials are ceremony material, not durable Guild Operations state. They are not retained merely to preserve the association.
 
-Disassociation is intentionally simpler. An authenticated Guildie may remove the Discord association keyed through their current `subject_id`. The operation deletes only that association; it does not alter Subject recognition, Guildie continuity, Blizzard authority, selected main, session, current Character roster truth, or historical guild activity. Repeating the operation when no association exists is harmless.
+Disassociation is intentionally simpler. An authenticated Guildie may remove the Discord association keyed by their current `guildie_id`. The operation deletes only that association; it does not alter Guildie continuity, Blizzard authority, selected main, session, current Character roster truth, or historical guild activity. Repeating the operation when no association exists is harmless.
 
 ## Association law
 
 The relationship is one-to-one:
 
-- one Guildie, resolved through `subject_id`, may have at most one associated Discord user ID;
+- one Guildie may have at most one associated Discord user ID;
 - one Discord user ID may be associated with at most one Guildie.
 
 Association outcomes are deliberately narrow:
@@ -101,14 +101,12 @@ This slice defines no automatic reassignment, replacement, merge, or officer-med
 
 ## Resolver
 
-Once associated, a trusted Discord interaction may later use the Discord user ID to resolve the Guildie through the durable Subject coordinate:
+Once associated, a trusted Discord interaction may later use the Discord user ID to resolve the Guildie directly:
 
 ```text
 Discord user ID
       ↓
 Discord association
-      ↓
-Subject recognition
       ↓
 Guildie
       ↓
@@ -130,7 +128,7 @@ guildie.discord.linked
 guildie.discord.unlinked
 ```
 
-The publications carry `subject_id` as the durable coordinate identifying the affected Guildie. On unlink, the disappearing `discord_user_id` may also be included so a subscriber can remove stale Discord-side projection state.
+The publications carry `guildie_id` as the durable coordinate identifying the affected Guildie. On unlink, the disappearing `discord_user_id` may also be included so a subscriber can remove stale Discord-side projection state.
 
 Publication does not make Discord authoritative. Subscribers such as BotGhost should use the publication as attention, query Guild Operations when current truth matters, and converge their own projection from the backend's current state.
 
@@ -138,6 +136,8 @@ Publication does not make Discord authoritative. Subscribers such as BotGhost sh
 
 Discord association is distinct from Discord server membership. The association ceremony should not acquire broader Discord scopes merely because server membership may matter later.
 
-Discord association is also distinct from selected-main presentation. Changing a selected main must not alter the Discord association, and changing or removing a Discord association must not alter Subject recognition or Guildie continuity.
+Discord association is also distinct from selected-main presentation. Changing a selected main must not alter the Discord association, and changing or removing a Discord association must not alter Guildie continuity.
+
+`Subject` is contextual language only. It is not part of the Discord association object model or persistence relationship.
 
 The web application remains a first-class participation surface. Discord is an accelerator and an additional medium, not the owner of Guild Operations truth.
