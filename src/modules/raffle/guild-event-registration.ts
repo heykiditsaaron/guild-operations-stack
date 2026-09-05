@@ -10,21 +10,17 @@ export const RAFFLE_GUILD_EVENT_TITLE = "Guild Raffle";
 export const RAFFLE_GUILD_EVENT_DESTINATION = "/events/raffle";
 export const RAFFLE_GUILD_EVENT_CATEGORY = "raffle";
 
-function unixSeconds(value: Date): number {
-  return Math.floor(value.getTime() / 1000);
-}
-
 export async function establishRaffleGuildEvent(
   round: RaffleRound,
   client: PoolClient | null = null,
 ): Promise<void> {
-  if (round.status === "admin_cancelled" && round.liveAt === null) {
+  if (round.status === "concluded" && round.conclusion === "operator_cancelled") {
     await withdrawGuildEventListing(round.roundId, client);
     return;
   }
 
-  const occursAt = round.liveAt
-    ? ([unixSeconds(round.liveAt), round.concludedAt ? unixSeconds(round.concludedAt) : round.drawingAtUnix] as const)
+  const occursAt = round.liveAtUnix !== null
+    ? ([round.liveAtUnix, round.concludedAtUnix ?? round.drawingAtUnix] as const)
     : ([round.drawingAtUnix] as const);
 
   await establishGuildEventListing({
