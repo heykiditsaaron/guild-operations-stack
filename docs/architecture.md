@@ -23,23 +23,30 @@ If not, it probably does not belong.
 
 ## Architectural center
 
-The system has two related but distinct concerns:
+OH CRIT I Pulled! is represented in two related organizational realms:
 
-1. **How Guild Operations durably recognizes the human operating it.**
-2. **How that recognized human participates as a Guildie in OH CRIT I Pulled!.**
+```text
+World of Warcraft / Blizzard
+    → guild organization
+    → member object: Character
 
-The first exists mainly to establish continuity and authority. The second is the operational center of the product.
+real-world guild organization around it
+    → Guild Operations
+    → member object: Guildie
+```
+
+Blizzard account authority establishes or resolves the Guildie and which Characters that Guildie currently controls. Blizzard's guild roster separately establishes which Characters currently belong to the WoW guild and their numeric ranks.
 
 Conceptually:
 
 ```text
 Blizzard authentication
         ↓
-Subject recognition
+Guildie establishment / resolution
         ↓
-Guildie
-        ↓
-controlled Characters ∩ Blizzard Character roster
+controlled Characters
+        ∩
+Blizzard Character roster
         ↓
 current Guildie participation surface + effective rank
         ↓
@@ -48,27 +55,50 @@ participate in OH CRIT I Pulled!
 
 Blizzard authentication answers:
 
-> Which Blizzard account context and Characters is this person allowed to act through?
+> Which Blizzard account context and Characters is this Guildie allowed to act through?
 
 Guild Operations then answers:
 
 > What does this Guildie do, receive, join, claim, earn, and participate in within OH CRIT I Pulled!?
 
-The foundational recognition and authority model exists to make that second question safe and durable. It is not the product destination by itself.
+The foundational authority model exists to make that second question safe and durable. It is not the product destination by itself.
 
-## Subject recognition and Guildie continuity
+## Subject is contextual language
 
-A **Subject** is Guild Operations' durable internal recognition coordinate for the same human across sessions and changing presentation or association state.
+Guild Operations has no universal domain object called **Subject** and does not persist one.
 
-A **Guildie** is Guild Operations' durable representation of that human as a guild member. The Guildie is resolved through the Subject rather than receiving a second independent identity coordinate, so `subject_id` remains the current durable lookup coordinate.
+A subject is whichever already-existing object is being designated in relation to a particular question, statement, event, or operation. That role can legitimately change with context:
+
+```text
+"What event happens tomorrow?"
+    subject may be a raffle round
+
+"Who won the raffle?"
+    subject may be a Character
+
+"Who controls that Character?"
+    relevant object is the Guildie
+```
+
+Subjecthood therefore creates no durable coordinate, ownership, persistence, authorization, or identity semantics of its own.
+
+Persist and name actual objects and relationships such as `guildie_id`, Character coordinates, `round_id`, `claim_id`, and `guild_event_id`. Do not introduce a generic `subject_id` as a domain shortcut.
+
+## Guildie continuity
+
+A **Guildie** is Guild Operations' durable representation of the real-world guild organizational member: the account holder and control representative for their WoW Characters.
+
+The durable Guild Operations coordinate is:
+
+```text
+guildie_id
+```
 
 Conceptually:
 
 ```text
-Subject
-= durable recognition coordinate
-        ↓
 Guildie
+├── guildie_id
 ├── Blizzard account authority
 ├── controlled Characters
 ├── selected main
@@ -77,17 +107,17 @@ Guildie
 └── current derived guild state
 ```
 
-Discord must never create the Subject or an independent canonical member. A Discord identity may resolve to an existing Guildie through its Subject coordinate after an explicit linking flow.
+Discord must never create the Guildie or an independent canonical member. A Discord identity may resolve to an existing Guildie after an explicit linking flow.
 
-Changing Discord accounts or changing a selected main character must not create a new Subject or Guildie and must not rewrite historical guild activity.
+Changing Discord accounts or changing a selected main character must not create a new Guildie and must not rewrite historical guild activity.
 
-Guildie continuity is non-destructive. A Guildie remains recognized even when none of their controlled Characters are currently on the Blizzard Character roster. What disappears in that state is the current guild participation surface and rank-derived authority, not the Guildie.
+Guildie continuity is non-destructive. A Guildie remains known even when none of their controlled Characters are currently on the Blizzard Character roster. What disappears in that state is the current guild participation surface and rank-derived authority, not the Guildie.
 
 ## Authentication and member authority
 
 Blizzard authentication exists so a person interacting outside of the game can prove authority over the WoW account context that contains their Characters.
 
-The authenticated Blizzard account provides an authoritative roster of Characters controlled through the recognized Subject. Guild Operations can use that roster to support Guildie-controlled declarations such as:
+The authenticated Blizzard account provides an authoritative observation of Characters currently controlled by the Guildie. Guild Operations can use that control relationship to support declarations such as:
 
 - selecting a guild main;
 - identifying which Character made a raffle deposit;
@@ -98,7 +128,7 @@ Authentication is therefore primarily an authority boundary, not a rich profile 
 
 ## Character representation and recognition
 
-A **Character** is the durable WoW object. Character representation should remain deliberately light and should favor **recognition cues** over profile completeness.
+A **Character** is the durable WoW object and the member object of Blizzard's guild organization. Character representation should remain deliberately light and should favor **recognition cues** over profile completeness.
 
 For Guild Operations, the most useful current recognition cues are the facts that answer how a member is encountered in normal guild play:
 
@@ -152,7 +182,7 @@ current Blizzard Character roster
 current Guildie organizational membership
 ```
 
-At least one controlled roster Character gives the Guildie a current participation surface. Zero controlled roster Characters leaves the Guildie durable and recognized but without current guild-facing participation or rank-derived authority.
+At least one controlled roster Character gives the Guildie a current participation surface. Zero controlled roster Characters leaves the Guildie durable and known but without current guild-facing participation or rank-derived authority.
 
 This allows the system to distinguish among:
 
@@ -232,7 +262,7 @@ What is associated with me?
 What can I do in this session?
 ```
 
-For web access, authentication begins with Blizzard/Battle.net authorization, resolves the authenticated person to the durable Subject coordinate, and thereby establishes which Guildie is operating the application session.
+For web access, authentication begins with Blizzard/Battle.net authorization and resolves or establishes the durable `guildie_id` that identifies which Guildie is operating the application session.
 
 ### Time representation and presentation
 
@@ -372,17 +402,20 @@ In short:
 
 The foundational model is now sufficient to support concrete member-facing work. It establishes:
 
-- durable Subject recognition;
+- durable Guildie continuity through `guildie_id`;
 - Blizzard account authority;
 - durable Character continuity;
 - Blizzard-authoritative Character roster state;
 - derived Guildie organizational membership and effective rank;
-- non-destructive Guildie continuity;
 - selected-main presentation;
 - optional Discord association;
 - rank-derived Guild Operations capabilities;
 - external refresh and reconciliation boundaries; and
 - a renderer boundary in which interfaces project backend truth.
+
+It also establishes a negative boundary:
+
+- `Subject` is contextual designation, not an entity category or persistence coordinate.
 
 Further generalized modeling should not be performed merely because another abstraction can be imagined.
 
