@@ -30,13 +30,13 @@ export type RaffleRound = {
   ticketPriceGold: string;
   prizeKind: string;
   winnerPercentage: number | null;
-  createdBySubjectId: string;
+  createdByGuildieId: string;
   createdAt: Date;
-  updatedBySubjectId: string | null;
+  updatedByGuildieId: string | null;
   updatedAt: Date | null;
-  liveBySubjectId: string | null;
+  liveByGuildieId: string | null;
   liveAt: Date | null;
-  concludedBySubjectId: string | null;
+  concludedByGuildieId: string | null;
   concludedAt: Date | null;
   totalEntries: number | null;
   selectedIndex: number | null;
@@ -46,7 +46,7 @@ export type RaffleRound = {
 export type RaffleClaim = {
   claimId: string;
   roundId: string;
-  subjectId: string;
+  claimantGuildieId: string;
   characterRecordId: string;
   characterId: string;
   realmId: string;
@@ -55,12 +55,12 @@ export type RaffleClaim = {
   promisedGoldValue: string;
   createdAt: Date;
   resolutionKind: RaffleClaimResolution;
-  approvedBySubjectId: string | null;
+  approvedByGuildieId: string | null;
   approvedAt: Date | null;
-  deniedBySubjectId: string | null;
+  deniedByGuildieId: string | null;
   deniedAt: Date | null;
   denialReason: string | null;
-  cancelledBySubjectId: string | null;
+  cancelledByGuildieId: string | null;
   cancelledAt: Date | null;
 };
 
@@ -140,13 +140,13 @@ function mapRound(row: Record<string, unknown>): RaffleRound {
     ticketPriceGold: String(row.ticket_price_gold),
     prizeKind: String(row.prize_kind),
     winnerPercentage: row.winner_percentage === null ? null : Number(row.winner_percentage),
-    createdBySubjectId: String(row.created_by_subject_id),
+    createdByGuildieId: String(row.created_by_guildie_id),
     createdAt: row.created_at as Date,
-    updatedBySubjectId: row.updated_by_subject_id === null || row.updated_by_subject_id === undefined ? null : String(row.updated_by_subject_id),
+    updatedByGuildieId: row.updated_by_guildie_id === null || row.updated_by_guildie_id === undefined ? null : String(row.updated_by_guildie_id),
     updatedAt: row.updated_at as Date | null,
-    liveBySubjectId: row.live_by_subject_id === null ? null : String(row.live_by_subject_id),
+    liveByGuildieId: row.live_by_guildie_id === null ? null : String(row.live_by_guildie_id),
     liveAt: row.live_at as Date | null,
-    concludedBySubjectId: row.concluded_by_subject_id === null ? null : String(row.concluded_by_subject_id),
+    concludedByGuildieId: row.concluded_by_guildie_id === null ? null : String(row.concluded_by_guildie_id),
     concludedAt: row.concluded_at as Date | null,
     totalEntries: row.total_entries === null ? null : Number(row.total_entries),
     selectedIndex: row.selected_index === null ? null : Number(row.selected_index),
@@ -158,7 +158,7 @@ function mapClaim(row: Record<string, unknown>): RaffleClaim {
   return {
     claimId: String(row.claim_id),
     roundId: String(row.round_id),
-    subjectId: String(row.subject_id),
+    claimantGuildieId: String(row.claimant_guildie_id),
     characterRecordId: String(row.character_record_id),
     characterId: String(row.character_id),
     realmId: String(row.realm_id),
@@ -167,12 +167,12 @@ function mapClaim(row: Record<string, unknown>): RaffleClaim {
     promisedGoldValue: String(row.promised_gold_value),
     createdAt: row.created_at as Date,
     resolutionKind: row.resolution_kind as RaffleClaimResolution,
-    approvedBySubjectId: row.approved_by_subject_id === null ? null : String(row.approved_by_subject_id),
+    approvedByGuildieId: row.approved_by_guildie_id === null ? null : String(row.approved_by_guildie_id),
     approvedAt: row.approved_at as Date | null,
-    deniedBySubjectId: row.denied_by_subject_id === null ? null : String(row.denied_by_subject_id),
+    deniedByGuildieId: row.denied_by_guildie_id === null ? null : String(row.denied_by_guildie_id),
     deniedAt: row.denied_at as Date | null,
     denialReason: row.denial_reason === null ? null : String(row.denial_reason),
-    cancelledBySubjectId: row.cancelled_by_subject_id === null ? null : String(row.cancelled_by_subject_id),
+    cancelledByGuildieId: row.cancelled_by_guildie_id === null ? null : String(row.cancelled_by_guildie_id),
     cancelledAt: row.cancelled_at as Date | null,
   };
 }
@@ -205,15 +205,15 @@ async function lockedClaim(client: PoolClient, claimId: string): Promise<Record<
 }
 
 export async function createRaffleRound(
-  actorSubjectId: string,
+  actorGuildieId: string,
   termsInput: RaffleRoundTerms,
 ): Promise<RaffleRound> {
-  await requireGuildCapability(actorSubjectId, RAFFLE_ADMIN_CAPABILITY);
+  await requireGuildCapability(actorGuildieId, RAFFLE_ADMIN_CAPABILITY);
   const terms = validateTerms(termsInput);
   const result = await pool.query(
     `INSERT INTO raffle_rounds (
        guild_id, drawing_at_unix, ticket_price_gold, prize_kind,
-       winner_percentage, created_by_subject_id
+       winner_percentage, created_by_guildie_id
      ) VALUES ($1,$2,$3,$4,$5,$6)
      RETURNING *`,
     [
@@ -222,18 +222,18 @@ export async function createRaffleRound(
       String(terms.ticketPriceGold),
       terms.prizeKind,
       terms.winnerPercentage,
-      actorSubjectId,
+      actorGuildieId,
     ],
   );
   return mapRound(result.rows[0] as Record<string, unknown>);
 }
 
 export async function updateRaffleRound(
-  actorSubjectId: string,
+  actorGuildieId: string,
   roundId: string,
   termsInput: RaffleRoundTerms,
 ): Promise<RaffleRound> {
-  await requireGuildCapability(actorSubjectId, RAFFLE_ADMIN_CAPABILITY);
+  await requireGuildCapability(actorGuildieId, RAFFLE_ADMIN_CAPABILITY);
   const terms = validateTerms(termsInput);
   return withTransaction(async (client) => {
     const round = await lockedRound(client, roundId);
@@ -246,18 +246,18 @@ export async function updateRaffleRound(
               ticket_price_gold = $3,
               prize_kind = $4,
               winner_percentage = $5,
-              updated_by_subject_id = $6,
+              updated_by_guildie_id = $6,
               updated_at = now()
         WHERE round_id = $1
         RETURNING *`,
-      [roundId, terms.drawingAtUnix, String(terms.ticketPriceGold), terms.prizeKind, terms.winnerPercentage, actorSubjectId],
+      [roundId, terms.drawingAtUnix, String(terms.ticketPriceGold), terms.prizeKind, terms.winnerPercentage, actorGuildieId],
     );
     return mapRound(result.rows[0] as Record<string, unknown>);
   });
 }
 
-export async function activateRaffleRound(actorSubjectId: string, roundId: string): Promise<RaffleRound> {
-  await requireGuildCapability(actorSubjectId, RAFFLE_ADMIN_CAPABILITY);
+export async function activateRaffleRound(actorGuildieId: string, roundId: string): Promise<RaffleRound> {
+  await requireGuildCapability(actorGuildieId, RAFFLE_ADMIN_CAPABILITY);
   return withTransaction(async (client) => {
     const round = await lockedRound(client, roundId);
     if (round.status !== "created") {
@@ -265,17 +265,17 @@ export async function activateRaffleRound(actorSubjectId: string, roundId: strin
     }
     const result = await client.query(
       `UPDATE raffle_rounds
-          SET status = 'live', live_by_subject_id = $2, live_at = now()
+          SET status = 'live', live_by_guildie_id = $2, live_at = now()
         WHERE round_id = $1
         RETURNING *`,
-      [roundId, actorSubjectId],
+      [roundId, actorGuildieId],
     );
     return mapRound(result.rows[0] as Record<string, unknown>);
   });
 }
 
-export async function cancelRaffleRound(actorSubjectId: string, roundId: string): Promise<RaffleRound> {
-  await requireGuildCapability(actorSubjectId, RAFFLE_ADMIN_CAPABILITY);
+export async function cancelRaffleRound(actorGuildieId: string, roundId: string): Promise<RaffleRound> {
+  await requireGuildCapability(actorGuildieId, RAFFLE_ADMIN_CAPABILITY);
   return withTransaction(async (client) => {
     const round = await lockedRound(client, roundId);
     if (round.status !== "created" && round.status !== "live") {
@@ -284,18 +284,18 @@ export async function cancelRaffleRound(actorSubjectId: string, roundId: string)
     const result = await client.query(
       `UPDATE raffle_rounds
           SET status = 'admin_cancelled',
-              concluded_by_subject_id = $2,
+              concluded_by_guildie_id = $2,
               concluded_at = now()
         WHERE round_id = $1
         RETURNING *`,
-      [roundId, actorSubjectId],
+      [roundId, actorGuildieId],
     );
     return mapRound(result.rows[0] as Record<string, unknown>);
   });
 }
 
 export async function submitRaffleClaim(
-  subjectId: string,
+  claimantGuildieId: string,
   roundId: string,
   realmId: string,
   characterId: string,
@@ -330,12 +330,12 @@ export async function submitRaffleClaim(
           AND grm.realm_id = c.realm_id
           AND grm.character_id = c.character_id
           AND grm.currently_present = true
-        WHERE c.subject_id = $1
+        WHERE c.guildie_id = $1
           AND c.currently_controlled = true
           AND grm.guild_id = $2
           AND c.realm_id = $3
           AND c.character_id = $4`,
-      [subjectId, config.guild.id, realmId, characterId],
+      [claimantGuildieId, config.guild.id, realmId, characterId],
     );
     if (!characterResult.rowCount) {
       throw new RaffleRuleError(
@@ -349,11 +349,11 @@ export async function submitRaffleClaim(
     const character = characterResult.rows[0];
     const insert = await client.query(
       `INSERT INTO raffle_claims (
-         round_id, subject_id, character_record_id,
+         round_id, claimant_guildie_id, character_record_id,
          requested_ticket_count, promised_gold_value
        ) VALUES ($1,$2,$3,$4,$5)
        RETURNING *`,
-      [roundId, subjectId, character.character_record_id, requestedTicketCount, promisedGoldValue.toString()],
+      [roundId, claimantGuildieId, character.character_record_id, requestedTicketCount, promisedGoldValue.toString()],
     );
 
     return mapClaim({
@@ -365,10 +365,10 @@ export async function submitRaffleClaim(
   });
 }
 
-export async function cancelOwnRaffleClaim(subjectId: string, claimId: string): Promise<void> {
+export async function cancelOwnRaffleClaim(claimantGuildieId: string, claimId: string): Promise<void> {
   await withTransaction(async (client) => {
     const claim = await lockedClaim(client, claimId);
-    if (claim.subject_id !== subjectId) {
+    if (claim.claimant_guildie_id !== claimantGuildieId) {
       throw new RaffleRuleError("claim_not_owned", "A member may only cancel their own raffle claim", 403);
     }
     if (claim.round_status !== "live") {
@@ -380,16 +380,16 @@ export async function cancelOwnRaffleClaim(subjectId: string, claimId: string): 
     await client.query(
       `UPDATE raffle_claims
           SET resolution_kind = 'cancelled',
-              cancelled_by_subject_id = $2,
+              cancelled_by_guildie_id = $2,
               cancelled_at = now()
         WHERE claim_id = $1`,
-      [claimId, subjectId],
+      [claimId, claimantGuildieId],
     );
   });
 }
 
-export async function approveRaffleClaim(actorSubjectId: string, claimId: string): Promise<void> {
-  await requireGuildCapability(actorSubjectId, RAFFLE_ADMIN_CAPABILITY);
+export async function approveRaffleClaim(actorGuildieId: string, claimId: string): Promise<void> {
+  await requireGuildCapability(actorGuildieId, RAFFLE_ADMIN_CAPABILITY);
   await withTransaction(async (client) => {
     const claim = await lockedClaim(client, claimId);
     if (claim.round_status !== "live") {
@@ -401,20 +401,20 @@ export async function approveRaffleClaim(actorSubjectId: string, claimId: string
     await client.query(
       `UPDATE raffle_claims
           SET resolution_kind = 'approved',
-              approved_by_subject_id = $2,
+              approved_by_guildie_id = $2,
               approved_at = now()
         WHERE claim_id = $1`,
-      [claimId, actorSubjectId],
+      [claimId, actorGuildieId],
     );
   });
 }
 
 export async function denyRaffleClaim(
-  actorSubjectId: string,
+  actorGuildieId: string,
   claimId: string,
   reasonInput: string,
 ): Promise<void> {
-  await requireGuildCapability(actorSubjectId, RAFFLE_ADMIN_CAPABILITY);
+  await requireGuildCapability(actorGuildieId, RAFFLE_ADMIN_CAPABILITY);
   const reason = reasonInput.trim();
   if (!reason) {
     throw new RaffleRuleError("denial_reason_required", "A denial reason is required", 400);
@@ -431,17 +431,17 @@ export async function denyRaffleClaim(
     await client.query(
       `UPDATE raffle_claims
           SET resolution_kind = 'denied',
-              denied_by_subject_id = $2,
+              denied_by_guildie_id = $2,
               denied_at = now(),
               denial_reason = $3
         WHERE claim_id = $1`,
-      [claimId, actorSubjectId, reason],
+      [claimId, actorGuildieId, reason],
     );
   });
 }
 
-export async function drawRaffleRound(actorSubjectId: string, roundId: string): Promise<RaffleRound> {
-  await requireGuildCapability(actorSubjectId, RAFFLE_ADMIN_CAPABILITY);
+export async function drawRaffleRound(actorGuildieId: string, roundId: string): Promise<RaffleRound> {
+  await requireGuildCapability(actorGuildieId, RAFFLE_ADMIN_CAPABILITY);
   return withTransaction(async (client) => {
     const round = await lockedRound(client, roundId);
     if (round.status !== "live") {
@@ -482,12 +482,12 @@ export async function drawRaffleRound(actorSubjectId: string, roundId: string): 
       const result = await client.query(
         `UPDATE raffle_rounds
             SET status = 'no_entry_cancelled',
-                concluded_by_subject_id = $2,
+                concluded_by_guildie_id = $2,
                 concluded_at = now(),
                 total_entries = 0
           WHERE round_id = $1
           RETURNING *`,
-        [roundId, actorSubjectId],
+        [roundId, actorGuildieId],
       );
       return mapRound(result.rows[0] as Record<string, unknown>);
     }
@@ -497,14 +497,14 @@ export async function drawRaffleRound(actorSubjectId: string, roundId: string): 
     const result = await client.query(
       `UPDATE raffle_rounds
           SET status = 'drawn',
-              concluded_by_subject_id = $2,
+              concluded_by_guildie_id = $2,
               concluded_at = now(),
               total_entries = $3,
               selected_index = $4,
               winning_claim_id = $5
         WHERE round_id = $1
         RETURNING *`,
-      [roundId, actorSubjectId, population.length, selectedIndex, winningClaimId],
+      [roundId, actorGuildieId, population.length, selectedIndex, winningClaimId],
     );
     return mapRound(result.rows[0] as Record<string, unknown>);
   });
@@ -516,28 +516,4 @@ export async function raffleRound(roundId: string): Promise<RaffleRound | null> 
     [roundId, config.guild.id],
   );
   return result.rowCount ? mapRound(result.rows[0] as Record<string, unknown>) : null;
-}
-
-export async function raffleClaims(roundId: string): Promise<RaffleClaim[]> {
-  const result = await pool.query(
-    `SELECT
-       rc.*,
-       c.character_id,
-       c.realm_id,
-       COALESCE(grm.character_name, c.name) AS character_name
-     FROM raffle_claims rc
-     JOIN raffle_rounds rr
-       ON rr.round_id = rc.round_id
-      AND rr.guild_id = $2
-     JOIN characters c ON c.character_record_id = rc.character_record_id
-     LEFT JOIN guild_roster_memberships grm
-       ON grm.guild_id = rr.guild_id
-      AND grm.region = c.region
-      AND grm.realm_id = c.realm_id
-      AND grm.character_id = c.character_id
-    WHERE rc.round_id = $1
-    ORDER BY rc.created_at ASC, rc.claim_id ASC`,
-    [roundId, config.guild.id],
-  );
-  return result.rows.map((row) => mapClaim(row as Record<string, unknown>));
 }
