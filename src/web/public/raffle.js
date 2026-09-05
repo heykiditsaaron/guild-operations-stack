@@ -61,6 +61,8 @@ function syncRafflePrizeFields(form) {
       || !(descriptionInput instanceof HTMLInputElement)) return;
 
   const gold = kindSelect.value === "gold";
+  const goldLabel = goldField.querySelector("span");
+  if (goldLabel instanceof HTMLElement) goldLabel.textContent = "Prize — Percentage of pot";
   goldField.hidden = !gold;
   descriptionField.hidden = gold;
   goldField.style.display = gold ? "" : "none";
@@ -312,6 +314,74 @@ async function activateRaffleRound(button) {
   }
 }
 
+function raffleResultPrize(round) {
+  if (round.prizeKind === "gold" && Number.isInteger(round.winnerPercentage) && Number.isInteger(round.totalEntries)) {
+    try {
+      const pot = BigInt(round.ticketPriceGold) * BigInt(round.totalEntries);
+      return `${((pot * BigInt(round.winnerPercentage)) / 100n).toLocaleString("en-US")} gold`;
+    } catch {
+      return `${round.winnerPercentage}% of the pot`;
+    }
+  }
+  return round.prizeDescription || round.prizeKind || "Prize recorded";
+}
+
+async function winningRaffleClaim(roundId, winningClaimId) {
+  if (!winningClaimId) return null;
+  try {
+    const response = await fetch(`/raffle/rounds/${encodeURIComponent(roundId)}/claims`);
+    if (!response.ok) return null;
+    const result = await response.json().catch(() => ({}));
+    return Array.isArray(result.claims)
+      ? result.claims.find((claim) => claim.claimId === winningClaimId) || null
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function showRaffleDrawResult(round, winnerClaim) {
+  const main = document.querySelector(".app-main");
+  if (!(main instanceof HTMLElement)) {
+    window.location.assign("/admin/raffle");
+    return;
+  }
+
+  const pageTitle = document.querySelector("#page-title");
+  if (pageTitle instanceof HTMLElement) pageTitle.textContent = "Raffle result";
+
+  if (round.conclusion === "no_participation") {
+    main.innerHTML = `<section class="raffle-admin-message" aria-labelledby="raffle-result-heading">
+      <div class="raffle-status-banner raffle-status-banner-upcoming"><span>Raffle concluded</span></div>
+      <h2 id="raffle-result-heading">No participation</h2>
+      <p class="raffle-section-note">The draw completed with no approved ticket population, so no winner was selected.</p>
+      <div class="raffle-management-controls">
+        <a class="raffle-action raffle-action-primary" href="/admin/raffle">Return to raffle administration</a>
+        <a class="raffle-action raffle-action-secondary" href="/events/raffle/history">View raffle history ↗</a>
+      </div>
+    </section>`;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+
+  const winnerName = winnerClaim?.characterName || "Winning claim selected";
+  const totalEntries = Number.isInteger(round.totalEntries) ? round.totalEntries.toLocaleString("en-US") : "Recorded";
+  const prize = raffleResultPrize(round);
+  main.innerHTML = `<section class="raffle-admin-message" aria-labelledby="raffle-result-heading">
+    <div class="raffle-status-banner raffle-status-banner-live"><span>Raffle drawn</span></div>
+    <h2 id="raffle-result-heading">Winner: ${winnerName}</h2>
+    <dl class="raffle-facts">
+      <dt>Final entries</dt><dd>${totalEntries}</dd>
+      <dt>Prize</dt><dd>${prize}</dd>
+    </dl>
+    <div class="raffle-management-controls">
+      <a class="raffle-action raffle-action-primary" href="/admin/raffle">Return to raffle administration</a>
+      <a class="raffle-action raffle-action-secondary" href="/events/raffle/history">View raffle history ↗</a>
+    </div>
+  </section>`;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
 async function drawRaffleRound(button) {
   const roundId = button.dataset.drawRaffleRound;
   if (!roundId) return;
@@ -326,7 +396,10 @@ async function drawRaffleRound(button) {
       window.alert(result.message || result.error || "Unable to draw raffle.");
       return;
     }
-    window.location.assign("/admin/raffle");
+    const winnerClaim = result.conclusion === "drawn"
+      ? await winningRaffleClaim(roundId, result.winningClaimId)
+      : null;
+    showRaffleDrawResult(result, winnerClaim);
   } catch {
     window.alert("Unable to draw raffle.");
   } finally {
