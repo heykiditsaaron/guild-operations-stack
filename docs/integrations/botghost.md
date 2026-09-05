@@ -4,7 +4,7 @@ This document is the practical operator reference for what Guild Operations curr
 
 It is not the authoritative definition of publication meaning or current Guild Operations state. Publication catalogs live under `docs/publications/`; authoritative HTTP contracts live under `docs/endpoints/`; cross-cutting publication behavior lives in `docs/publication-model.md`.
 
-BotGhost receives attention signals and coordinates. When current truth matters, BotGhost should query Guild Operations rather than treating webhook variables as durable state.
+BotGhost receives attention signals and concrete object coordinates. When current truth matters, BotGhost should query Guild Operations rather than treating webhook variables as durable state.
 
 ## BotGhost environment
 
@@ -25,8 +25,6 @@ BOTGHOST_RAFFLE_WEBHOOK_URL=
 
 `BOTGHOST_API_KEY` belongs to the BotGhost integration as a whole. The webhook URLs identify the concrete BotGhost publication targets currently used by Guild Operations.
 
-BotGhost is a current publication target, not the owner of publication semantics. A future subscriber should receive its own concrete configuration rather than causing these BotGhost-specific variables to become generic publication configuration.
-
 ## Shared transport shape
 
 Guild Operations currently sends BotGhost webhook payloads in this shape:
@@ -43,8 +41,6 @@ Guild Operations currently sends BotGhost webhook payloads in this shape:
 }
 ```
 
-`{event_kind}` is a transport implementation name retained for the current integration. The publication values themselves use domain vocabulary.
-
 Every current publication includes `{event_kind}`.
 
 ## Guildie publications
@@ -57,14 +53,14 @@ BOTGHOST_GUILDIE_WEBHOOK_URL
 
 | Publication | Variables available in BotGhost | Query afterward |
 | --- | --- | --- |
-| `guildie.discord.linked` | `{event_kind}`, `{subject_id}`, `{discord_user_id}` | `GET /events/query/subjects/{subject_id}` |
-| `guildie.discord.unlinked` | `{event_kind}`, `{subject_id}`, `{discord_user_id}` | `GET /events/query/subjects/{subject_id}` |
-| `guildie.main.changed` | `{event_kind}`, `{subject_id}`, `{guild_id}` | `GET /events/query/subjects/{subject_id}` |
-| `guildie.joined` | `{event_kind}`, `{subject_id}`, `{guild_id}` | `GET /events/query/subjects/{subject_id}` |
-| `guildie.left` | `{event_kind}`, `{subject_id}`, `{guild_id}` | `GET /events/query/subjects/{subject_id}` |
-| `guildie.rank.changed` | `{event_kind}`, `{subject_id}`, `{guild_id}` | `GET /events/query/subjects/{subject_id}` |
+| `guildie.discord.linked` | `{event_kind}`, `{guildie_id}`, `{discord_user_id}` | `GET /events/query/guildies/{guildie_id}` |
+| `guildie.discord.unlinked` | `{event_kind}`, `{guildie_id}`, `{discord_user_id}` | `GET /events/query/guildies/{guildie_id}` |
+| `guildie.main.changed` | `{event_kind}`, `{guildie_id}`, `{guild_id}` | `GET /events/query/guildies/{guildie_id}` |
+| `guildie.joined` | `{event_kind}`, `{guildie_id}`, `{guild_id}` | `GET /events/query/guildies/{guildie_id}` |
+| `guildie.left` | `{event_kind}`, `{guildie_id}`, `{guild_id}` | `GET /events/query/guildies/{guildie_id}` |
+| `guildie.rank.changed` | `{event_kind}`, `{guildie_id}`, `{guild_id}` | `GET /events/query/guildies/{guildie_id}` |
 
-`subject_id` is the durable recognition coordinate used to identify the affected Guildie.
+`guildie_id` identifies the affected Guildie directly. There is no generic Subject transport coordinate.
 
 For `guildie.discord.unlinked`, `{discord_user_id}` identifies the association that disappeared. The follow-up query should return no Discord association; the old Discord coordinate remains useful for removing a stale Discord-side projection.
 
@@ -93,8 +89,6 @@ Preferred request header:
 ```http
 Authorization: Bearer <EVENT_QUERY_API_KEY>
 ```
-
-The current query configuration name is an implementation leftover and does not define the Character/Guildie domain vocabulary. It can be migrated separately.
 
 ## Raffle publications
 
@@ -128,7 +122,7 @@ Use webhook variables to decide what changed and where to look. Use the matching
 ```text
 BotGhost receives publication
         ↓
-inspect {event_kind} and coordinates
+inspect {event_kind} and concrete coordinates
         ↓
 query Guild Operations
         ↓
