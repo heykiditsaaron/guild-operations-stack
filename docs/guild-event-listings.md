@@ -60,9 +60,12 @@ Additional listing fields may be optional, but optional does not mean informal o
 The current optional fields are:
 
 ```text
+guild_event_title
 guild_event_destination
 guild_event_category
 ```
+
+`guild_event_title` supplies a human-facing title for the concrete Guild Event. It exists because a consumer may need a useful name that is not equivalent to the machine-oriented `guild_event_kind`. A consumer may use the supplied title when present. When it is absent, a consumer may still express `guild_event_kind` according to its own presentation conventions; doing so presents an existing listing coordinate rather than reconstructing a missing title fact.
 
 `guild_event_destination` supplies the destination associated with the concrete Guild Event. It is not an HTML `href` or a required presentation mechanism. A web consumer may make a listing clickable, a Discord consumer may express the destination differently, and another consumer may ignore it.
 
@@ -113,6 +116,8 @@ Consumers may specialize presentation based on listing information, including `g
 The listing establishes shared Guild Event facts. The consumer chooses presentation.
 
 `/events` is one such consumer. Its current purpose is prospective participation discovery: it uses listing time to determine which registered Guild Events are happening or upcoming, and it may use other supplied listing coordinates to enrich their presentation. A missing optional coordinate reduces what `/events` can express; it does not authorize `/events` to discover that fact elsewhere.
+
+The first `/events` projection demonstrates why both `guild_event_title` and `guild_event_destination` belong in the optional contract. The raffle module can establish `Guild Raffle` and `/events/raffle` in its listing; `/events` can then present the useful title and interaction without recognizing `raffle-round` as a special case.
 
 ## Contract growth
 
