@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import type { FastifyInstance } from "fastify";
-import { authenticatedSubject, SESSION_COOKIE_NAME } from "./auth.js";
+import { authenticatedGuildie, SESSION_COOKIE_NAME } from "./auth.js";
 import { config } from "./config.js";
 import { pool } from "./db.js";
 import { publishEvent } from "./events/publisher.js";
@@ -16,7 +16,7 @@ export type DiscordAssociation = {
 };
 
 type DiscordAttempt = {
-  subjectId: string;
+  guildieId: string;
   returnTo: string | null;
 };
 
@@ -53,29 +53,29 @@ function authorizationUrl(state: string): string {
   return url.toString();
 }
 
-async function createAttempt(subjectId: string, returnTo: string | null): Promise<string> {
+async function createAttempt(guildieId: string, returnTo: string | null): Promise<string> {
   const state = randomBytes(32).toString("base64url");
   await pool.query(
-    `INSERT INTO discord_association_attempts (state_hash, subject_id, return_to, expires_at)
+    `INSERT INTO discord_association_attempts (state_hash, guildie_id, return_to, expires_at)
      VALUES ($1, $2, $3, now() + ($4 * interval '1 minute'))`,
-    [sha256(state), subjectId, returnTo, config.authAttemptTtlMinutes],
+    [sha256(state), guildieId, returnTo, config.authAttemptTtlMinutes],
   );
   return state;
 }
 
 async function consumeAttempt(state: string): Promise<DiscordAttempt | null> {
-  const result = await pool.query<{ subject_id: string; return_to: string | null }>(
+  const result = await pool.query<{ guildie_id: string; return_to: string | null }>(
     `UPDATE discord_association_attempts
         SET consumed_at = now()
       WHERE state_hash = $1
         AND consumed_at IS NULL
         AND expires_at > now()
-      RETURNING subject_id, return_to`,
+      RETURNING guildie_id, return_to`,
     [sha256(state)],
   );
   if (!result.rowCount) return null;
   return {
-    subjectId: result.rows[0].subject_id,
+    guildieId: result.rows[0].guildie_id,
     returnTo: result.rows[0].return_to,
   };
 }
@@ -116,21 +116,21 @@ async function acquireDiscordUser(accessToken: string): Promise<DiscordUser> {
   return { id: payload.id, username: payload.username };
 }
 
-async function establishAssociation(subjectId: string, user: DiscordUser): Promise<AssociationResult> {
+async function establishAssociation(guildieId: string, user: DiscordUser): Promise<AssociationResult> {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    const existing = await client.query<{ subject_id: string; discord_user_id: string }>(
-      `SELECT subject_id, discord_user_id
+    const existing = await client.query<{ guildie_id: string; discord_user_id: string }>(
+      `SELECT guildie_id, discord_user_id
          FROM discord_associations
-        WHERE subject_id = $1 OR discord_user_id = $2
+        WHERE guildie_id = $1 OR discord_user_id = $2
         FOR UPDATE`,
-      [subjectId, user.id],
+      [guildieId, user.id],
     );
 
     if (existing.rowCount) {
       const same = existing.rows.find(
-        (row) => row.subject_id === subjectId && row.discord_user_id === user.id,
+        (row) => row.guildie_id === guildieId && row.discord_user_id === user.id,
       );
       if (!same || existing.rows.length !== 1) {
         await client.query("ROLLBACK");
@@ -138,8 +138,8 @@ async function establishAssociation(subjectId: string, user: DiscordUser): Promi
       }
 
       await client.query(
-        "UPDATE discord_associations SET username = $1 WHERE subject_id = $2",
-        [user.username, subjectId],
+        "UPDATE discord_associations SET username = $1 WHERE guildie_id = $2",
+        [user.username, guildieId],
       );
       await client.query("COMMIT");
       return "already_associated";
@@ -147,9 +147,9 @@ async function establishAssociation(subjectId: string, user: DiscordUser): Promi
 
     try {
       await client.query(
-        `INSERT INTO discord_associations (subject_id, discord_user_id, username)
+        `INSERT INTO discord_associations (guildie_id, discord_user_id, username)
          VALUES ($1, $2, $3)`,
-        [subjectId, user.id, user.username],
+        [guildieId, user.id, user.username],
       );
     } catch (error) {
       if ((error as { code?: string }).code === "23505") {
@@ -169,7 +169,7 @@ async function establishAssociation(subjectId: string, user: DiscordUser): Promi
   }
 }
 
-export async function discordAssociationForSubject(subjectId: string): Promise<DiscordAssociation | null> {
+export async function discordAssociationForGuildie(guildieId: string): Promise<DiscordAssociation | null> {
   const result = await pool.query<{
     discord_user_id: string;
     username: string;
@@ -177,8 +177,8 @@ export async function discordAssociationForSubject(subjectId: string): Promise<D
   }>(
     `SELECT discord_user_id, username, connected_at
        FROM discord_associations
-      WHERE subject_id = $1`,
-    [subjectId],
+      WHERE guildie_id = $1`,
+    [guildieId],
   );
   if (!result.rowCount) return null;
   return {
@@ -190,30 +190,30 @@ export async function discordAssociationForSubject(subjectId: string): Promise<D
 
 export async function registerDiscordRoutes(app: FastifyInstance): Promise<void> {
   app.get("/me/discord/connect", async (request, reply) => {
-    const subject = await authenticatedSubject(request.cookies[SESSION_COOKIE_NAME]);
-    if (!subject) return reply.code(401).send({ error: "not_authenticated" });
+    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
+    if (!guildie) return reply.code(401).send({ error: "not_authenticated" });
 
     const query = request.query as { return_to?: unknown };
     const returnTo = safeReturnTo(query.return_to) ?? "/";
-    const state = await createAttempt(subject.subjectId, returnTo);
+    const state = await createAttempt(guildie.guildieId, returnTo);
     return reply.redirect(authorizationUrl(state));
   });
 
   app.post("/me/discord/disconnect", async (request, reply) => {
-    const subject = await authenticatedSubject(request.cookies[SESSION_COOKIE_NAME]);
-    if (!subject) return reply.code(401).send({ error: "not_authenticated" });
+    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
+    if (!guildie) return reply.code(401).send({ error: "not_authenticated" });
 
     const query = request.query as { return_to?: unknown };
     const returnTo = safeReturnTo(query.return_to) ?? "/";
     const deleted = await pool.query<{ discord_user_id: string }>(
-      "DELETE FROM discord_associations WHERE subject_id = $1 RETURNING discord_user_id",
-      [subject.subjectId],
+      "DELETE FROM discord_associations WHERE guildie_id = $1 RETURNING discord_user_id",
+      [guildie.guildieId],
     );
     const discordUserId = deleted.rows[0]?.discord_user_id;
     if (discordUserId) {
       await publishEvent({
         kind: "guildie.discord.unlinked",
-        subjectId: subject.subjectId,
+        guildieId: guildie.guildieId,
         discordUserId,
       });
     }
@@ -228,8 +228,8 @@ export async function registerDiscordRoutes(app: FastifyInstance): Promise<void>
     if (!attempt) return reply.code(400).send({ error: "invalid_or_expired_state" });
     const returnTo = attempt.returnTo ?? "/";
 
-    const subject = await authenticatedSubject(request.cookies[SESSION_COOKIE_NAME]);
-    if (!subject || subject.subjectId !== attempt.subjectId) {
+    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
+    if (!guildie || guildie.guildieId !== attempt.guildieId) {
       return reply.redirect(withDiscordResult(returnTo, "failed"));
     }
 
@@ -240,12 +240,12 @@ export async function registerDiscordRoutes(app: FastifyInstance): Promise<void>
     try {
       const accessToken = await exchangeAuthorizationCode(query.code);
       const user = await acquireDiscordUser(accessToken);
-      const result = await establishAssociation(subject.subjectId, user);
+      const result = await establishAssociation(guildie.guildieId, user);
       if (result === "conflict") return reply.redirect(withDiscordResult(returnTo, "conflict"));
       if (result === "established") {
         await publishEvent({
           kind: "guildie.discord.linked",
-          subjectId: subject.subjectId,
+          guildieId: guildie.guildieId,
           discordUserId: user.id,
         });
       }
