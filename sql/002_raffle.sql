@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS raffle_rounds (
   ticket_price_gold bigint NOT NULL CHECK (ticket_price_gold > 0),
   prize_kind text NOT NULL CHECK (length(btrim(prize_kind)) > 0),
   winner_percentage smallint,
+  prize_description text,
   created_by_guildie_id uuid NOT NULL REFERENCES guildies(guildie_id) ON DELETE RESTRICT,
   created_at_unix bigint NOT NULL CHECK (created_at_unix >= 0),
   updated_by_guildie_id uuid REFERENCES guildies(guildie_id) ON DELETE RESTRICT,
@@ -23,8 +24,12 @@ CREATE TABLE IF NOT EXISTS raffle_rounds (
   CHECK (
     (prize_kind = 'gold'
       AND winner_percentage IS NOT NULL
-      AND winner_percentage BETWEEN 1 AND 100)
-    OR (prize_kind <> 'gold' AND winner_percentage IS NULL)
+      AND winner_percentage BETWEEN 1 AND 100
+      AND prize_description IS NULL)
+    OR (prize_kind IN ('item', 'other')
+      AND winner_percentage IS NULL
+      AND prize_description IS NOT NULL
+      AND length(btrim(prize_description)) > 0)
   ),
   CHECK (
     (status = 'listed'
@@ -57,6 +62,31 @@ CREATE TABLE IF NOT EXISTS raffle_rounds (
       AND total_entries IS NULL AND selected_index IS NULL AND winning_claim_id IS NULL)
   )
 );
+
+ALTER TABLE raffle_rounds
+  ADD COLUMN IF NOT EXISTS prize_description text;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+      FROM pg_constraint
+     WHERE conname = 'raffle_rounds_prize_shape_check'
+       AND conrelid = 'raffle_rounds'::regclass
+  ) THEN
+    ALTER TABLE raffle_rounds
+      ADD CONSTRAINT raffle_rounds_prize_shape_check CHECK (
+        (prize_kind = 'gold'
+          AND winner_percentage IS NOT NULL
+          AND winner_percentage BETWEEN 1 AND 100
+          AND prize_description IS NULL)
+        OR (prize_kind IN ('item', 'other')
+          AND winner_percentage IS NULL
+          AND prize_description IS NOT NULL
+          AND length(btrim(prize_description)) > 0)
+      );
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS raffle_claims (
   claim_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
