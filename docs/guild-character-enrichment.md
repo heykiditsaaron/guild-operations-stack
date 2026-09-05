@@ -1,24 +1,24 @@
 # Guild Character Enrichment
 
-Guild roster authority and character presentation are separate concerns.
+Guild roster authority and Character presentation are separate concerns.
 
-The Blizzard guild roster establishes which characters are currently members of OH CRIT I Pulled!. Character enrichment observes richer Blizzard profile and media data for those current roster characters.
+The Blizzard guild roster establishes which Characters are currently members of OH CRIT I Pulled!. Character enrichment observes richer Blizzard profile and media data for those current roster Characters.
 
 ## Canonical coordinate
 
-A character remains identified by:
+A Character remains identified by:
 
 ```text
 region + realm_id + character_id
 ```
 
-Names, realm presentation, level, class, race, specialization, and media URLs are observed presentation state and may change without changing character continuity.
+Names, realm presentation, level, class, race, specialization, and media URLs are observed presentation state and may change without changing Character continuity.
 
 ## Enrichment scope
 
-The current enrichment pass operates across the persisted current guild roster, not only characters controlled by authenticated Guild Operations subjects.
+The current enrichment pass operates across the persisted current guild roster, not only Characters controlled by authenticated Guildies.
 
-For each current roster character it attempts:
+For each current roster Character it attempts:
 
 1. Blizzard Character Profile
 2. Blizzard Character Media
@@ -54,21 +54,23 @@ The enrichment service is intended to remain independent of transport so the sam
 
 - a protected operator HTTP endpoint
 - scheduled or stale-aware automatic refresh
-- single-character or missing-observation refresh
+- single-Character or missing-observation refresh
 
-Those invocation surfaces must not duplicate enrichment semantics or make character presentation responsible for guild-membership authority.
+Those invocation surfaces must not duplicate enrichment semantics or make Character presentation responsible for guild-membership authority.
 
 ## Authority boundary
 
 ```text
 Guild roster sync
-    = current Blizzard guild membership observation
+    = current Blizzard Character guild-membership observation
 
 Character enrichment
-    = Blizzard character presentation observation
+    = Blizzard Character presentation observation
 
 Guild Operations projections
     = presentation of those persisted facts
 ```
 
-Failure to enrich a character never removes the character from the guild roster and never changes an authenticated subject's character-control authority.
+Failure to enrich a Character never removes the Character from the guild roster and never changes a Guildie's established Character-control authority.
+
+`Subject` has no role in Character enrichment or control persistence; it is contextual language only.
