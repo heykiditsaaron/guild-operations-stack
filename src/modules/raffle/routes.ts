@@ -73,6 +73,7 @@ function requiredPrizeKind(value: unknown): RafflePrizeKind {
 
 function roundTerms(body: Record<string, unknown>): RaffleRoundTerms {
   return {
+    roundTitle: nullableString(body.round_title, "round_title"),
     drawingAtUnix: requiredInteger(body.drawing_at_unix, "drawing_at_unix"),
     ticketPriceGold: requiredInteger(body.ticket_price_gold, "ticket_price_gold"),
     prizeKind: requiredPrizeKind(body.prize_kind),
