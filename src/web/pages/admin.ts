@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
-import { guildieHasGuildCapability, RAFFLE_ADMIN_CAPABILITY } from "../../guild-permissions.js";
+import { raffleGuildieCanAdminister } from "../../modules/raffle/authorization.js";
 import type { AssetRegistry } from "../assets.js";
 import { renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
@@ -13,7 +13,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       authenticatedGuildie(sessionToken),
     ]);
     const canAdministerRaffle = guildie
-      ? await guildieHasGuildCapability(guildie.guildieId, RAFFLE_ADMIN_CAPABILITY)
+      ? await raffleGuildieCanAdminister(guildie.guildieId)
       : false;
 
     const body = canAdministerRaffle
