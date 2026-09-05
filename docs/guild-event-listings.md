@@ -1,17 +1,15 @@
 # Guild Event Listings
 
-Guild Event Listings are the shared language through which participation modules make concrete, currently actionable guild ceremonies visible to consumers.
+Guild Event Listings are the shared language between participation modules and consumers of Guild Event information.
 
-Their purpose is participation awareness. A listing answers, in common form, that a Guild Event presently offers a meaningful avenue for guild participation and when that participation-relevant occurrence is expected or underway.
-
-A module owns a concrete guild participation capability and its procedure. When one concrete occurrence of that capability is presently eligible for shared participation awareness, the module translates the truth it owns into a Guild Event Listing. Consumers read that listing rather than learning the module that produced it.
+A module owns a concrete guild participation capability and its procedure. When one concrete occurrence of that capability is a Guild Event, the module translates the truth it owns into a Guild Event Listing. Consumers read that listing rather than learning the module that produced it.
 
 The relationship is:
 
 ```text
 Module
     owns participation truth and procedure
-        ↓ translates one currently participation-relevant occurrence into
+        ↓ translates one concrete Guild Event into
 Guild Event Listing
     conforms to the Guild Event Listing Contract
         ↓ established in
@@ -21,45 +19,7 @@ Consumer
     understands listings, not modules
 ```
 
-The Guild Event Listing Contract defines the common vocabulary through which modules describe currently participation-relevant Guild Events to consumers. It is not a history contract.
-
-## Eligibility
-
-A concrete module-owned occurrence is eligible for a Guild Event Listing only while shared awareness can still lead a member toward a meaningful participation avenue.
-
-The owning module decides when that condition is true because the module owns the procedure and knows what participation means for its ceremony.
-
-Conceptually:
-
-```text
-meaningful participation avenue exists
-    → listing may be established
-
-participation avenue no longer exists
-    → listing is withdrawn
-```
-
-Withdrawal does not erase or reinterpret module history. It means only that the occurrence is no longer eligible for current participation awareness through the Guild Event Listing contract.
-
-A module remains solely responsible for preserving the history, result, audit evidence, and ceremony-specific meaning of concluded or otherwise no-longer-participatory occurrences.
-
-Raffle is the current concrete example:
-
-```text
-listed raffle round
-    → eligible: upcoming participation awareness matters
-
-live raffle round
-    → eligible: participation is active
-
-concluded raffle round
-    → not eligible: raffle history belongs to Raffle
-
-listed round cancelled before going live
-    → not eligible after cancellation: no participation avenue remains
-```
-
-A never-live cancelled raffle may remain historically real inside Raffle without remaining a Guild Event Listing.
+The Guild Event Listing Contract is therefore more than admission criteria. It defines the common vocabulary through which modules describe Guild Events to consumers.
 
 ## Guild Event Listing Contract
 
@@ -75,7 +35,7 @@ These are the irreducible coordinates of a listing:
 
 - `guild_event_id` identifies the concrete Guild Event occurrence and must be globally unique among Guild Events in Guild Operations.
 - `guild_event_kind` names the concrete ceremony type. It does not necessarily name the module that owns the procedure.
-- `guild_event_occurs_at` expresses when the owning module says the currently participation-relevant concrete Guild Event occurs.
+- `guild_event_occurs_at` expresses when the owning module says the concrete Guild Event occurs.
 
 `guild_event_occurs_at` follows the repository-wide Unix time persistence rule:
 
@@ -87,13 +47,13 @@ These are the irreducible coordinates of a listing:
     → range from start to end
 ```
 
-The owning module determines the truthful temporal shape for each concrete occurrence while that occurrence remains listing-eligible. The registry does not derive temporal meaning from module state.
+The owning module determines the truthful temporal shape for each concrete occurrence. The registry does not derive temporal meaning from module state.
 
 ### Best-known temporal truth
 
 `guild_event_occurs_at` is mutable operational truth, not an immutable copy of the first schedule ever registered.
 
-Guild-operated ceremonies may depend on human scheduling and best-attempt adherence rather than deterministic automation. A scheduled or estimated boundary is therefore authoritative while it is the best truth the owning module has established. When the module later establishes an observed boundary while the occurrence remains participation-relevant, it may re-establish the same Guild Event Listing with the more accurate Unix value.
+Guild-operated ceremonies may depend on human scheduling and best-attempt adherence rather than deterministic automation. A scheduled or estimated boundary is therefore authoritative while it is the best truth the owning module has established. When the module later establishes an observed boundary, it may re-establish the same Guild Event Listing with the more accurate Unix value.
 
 Conceptually:
 
@@ -101,13 +61,13 @@ Conceptually:
 future or not-yet-observed boundary
     → scheduled / estimated Unix
 
-observed participation boundary becomes available
-    → actual Unix may supersede the estimate
+observed boundary becomes available
+    → actual Unix supersedes the estimate
 ```
 
-This is not historical rewriting. The Guild Event Listing is a projection of the module's best currently established participation-relevant temporal truth. Ceremony-specific history remains owned by the module.
+This is not historical rewriting. The Guild Event Listing is a projection of the module's best currently established temporal truth. Ceremony-specific history remains owned by the module, while the registry exposes the current listing truth consumers should use.
 
-The same Guild Event kind may therefore legitimately change shape or values while it remains listing-eligible. For example, a raffle round may be listed initially as an expected drawing instant and become a live range from actual opening time through expected drawing time. Once the raffle concludes, the listing is withdrawn rather than converted into raffle history.
+The same Guild Event kind may therefore legitimately change shape or values over its lifecycle. For example, a raffle round may be listed initially as an expected drawing instant, become a live range from actual opening time through expected drawing time, and after conclusion expose the actual live-to-conclusion range.
 
 A valid listing may contain only these required coordinates. Such a listing may be less expressive to a particular consumer, but it remains a complete Guild Event Listing.
 
@@ -141,19 +101,19 @@ There is no arbitrary metadata bag. A new optional field belongs in the contract
 
 ## Module boundary
 
-Modules own participation truth and procedure. They decide whether a concrete occurrence is currently eligible for a Guild Event Listing and establish the listing coordinates they can truthfully provide.
+Modules own participation truth and procedure. They decide whether a concrete Guild Event exists and establish the listing coordinates they can truthfully provide.
 
-A module may establish or re-establish a Guild Event Listing as its participation-relevant truth changes. It withdraws that listing once the occurrence no longer offers a meaningful participation avenue. The registry does not interrogate the module to derive any of those changes.
+A module may establish, re-establish, or withdraw a Guild Event Listing as its owned truth changes. The registry does not interrogate the module to derive those changes.
 
-Re-establishing a listing with more accurate occurrence time is expected behavior when a module replaces scheduled or estimated participation boundaries with observed ones. The module remains responsible for deciding when that newer temporal truth exists.
+Re-establishing a listing with more accurate occurrence time is expected behavior when a module replaces scheduled or estimated boundaries with observed ones. The module remains responsible for deciding when that newer temporal truth exists.
 
-Listing a Guild Event does not transfer ownership of the module's procedure, participation truth, conclusion, or ceremony-specific historical meaning to the registry.
+Listing a Guild Event does not transfer ownership of the module's procedure, participation truth, or ceremony-specific historical meaning to the registry.
 
 Modules translate their truth into listings; consumers do not translate module truth themselves.
 
 ## Registry boundary
 
-The Guild Event Registry is the common container of currently established Guild Event Listings.
+The Guild Event Registry is the common container of Guild Event Listings established by modules.
 
 It understands the Guild Event Listing Contract. It does not need to understand:
 
@@ -161,12 +121,11 @@ It understands the Guild Event Listing Contract. It does not need to understand:
 - module storage or status models;
 - member-facing route hierarchy;
 - consumer presentation;
-- how a module derived the listing it established;
-- module-owned historical meaning after listing eligibility ends.
+- how a module derived the listing it established.
 
-The registry exists so consumers can read one common collection of participation-relevant Guild Event Listings instead of interrogating modules independently.
+The registry exists so consumers can read one common collection of Guild Event Listings instead of interrogating modules independently.
 
-Registry persistence is implementation support for the shared listing contract, not a second history system. A withdrawn or superseded listing must not be relied upon to preserve module history. If storage retains such rows for implementation reasons, that retention creates no historical ownership or consumer contract.
+Persistence may preserve registrations after their immediate discovery relevance has passed, but that does not make the registry a generic history system or require it to understand ceremony-specific history.
 
 ## Consumer boundary
 
@@ -176,13 +135,11 @@ A consumer reads contract-defined listing fields and decides which listings are 
 
 Consumers may specialize presentation based on listing information, including `guild_event_kind`, but they must not use kind as a backdoor for reconstructing absent Guild Event facts. A consumer may choose a visual treatment for a known kind; it may not infer an omitted destination, category, timing, participation state, eligibility rule, or other listing coordinate from module-specific knowledge.
 
-The listing establishes shared participation-awareness facts. The consumer chooses presentation.
+The listing establishes shared Guild Event facts. The consumer chooses presentation.
 
-`/events` is one such consumer. Its current purpose is prospective participation discovery: it uses listing time to determine which listed Guild Events are happening or upcoming, and it may use other supplied listing coordinates to enrich their presentation. A missing optional coordinate reduces what `/events` can express; it does not authorize `/events` to discover that fact elsewhere.
+`/events` is one such consumer. Its current purpose is prospective participation discovery: it uses listing time to determine which registered Guild Events are happening or upcoming, and it may use other supplied listing coordinates to enrich their presentation. A missing optional coordinate reduces what `/events` can express; it does not authorize `/events` to discover that fact elsewhere.
 
 The first `/events` projection demonstrates why both `guild_event_title` and `guild_event_destination` belong in the optional contract. The raffle module can establish `Guild Raffle` and `/events/raffle` in its listing; `/events` can then present the useful title and interaction without recognizing `raffle-round` as a special case.
-
-A consumer must not treat the registry as a source of concluded module history. Historical raffle rounds, for example, belong to Raffle's own historical projection.
 
 ## Contract growth
 
@@ -190,12 +147,12 @@ The contract should grow from concrete projection and module pressure rather tha
 
 When a consumer needs information that the current listing cannot provide, ask:
 
-1. Is this information necessary for shared participation awareness, or does it belong to module history or consumer presentation?
+1. Is this information about the Guild Event itself, or merely presentation chosen by this consumer?
 2. Can any consumer understand the proposed field correctly without knowing which module produced the listing?
 3. Does the field need to be present for every valid Guild Event Listing, or can its absence simply reduce what consumers can express?
 
-Only shared participation-awareness meaning belongs in the listing contract. Required fields should remain the smallest set necessary for a coherent Guild Event Listing; additional expressive capability should normally be earned as contract-defined optional fields.
+Only shared Guild Event meaning belongs in the listing contract. Required fields should remain the smallest set necessary for a coherent Guild Event Listing; additional expressive capability should normally be earned as contract-defined optional fields.
 
 In short:
 
-> Modules expose currently participation-relevant occurrences through Guild Event Listings. The Guild Event Listing Contract defines their shared language. The Guild Event Registry contains those current listings. Consumers use them for participation awareness. The owning module preserves its own history.
+> Modules translate concrete Guild Event truth into Guild Event Listings. The Guild Event Listing Contract defines their shared language. The Guild Event Registry contains those listings. Consumers understand listings, not modules.
