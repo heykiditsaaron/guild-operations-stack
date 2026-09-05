@@ -62,13 +62,16 @@ function recentWinnerBody(round: RaffleHistoryRound | null): string {
   const context = round.roundTitle
     ? `${htmlText(round.roundTitle)}${concluded ? ` · ${concluded}` : ""}`
     : concluded || "Previous raffle";
+  const avatar = round.winnerAvatarUrl
+    ? `<img class="raffle-recent-winner-avatar" src="${htmlText(round.winnerAvatarUrl)}" alt="" aria-hidden="true">`
+    : "";
 
-  return `<section class="raffle-workspace" aria-labelledby="raffle-recent-winner-title">
+  return `<section class="raffle-workspace raffle-recent-winner" aria-labelledby="raffle-recent-winner-title">
+    ${avatar}
     <p class="raffle-plaque-label">Most Recent Winner</p>
     <h2 id="raffle-recent-winner-title">${htmlText(round.winnerCharacterName)}</h2>
     <p class="raffle-status-copy">${context}</p>
     ${prize ? `<p class="raffle-status-copy"><strong>${htmlText(prize)}</strong></p>` : ""}
-    <a class="raffle-back-link" href="/events/raffle/history">View Previous Raffles →</a>
   </section>`;
 }
 
@@ -193,7 +196,7 @@ export async function registerRafflePage(app: FastifyInstance, assets: AssetRegi
           { label: "Raffle" },
         ],
       },
-      stylesheets: ["raffle.css"],
+      stylesheets: ["raffle.css", "raffle-winner.css"],
       scripts: liveRaffle ? ["raffle-public.js"] : undefined,
       header: `
         <div class="raffle-page-header">
