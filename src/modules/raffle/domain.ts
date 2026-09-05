@@ -8,13 +8,15 @@ export const RAFFLE_CLAIM_CUTOFF_SECONDS = 60 * 60;
 
 export type RaffleRoundStatus = "listed" | "live" | "concluded";
 export type RaffleRoundConclusion = "drawn" | "operator_cancelled" | "no_participation" | null;
+export type RafflePrizeKind = "gold" | "item" | "other";
 export type RaffleClaimResolution = "approved" | "denied" | "cancelled" | null;
 
 export type RaffleRoundTerms = {
   drawingAtUnix: number;
   ticketPriceGold: number;
-  prizeKind: string;
+  prizeKind: RafflePrizeKind;
   winnerPercentage?: number | null;
+  prizeDescription?: string | null;
 };
 
 export type RaffleRound = {
@@ -24,8 +26,9 @@ export type RaffleRound = {
   conclusion: RaffleRoundConclusion;
   drawingAtUnix: number;
   ticketPriceGold: string;
-  prizeKind: string;
+  prizeKind: RafflePrizeKind;
   winnerPercentage: number | null;
+  prizeDescription: string | null;
   createdByGuildieId: string;
   createdAtUnix: number;
   updatedByGuildieId: string | null;
@@ -94,8 +97,9 @@ export function raffleClaimsAreOpen(drawingAtUnix: number, nowUnix: number = uni
 function validateTerms(terms: RaffleRoundTerms): {
   drawingAtUnix: number;
   ticketPriceGold: number;
-  prizeKind: string;
+  prizeKind: RafflePrizeKind;
   winnerPercentage: number | null;
+  prizeDescription: string | null;
 } {
   if (!Number.isInteger(terms.drawingAtUnix) || terms.drawingAtUnix < 0) {
     throw new RaffleRuleError("invalid_drawing_time", "Drawing time must be a non-negative Unix timestamp", 400);
@@ -103,13 +107,13 @@ function validateTerms(terms: RaffleRoundTerms): {
   if (!Number.isSafeInteger(terms.ticketPriceGold) || terms.ticketPriceGold <= 0) {
     throw new RaffleRuleError("invalid_ticket_price", "Ticket price must be a positive integer amount of gold", 400);
   }
-  const prizeKind = terms.prizeKind.trim();
-  if (!prizeKind) {
-    throw new RaffleRuleError("invalid_prize_kind", "Prize kind is required", 400);
+  if (terms.prizeKind !== "gold" && terms.prizeKind !== "item" && terms.prizeKind !== "other") {
+    throw new RaffleRuleError("invalid_prize_kind", "Prize type must be gold, item, or other", 400);
   }
 
   const winnerPercentage = terms.winnerPercentage ?? null;
-  if (prizeKind === "gold") {
+  const prizeDescription = terms.prizeDescription?.trim() || null;
+  if (terms.prizeKind === "gold") {
     if (
       typeof winnerPercentage !== "number"
       || !Number.isInteger(winnerPercentage)
@@ -118,23 +122,40 @@ function validateTerms(terms: RaffleRoundTerms): {
     ) {
       throw new RaffleRuleError(
         "invalid_winner_percentage",
-        "Gold raffle winner percentage must be an integer from 1 through 100",
+        "Gold raffle prize percentage must be an integer from 1 through 100",
         400,
       );
     }
-  } else if (winnerPercentage !== null) {
-    throw new RaffleRuleError(
-      "winner_percentage_not_applicable",
-      "Winner percentage is only defined for gold prizes",
-      400,
-    );
+    if (prizeDescription !== null) {
+      throw new RaffleRuleError(
+        "prize_description_not_applicable",
+        "Gold raffle prizes are defined by winner percentage",
+        400,
+      );
+    }
+  } else {
+    if (winnerPercentage !== null) {
+      throw new RaffleRuleError(
+        "winner_percentage_not_applicable",
+        "Winner percentage is only defined for gold prizes",
+        400,
+      );
+    }
+    if (!prizeDescription) {
+      throw new RaffleRuleError(
+        "prize_description_required",
+        "Item and other prizes require a description",
+        400,
+      );
+    }
   }
 
   return {
     drawingAtUnix: terms.drawingAtUnix,
     ticketPriceGold: terms.ticketPriceGold,
-    prizeKind,
+    prizeKind: terms.prizeKind,
     winnerPercentage,
+    prizeDescription,
   };
 }
 
@@ -154,8 +175,9 @@ function mapRound(row: Record<string, unknown>): RaffleRound {
     conclusion: row.conclusion as RaffleRoundConclusion,
     drawingAtUnix: Number(row.drawing_at_unix),
     ticketPriceGold: String(row.ticket_price_gold),
-    prizeKind: String(row.prize_kind),
+    prizeKind: row.prize_kind as RafflePrizeKind,
     winnerPercentage: nullableNumber(row.winner_percentage),
+    prizeDescription: nullableString(row.prize_description),
     createdByGuildieId: String(row.created_by_guildie_id),
     createdAtUnix: Number(row.created_at_unix),
     updatedByGuildieId: nullableString(row.updated_by_guildie_id),
@@ -232,8 +254,8 @@ export async function createRaffleRound(
   const result = await executor.query(
     `INSERT INTO raffle_rounds (
        guild_id, drawing_at_unix, ticket_price_gold, prize_kind,
-       winner_percentage, created_by_guildie_id, created_at_unix
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7)
+       winner_percentage, prize_description, created_by_guildie_id, created_at_unix
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
      RETURNING *`,
     [
       config.guild.id,
@@ -241,6 +263,7 @@ export async function createRaffleRound(
       String(terms.ticketPriceGold),
       terms.prizeKind,
       terms.winnerPercentage,
+      terms.prizeDescription,
       actorGuildieId,
       createdAtUnix,
     ],
@@ -268,8 +291,9 @@ export async function updateRaffleRound(
               ticket_price_gold = $3,
               prize_kind = $4,
               winner_percentage = $5,
-              updated_by_guildie_id = $6,
-              updated_at_unix = $7
+              prize_description = $6,
+              updated_by_guildie_id = $7,
+              updated_at_unix = $8
         WHERE round_id = $1
         RETURNING *`,
       [
@@ -278,6 +302,7 @@ export async function updateRaffleRound(
         String(terms.ticketPriceGold),
         terms.prizeKind,
         terms.winnerPercentage,
+        terms.prizeDescription,
         actorGuildieId,
         updatedAtUnix,
       ],
