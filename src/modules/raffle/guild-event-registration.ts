@@ -1,11 +1,13 @@
 import type { PoolClient } from "pg";
 import {
-  establishGuildEventRegistration,
-  withdrawGuildEventRegistration,
+  establishGuildEventListing,
+  withdrawGuildEventListing,
 } from "../../guild-events/registry.js";
 import type { RaffleRound } from "./domain.js";
 
 export const RAFFLE_GUILD_EVENT_KIND = "raffle-round";
+export const RAFFLE_GUILD_EVENT_TITLE = "Guild Raffle";
+export const RAFFLE_GUILD_EVENT_DESTINATION = "/events/raffle";
 export const RAFFLE_GUILD_EVENT_CATEGORY = "raffle";
 
 function unixSeconds(value: Date): number {
@@ -17,7 +19,7 @@ export async function establishRaffleGuildEvent(
   client: PoolClient | null = null,
 ): Promise<void> {
   if (round.status === "admin_cancelled" && round.liveAt === null) {
-    await withdrawGuildEventRegistration(round.roundId, client);
+    await withdrawGuildEventListing(round.roundId, client);
     return;
   }
 
@@ -25,10 +27,12 @@ export async function establishRaffleGuildEvent(
     ? ([unixSeconds(round.liveAt), round.concludedAt ? unixSeconds(round.concludedAt) : round.drawingAtUnix] as const)
     : ([round.drawingAtUnix] as const);
 
-  await establishGuildEventRegistration({
+  await establishGuildEventListing({
     guildEventId: round.roundId,
     guildEventKind: RAFFLE_GUILD_EVENT_KIND,
     guildEventOccursAt: occursAt,
+    guildEventTitle: RAFFLE_GUILD_EVENT_TITLE,
+    guildEventDestination: RAFFLE_GUILD_EVENT_DESTINATION,
     guildEventCategory: RAFFLE_GUILD_EVENT_CATEGORY,
   }, client);
 }
