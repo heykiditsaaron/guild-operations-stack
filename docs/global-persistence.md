@@ -55,6 +55,33 @@ Modules consume these facts as inputs and may define permission policy specific 
 
 A module must not duplicate global authority state merely to make a local decision.
 
+## Membership references
+
+Current guild membership has one authoritative operational path and must be referenced rather than re-established elsewhere.
+
+The current Character roster is a persisted observation of Blizzard-owned in-game membership. The current Guildie participation surface is derived from the intersection of globally observed Character control and that current Character roster. The Guildie roster is therefore not a second persisted source of membership truth.
+
+Participation modules and shared consumers may use those membership facts, but they do not persist competing membership state of their own.
+
+A module may persist that a Guildie or Character participated in a module-owned procedure. That is procedure-specific historical meaning, not a replacement for current global membership.
+
+Therefore:
+
+```text
+current Character membership
+    → reference global Blizzard roster observation
+
+current Guildie organizational membership
+    → derive from global control + roster truth
+
+module participation
+    → persist only the module-specific participation relationship
+```
+
+A module must not copy a current membership fact into local state and later treat that copy as authoritative. It must not reinterpret absence or presence in module storage as guild membership, and it must not overrule globally established current membership or rank facts.
+
+If a procedure needs a historical statement such as "this Character participated while eligible," it may persist the procedure-specific historical fact it actually owns. That historical record does not become a mutable membership source and does not alter current global membership truth.
+
 ## Global operational and security persistence
 
 Some globally owned persistence exists to operate the application rather than to represent a member or participation fact.
@@ -191,7 +218,7 @@ When adding durable state, ask in this order:
 1. What concrete fact or relationship is being persisted?
 2. Which layer owns the meaning of that fact?
 3. Is the fact authoritative locally, or merely an observation of an external authority?
-4. Does a global object already exist that the new state should reference rather than duplicate?
+4. Does a global object or membership fact already exist that the new state should reference rather than duplicate?
 5. Is shared storage needed because multiple producers and consumers have already earned one contract?
 
 The answer should place the state with its real semantic owner rather than with whichever code path happens to write it first.
@@ -203,6 +230,7 @@ Guild Operations global persistence
 ├── Guildie continuity and Blizzard authority observations
 ├── controlled Character observations
 ├── Guild and current Blizzard roster/rank observations
+├── derived current Guildie organizational membership
 ├── globally owned authority and permission state
 ├── selected-main preference
 ├── Discord association
