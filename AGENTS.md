@@ -10,9 +10,12 @@ Guild Operations is the guild's interactive participation layer outside World of
 
 This is not a generic identity platform, an Armory replacement, or a general-purpose guild product.
 
-- World of Warcraft is the native identity domain.
-- Blizzard-authenticated WoW identity establishes the canonical operational subject.
-- Discord is an optional associated resolver and interaction surface.
+- World of Warcraft is the native account/Character authority domain.
+- Blizzard-authenticated WoW account authority establishes or resolves the durable Guildie and which Characters that Guildie controls.
+- Character is the member object of Blizzard's guild organization.
+- Guildie is the member object of the real-world guild organization around it.
+- `Subject` is contextual language for an already-existing object in relation; it is not a domain object or persistence coordinate.
+- Discord is an optional associated resolver and interaction surface for an existing Guildie.
 - Character presentation should favor recognition cues needed for guild participation rather than profile completeness.
 - Do not introduce generic provider/platform abstractions unless the repository develops a concrete need for them.
 
@@ -22,10 +25,11 @@ A useful product test is whether a capability helps establish authority to parti
 
 - The backend owns authoritative operational state.
 - Interfaces are projections and interaction surfaces, not independent sources of operational truth.
-- Discord identity must not create the canonical subject.
-- Changing Discord accounts or a selected main character must not create a new subject or rewrite historical activity.
-- Blizzard owns current Blizzard facts such as account control, guild membership, and numeric guild rank.
+- Discord identity must not create the canonical Guildie.
+- Changing Discord accounts or a selected main character must not create a new Guildie or rewrite historical activity.
+- Blizzard owns current Blizzard facts such as account control, guild Character membership, and numeric guild rank.
 - Guild Operations owns the meaning and presentation it assigns to those facts outside WoW, including rank-derived application capabilities.
+- Persist actual domain objects and relationship roles (`guildie_id`, Character coordinates, `round_id`, etc.); do not introduce generic `subject_id` persistence.
 - Human guild judgments remain human judgments. Code may enforce permissions, required inputs, and valid transitions, but must not manufacture authority unavailable from the actual source.
 - Guild Operations preserves, enables, and enriches community participation; it does not replace the community processes that give participation meaning.
 
@@ -42,7 +46,7 @@ The strongest default cues are:
 
 Facts such as race, level, item level, achievements, and similar profile information are incidental unless a concrete workflow requires them.
 
-When a known semantic fact is likely to gain richer presentation later, prepare a narrow presentation seam rather than implementing speculative styling or policy. For example, rank-specific CSS hooks are appropriate preparation; inventing rank colors before they are needed is not.
+When a known semantic fact is likely to gain richer presentation later, prepare a narrow presentation seam rather than implementing speculative styling or policy.
 
 ## Development approach
 
@@ -51,7 +55,7 @@ Keep changes small, direct, and domain-specific.
 - Do not create numbered task documents.
 - Do not create development journals.
 - Avoid speculative abstractions and infrastructure.
-- Prefer explicit WoW/Discord/guild semantics over generalized identity machinery.
+- Prefer explicit Guildie/Character/WoW/Discord semantics over generalized identity machinery.
 - Preserve durable architectural decisions in `docs/architecture.md` when a change materially affects later work.
 - Do not assume Blizzard API behavior. Verify current contracts before implementing authority-bearing behavior.
 - Prefer concrete participation features over additional foundational modeling when the existing model is sufficient.
