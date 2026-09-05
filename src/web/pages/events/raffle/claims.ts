@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { authenticatedSubject, SESSION_COOKIE_NAME } from "../../../../auth.js";
+import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
 import { activeRaffleRoundOverview } from "../../../../modules/raffle/live-round.js";
 import { raffleClaimsForMember, type RaffleMemberClaim } from "../../../../modules/raffle/member-view.js";
 import type { AssetRegistry } from "../../../assets.js";
@@ -45,23 +45,23 @@ function claimsList(claims: RaffleMemberClaim[]): string {
 export async function registerRaffleClaimsPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/events/raffle/claims", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, subject, liveRaffle] = await Promise.all([
+    const [viewer, guildie, liveRaffle] = await Promise.all([
       viewerForRequest(sessionToken),
-      authenticatedSubject(sessionToken),
+      authenticatedGuildie(sessionToken),
       activeRaffleRoundOverview(),
     ]);
 
     let body: string;
     if (!liveRaffle) {
       body = `<section class="raffle-workspace" aria-labelledby="raffle-claims-title"><h2 id="raffle-claims-title">No active raffle.</h2></section>`;
-    } else if (!subject) {
+    } else if (!guildie) {
       body = `<section class="raffle-workspace" aria-labelledby="raffle-claims-title">
         <h2 id="raffle-claims-title">Your claims</h2>
         <p class="raffle-workspace-intro">Sign in to view your claims for the current raffle.</p>
         <a class="raffle-action" href="/auth/blizzard/start?return_to=%2Fevents%2Fraffle%2Fclaims">Sign in to view claims</a>
       </section>`;
     } else {
-      const claims = await raffleClaimsForMember(subject.subjectId, liveRaffle.roundId);
+      const claims = await raffleClaimsForMember(guildie.guildieId, liveRaffle.roundId);
       body = `<section class="raffle-workspace" aria-labelledby="raffle-claims-title">
         <div class="raffle-claims-toolbar">
           <h2 id="raffle-claims-title">Your claims</h2>
