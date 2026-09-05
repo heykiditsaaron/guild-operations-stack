@@ -8,7 +8,9 @@ It is deliberately modeled as a raffle-specific domain rather than as an instanc
 
 The raffle converts a guild member's promissory claim into trusted participation after an authorized human attendant verifies the corresponding World of Warcraft guild-bank deposit.
 
-Guild Operations cannot independently observe sufficient guild-bank history to make that judgment. The attendant remains authoritative for whether the promise was fulfilled. Guild Operations owns the procedure, authorization, persistence, selection, and historical reconstruction around that judgment.
+Guild Operations cannot independently observe sufficient guild-bank history to make that judgment. The attendant remains authoritative for whether the promise was fulfilled. Guild Operations owns the procedure, authorization, persistence, deterministic ticket population, drawing, and historical reconstruction around that judgment.
+
+Auditability is a primary value of the raffle module. Operational truth that has been established must remain stable enough for human operators to resolve discrepancies, refunds, and other real-world follow-up against a non-moving target.
 
 ## Authority
 
@@ -27,16 +29,18 @@ The Guildie is authoritative for:
 
 A raffle administrator is authoritative for:
 
-- creating and configuring rounds;
+- configuring and establishing rounds;
 - making a claim approval or denial judgment after observing the WoW guild-bank ledger;
 - supplying the reason for a denial;
+- opening a listed round for participation;
 - manually drawing or administratively cancelling a round.
 
 Guild Operations is authoritative for:
 
 - which operations current authority permits;
 - the durable claim and round records;
-- the deterministic construction of a round's selection population;
+- the deterministic construction of a round's ticket population;
+- enforcement of draw preconditions;
 - execution and preservation of the manual draw result.
 
 Raffle owns the `raffle.admin` authorization policy because it governs raffle-specific procedure. The current guild policy grants that module capability to Guildies whose globally derived effective Blizzard rank is 0, 1, or 2. Raffle consumes globally authoritative Guildie, Character-control, roster, and rank facts as inputs; it does not own, duplicate, or reinterpret those facts as raffle state.
@@ -50,31 +54,75 @@ A round is the bounded raffle drawing cycle.
 Its operating terms are intentionally small:
 
 - round ID;
-- drawing deadline as a timezone-neutral instant;
+- drawing deadline as a timezone-neutral Unix instant;
 - ticket price in gold;
 - prize kind;
 - winner percentage when the prize kind is gold.
 
-The configured drawing deadline establishes the raffle's schedule but does not automatically mutate round lifecycle state or initiate a draw. New claim submission closes exactly one hour before the drawing deadline so raffle administrators have a dedicated adjudication window for pending claims. Interfaces express both instants in the viewer's local timezone.
+The configured drawing deadline establishes the raffle's expected resolution time but does not automatically mutate lifecycle state or initiate a draw. New claim submission closes exactly one hour before that deadline so raffle administrators have a dedicated adjudication window for pending claims. Interfaces derive human-readable times from persisted Unix values and express them in the viewer's local timezone when possible.
 
-Round terms may be changed while the round is still `created`. Once a round becomes `live`, its terms are fixed so claims preserve the terms under which they were made.
+### Establishment and lifecycle
 
-At most one round may be `live` for the guild at a time. A `created` round is administrative preparation, not an active/public raffle.
+Creating a round is an operation, not a durable lifecycle state. Once configuration is confirmed, the round is established as `listed`.
 
-### Round lifecycle
+A listed round is already a real guild raffle occurrence:
+
+- it is discoverable as upcoming;
+- its terms remain editable;
+- it may be administratively cancelled;
+- it is not yet open for participation.
+
+When participation opens, the round becomes `live`. Once live, its operating terms are fixed so claims preserve the terms under which they were made. At most one round may be live for the guild at a time.
+
+A round has exactly three lifecycle states:
 
 ```text
-created
+listed
   ├──> live
-  │      ├──> drawn
-  │      ├──> admin_cancelled
-  │      └──> no_entry_cancelled
-  └──> admin_cancelled
+  │      └──> concluded
+  └─────────> concluded
 ```
 
-Draws are always manual.
+`concluded` means raffle procedure has ended. How it ended is recorded separately as the conclusion.
 
-A draw is refused while unresolved claims remain. This prevents a member promise from being silently excluded from a completed raffle. When a draw is requested with no approved entries and no unresolved claims, the round concludes as `no_entry_cancelled` rather than pretending a draw failed.
+A concluded round has exactly one conclusion:
+
+- `drawn` — a valid ticket population existed and the manual draw selected a winner;
+- `operator_cancelled` — an authorized raffle administrator deliberately terminated the round;
+- `no_participation` — normal draw resolution found no ticket population to select from.
+
+The distinction is deliberate:
+
+```text
+status
+    → where is this raffle in its lifecycle?
+
+conclusion
+    → how did the raffle end?
+```
+
+Drawing, cancellation, and creation are operations. They are not lifecycle states.
+
+### Temporal truth and Guild Event occurrence
+
+Raffle scheduling is operated by humans, not by a deterministic automation system. Scheduled time therefore represents the best established expectation until actual operational boundaries become known.
+
+For a raffle round registered as a Guild Event, `guild_event_occurs_at` expresses the best currently established temporal truth of the ceremony and may change as better truth becomes available:
+
+```text
+listed
+    → [drawing_at_unix]
+
+live
+    → [live_at_unix, drawing_at_unix]
+
+concluded after going live
+    → [live_at_unix, concluded_at_unix]
+```
+
+A scheduled boundary is not considered false merely because it may later move; it is the best available truth while the boundary remains future or estimated. Once the raffle establishes an observed boundary, that observed Unix value supersedes the estimate in the Guild Event occurrence projection.
+
+A listed round that is cancelled before going live remains a historically real raffle occurrence. Cancellation does not erase the fact that the guild established and listed it.
 
 ## Claim
 
@@ -94,7 +142,7 @@ A claim records:
 - specific controlled WoW Character;
 - requested ticket count;
 - promised gold value derived from the round's ticket price at submission;
-- creation time;
+- creation Unix time;
 - optional terminal resolution.
 
 The persisted relationships are deliberately explicit:
@@ -119,19 +167,21 @@ Claims are not rewritten to correct their original meaning. An unresolved claima
 
 An unresolved claim may end in exactly one of three ways:
 
-- `approved`: explicit approving Guildie and approval time;
-- `denied`: explicit denying Guildie, denial time, and mandatory reason;
-- `cancelled`: explicit claimant Guildie and cancellation time.
+- `approved`: explicit approving Guildie and approval Unix time;
+- `denied`: explicit denying Guildie, denial Unix time, and mandatory reason;
+- `cancelled`: explicit claimant Guildie and cancellation Unix time.
 
-Approval establishes the claim's raffle participation. Pending claims establish no tickets. A denial and a cancellation contribute no participation but remain durable records.
+Approval is the boundary where a claim begins contributing immutable drawing weight. Approval establishes the claim's requested ticket count as valid raffle tickets. Once approved, the claim cannot be cancelled, reduced, edited, or otherwise withdrawn from the raffle population.
 
-Administrative cancellation of the parent round does not rewrite an approved claim into a cancelled claim. Approval remains evidence that the attendant confirmed the promised deposit and may therefore matter to later guild refund handling. Refund completion is not currently raffle state and must not be manufactured from cancellation history.
+Pending claims establish no tickets. A denial and a cancellation contribute no tickets but remain durable records.
 
-## Selection population
+The parent round concluding does not rewrite claim resolution state. In particular, operator cancellation leaves approved, denied, cancelled, and unresolved claims exactly as they existed at the moment of cancellation.
 
-Tickets do not currently need individually durable database objects.
+## Ticket population
 
-An approved claim contributes its requested ticket count as equal positions in the round's selection population. If Claim A was approved for five tickets and Claim B for two, the conceptual population is:
+Tickets are derived drawing units established by approved claims. They are not independently persisted raffle objects.
+
+An approved claim contributes its requested ticket count as equal positions in the round's ticket population. If Claim A was approved for five tickets and Claim B for two, the conceptual population is:
 
 ```text
 [A, A, A, A, A, B, B]
@@ -139,16 +189,67 @@ An approved claim contributes its requested ticket count as equal positions in t
 
 Every position has exactly one equal chance of selection. There is no member-level weighting model hidden behind the draw.
 
-The population is reconstructed deterministically from approved claims ordered by claim creation time and claim ID. A manual draw uniformly selects one zero-based position from that population.
+The population is reconstructed deterministically from approved claims ordered by claim creation time and claim ID. The individual ticket positions have no independent behavior or authority before the draw, so persisting separate ticket records would duplicate the approved-claim truth without adding meaning.
 
-The completed round preserves:
+Once a claim is approved, its ticket weight is immutable. Tickets cannot be withdrawn from the raffle population even though unresolved claims may still be cancelled before resolution.
 
-- total entry count;
+## Drawing
+
+Draws are always manual.
+
+A draw is refused while any unresolved claims remain. This is a deliberate audit failsafe: every pending promise must first receive operated human attention so the draw cannot silently exclude unresolved real-world activity.
+
+When no unresolved claims remain, the draw derives the authoritative ticket population from approved claims:
+
+```text
+ticket population > 0
+    → uniformly select one zero-based position
+    → conclusion = drawn
+
+ ticket population = 0
+    → conclusion = no_participation
+```
+
+`no_participation` is not cancellation. The raffle procedure successfully reached its resolution point and found no ticket population to act upon. Claims may have existed, been denied, or been cancelled; those facts are irrelevant to the drawing unless they established approved ticket weight.
+
+A drawn round preserves enough result evidence to reconstruct the selection:
+
+- total ticket population size;
 - selected index;
 - winning claim ID;
-- concluding Guildie administrator and time.
+- concluding Guildie administrator;
+- conclusion Unix time.
 
-Those facts are sufficient to reconstruct why the selected position resolves to the winning claim while retaining the entire claim provenance behind the winner.
+Combined with the immutable approved claims and deterministic population ordering, those facts are sufficient to reconstruct why the selected position resolves to the winning claim.
+
+## Conclusion and audit preservation
+
+Every conclusion preserves the raffle's pre-conclusion operational state for auditability. Conclusion appends terminal truth; it does not reconcile, normalize, or clean up the evidence that existed immediately beforehand.
+
+For every concluded round, the lifecycle operation establishes at minimum:
+
+```text
+status = concluded
+conclusion = <drawn | operator_cancelled | no_participation>
+concluded_at_unix = <unix>
+```
+
+Additional draw-result facts are appended only for `drawn`.
+
+`operator_cancelled` is intentionally different from normal draw resolution. It may conclude a round while unresolved claims still exist. The entire raffle machinery state remains untouched except for the conclusion facts required to establish that the round ended.
+
+Therefore operator cancellation does not:
+
+- resolve pending claims;
+- revoke approved claims;
+- remove approved ticket weight;
+- alter denied or claimant-cancelled claims;
+- rewrite round terms;
+- manufacture refund state.
+
+The preserved state gives human operators a non-moving target against which they can resolve refunds, discrepancies, and other guild procedures outside the raffle machinery.
+
+This preservation rule also applies to `drawn` and `no_participation`: drawing consumes a deterministic projection of established claim truth but does not mutate the claims or ticket basis it consumed.
 
 ## Prize model
 
@@ -170,6 +271,8 @@ Claims do not disappear when a round concludes. They remain ordinary historical 
 
 Their operational activity is determined by the lifecycle of their round. There is no separate archive flag and no cleanup procedure that rewrites participation history.
 
+Raffle state is evidence, not a convenience model. Once operational truth has been established, later lifecycle actions must not rewrite it merely to make terminal state look tidy.
+
 The raffle intentionally derives as much as possible from a small set of authoritative facts. The same state used to operate the raffle therefore preserves the history required to inspect it later.
 
 ## Surface boundary
@@ -179,12 +282,12 @@ The raffle domain owns raffle meaning. Interfaces own expression of that meaning
 Current participant-facing web surfaces are:
 
 - `/events/raffle` — current participatory raffle surface;
-- `/events/raffle/history` — completed and cancelled raffle history;
+- `/events/raffle/history` — concluded raffle history;
 - `/events/raffle/rules` — standing guild raffle rules and regulations.
 
 Raffle administration is a distinct privileged projection over the same raffle truth:
 
-- `/admin/raffle` — current and preparatory raffle administration work;
+- `/admin/raffle` — listed and live raffle administration work;
 - `/admin/raffle/:roundId` — detailed raffle management, claim adjudication, manual draw, and administrative ledger.
 
 The former `/events/raffle/admin/*` paths are compatibility redirects rather than a second canonical administrative hierarchy. Raffle administration remains authorized through the module-owned `raffle.admin` capability.
@@ -199,7 +302,9 @@ Discord and other subscribers remain interaction surfaces over the same backend 
 
 Raffle publishes system events when meaningful authoritative raffle reality successfully changes. A publication creates attention rather than truth: it carries the occurrence kind and small authority-oriented coordinates so a subscriber can query Guild Operations for current state.
 
-A successful manual draw publishes `raffle.round.drawn` with the winning claim coordinate. A manual draw with no approved entries publishes `raffle.round.no-entry-cancelled`. The draw UI invokes the same authoritative raffle operation and publication path as any other caller; it does not own separate draw truth.
+The publication vocabulary must follow raffle truth rather than preserve obsolete lifecycle terminology. A successful manual draw may publish a draw conclusion event with the winning claim coordinate. A normal draw resolution with no ticket population may publish a `no_participation` conclusion event. Operator cancellation may publish its own conclusion event when an external interaction surface needs attention.
+
+Exact system-event names are an integration contract and should be reconciled with this doctrine during implementation alignment rather than inferred from the obsolete `drawn`, `admin_cancelled`, or `no_entry_cancelled` lifecycle states.
 
 Failed attempts, authorization failures, database failures, transport failures, and other machinery errors are not raffle system events. Publication failure does not undo an authoritative raffle operation that already succeeded.
 
