@@ -14,6 +14,32 @@ Raffle is the current concrete example: raffle procedure and truth belong to `sr
 
 The `src/modules/` container does not imply a generic module loader, registry, lifecycle, or framework. Add shared module machinery only when multiple concrete participation capabilities demonstrate that the same machinery is actually needed.
 
+## Persistence and shared authority
+
+A module owns the persistence of the participation truth it establishes. It does not duplicate persistence owned globally by Guild Operations.
+
+Global Guild Operations owns shared authoritative facts and objects such as Subjects, controlled Characters, current Blizzard guild roster observations, Blizzard rank observations, and other application-wide authority state.
+
+A module may reference those globally owned objects while persisting the module-specific meaning of their participation. Referencing a Subject, Character, guild, rank, or other global coordinate does not transfer ownership of that object or fact to the module.
+
+Modules remain subject to application-wide persistence laws and conventions even when the persisted facts belong to the module.
+
+## Permissioning
+
+Global Guild Operations owns permissions for globally owned operations and exposes globally authoritative member, roster, rank, and authority facts.
+
+Modules consume those facts and global permissions as inputs. A module owns permission policy that belongs specifically to its participation procedure.
+
+Module authorization may derive a module-specific decision directly from current global authority facts, require an existing globally owned permission, or introduce module-specific permission state when a real module requirement proves that additional state is necessary. These mechanisms may coexist; ownership determines which layer defines the rule.
+
+A module capability is a semantic permission, not necessarily a globally persisted grant. A module may define a capability such as `raffle.admin` and evaluate it from current global facts without registering that capability as global permission state.
+
+Modules should not duplicate globally owned roster, rank, Subject, Character, or authority state merely to make a permission decision. Global facts remain globally owned; the module owns only its interpretation of those facts for its own procedure.
+
+Using global permission machinery does not transfer ownership of module-specific permission policy to the global layer. Conversely, a module should not reimplement globally owned permission semantics merely because it has local authorization needs.
+
+The default for a new module is to begin with existing global facts and permissions. Add module-specific permission machinery only when the module's procedure demonstrates a need that those inputs cannot express directly.
+
 ## Rendering ownership
 
 Use the broadest rendering owner that has already been earned by the application.
