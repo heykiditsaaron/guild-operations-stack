@@ -517,3 +517,27 @@ export async function raffleRound(roundId: string): Promise<RaffleRound | null> 
   );
   return result.rowCount ? mapRound(result.rows[0] as Record<string, unknown>) : null;
 }
+
+export async function raffleClaims(roundId: string): Promise<RaffleClaim[]> {
+  const result = await pool.query(
+    `SELECT
+       rc.*,
+       c.character_id,
+       c.realm_id,
+       COALESCE(grm.character_name, c.name) AS character_name
+     FROM raffle_claims rc
+     JOIN raffle_rounds rr
+       ON rr.round_id = rc.round_id
+      AND rr.guild_id = $2
+     JOIN characters c ON c.character_record_id = rc.character_record_id
+     LEFT JOIN guild_roster_memberships grm
+       ON grm.guild_id = rr.guild_id
+      AND grm.region = c.region
+      AND grm.realm_id = c.realm_id
+      AND grm.character_id = c.character_id
+    WHERE rc.round_id = $1
+    ORDER BY rc.created_at ASC, rc.claim_id ASC`,
+    [roundId, config.guild.id],
+  );
+  return result.rows.map((row) => mapClaim(row as Record<string, unknown>));
+}
