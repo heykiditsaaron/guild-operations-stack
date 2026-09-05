@@ -18,11 +18,6 @@ function formatRaffleOverview() {
   const list = document.querySelector(".raffle-overview-list");
   if (!(list instanceof HTMLElement)) return;
 
-  const liveRound = list.querySelector(".raffle-overview-item-live");
-  if (liveRound instanceof HTMLElement && list.firstElementChild !== liveRound) {
-    list.prepend(liveRound);
-  }
-
   list.querySelectorAll(".raffle-overview-identity").forEach((identity) => {
     if (!(identity instanceof HTMLElement)) return;
 
@@ -54,11 +49,34 @@ function localDateTimeInputValue(unixSeconds) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+function syncRafflePrizeFields(form) {
+  const kindSelect = form.querySelector("[data-raffle-admin-prize-kind]");
+  const goldField = form.querySelector("[data-raffle-prize-gold]");
+  const descriptionField = form.querySelector("[data-raffle-prize-description]");
+  const winnerInput = form.querySelector("[data-raffle-admin-winner-percentage]");
+  const descriptionInput = form.querySelector("[data-raffle-admin-prize-description]");
+  if (!(kindSelect instanceof HTMLSelectElement)
+      || !(goldField instanceof HTMLElement)
+      || !(descriptionField instanceof HTMLElement)
+      || !(winnerInput instanceof HTMLInputElement)
+      || !(descriptionInput instanceof HTMLInputElement)) return;
+
+  const gold = kindSelect.value === "gold";
+  goldField.hidden = !gold;
+  descriptionField.hidden = gold;
+  winnerInput.required = gold;
+  winnerInput.disabled = !gold;
+  descriptionInput.required = !gold;
+  descriptionInput.disabled = gold;
+}
+
 function initializeRaffleEditForm(form) {
   const drawingInput = form.querySelector("[data-raffle-admin-drawing]");
   const drawingUnix = Number(form.dataset.drawingUnix || "0");
-  if (!(drawingInput instanceof HTMLInputElement) || !Number.isFinite(drawingUnix) || drawingUnix <= 0) return;
-  drawingInput.value = localDateTimeInputValue(drawingUnix);
+  if (drawingInput instanceof HTMLInputElement && Number.isFinite(drawingUnix) && drawingUnix > 0) {
+    drawingInput.value = localDateTimeInputValue(drawingUnix);
+  }
+  syncRafflePrizeFields(form);
 }
 
 function rafflePromiseText(form) {
@@ -165,53 +183,87 @@ async function cancelRaffleClaim(button) {
   }
 }
 
-async function createRaffleRound(form) {
+function raffleAdminTerms(form, status) {
   const drawingInput = form.querySelector("[data-raffle-admin-drawing]");
   const priceInput = form.querySelector("[data-raffle-admin-price]");
+  const kindSelect = form.querySelector("[data-raffle-admin-prize-kind]");
   const winnerInput = form.querySelector("[data-raffle-admin-winner-percentage]");
-  const status = form.querySelector("[data-raffle-admin-status]");
-  const submitButton = form.querySelector('button[type="submit"]');
+  const descriptionInput = form.querySelector("[data-raffle-admin-prize-description]");
 
   if (!(drawingInput instanceof HTMLInputElement)
       || !(priceInput instanceof HTMLInputElement)
+      || !(kindSelect instanceof HTMLSelectElement)
       || !(winnerInput instanceof HTMLInputElement)
-      || !(status instanceof HTMLElement)
-      || !(submitButton instanceof HTMLButtonElement)) return;
+      || !(descriptionInput instanceof HTMLInputElement)) return null;
 
   const drawingMilliseconds = Date.parse(drawingInput.value);
   const ticketPrice = Number(priceInput.value);
-  const winnerPercentage = Number(winnerInput.value);
+  const prizeKind = kindSelect.value;
 
-  if (!Number.isFinite(drawingMilliseconds)
-      || !Number.isSafeInteger(ticketPrice) || ticketPrice <= 0
-      || !Number.isInteger(winnerPercentage) || winnerPercentage < 1 || winnerPercentage > 100) {
-    status.textContent = "Enter a drawing time, positive whole-number ticket price, and winner share from 1 to 100.";
-    return;
+  if (!Number.isFinite(drawingMilliseconds) || !Number.isSafeInteger(ticketPrice) || ticketPrice <= 0) {
+    status.textContent = "Enter a drawing time and a positive whole-number ticket price.";
+    return null;
+  }
+  if (prizeKind !== "gold" && prizeKind !== "item" && prizeKind !== "other") {
+    status.textContent = "Choose a valid prize type.";
+    return null;
   }
 
+  if (prizeKind === "gold") {
+    const winnerPercentage = Number(winnerInput.value);
+    if (!Number.isInteger(winnerPercentage) || winnerPercentage < 1 || winnerPercentage > 100) {
+      status.textContent = "Gold prize percentage must be a whole number from 1 to 100.";
+      return null;
+    }
+    return {
+      drawing_at_unix: Math.floor(drawingMilliseconds / 1000),
+      ticket_price_gold: ticketPrice,
+      prize_kind: prizeKind,
+      winner_percentage: winnerPercentage,
+      prize_description: null,
+    };
+  }
+
+  const prizeDescription = descriptionInput.value.trim();
+  if (!prizeDescription) {
+    status.textContent = "Describe the prize.";
+    return null;
+  }
+  return {
+    drawing_at_unix: Math.floor(drawingMilliseconds / 1000),
+    ticket_price_gold: ticketPrice,
+    prize_kind: prizeKind,
+    winner_percentage: null,
+    prize_description: prizeDescription,
+  };
+}
+
+async function createRaffleRound(form) {
+  const status = form.querySelector("[data-raffle-admin-status]");
+  const submitButton = form.querySelector('button[type="submit"]');
+  if (!(status instanceof HTMLElement) || !(submitButton instanceof HTMLButtonElement)) return;
+
+  const terms = raffleAdminTerms(form, status);
+  if (!terms) return;
+
   submitButton.disabled = true;
-  status.textContent = "Creating raffle draft…";
+  status.textContent = "Creating raffle…";
 
   try {
     const response = await fetch("/raffle/rounds", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        drawing_at_unix: Math.floor(drawingMilliseconds / 1000),
-        ticket_price_gold: ticketPrice,
-        prize_kind: "gold",
-        winner_percentage: winnerPercentage,
-      }),
+      body: JSON.stringify(terms),
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) {
-      status.textContent = result.message || result.error || "Unable to create raffle draft.";
+      status.textContent = result.message || result.error || "Unable to create raffle.";
       return;
     }
 
     window.location.reload();
   } catch {
-    status.textContent = "Unable to create raffle draft.";
+    status.textContent = "Unable to create raffle.";
   } finally {
     submitButton.disabled = false;
   }
@@ -219,29 +271,12 @@ async function createRaffleRound(form) {
 
 async function updateRaffleRoundForm(form) {
   const roundId = form.dataset.roundId;
-  const drawingInput = form.querySelector("[data-raffle-admin-drawing]");
-  const priceInput = form.querySelector("[data-raffle-admin-price]");
-  const winnerInput = form.querySelector("[data-raffle-admin-winner-percentage]");
   const status = form.querySelector("[data-raffle-admin-status]");
   const submitButton = form.querySelector('button[type="submit"]');
+  if (!roundId || !(status instanceof HTMLElement) || !(submitButton instanceof HTMLButtonElement)) return;
 
-  if (!roundId
-      || !(drawingInput instanceof HTMLInputElement)
-      || !(priceInput instanceof HTMLInputElement)
-      || !(winnerInput instanceof HTMLInputElement)
-      || !(status instanceof HTMLElement)
-      || !(submitButton instanceof HTMLButtonElement)) return;
-
-  const drawingMilliseconds = Date.parse(drawingInput.value);
-  const ticketPrice = Number(priceInput.value);
-  const winnerPercentage = Number(winnerInput.value);
-
-  if (!Number.isFinite(drawingMilliseconds)
-      || !Number.isSafeInteger(ticketPrice) || ticketPrice <= 0
-      || !Number.isInteger(winnerPercentage) || winnerPercentage < 1 || winnerPercentage > 100) {
-    status.textContent = "Enter a drawing time, positive whole-number ticket price, and winner share from 1 to 100.";
-    return;
-  }
+  const terms = raffleAdminTerms(form, status);
+  if (!terms) return;
 
   submitButton.disabled = true;
   status.textContent = "Saving changes…";
@@ -250,12 +285,7 @@ async function updateRaffleRoundForm(form) {
     const response = await fetch(`/raffle/rounds/${encodeURIComponent(roundId)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        drawing_at_unix: Math.floor(drawingMilliseconds / 1000),
-        ticket_price_gold: ticketPrice,
-        prize_kind: "gold",
-        winner_percentage: winnerPercentage,
-      }),
+      body: JSON.stringify(terms),
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -318,7 +348,7 @@ async function drawRaffleRound(button) {
       return;
     }
 
-    window.location.assign(`/admin/raffle/${encodeURIComponent(roundId)}`);
+    window.location.assign("/admin/raffle");
   } catch {
     window.alert("Unable to draw raffle.");
   } finally {
@@ -443,6 +473,7 @@ document.querySelectorAll("[data-raffle-claim-form]").forEach((form) => {
 
 document.querySelectorAll("[data-raffle-admin-create]").forEach((form) => {
   if (!(form instanceof HTMLFormElement)) return;
+  syncRafflePrizeFields(form);
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     void createRaffleRound(form);
@@ -456,6 +487,13 @@ document.querySelectorAll("[data-raffle-admin-edit]").forEach((form) => {
     event.preventDefault();
     void updateRaffleRoundForm(form);
   });
+});
+
+document.addEventListener("change", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLSelectElement) || !target.matches("[data-raffle-admin-prize-kind]")) return;
+  const form = target.closest("form");
+  if (form instanceof HTMLFormElement) syncRafflePrizeFields(form);
 });
 
 document.addEventListener("input", (event) => {
@@ -473,7 +511,7 @@ document.addEventListener("click", (event) => {
     const setup = document.querySelector("[data-raffle-setup]");
     if (setup instanceof HTMLElement) {
       setup.hidden = !setup.hidden;
-      setupToggle.textContent = setup.hidden ? "Start a raffle" : "Hide raffle setup";
+      setupToggle.textContent = setup.hidden ? "Start new raffle" : "Hide raffle setup";
       if (!setup.hidden) setup.scrollIntoView({ behavior: "smooth", block: "start" });
     }
     return;
