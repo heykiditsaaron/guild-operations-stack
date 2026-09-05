@@ -121,7 +121,6 @@ src/web/pages/events/raffle/
 Examples include:
 
 - member-facing raffle child pages using back navigation;
-- raffle administration using breadcrumb navigation;
-- the public raffle exposing its administration destination through the same shared zone when the viewer has the required capability.
+- raffle administration using breadcrumb navigation.
 
 The shared implementation itself remains authoritative in `src/web/render.ts`. This document describes how modules should consume that renderer contract; it should not become a second implementation definition.
