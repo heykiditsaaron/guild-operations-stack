@@ -7,7 +7,7 @@ import {
   type RaffleRound,
 } from "./domain.js";
 import { publishRaffleEvent } from "./publisher.js";
-import { coupleGuildEventRegistration } from "./registered-operations.js";
+import { coupleGuildEventListing } from "./registered-operations.js";
 
 export type ActiveRaffleRoundOverview = RaffleRound & {
   approvedTicketCount: number;
@@ -26,7 +26,7 @@ export async function activateSingleRaffleRound(
 ): Promise<RaffleRound> {
   try {
     const round = await activateRaffleRound(actorSubjectId, roundId);
-    await coupleGuildEventRegistration(round);
+    await coupleGuildEventListing(round);
     await publishRaffleEvent({ kind: "raffle.round.live", roundId: round.roundId });
     return round;
   } catch (error) {
