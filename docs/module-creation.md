@@ -4,6 +4,16 @@ Guild Operations modules should be built around concrete guild participation cap
 
 A module should establish or operate a real guild activity, preserve its history, or provide the authority needed to participate in it. Shared abstractions should emerge from repeated real pressure rather than being designed in advance.
 
+## Source ownership
+
+Concrete participation modules belong under `src/modules/<module>/` once the application has earned a module boundary for that capability. This is an implementation ownership boundary, not a requirement that source layout mirror member-facing URLs.
+
+A module may establish Guild Event registrations without being contained by Guild Events. Shared Guild Event registration and registry machinery belongs to `src/guild-events/`, while a member-facing projection may still appropriately live under `src/web/pages/events/`.
+
+Raffle is the current concrete example: raffle procedure and truth belong to `src/modules/raffle/`, while `/events/raffle` remains the appropriate member-facing route.
+
+The `src/modules/` container does not imply a generic module loader, registry, lifecycle, or framework. Add shared module machinery only when multiple concrete participation capabilities demonstrate that the same machinery is actually needed.
+
 ## Rendering ownership
 
 Use the broadest rendering owner that has already been earned by the application.
