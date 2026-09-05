@@ -1,3 +1,74 @@
+.raffle-admin-overview {
+  width: min(100%, 46rem);
+}
+
+.raffle-overview-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 1.1rem;
+  border-bottom: 1px solid rgba(238, 201, 124, 0.18);
+}
+
+.raffle-overview-title {
+  font-family: inherit;
+  font-size: clamp(1.45rem, 5vw, 2rem);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.raffle-start-button,
+.raffle-action {
+  min-height: 2.65rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.62rem 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.65rem;
+  background: rgba(255, 255, 255, 0.035);
+  color: #f7f4ea;
+  text-decoration: none;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.raffle-start-button {
+  flex: 0 0 auto;
+  border-color: rgba(232, 201, 134, 0.35);
+  background: rgba(232, 201, 134, 0.08);
+  color: #e8c986;
+}
+
+.raffle-action-primary,
+.raffle-create-submit {
+  border-color: rgba(232, 201, 134, 0.42);
+  background: rgba(232, 201, 134, 0.11);
+  color: #f0d89f;
+}
+
+.raffle-create-submit {
+  width: fit-content;
+  min-width: 10rem;
+  margin-top: 0.35rem;
+}
+
+.raffle-action-secondary {
+  color: #c9c5ba;
+}
+
+.raffle-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.raffle-setup {
+  margin: 1.25rem 0 0;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
 .raffle-status-banner {
   position: relative;
   margin: 0 0 1.15rem;
@@ -49,7 +120,7 @@
 }
 
 .raffle-overview-list { display: grid; gap: 0.55rem; }
-.raffle-overview-item { padding: 1.35rem 0 1.6rem; border-bottom: 0; }
+.raffle-overview-item { padding: 1.35rem 0 1.6rem; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
 .raffle-overview-item-live { border-top: 0; }
 .raffle-overview-identity { display: grid; gap: 0.32rem; }
 .raffle-overview-identity h2 { margin: 0; font-size: 1.12rem; }
@@ -65,7 +136,7 @@
 }
 
 .raffle-overview-attribution strong { color: #c9c5ba; font-weight: 700; }
-.raffle-overview-attention { margin: 0.8rem 0 0; }
+.raffle-overview-attention { margin: 0.8rem 0 0; color: #aaa69c; line-height: 1.5; }
 .raffle-overview-participation { margin: 0.35rem 0 0; color: #aaa69c; font-size: 0.9rem; }
 
 .raffle-edit,
@@ -83,6 +154,9 @@
 
 .raffle-edit-field,
 .raffle-setup-field { display: grid; gap: 0.4rem; }
+
+.raffle-edit-field[hidden],
+.raffle-setup-field[hidden] { display: none; }
 
 .raffle-edit-field > span,
 .raffle-setup-field > span { color: #c9c5ba; font-size: 0.9rem; font-weight: 700; }
@@ -322,5 +396,7 @@
 .raffle-claim-group-pending { scroll-margin-top: 1.5rem; }
 
 @media (max-width: 40rem) {
+  .raffle-overview-heading-row { align-items: flex-start; }
+  .raffle-management-controls { gap: 0.6rem; }
   .raffle-claim-attention { align-items: flex-start; flex-direction: column; }
 }
