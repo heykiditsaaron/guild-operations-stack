@@ -24,7 +24,7 @@ The renderer currently supports two forms.
 
 ### Breadcrumb navigation
 
-Breadcrumbs are the standard expression for a page that occupies a durable location within one of the application realms established by primary navigation. They answer where the user is in that realm.
+Breadcrumbs are the standard expression for a page that occupies a durable location within an application realm. They answer where the user is in that realm.
 
 ```ts
 secondaryNavigation: {
@@ -36,9 +36,23 @@ secondaryNavigation: {
 },
 ```
 
-The first breadcrumb may be an inert root corresponding to the primary-navigation realm. Its purpose is orientation: it confirms which realm owns the hierarchy without duplicating the primary navigation's responsibility for navigating to that realm.
+A breadcrumb root may be inert when another navigation layer already owns navigation to that realm. `Events` is the current example: primary navigation owns movement to `/events`, so the breadcrumb root confirms the Events realm without duplicating that responsibility.
 
-Deeper durable locations can expose navigable intermediate ancestors while retaining an inert realm root and a non-navigable current location:
+A breadcrumb root should be navigable when no higher navigation layer owns that movement and a real parent surface exists. Administration is the current example because `/admin` is a real administrative root but Administration is deliberately absent from primary navigation:
+
+```ts
+secondaryNavigation: {
+  kind: "breadcrumb",
+  items: [
+    { label: "Administration", href: "/admin" },
+    { label: "Raffle" },
+  ],
+},
+```
+
+This is a navigation-ownership distinction rather than a special rule for either Events or Administration.
+
+Deeper durable locations can expose navigable intermediate ancestors while retaining a non-navigable current location:
 
 ```ts
 secondaryNavigation: {
@@ -53,7 +67,7 @@ secondaryNavigation: {
 
 The renderer owns separators, breadcrumb semantics, terminal `aria-current`, shared styling, placement, and constrained-space behavior.
 
-A breadcrumb item may provide `href` when it represents a navigable ancestor. The terminal item is presented as the current location rather than a link.
+A breadcrumb item may provide `href` when it represents a navigable ancestor. The terminal item is presented as the current location rather than a link. The page declares the breadcrumb hierarchy in order; by placing an item last, it declares that item as the current location. The renderer turns that declaration into navigation semantics and presentation rather than inferring hierarchy from the URL.
 
 ### Back navigation
 
@@ -123,9 +137,12 @@ When adding a new module or expanding an existing module:
 - do not create module-local breadcrumb markup if the shared renderer can express the navigation;
 - do not place back links inside `header` merely to position them above the eyebrow;
 - register secondary navigation through `renderPage(...)`;
-- prefer `kind: "breadcrumb"` for durable locations within a primary-navigation realm;
-- let the breadcrumb root act as an inert realm marker when primary navigation already owns navigation to that root;
+- prefer `kind: "breadcrumb"` for durable locations within an application realm;
+- let a breadcrumb root act as an inert realm marker when a higher navigation layer already owns navigation to that root;
+- make the breadcrumb root navigable when no higher navigation layer owns that movement and a real parent surface exists;
 - use navigable intermediate breadcrumbs when they represent useful ancestor locations;
+- declare breadcrumb hierarchy in semantic order and let the terminal item declare the current location;
+- do not ask the shared renderer to infer secondary hierarchy from pathname structure;
 - consider `kind: "back"` for focused participation or work surfaces whose useful relationship is return to one owning location;
 - treat session- or guildie-specific interaction as a strong signal for back navigation, not an absolute rule;
 - omit `secondaryNavigation` entirely when the page has no secondary navigation requirement.
@@ -142,6 +159,6 @@ Current usages can be found in the raffle web surfaces under:
 src/web/pages/events/raffle/
 ```
 
-As those surfaces conform to this guidance, durable raffle locations should use breadcrumbs while focused member participation surfaces may use back navigation.
+Durable public raffle locations use breadcrumbs while focused member participation surfaces may use back navigation. Administrative raffle locations should preserve their navigable `/admin` root because Administration is not represented in primary navigation.
 
 The shared implementation itself remains authoritative in `src/web/render.ts`. This document describes how modules should consume that renderer contract; it should not become a second implementation definition.
