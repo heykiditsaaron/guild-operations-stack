@@ -27,8 +27,9 @@ function mapRound(row: Record<string, unknown>): RaffleAdministrationRound {
     conclusion: row.conclusion as RaffleRound["conclusion"],
     drawingAtUnix: Number(row.drawing_at_unix),
     ticketPriceGold: String(row.ticket_price_gold),
-    prizeKind: String(row.prize_kind),
+    prizeKind: row.prize_kind as RaffleRound["prizeKind"],
     winnerPercentage: nullableNumber(row.winner_percentage),
+    prizeDescription: nullableString(row.prize_description),
     createdByGuildieId: String(row.created_by_guildie_id),
     createdAtUnix: Number(row.created_at_unix),
     updatedByGuildieId: nullableString(row.updated_by_guildie_id),
@@ -61,15 +62,12 @@ export async function raffleRoundsForAdministration(): Promise<RaffleAdministrat
        FROM raffle_rounds rr
        LEFT JOIN raffle_claims rc ON rc.round_id = rr.round_id
       WHERE rr.guild_id = $1
+        AND rr.status IN ('live', 'listed')
       GROUP BY rr.round_id
       ORDER BY
-        CASE rr.status
-          WHEN 'live' THEN 0
-          WHEN 'listed' THEN 1
-          ELSE 2
-        END,
-        COALESCE(rr.concluded_at_unix, rr.created_at_unix) DESC,
-        rr.round_id DESC`,
+        CASE rr.status WHEN 'live' THEN 0 ELSE 1 END,
+        rr.drawing_at_unix ASC,
+        rr.round_id ASC`,
     [config.guild.id],
   );
 
