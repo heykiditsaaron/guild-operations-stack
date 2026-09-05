@@ -315,13 +315,13 @@ Guild Operations preserves, enables, and enriches community participation. It do
 
 A **Guild Event** is the operational domain representation of a guild-operated ceremony. Member-facing presentation should normally call these simply **Events**; the `guild_event` vocabulary exists to distinguish the operational concept from technical events used by system machinery.
 
-A **module** owns a concrete guild participation capability and its procedure. A **Guild Event Listing** is a shared participation-awareness projection of one concrete module-owned occurrence while that occurrence still offers a meaningful avenue for guild participation. A module is not contained by Guild Events merely because it can establish Guild Event Listings.
+A **module** owns a concrete guild participation capability and its procedure. A **Guild Event** is a concrete occurrence that an appropriate module may list through the shared Guild Event Registration contract. A module is not contained by Guild Events merely because it can establish Guild Event registrations.
 
-Raffle is the first concrete example: the raffle module owns raffle truth, procedure, conclusion, and history. Listed and live raffle rounds may be listed as Guild Events for shared discovery because awareness can still lead to participation. Once a raffle concludes, its Guild Event Listing is withdrawn and its history remains solely the responsibility of Raffle.
+Raffle is the first concrete example: the raffle module owns raffle truth and procedure, while individual raffle rounds may be registered as Guild Events for shared discovery. Other modules remain free to own different procedures without being forced through a generic event procedure merely because their concrete occurrences can be discovered together.
 
-Listing is a projection of module-owned truth; it does not transfer ownership of the participation capability, its procedure, result, or history to the Guild Event Registry.
+Registration is a projection of module-owned truth; it does not transfer ownership of the participation capability, its procedure, or its meaning to the Guild Event Registry.
 
-The required Guild Event Listing detail is deliberately small:
+The required Guild Event registration detail is deliberately small:
 
 ```text
 guild_event_id
@@ -331,14 +331,14 @@ guild_event_kind
     → what concrete ceremony type is this?
 
 guild_event_occurs_at
-    → when does the owning module say this participation-relevant Guild Event occurs?
+    → when does the owning module say this Guild Event occurs?
 ```
 
 `guild_event_id` must be globally unique among Guild Events in Guild Operations. A consumer should be able to address a concrete Guild Event by its Guild Event ID without also supplying its kind or owning module.
 
-`guild_event_kind` names the concrete ceremony type being discovered, not necessarily the module that implements it. For example, the raffle module owns raffle procedure while a concrete raffle round is listed with kind `raffle-round`.
+`guild_event_kind` names the concrete ceremony type being discovered, not necessarily the module that implements it. For example, the raffle module owns raffle procedure while a concrete raffle round is registered with kind `raffle-round`.
 
-`guild_event_occurs_at` is established by the owning module. It expresses the module-authoritative temporal meaning of the currently participation-relevant ceremony occurrence; it is not registry lifecycle, publication time, or generic module status.
+`guild_event_occurs_at` is established by the owning module. It expresses the module-authoritative temporal meaning of the ceremony occurrence; it is not registry lifecycle, publication time, participation eligibility, or generic module status unless the module itself establishes that as the ceremony's temporal meaning.
 
 `guild_event_occurs_at` follows the repository's Unix time persistence rule:
 
@@ -350,30 +350,29 @@ guild_event_occurs_at
     → range from start to end
 ```
 
-The module determines which shape is valid while the concrete occurrence remains listing-eligible. The same Guild Event kind may therefore legitimately have an instant in one state and a range in another. For raffle, a listed round may expose its estimated drawing Unix as an instant, while the live round may expose its actual started-at Unix through estimated drawing Unix as a range. When the raffle concludes, the listing is withdrawn rather than converted into historical raffle state.
+The module determines which shape is valid for each concrete occurrence. The same Guild Event kind may therefore legitimately have an instant in one state and a range in another. For raffle, an upcoming round may register only its estimated drawing Unix as an instant, while the single live round may register its started-at Unix through estimated drawing Unix as a range. The raffle module establishes that distinction; the registry does not infer it from raffle status.
 
-`guild_event_category` is standard optional Listing metadata. It supplies a broader organizational classification for consumers without establishing that the Guild Event exists. For example, a `raffle-round` may optionally carry category `raffle`.
+`guild_event_category` is standard optional registration metadata. It supplies a broader organizational classification for consumers without establishing that the Guild Event exists. For example, a `raffle-round` may optionally carry category `raffle`.
 
-Modules may additionally establish optional contract-defined metadata for richer projections when concrete pressure earns it. Consumers may use metadata appropriate to their surfaces without requiring every module that lists Guild Events to satisfy a large universal presentation schema.
+Modules may additionally establish optional consumable metadata for richer projections. The owning module determines what information is useful to expose. Consumers may use metadata appropriate to their surfaces without requiring every module that lists Guild Events to satisfy a large universal presentation schema.
 
 Conceptually:
 
 ```text
 Module
-├── owns participation truth, procedure, conclusion, and history
-├── decides whether a concrete occurrence is currently listing-eligible
-├── establishes Guild Event Listing detail when participation awareness matters
+├── owns participation truth and procedure
+├── establishes concrete Guild Event registrations when appropriate
 │   ├── guild_event_id
 │   ├── guild_event_kind
 │   ├── guild_event_occurs_at
-│   └── optional contract-defined metadata
+│   └── optional consumable metadata
 │       └── guild_event_category
-└── withdraws the listing when no meaningful participation avenue remains
+└── posts established registration detail through the Guild Event contract
         ↓
 Guild Event Registry
-├── stores currently established Guild Event Listings
-├── enforces the shared Listing contract
-└── exposes current listings to consumers
+├── durable ledger of Guild Event registrations
+├── records registration detail as established by modules
+└── exposes registrations
         ↓
 Guild Event Consumers
 ├── discover
@@ -381,23 +380,23 @@ Guild Event Consumers
 └── project
 ```
 
-The Guild Event Registry is not a history system. It stores and exposes the current shared participation-awareness projection established by modules. A withdrawn listing may remain physically represented for implementation reasons, but consumers must not rely on registry storage to preserve module history or concluded ceremony truth.
+The Guild Event Registry is the durable ledger of Guild Event registrations established by modules. It does not derive ceremony meaning from module internals. Modules establish registration facts; the registry records and exposes them; consumers consume them.
 
-Listing state may change when a module establishes new participation-relevant truth about the same Guild Event. Such a change must be posted by the owning module rather than inferred by the registry. When the participation avenue ends, the owning module withdraws the listing.
+Registration state may change when a module establishes new truth about the same Guild Event. Such a change must be posted by the owning module rather than inferred by the registry. Calling the registry a ledger does not by itself require an append-only history of every registration mutation; historical revision machinery should be introduced only if a concrete requirement demonstrates that it matters.
 
-Consumers do not need to inspect each module independently or reconstruct Guild Event truth from module-specific state. They consume the common current listings and specialize only their interpretation and presentation of established Listing detail.
+Consumers do not need to inspect each module independently or reconstruct Guild Event truth from module-specific state. They consume the common registration ledger and specialize only their interpretation and presentation of the established registration detail.
 
-`/events` is therefore **a Guild Event consumer, not the Guild Event consumer**. It may provide broad temporal participation discovery with calendar semantics, while other present or future consumers may specialize around promotion, Discord expression, administration, categories, participation contexts, or other concrete needs. Those consumers may present the same listings differently, but they do not become independent owners of the underlying Guild Event truth.
+`/events` is therefore **a Guild Event consumer, not the Guild Event consumer**. It may provide broad temporal discovery with calendar semantics, while other present or future consumers may specialize around promotion, Discord expression, administration, categories, participation contexts, or other concrete needs. Those consumers may present the same registrations differently, but they do not become independent owners of the underlying Guild Event truth.
 
 Member-facing route hierarchy describes where users encounter capabilities; it does not define source or module ownership. A module may therefore be presented under `/events` without being structurally contained by Guild Events. `/events/raffle` remains appropriate member-facing information architecture while raffle implementation ownership remains with the raffle module.
 
-This is participation-awareness, listing, and projection machinery, not a generic event engine and not a historical ledger.
+This is discovery, registration, and projection machinery, not a generic event engine.
 
-Guild Event organization should have **calendar semantics without requiring calendar presentation**. Time is the common coordinate by which independently meaningful active or upcoming ceremonies can be ordered, grouped, recognized as current or upcoming, and displayed together. A member-facing `/events` surface may therefore behave like a calendar while presenting guild-specific cards, sections, imagery, and participation routes instead of a conventional calendar grid.
+Guild Event organization should have **calendar semantics without requiring calendar presentation**. Time is the common coordinate by which independently meaningful ceremonies can be ordered, grouped, recognized as current or upcoming, and displayed together. A member-facing `/events` surface may therefore behave like a calendar while presenting guild-specific cards, sections, imagery, and participation routes instead of a conventional calendar grid.
 
 In short:
 
-> Module → Guild Event Listing contract → Guild Event Registry → participation-awareness consumer.
+> Module → Guild Event contract → Guild Event Registry → consumer.
 
 ## Model maturity and feature pressure
 
