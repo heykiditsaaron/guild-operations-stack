@@ -13,7 +13,7 @@ user-authorized WoW profile access
         ↓
 authoritative account/profile coordinates
         ↓
-resolve or establish the Guild Operations WoW-rooted subject
+resolve or establish the Guildie
 ```
 
 ## Confirmed authority boundary
@@ -116,7 +116,7 @@ The profile-level identifier did **not** equal the returned `wow_accounts[].id`.
 
 This is strong evidence that `/profile/user/wow` is a WoW profile projection of the authenticated Battle.net principal rather than a representation of one specific WoW license/account. The subordinate `wow_accounts[]` records occupy a distinct identity layer beneath that principal.
 
-For Guild Operations, this materially strengthens the authenticated Blizzard principal as the continuity anchor and materially weakens any design that would use one arbitrary WoW license/account ID as the member root.
+For Guild Operations, this materially strengthens the authenticated Blizzard principal as the external authority anchor used to establish or resolve a Guildie and materially weakens any design that would use one arbitrary WoW license/account ID as the member root.
 
 ## Character coordinate structure
 
@@ -172,7 +172,7 @@ This confirms that, across two independent authorization ceremonies for the same
 - the subordinate WoW account/license identifier set remained stable;
 - the returned character coordinates remained stable.
 
-This is sufficient live evidence for Guild Operations to treat these Blizzard-native identifiers as persisted continuity coordinates rather than merely ephemeral observations.
+This is sufficient live evidence for Guild Operations to treat these Blizzard-native identifiers as persisted external authority and continuity coordinates rather than merely ephemeral observations.
 
 ## Two relevant identity layers
 
@@ -199,9 +199,9 @@ Authenticated Blizzard principal
 
 A single authenticated principal may expose more than one WoW account/license. The probe account happened to expose one; the API shape itself remains plural.
 
-Therefore `wow_accounts[].id` must not be used as the canonical guild subject identifier.
+Therefore `wow_accounts[].id` must not be used as the canonical Guildie coordinate.
 
-## Character ownership
+## Character control
 
 The Account Profile response contains the characters belonging to the user-authorized WoW account profile. Character entries expose Blizzard-native character/realm coordinates and links to the protected-character profile endpoint.
 
@@ -211,7 +211,7 @@ The protected endpoint is addressed using:
 {realm-id}-{character-id}
 ```
 
-This gives Guild Operations a substantially stronger character coordinate than character name plus realm slug. Names can change; Blizzard-native IDs should be preferred.
+This gives Guild Operations a substantially stronger Character coordinate than character name plus realm slug. Names can change; Blizzard-native IDs should be preferred.
 
 For the initial project scope, Retail is the target. Classic behavior is not part of the root-object requirement.
 
@@ -221,35 +221,37 @@ WoW Profile API calls are region/namespace scoped, such as `profile-us`.
 
 Blizzard has historically not provided a reliable way to infer a user's WoW region before making the regional profile request. Guild Operations should therefore treat region selection/resolution as an explicit part of authentication unless live testing demonstrates a newer authoritative mechanism.
 
-The durable coordinate must not silently assume that a numeric Blizzard identifier is globally unique across regions unless Blizzard documents that property or live API semantics establish it safely. Region should remain explicit in our model until proven unnecessary.
+The durable external authority coordinate must not silently assume that a numeric Blizzard identifier is globally unique across regions unless Blizzard documents that property or live API semantics establish it safely. Region should remain explicit in our model until proven unnecessary.
 
 ## Current architectural conclusion
 
-The live evidence supports modeling the canonical Guild Operations continuity anchor as the Blizzard-authenticated principal that has successfully demonstrated a WoW profile in the selected region.
+The live evidence supports using the Blizzard-authenticated principal that has successfully demonstrated a WoW profile in the selected region as the authority-bearing external coordinate through which Guild Operations establishes or resolves a Guildie.
 
 Conceptually:
 
 ```text
+Guildie
+    ↑ established/resolved through
 Authenticated Blizzard principal
 ├── region-bound successful WoW profile acquisition
 ├── WoW account/license(s)
-│   └── character(s)
-└── later: Discord resolver
+│   └── controlled Character(s)
+└── later: optional Discord association resolves the Guildie separately
 ```
 
-This remains WoW-rooted operationally: Guild Operations does not create a subject merely because a Battle.net account exists. Establishment requires successful Blizzard authorization plus successful acquisition of the user's WoW Account Profile.
+This remains WoW-rooted operationally: Guild Operations does not create a Guildie merely because a Battle.net account exists. Establishment requires successful Blizzard authorization plus successful acquisition of the user's WoW Account Profile.
 
-A Discord identity remains incapable of establishing this root.
+A Discord identity remains incapable of establishing a Guildie.
 
 ## Durable coordinate contract
 
-The strongest current root coordinate is:
+The strongest current external authority coordinate is:
 
 ```text
 Blizzard authenticated principal identifier + region
 ```
 
-with the successful `/profile/user/wow` response acting as the ceremony that admits that principal into Guild Operations as a WoW-rooted subject.
+with the successful `/profile/user/wow` response acting as the ceremony that admits that principal as authority for a Guildie and its controlled Characters.
 
 The live probes established that:
 
@@ -259,17 +261,19 @@ userinfo.id == userinfo.sub == profile.id
 
 by identifier value, and that this value remains stable across independent authorization ceremonies.
 
-The subordinate WoW-account/license IDs and character coordinates likewise remained stable and can be retained as Blizzard-authoritative subordinate coordinates.
+The subordinate WoW-account/license IDs and Character coordinates likewise remained stable and can be retained as Blizzard-authoritative subordinate coordinates.
 
-The persistence model may now be designed around these relationships. Database field names and implementation details remain separate design decisions.
+The Guild Operations-owned durable member coordinate is `guildie_id`; it is distinct from these external Blizzard coordinates.
+
+`Subject` is not an object in this hierarchy. It is contextual language for whichever existing object is being discussed in a particular relation.
 
 ## Remaining verification
 
-The root identity and subordinate character coordinate questions are sufficiently resolved for persistence design. Remaining reconnaissance is narrower and no longer blocks the root model:
+The root authority and subordinate Character coordinate questions are sufficiently resolved for persistence design. Remaining reconnaissance is narrower and no longer blocks the root model:
 
 1. verify that a protected-character link resolves using the same realm and character IDs exposed in the parent profile response;
-2. determine whether Blizzard documents the principal identifier as globally unique or whether Guild Operations should permanently retain region as part of its canonical coordinate;
-3. determine how Guild Operations should handle a successful Blizzard principal whose selected regional WoW profile contains no relevant guild character.
+2. determine whether Blizzard documents the principal identifier as globally unique or whether Guild Operations should permanently retain region as part of its external authority coordinate;
+3. determine how Guild Operations should handle a successful Blizzard principal whose selected regional WoW profile contains no relevant guild Character.
 
 ## Sources used for reconnaissance
 
