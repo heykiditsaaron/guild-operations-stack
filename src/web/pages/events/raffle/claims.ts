@@ -6,9 +6,8 @@ import type { AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
 
-function localTime(date: Date): string {
-  const unixSeconds = Math.floor(date.getTime() / 1000);
-  const instant = date.toISOString();
+function localTime(unixSeconds: number): string {
+  const instant = new Date(unixSeconds * 1000).toISOString();
   return `<time datetime="${instant}" data-local-time-unix="${unixSeconds}" data-local-time-date-style="medium">${instant}</time>`;
 }
 
@@ -35,7 +34,7 @@ function claimsList(claims: RaffleMemberClaim[]): string {
             <strong>${htmlText(claim.characterName)} · ${claim.requestedTicketCount} ${claim.requestedTicketCount === 1 ? "ticket" : "tickets"}</strong>
             <span class="raffle-claim-state">${htmlText(claimResolution(claim))}</span>
           </div>
-          <p class="raffle-claim-meta">Promised deposit: ${htmlText(claim.promisedGoldValue)} gold · ${localTime(claim.createdAt)}</p>
+          <p class="raffle-claim-meta">Promised deposit: ${htmlText(claim.promisedGoldValue)} gold · ${localTime(claim.createdAtUnix)}</p>
           ${claim.denialReason ? `<p class="raffle-claim-reason">Reason: ${htmlText(claim.denialReason)}</p>` : ""}
           ${claim.resolutionKind === null ? `<button class="raffle-claim-cancel" type="button" data-cancel-raffle-claim="${htmlText(claim.claimId)}">Cancel claim</button>` : ""}
         </li>`).join("\n")}
