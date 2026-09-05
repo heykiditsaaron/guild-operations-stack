@@ -6,6 +6,7 @@ import {
   RaffleRuleError,
   raffleClaims,
   raffleRound,
+  type RafflePrizeKind,
   type RaffleRoundTerms,
 } from "./domain.js";
 import { activateSingleRaffleRound } from "./live-round.js";
@@ -42,6 +43,14 @@ function requiredString(value: unknown, field: string): string {
   return value.trim();
 }
 
+function nullableString(value: unknown, field: string): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string") {
+    throw new RaffleRuleError("invalid_input", `${field} must be a string`, 400);
+  }
+  return value.trim() || null;
+}
+
 function requiredInteger(value: unknown, field: string): number {
   if (typeof value !== "number" || !Number.isInteger(value)) {
     throw new RaffleRuleError("invalid_input", `${field} must be an integer`, 400);
@@ -54,12 +63,21 @@ function nullableInteger(value: unknown, field: string): number | null {
   return requiredInteger(value, field);
 }
 
+function requiredPrizeKind(value: unknown): RafflePrizeKind {
+  const kind = requiredString(value, "prize_kind");
+  if (kind !== "gold" && kind !== "item" && kind !== "other") {
+    throw new RaffleRuleError("invalid_input", "prize_kind must be gold, item, or other", 400);
+  }
+  return kind;
+}
+
 function roundTerms(body: Record<string, unknown>): RaffleRoundTerms {
   return {
     drawingAtUnix: requiredInteger(body.drawing_at_unix, "drawing_at_unix"),
     ticketPriceGold: requiredInteger(body.ticket_price_gold, "ticket_price_gold"),
-    prizeKind: requiredString(body.prize_kind, "prize_kind"),
+    prizeKind: requiredPrizeKind(body.prize_kind),
     winnerPercentage: nullableInteger(body.winner_percentage, "winner_percentage"),
+    prizeDescription: nullableString(body.prize_description, "prize_description"),
   };
 }
 
