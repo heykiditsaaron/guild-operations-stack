@@ -20,7 +20,7 @@ The Character roster is dictated by the actual WoW guild environment. A Characte
 
 The Guildie roster is derived from controlled Characters intersecting the current Character roster. A Guildie is currently an organizational member when at least one Character they currently control is present on the Character roster.
 
-Guildie continuity is durable. Losing the last controlled roster Character removes the Guildie's current participation surface and rank-derived authority; it does not delete, close, or invalidate the Guildie, Subject, Discord association, selected-main record, or historical participation.
+Guildie continuity is durable. Losing the last controlled roster Character removes the Guildie's current participation surface and rank-derived authority; it does not delete, close, or invalidate the Guildie, Discord association, selected-main record, or historical participation.
 
 ## Character publications
 
@@ -69,10 +69,10 @@ Published when a known Guildie moves from controlling zero current roster Charac
 
 Coordinates:
 
-- `subjectId`
+- `guildieId`
 - `guildId`
 
-This establishes a current participation surface. It does not create the Guildie or Subject.
+This establishes a current participation surface. It does not create the Guildie.
 
 ### `guildie.left`
 
@@ -80,7 +80,7 @@ Published when a known Guildie moves from controlling at least one current roste
 
 Coordinates:
 
-- `subjectId`
+- `guildieId`
 - `guildId`
 
 A single Character leaving does not produce this publication when another currently controlled Character remains on the guild roster.
@@ -93,7 +93,7 @@ Published when the Guildie's effective current guild rank changes.
 
 Coordinates:
 
-- `subjectId`
+- `guildieId`
 - `guildId`
 
 Effective rank is the highest-authority rank among all currently controlled roster Characters. Under the current Blizzard rank ordering, the lower numeric `rank_index` has higher authority.
@@ -112,12 +112,14 @@ A guild refresh that establishes no Character or Guildie transition publishes no
 
 Character presentation enrichment remains downstream recognition enrichment and is not itself guild-membership truth.
 
-### Subject character-control reconciliation
+### Guildie character-control reconciliation
 
-Subject establishment and refresh reconcile which Blizzard Characters the Subject currently controls. Character roster truth does not change at this boundary, so it does not produce `character.*` publications.
+Guildie establishment and refresh reconcile which Blizzard Characters the Guildie currently controls. Character roster truth does not change at this boundary, so it does not produce `character.*` publications.
 
 The changed control set can, however, change the Guildie's derived intersection with the current Character roster. Before and after Guildie state are therefore compared, and `guildie.joined`, `guildie.left`, or `guildie.rank.changed` is published when that derived truth changes.
 
 A controlled non-guild Character appearing or disappearing produces no Guildie publication unless it changes that guild-relevant intersection.
 
 At both boundaries, publication transport failure does not reverse successfully established authoritative state.
+
+`Subject` is not a reconciliation object or publication coordinate; it is contextual language only.
