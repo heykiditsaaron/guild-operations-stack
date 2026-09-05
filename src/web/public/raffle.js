@@ -22,10 +22,12 @@ function formatRaffleOverview() {
     if (!(identity instanceof HTMLElement)) return;
 
     const heading = identity.querySelector("h2");
-    const drawingTime = identity.querySelector("time[data-local-time-unix]");
-    if (!(heading instanceof HTMLHeadingElement) || !(drawingTime instanceof HTMLTimeElement)) return;
+    if (!(heading instanceof HTMLHeadingElement)) return;
 
-    const unixSeconds = Number(drawingTime.dataset.localTimeUnix);
+    const headingTime = heading.querySelector("time[data-local-time-unix]");
+    if (!(headingTime instanceof HTMLTimeElement)) return;
+
+    const unixSeconds = Number(headingTime.dataset.localTimeUnix);
     if (!Number.isFinite(unixSeconds)) return;
 
     const date = new Date(unixSeconds * 1000);
@@ -36,9 +38,6 @@ function formatRaffleOverview() {
       day: "numeric",
       year: "numeric",
     }).format(date);
-
-    const drawingLine = drawingTime.closest("p");
-    if (drawingLine instanceof HTMLParagraphElement) drawingLine.remove();
   });
 }
 
@@ -138,18 +137,13 @@ async function submitRaffleClaim(form) {
     const response = await fetch(`/raffle/rounds/${encodeURIComponent(roundId)}/claims`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        realm_id: realmId,
-        character_id: characterId,
-        ticket_count: ticketCount,
-      }),
+      body: JSON.stringify({ realm_id: realmId, character_id: characterId, ticket_count: ticketCount }),
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) {
       status.textContent = result.message || result.error || "Unable to submit raffle claim.";
       return;
     }
-
     window.location.reload();
   } catch {
     status.textContent = "Unable to submit raffle claim.";
@@ -161,21 +155,16 @@ async function submitRaffleClaim(form) {
 async function cancelRaffleClaim(button) {
   const claimId = button.dataset.cancelRaffleClaim;
   if (!claimId) return;
-
   button.disabled = true;
   const originalText = button.textContent;
   button.textContent = "Cancelling…";
-
   try {
-    const response = await fetch(`/raffle/claims/${encodeURIComponent(claimId)}/cancel`, {
-      method: "POST",
-    });
+    const response = await fetch(`/raffle/claims/${encodeURIComponent(claimId)}/cancel`, { method: "POST" });
     if (!response.ok) {
       const result = await response.json().catch(() => ({}));
       window.alert(result.message || result.error || "Unable to cancel raffle claim.");
       return;
     }
-
     window.location.reload();
   } catch {
     window.alert("Unable to cancel raffle claim.");
@@ -186,18 +175,21 @@ async function cancelRaffleClaim(button) {
 }
 
 function raffleAdminTerms(form, status) {
+  const titleInput = form.querySelector("[data-raffle-admin-title]");
   const drawingInput = form.querySelector("[data-raffle-admin-drawing]");
   const priceInput = form.querySelector("[data-raffle-admin-price]");
   const kindSelect = form.querySelector("[data-raffle-admin-prize-kind]");
   const winnerInput = form.querySelector("[data-raffle-admin-winner-percentage]");
   const descriptionInput = form.querySelector("[data-raffle-admin-prize-description]");
 
-  if (!(drawingInput instanceof HTMLInputElement)
+  if (!(titleInput instanceof HTMLInputElement)
+      || !(drawingInput instanceof HTMLInputElement)
       || !(priceInput instanceof HTMLInputElement)
       || !(kindSelect instanceof HTMLSelectElement)
       || !(winnerInput instanceof HTMLInputElement)
       || !(descriptionInput instanceof HTMLInputElement)) return null;
 
+  const roundTitle = titleInput.value.trim();
   const drawingMilliseconds = Date.parse(drawingInput.value);
   const ticketPrice = Number(priceInput.value);
   const prizeKind = kindSelect.value;
@@ -218,6 +210,7 @@ function raffleAdminTerms(form, status) {
       return null;
     }
     return {
+      round_title: roundTitle || null,
       drawing_at_unix: Math.floor(drawingMilliseconds / 1000),
       ticket_price_gold: ticketPrice,
       prize_kind: prizeKind,
@@ -232,6 +225,7 @@ function raffleAdminTerms(form, status) {
     return null;
   }
   return {
+    round_title: roundTitle || null,
     drawing_at_unix: Math.floor(drawingMilliseconds / 1000),
     ticket_price_gold: ticketPrice,
     prize_kind: prizeKind,
@@ -244,13 +238,10 @@ async function createRaffleRound(form) {
   const status = form.querySelector("[data-raffle-admin-status]");
   const submitButton = form.querySelector('button[type="submit"]');
   if (!(status instanceof HTMLElement) || !(submitButton instanceof HTMLButtonElement)) return;
-
   const terms = raffleAdminTerms(form, status);
   if (!terms) return;
-
   submitButton.disabled = true;
   status.textContent = "Creating raffle…";
-
   try {
     const response = await fetch("/raffle/rounds", {
       method: "POST",
@@ -262,7 +253,6 @@ async function createRaffleRound(form) {
       status.textContent = result.message || result.error || "Unable to create raffle.";
       return;
     }
-
     window.location.reload();
   } catch {
     status.textContent = "Unable to create raffle.";
@@ -276,13 +266,10 @@ async function updateRaffleRoundForm(form) {
   const status = form.querySelector("[data-raffle-admin-status]");
   const submitButton = form.querySelector('button[type="submit"]');
   if (!roundId || !(status instanceof HTMLElement) || !(submitButton instanceof HTMLButtonElement)) return;
-
   const terms = raffleAdminTerms(form, status);
   if (!terms) return;
-
   submitButton.disabled = true;
   status.textContent = "Saving changes…";
-
   try {
     const response = await fetch(`/raffle/rounds/${encodeURIComponent(roundId)}`, {
       method: "PATCH",
@@ -294,7 +281,6 @@ async function updateRaffleRoundForm(form) {
       status.textContent = result.message || result.error || "Unable to save raffle changes.";
       return;
     }
-
     window.location.reload();
   } catch {
     status.textContent = "Unable to save raffle changes.";
@@ -307,22 +293,17 @@ async function activateRaffleRound(button) {
   const roundId = button.dataset.activateRaffleRound;
   if (!roundId) return;
   if (!window.confirm("Open this raffle? Its terms will be locked and members will be able to participate.")) return;
-
   button.disabled = true;
   const originalText = button.textContent;
   button.textContent = "Opening raffle…";
-
   try {
-    const response = await fetch(`/raffle/rounds/${encodeURIComponent(roundId)}/live`, {
-      method: "POST",
-    });
+    const response = await fetch(`/raffle/rounds/${encodeURIComponent(roundId)}/live`, { method: "POST" });
     if (!response.ok) {
       const result = await response.json().catch(() => ({}));
       window.alert(result.message || result.error || "Unable to open raffle.");
       return;
     }
-
-    window.location.assign(`/admin/raffle/${encodeURIComponent(roundId)}`);
+    window.location.assign("/admin/raffle");
   } catch {
     window.alert("Unable to open raffle.");
   } finally {
@@ -335,21 +316,16 @@ async function drawRaffleRound(button) {
   const roundId = button.dataset.drawRaffleRound;
   if (!roundId) return;
   if (!window.confirm("Draw this raffle now? This will permanently conclude the round.")) return;
-
   button.disabled = true;
   const originalText = button.textContent;
   button.textContent = "Drawing…";
-
   try {
-    const response = await fetch(`/raffle/rounds/${encodeURIComponent(roundId)}/draw`, {
-      method: "POST",
-    });
+    const response = await fetch(`/raffle/rounds/${encodeURIComponent(roundId)}/draw`, { method: "POST" });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) {
       window.alert(result.message || result.error || "Unable to draw raffle.");
       return;
     }
-
     window.location.assign("/admin/raffle");
   } catch {
     window.alert("Unable to draw raffle.");
@@ -363,21 +339,16 @@ async function cancelRaffleRound(button) {
   const roundId = button.dataset.cancelRaffleRound;
   if (!roundId) return;
   if (!window.confirm("Cancel this raffle round? The round and its claims will remain in history.")) return;
-
   button.disabled = true;
   const originalText = button.textContent;
   button.textContent = "Cancelling round…";
-
   try {
-    const response = await fetch(`/raffle/rounds/${encodeURIComponent(roundId)}/cancel`, {
-      method: "POST",
-    });
+    const response = await fetch(`/raffle/rounds/${encodeURIComponent(roundId)}/cancel`, { method: "POST" });
     if (!response.ok) {
       const result = await response.json().catch(() => ({}));
       window.alert(result.message || result.error || "Unable to cancel raffle round.");
       return;
     }
-
     window.location.assign("/admin/raffle");
   } catch {
     window.alert("Unable to cancel raffle round.");
@@ -390,15 +361,11 @@ async function cancelRaffleRound(button) {
 async function approveRaffleClaim(button) {
   const claimId = button.dataset.approveRaffleClaim;
   if (!claimId) return;
-
   button.disabled = true;
   const originalText = button.textContent;
   button.textContent = "Approving…";
-
   try {
-    const response = await fetch(`/raffle/claims/${encodeURIComponent(claimId)}/approve`, {
-      method: "POST",
-    });
+    const response = await fetch(`/raffle/claims/${encodeURIComponent(claimId)}/approve`, { method: "POST" });
     if (!response.ok) {
       const result = await response.json().catch(() => ({}));
       window.alert(result.message || result.error || "Unable to approve raffle claim.");
@@ -416,7 +383,6 @@ async function approveRaffleClaim(button) {
 async function denyRaffleClaim(button) {
   const claimId = button.dataset.denyRaffleClaim;
   if (!claimId) return;
-
   const controls = button.closest(".raffle-claim-controls");
   const reasonInput = document.querySelector(`[data-raffle-denial-reason="${CSS.escape(claimId)}"]`);
   if (!(controls instanceof HTMLElement) || !(reasonInput instanceof HTMLInputElement)) return;
@@ -429,7 +395,6 @@ async function denyRaffleClaim(button) {
     reasonInput.focus();
     return;
   }
-
   if (!reasonInput.value.trim()) {
     reasonInput.setCustomValidity("Enter a denial reason before denying this claim.");
     reasonInput.reportValidity();
@@ -437,11 +402,9 @@ async function denyRaffleClaim(button) {
     return;
   }
   reasonInput.setCustomValidity("");
-
   button.disabled = true;
   const originalText = button.textContent;
   button.textContent = "Denying…";
-
   try {
     const response = await fetch(`/raffle/claims/${encodeURIComponent(claimId)}/deny`, {
       method: "POST",
@@ -465,7 +428,6 @@ async function denyRaffleClaim(button) {
 document.querySelectorAll("[data-raffle-claim-form]").forEach((form) => {
   if (!(form instanceof HTMLFormElement)) return;
   refreshRafflePromise(form);
-
   form.addEventListener("input", () => refreshRafflePromise(form));
   form.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -524,31 +486,26 @@ document.addEventListener("click", (event) => {
     void cancelRaffleClaim(cancelClaimButton);
     return;
   }
-
   const activateButton = target.closest("[data-activate-raffle-round]");
   if (activateButton instanceof HTMLButtonElement) {
     void activateRaffleRound(activateButton);
     return;
   }
-
   const drawButton = target.closest("[data-draw-raffle-round]");
   if (drawButton instanceof HTMLButtonElement) {
     void drawRaffleRound(drawButton);
     return;
   }
-
   const cancelRoundButton = target.closest("[data-cancel-raffle-round]");
   if (cancelRoundButton instanceof HTMLButtonElement) {
     void cancelRaffleRound(cancelRoundButton);
     return;
   }
-
   const approveButton = target.closest("[data-approve-raffle-claim]");
   if (approveButton instanceof HTMLButtonElement) {
     void approveRaffleClaim(approveButton);
     return;
   }
-
   const denyButton = target.closest("[data-deny-raffle-claim]");
   if (denyButton instanceof HTMLButtonElement) void denyRaffleClaim(denyButton);
 });
