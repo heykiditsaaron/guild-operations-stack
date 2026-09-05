@@ -1,9 +1,9 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { config, parseRegion } from "../config.js";
 import { pool } from "../db.js";
-import { discordAssociationForSubject } from "../discord.js";
+import { discordAssociationForGuildie } from "../discord.js";
 import { effectiveGuildAuthority } from "../guild-permissions.js";
-import { mainCharacterForSubject } from "../main-character.js";
+import { mainCharacterForGuildie } from "../main-character.js";
 
 function authorized(request: FastifyRequest): boolean {
   const configured = process.env.EVENT_QUERY_API_KEY;
@@ -13,28 +13,28 @@ function authorized(request: FastifyRequest): boolean {
 }
 
 export async function registerEventQueryRoutes(app: FastifyInstance): Promise<void> {
-  app.get("/events/query/subjects/:subjectId", async (request, reply) => {
+  app.get("/events/query/guildies/:guildieId", async (request, reply) => {
     if (!authorized(request)) return reply.code(401).send({ error: "invalid_machine_authority" });
 
-    const params = request.params as { subjectId?: unknown };
-    if (typeof params.subjectId !== "string" || !params.subjectId) {
-      return reply.code(400).send({ error: "invalid_subject_coordinate" });
+    const params = request.params as { guildieId?: unknown };
+    if (typeof params.guildieId !== "string" || !params.guildieId) {
+      return reply.code(400).send({ error: "invalid_guildie_coordinate" });
     }
 
-    const subject = await pool.query<{ subject_id: string }>(
-      "SELECT subject_id FROM guild_subjects WHERE subject_id = $1",
-      [params.subjectId],
+    const guildie = await pool.query<{ guildie_id: string }>(
+      "SELECT guildie_id FROM guildies WHERE guildie_id = $1",
+      [params.guildieId],
     );
-    if (!subject.rowCount) return reply.code(404).send({ error: "subject_not_found" });
+    if (!guildie.rowCount) return reply.code(404).send({ error: "guildie_not_found" });
 
     const [discord, main, membership] = await Promise.all([
-      discordAssociationForSubject(params.subjectId),
-      mainCharacterForSubject(params.subjectId),
-      effectiveGuildAuthority(params.subjectId),
+      discordAssociationForGuildie(params.guildieId),
+      mainCharacterForGuildie(params.guildieId),
+      effectiveGuildAuthority(params.guildieId),
     ]);
 
     return reply.send({
-      subject_id: params.subjectId,
+      guildie_id: params.guildieId,
       discord: discord
         ? {
             discord_user_id: discord.discordUserId,
