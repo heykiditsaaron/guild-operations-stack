@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { authenticatedSubject, SESSION_COOKIE_NAME } from "./auth.js";
+import { authenticatedGuildie, SESSION_COOKIE_NAME } from "./auth.js";
 import { refreshGuildAuthority } from "./guild.js";
 import {
   GUILD_REFRESH_CAPABILITY,
@@ -9,17 +9,17 @@ import {
 
 export async function registerGuildRoutes(app: FastifyInstance): Promise<void> {
   app.post("/guild/refresh", async (request, reply) => {
-    const subject = await authenticatedSubject(request.cookies[SESSION_COOKIE_NAME]);
-    if (!subject) return reply.code(401).send({ error: "not_authenticated" });
+    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
+    if (!guildie) return reply.code(401).send({ error: "not_authenticated" });
 
     try {
-      const authority = await requireGuildCapability(subject.subjectId, GUILD_REFRESH_CAPABILITY);
+      const authority = await requireGuildCapability(guildie.guildieId, GUILD_REFRESH_CAPABILITY);
       const result = await refreshGuildAuthority();
       return reply.send({
         guild_id: result.guildId,
         roster_count: result.rosterCount,
         requested_by: {
-          subject_id: subject.subjectId,
+          guildie_id: guildie.guildieId,
           effective_rank: authority.rankIndex,
         },
         reconciliation: {
