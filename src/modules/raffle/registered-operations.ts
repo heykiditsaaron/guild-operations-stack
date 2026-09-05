@@ -18,20 +18,20 @@ async function coupleGuildEventListing(round: RaffleRound): Promise<void> {
 }
 
 export async function createRegisteredRaffleRound(
-  actorSubjectId: string,
+  actorGuildieId: string,
   terms: RaffleRoundTerms,
 ): Promise<RaffleRound> {
-  const round = await createRaffleRoundDomain(actorSubjectId, terms);
+  const round = await createRaffleRoundDomain(actorGuildieId, terms);
   await coupleGuildEventListing(round);
   return round;
 }
 
 export async function updateRegisteredRaffleRound(
-  actorSubjectId: string,
+  actorGuildieId: string,
   roundId: string,
   terms: RaffleRoundTerms,
 ): Promise<RaffleRound> {
-  const round = await updateRaffleRoundDomain(actorSubjectId, roundId, terms);
+  const round = await updateRaffleRoundDomain(actorGuildieId, roundId, terms);
   await coupleGuildEventListing(round);
   return round;
 }
