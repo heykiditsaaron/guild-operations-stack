@@ -1,6 +1,6 @@
 # Raffle
 
-Raffle is a concrete Guild Operations participation module for operating the guild raffle. Individual raffle rounds may be listed as Guild Events through the shared Guild Event contract; the raffle module itself is not contained by Guild Events.
+Raffle is a concrete Guild Operations participation module for operating the guild raffle. Individual raffle rounds may be listed as Guild Events through the shared Guild Event contract while they remain relevant to participation awareness; the raffle module itself is not contained by Guild Events.
 
 It is deliberately modeled as a raffle-specific domain rather than as an instance of a generic event, workflow, participation, notification, or audit framework. Raffle may publish system events after authoritative raffle truth changes; those system events are a supporting integration boundary, not the Guild Event product category itself.
 
@@ -103,26 +103,35 @@ conclusion
 
 Drawing, cancellation, and creation are operations. They are not lifecycle states.
 
-### Temporal truth and Guild Event occurrence
+### Guild Event Listing eligibility and temporal truth
 
-Raffle scheduling is operated by humans, not by a deterministic automation system. Scheduled time therefore represents the best established expectation until actual operational boundaries become known.
+Guild Event Listings exist for participation awareness, not raffle history.
 
-For a raffle round registered as a Guild Event, `guild_event_occurs_at` expresses the best currently established temporal truth of the ceremony and may change as better truth becomes available:
+A raffle round is eligible for a Guild Event Listing only while shared discovery can still direct a member toward a meaningful participation avenue.
+
+For Raffle, that means:
 
 ```text
 listed
-    → [drawing_at_unix]
+    → eligible
+    → guild_event_occurs_at = [drawing_at_unix]
 
 live
-    → [live_at_unix, drawing_at_unix]
+    → eligible
+    → guild_event_occurs_at = [live_at_unix, drawing_at_unix]
 
-concluded after going live
-    → [live_at_unix, concluded_at_unix]
+concluded
+    → not eligible
+    → withdraw Guild Event Listing
 ```
 
-A scheduled boundary is not considered false merely because it may later move; it is the best available truth while the boundary remains future or estimated. Once the raffle establishes an observed boundary, that observed Unix value supersedes the estimate in the Guild Event occurrence projection.
+A listed round cancelled before going live is likewise no longer listing-eligible because no participation avenue remains. It is withdrawn from Guild Event discovery even though it remains a historically real raffle round inside the Raffle module.
 
-A listed round that is cancelled before going live remains a historically real raffle occurrence. Cancellation does not erase the fact that the guild established and listed it.
+Raffle scheduling is operated by humans, not by a deterministic automation system. While a round remains listing-eligible, scheduled time represents the best established expectation until actual operational boundaries become known.
+
+A scheduled boundary is not considered false merely because it may later move; it is the best available truth while the boundary remains future or estimated. When the raffle establishes an observed opening boundary, that observed Unix value may replace the corresponding estimated boundary in the current Guild Event Listing.
+
+Once the raffle concludes, Guild Event Listing responsibility ends. Raffle owns the actual conclusion time, result, audit evidence, and historical presentation. The Guild Event Registry must not be used as a second raffle-history system.
 
 ## Claim
 
@@ -274,6 +283,8 @@ Their operational activity is determined by the lifecycle of their round. There 
 Raffle state is evidence, not a convenience model. Once operational truth has been established, later lifecycle actions must not rewrite it merely to make terminal state look tidy.
 
 The raffle intentionally derives as much as possible from a small set of authoritative facts. The same state used to operate the raffle therefore preserves the history required to inspect it later.
+
+Guild Event Listing withdrawal does not alter this historical responsibility. A concluded or never-live cancelled round disappears from shared participation discovery because it no longer offers a participation avenue, while Raffle continues to preserve the round and its audit history.
 
 ## Surface boundary
 
