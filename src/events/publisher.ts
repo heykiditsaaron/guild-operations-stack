@@ -1,17 +1,17 @@
 export type PublishedEvent =
   | {
       kind: "guildie.discord.linked";
-      subjectId: string;
+      guildieId: string;
       discordUserId: string;
     }
   | {
       kind: "guildie.discord.unlinked";
-      subjectId: string;
+      guildieId: string;
       discordUserId: string;
     }
   | {
       kind: "guildie.main.changed";
-      subjectId: string;
+      guildieId: string;
       guildId: string;
     }
   | {
@@ -23,7 +23,7 @@ export type PublishedEvent =
     }
   | {
       kind: "guildie.joined" | "guildie.left" | "guildie.rank.changed";
-      subjectId: string;
+      guildieId: string;
       guildId: string;
     };
 
@@ -44,7 +44,7 @@ function variable(name: string, value: string): BotGhostVariable {
 function variablesForEvent(event: PublishedEvent): BotGhostVariable[] {
   const variables = [variable("event_kind", event.kind)];
 
-  if ("subjectId" in event) variables.push(variable("subject_id", event.subjectId));
+  if ("guildieId" in event) variables.push(variable("guildie_id", event.guildieId));
   if ("discordUserId" in event) variables.push(variable("discord_user_id", event.discordUserId));
   if ("guildId" in event) variables.push(variable("guild_id", event.guildId));
   if ("region" in event) variables.push(variable("region", event.region));
