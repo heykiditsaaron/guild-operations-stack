@@ -3,6 +3,7 @@ import { pool } from "../../db.js";
 import {
   raffleRound,
   type RaffleClaimResolution,
+  type RafflePrizeKind,
   type RaffleRoundConclusion,
   type RaffleRoundStatus,
 } from "./domain.js";
@@ -14,8 +15,9 @@ export type RaffleQueryRound = {
   conclusion: RaffleRoundConclusion;
   drawingAtUnix: number;
   ticketPriceGold: string;
-  prizeKind: string;
+  prizeKind: RafflePrizeKind;
   winnerPercentage: number | null;
+  prizeDescription: string | null;
   createdAtUnix: number;
   liveAtUnix: number | null;
   concludedAtUnix: number | null;
@@ -139,6 +141,7 @@ export async function raffleRoundQuery(roundId: string): Promise<RaffleQueryRoun
     ticketPriceGold: round.ticketPriceGold,
     prizeKind: round.prizeKind,
     winnerPercentage: round.winnerPercentage,
+    prizeDescription: round.prizeDescription,
     createdAtUnix: round.createdAtUnix,
     liveAtUnix: round.liveAtUnix,
     concludedAtUnix: round.concludedAtUnix,
