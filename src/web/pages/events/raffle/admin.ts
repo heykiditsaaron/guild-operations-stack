@@ -74,6 +74,11 @@ function roundStatusLabel(round: RaffleRound): string {
   return "cancelled";
 }
 
+function prizeLabel(round: RaffleRound): string {
+  if (round.prizeKind === "gold") return `${round.winnerPercentage ?? 0}% of the pot`;
+  return round.prizeDescription ?? round.prizeKind;
+}
+
 function adminNavigation(round?: RaffleRound): SecondaryNavigation {
   return {
     kind: "breadcrumb",
@@ -139,7 +144,8 @@ function managementFacts(
     <dt>Drawing</dt><dd>${localTime(round.drawingAtUnix)}</dd>
     <dt>Claim cutoff</dt><dd>${localTime(cutoffUnix)}</dd>
     <dt>Ticket price</dt><dd>${htmlText(round.ticketPriceGold)} gold</dd>
-    <dt>Prize</dt><dd>${htmlText(round.prizeKind)}${round.winnerPercentage === null ? "" : ` · ${round.winnerPercentage}%`}</dd>
+    <dt>Prize type</dt><dd>${htmlText(round.prizeKind)}</dd>
+    <dt>Prize</dt><dd>${htmlText(prizeLabel(round))}</dd>
     <dt>Approved tickets</dt><dd>${metrics.approvedTicketCount}</dd>
     ${gold ? `<dt>Current pot</dt><dd>${gold.pot.toString()} gold</dd>` : ""}
     ${gold?.prize !== null && gold?.prize !== undefined ? `<dt>Current prize</dt><dd>${gold.prize.toString()} gold</dd>` : ""}
@@ -150,54 +156,67 @@ function managementFacts(
   </dl>`;
 }
 
+function prizeKindOptions(selected: RaffleRound["prizeKind"] = "gold"): string {
+  return [
+    ["gold", "Gold"],
+    ["item", "Item"],
+    ["other", "Other"],
+  ].map(([value, label]) => `<option value="${value}"${selected === value ? " selected" : ""}>${label}</option>`).join("");
+}
+
+function prizeFields(kind: RaffleRound["prizeKind"], winnerPercentage: number | null, prizeDescription: string | null): string {
+  return `<label class="raffle-setup-field" data-raffle-prize-gold${kind === "gold" ? "" : " hidden"}>
+      <span>Prize</span>
+      <input data-raffle-admin-winner-percentage name="winnerPercentage" type="number" min="1" max="100" step="1" value="${winnerPercentage ?? 50}">
+      <small>Percentage of the final pot awarded to the winner.</small>
+    </label>
+    <label class="raffle-setup-field" data-raffle-prize-description${kind === "gold" ? " hidden" : ""}>
+      <span>Prize</span>
+      <input data-raffle-admin-prize-description name="prizeDescription" type="text" value="${htmlText(prizeDescription ?? "")}" placeholder="Describe the prize">
+    </label>`;
+}
+
 function createRoundForm(): string {
-  return `<form class="raffle-setup-form" data-create-raffle-round>
+  return `<form class="raffle-setup-form" data-raffle-admin-create>
     <label class="raffle-setup-field">
       <span>Estimated drawing time</span>
-      <input name="drawingAt" type="datetime-local" required>
+      <input data-raffle-admin-drawing name="drawingAt" type="datetime-local" required>
     </label>
     <label class="raffle-setup-field">
       <span>Ticket price (gold)</span>
-      <input name="ticketPriceGold" type="number" min="1" step="1" required>
+      <input data-raffle-admin-price name="ticketPriceGold" type="number" min="1" step="1" inputmode="numeric" required>
     </label>
     <label class="raffle-setup-field">
-      <span>Prize kind</span>
-      <input name="prizeKind" type="text" value="gold" required>
+      <span>Prize Type</span>
+      <select data-raffle-admin-prize-kind name="prizeKind">${prizeKindOptions()}</select>
     </label>
-    <label class="raffle-setup-field">
-      <span>Winner percentage</span>
-      <input name="winnerPercentage" type="number" min="1" max="100" step="1" value="50">
-    </label>
-    <p class="raffle-setup-note">The raffle remains upcoming until an authorized officer opens it.</p>
+    ${prizeFields("gold", 50, null)}
     <button class="raffle-action" type="submit">Create raffle</button>
-    <p class="raffle-setup-status" data-raffle-setup-status aria-live="polite"></p>
+    <p class="raffle-setup-status" data-raffle-admin-status aria-live="polite"></p>
   </form>`;
 }
 
 function listedRoundEditor(round: RaffleRound, attributions: AttributionLookup): string {
   return `<div class="raffle-edit" data-raffle-round-id="${htmlText(round.roundId)}">
     <div class="raffle-status-banner raffle-status-banner-upcoming"><span>Upcoming</span></div>
-    <form class="raffle-edit-form" data-edit-raffle-round>
+    <form class="raffle-edit-form" data-raffle-admin-edit data-round-id="${htmlText(round.roundId)}" data-drawing-unix="${round.drawingAtUnix}">
       <label class="raffle-edit-field">
         <span>Estimated drawing time</span>
-        <input name="drawingAt" type="datetime-local" data-unix-value="${round.drawingAtUnix}" required>
+        <input data-raffle-admin-drawing name="drawingAt" type="datetime-local" required>
       </label>
       <label class="raffle-edit-field">
         <span>Ticket price (gold)</span>
-        <input name="ticketPriceGold" type="number" min="1" step="1" value="${htmlText(round.ticketPriceGold)}" required>
+        <input data-raffle-admin-price name="ticketPriceGold" type="number" min="1" step="1" inputmode="numeric" value="${htmlText(round.ticketPriceGold)}" required>
       </label>
       <label class="raffle-edit-field">
-        <span>Prize kind</span>
-        <input name="prizeKind" type="text" value="${htmlText(round.prizeKind)}" required>
+        <span>Prize Type</span>
+        <select data-raffle-admin-prize-kind name="prizeKind">${prizeKindOptions(round.prizeKind)}</select>
       </label>
-      <label class="raffle-edit-field">
-        <span>Winner percentage</span>
-        <input name="winnerPercentage" type="number" min="1" max="100" step="1" value="${round.winnerPercentage ?? ""}">
-      </label>
+      ${prizeFields(round.prizeKind, round.winnerPercentage, round.prizeDescription)}
       <div class="raffle-edit-actions">
         <button class="raffle-action" type="submit">Save changes</button>
       </div>
-      <p class="raffle-edit-status" data-raffle-edit-status aria-live="polite"></p>
+      <p class="raffle-edit-status" data-raffle-admin-status aria-live="polite"></p>
     </form>
     <div class="raffle-edit-attribution">
       <span>Created by <strong>${actorName(round.createdByGuildieId, attributions)}</strong> · ${eventTime(round.createdAtUnix)}</span>
@@ -207,7 +226,7 @@ function listedRoundEditor(round: RaffleRound, attributions: AttributionLookup):
       <h2 id="raffle-open-heading">Open raffle</h2>
       <p>Opening makes this the guild's live raffle. Only one raffle may be live at a time.</p>
       <div class="raffle-management-controls">
-        <button class="raffle-action raffle-action-success" type="button" data-open-raffle-round="${htmlText(round.roundId)}">Open raffle</button>
+        <button class="raffle-action raffle-action-success" type="button" data-activate-raffle-round="${htmlText(round.roundId)}">Open raffle</button>
       </div>
     </section>
     <section class="raffle-edit-cancel" aria-labelledby="raffle-cancel-heading">
@@ -226,6 +245,11 @@ function roundList(rounds: RaffleAdministrationRound[], attributions: Attributio
   return `<div class="raffle-overview-list">
     ${rounds.map((round) => {
       const live = round.status === "live";
+      const draw = live
+        ? round.pendingClaimCount === 0
+          ? `<button class="raffle-action raffle-action-success" type="button" data-draw-raffle-round="${htmlText(round.roundId)}">Draw raffle</button>`
+          : `<button class="raffle-action raffle-action-success" type="button" disabled title="Resolve pending claims before drawing">Draw raffle</button>`
+        : "";
       return `<article class="raffle-overview-item${live ? " raffle-overview-item-live" : ""}">
         <div class="raffle-status-banner raffle-status-banner-${live ? "live" : "upcoming"}"><span>${live ? "Live" : "Upcoming"}</span></div>
         <div class="raffle-overview-identity">
@@ -237,6 +261,8 @@ function roundList(rounds: RaffleAdministrationRound[], attributions: Attributio
         <p class="raffle-overview-participation">${round.approvedTicketCount} approved ${round.approvedTicketCount === 1 ? "ticket" : "tickets"}</p>
         <div class="raffle-management-controls">
           <a class="raffle-action" href="/admin/raffle/${encodeURIComponent(round.roundId)}">${live ? "Manage raffle" : "Edit raffle"}</a>
+          ${draw}
+          <button class="raffle-action raffle-action-cancel" type="button" data-cancel-raffle-round="${htmlText(round.roundId)}">Cancel raffle</button>
           ${live ? '<a class="raffle-action raffle-action-secondary" href="/events/raffle">View public raffle ↗</a>' : ""}
         </div>
       </article>`;
@@ -368,6 +394,8 @@ function liveRoundManager(
         <dt>Drawing</dt><dd>${localTime(round.drawingAtUnix)}</dd>
         <dt>Claim cutoff</dt><dd>${localTime(raffleClaimCutoffUnix(round.drawingAtUnix))}</dd>
         <dt>Ticket price</dt><dd>${htmlText(round.ticketPriceGold)} gold</dd>
+        <dt>Prize type</dt><dd>${htmlText(round.prizeKind)}</dd>
+        <dt>Prize</dt><dd>${htmlText(prizeLabel(round))}</dd>
         <dt>Approved tickets</dt><dd>${metrics.approvedTicketCount}</dd>
         ${gold ? `<dt>Current pot</dt><dd>${gold.pot.toString()} gold</dd>` : ""}
         ${gold?.prize !== null && gold?.prize !== undefined ? `<dt>Current prize</dt><dd>${gold.prize.toString()} gold</dd>` : ""}
@@ -416,9 +444,7 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
       });
       return reply.code(guildie ? 403 : 401).type("text/html; charset=utf-8").send(html);
     }
-    const rounds = (await raffleRoundsForAdministration())
-      .filter((round) => round.status === "live" || round.status === "listed")
-      .sort((a, b) => a.drawingAtUnix - b.drawingAtUnix);
+    const rounds = await raffleRoundsForAdministration();
     const attributions = await guildieAttributionsForGuildies(rounds.flatMap((round) => [
       round.createdByGuildieId,
       round.liveByGuildieId,
