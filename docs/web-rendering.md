@@ -25,13 +25,15 @@ The action bar is currently reserved for navigation and immediate user interacti
 
 Navigation is deliberately sparse. Mobile presents it through a hamburger menu and larger screens expose the same destinations directly. The renderer changes presentation across breakpoints, not navigation meaning.
 
-The right side of the action bar is the Me surface. A signed-out viewer receives a Blizzard sign-in action and generic account glyph. A signed-in viewer is projected from the authenticated GuildSubject and, when selected, presents the current main character name and Blizzard portrait. The selected main remains presentation/operational state and does not become canonical identity.
+The right side of the action bar is the Me surface. A signed-out viewer receives a Blizzard sign-in action and generic account glyph. A signed-in viewer is projected from the authenticated Guildie and, when selected, presents the current main character name and Blizzard portrait. The selected main remains presentation state and does not determine Guildie continuity or authorization.
 
 The current Me menu contains only capabilities that already exist: selecting a main character and signing out.
 
-Main selection is a shell interaction rather than a separate application destination. The shell receives the subject's currently eligible guild characters as presentation-ready data, opens a responsive character picker over the current page, and submits the selected durable character coordinate to `PUT /me/main-character`. Successful selection updates the current Me presentation without navigating away from the active page. The backend remains the authority for eligibility and persistence.
+Main selection is a shell interaction rather than a separate application destination. The shell receives the Guildie's currently eligible guild Characters as presentation-ready data, opens a responsive character picker over the current page, and submits the selected durable Character coordinate to `PUT /me/main-character`. Successful selection updates the current Me presentation without navigating away from the active page. The backend remains the authority for eligibility and persistence.
 
 On mobile the picker is presented as a bottom sheet. On larger screens the same interaction is presented as a centered dialog. This is one interaction contract with responsive presentation, not two separate features.
+
+`Subject` is not a rendering identity object. If a page has a grammatical or domain subject, that role belongs to whichever concrete object the page is about and does not affect authenticated Guildie resolution.
 
 ## Application origin
 
