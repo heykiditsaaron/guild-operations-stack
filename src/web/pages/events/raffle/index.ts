@@ -1,6 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { authenticatedSubject, SESSION_COOKIE_NAME } from "../../../../auth.js";
-import { RAFFLE_ADMIN_CAPABILITY, subjectHasGuildCapability } from "../../../../guild-permissions.js";
+import { SESSION_COOKIE_NAME } from "../../../../auth.js";
 import { raffleClaimCutoffUnix, raffleClaimsAreOpen } from "../../../../raffle/domain.js";
 import {
   activeRaffleRoundOverview,
@@ -93,23 +92,16 @@ function noActiveRaffleBody(): string {
 export async function registerRafflePage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/events/raffle", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, liveRaffle, subject] = await Promise.all([
+    const [viewer, liveRaffle] = await Promise.all([
       viewerForRequest(sessionToken),
       activeRaffleRoundOverview(),
-      authenticatedSubject(sessionToken),
     ]);
-    const canAdministerRaffle = subject
-      ? await subjectHasGuildCapability(subject.subjectId, RAFFLE_ADMIN_CAPABILITY)
-      : false;
 
     const html = renderPage(assets, {
       pathname: "/events/raffle",
       title: "Raffle · OH CRIT I Pulled! Guild Operations",
       description: "Current OH CRIT I Pulled! guild raffle information.",
       viewer,
-      secondaryNavigation: canAdministerRaffle
-        ? { kind: "back", label: "Raffle administration", href: "/admin/raffle" }
-        : undefined,
       stylesheets: ["raffle.css"],
       scripts: liveRaffle ? ["raffle-public.js"] : undefined,
       header: `
