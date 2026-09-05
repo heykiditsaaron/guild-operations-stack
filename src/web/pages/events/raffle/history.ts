@@ -5,9 +5,8 @@ import type { AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
 
-function localTime(date: Date): string {
-  const unixSeconds = Math.floor(date.getTime() / 1000);
-  const instant = date.toISOString();
+function localTime(unixSeconds: number): string {
+  const instant = new Date(unixSeconds * 1000).toISOString();
   return `<time datetime="${instant}" data-local-time-unix="${unixSeconds}" data-local-time-date-style="medium">${instant}</time>`;
 }
 
@@ -15,17 +14,17 @@ function formatGold(value: bigint | string): string {
   return BigInt(value).toLocaleString("en-US");
 }
 
-function statusLabel(status: RaffleHistoryRound["status"]): string {
-  if (status === "drawn") return "Drawn";
-  if (status === "admin_cancelled") return "Cancelled";
-  if (status === "no_entry_cancelled") return "Cancelled · no entries";
-  return status;
+function statusLabel(round: RaffleHistoryRound): string {
+  if (round.conclusion === "drawn") return "Drawn";
+  if (round.conclusion === "operator_cancelled") return "Cancelled";
+  if (round.conclusion === "no_participation") return "No participation";
+  return "Concluded";
 }
 
 function historicalValues(round: RaffleHistoryRound): { entries: number; pot: bigint; prize: bigint | null } {
   const entries = round.totalEntries ?? round.approvedTicketCount;
   const pot = BigInt(round.ticketPriceGold) * BigInt(entries);
-  const prize = round.status === "drawn"
+  const prize = round.conclusion === "drawn"
     && round.prizeKind === "gold"
     && round.winnerPercentage !== null
       ? (pot * BigInt(round.winnerPercentage)) / 100n
@@ -40,20 +39,20 @@ function historyFact(label: string, value: string): string {
 
 function historyEntry(round: RaffleHistoryRound): string {
   const { entries, pot, prize } = historicalValues(round);
-  const concluded = round.concludedAt ? localTime(round.concludedAt) : "Unknown";
-  const winner = round.status === "drawn" && round.winnerCharacterName
+  const concluded = round.concludedAtUnix === null ? "Unknown" : localTime(round.concludedAtUnix);
+  const winner = round.conclusion === "drawn" && round.winnerCharacterName
     ? historyFact("Winner", htmlText(round.winnerCharacterName))
     : "";
   const prizeRow = prize !== null
     ? historyFact("Prize", `${formatGold(prize)} gold`)
     : "";
-  const potLabel = round.status === "drawn" ? "Final pot" : "Confirmed gold at closure";
-  const entryLabel = round.status === "drawn" ? "Final entries" : "Approved tickets at closure";
+  const potLabel = round.conclusion === "drawn" ? "Final pot" : "Confirmed gold at closure";
+  const entryLabel = round.conclusion === "drawn" ? "Final entries" : "Approved tickets at closure";
 
   return `
     <li class="raffle-history-item">
       <div class="raffle-history-heading">
-        <strong>${htmlText(statusLabel(round.status))}</strong>
+        <strong>${htmlText(statusLabel(round))}</strong>
         <span>${concluded}</span>
       </div>
       <dl class="raffle-history-facts">
@@ -71,7 +70,7 @@ function historyBody(rounds: RaffleHistoryRound[]): string {
     return `
       <section class="raffle-reference-page raffle-reference-empty" aria-labelledby="raffle-history-empty-title">
         <h2 id="raffle-history-empty-title">No previous raffles yet.</h2>
-        <p>Completed and cancelled raffle rounds will be preserved here.</p>
+        <p>Concluded raffle rounds will be preserved here.</p>
       </section>`;
   }
 
@@ -109,7 +108,7 @@ export async function registerRaffleHistoryPage(app: FastifyInstance, assets: As
         <div class="raffle-page-header">
           <p class="eyebrow">Events · Raffle</p>
           <h1 id="page-title">Previous Raffles</h1>
-          <p class="lede">Completed and cancelled raffles, preserved as guild history.</p>
+          <p class="lede">Concluded raffles, preserved as guild history.</p>
         </div>`,
       body: historyBody(rounds),
     });
