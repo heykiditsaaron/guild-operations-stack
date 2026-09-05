@@ -86,7 +86,7 @@ function adminNavigation(round?: RaffleRound): SecondaryNavigation {
       ? [
           { label: "Administration", href: "/admin" },
           { label: "Raffle", href: "/admin/raffle" },
-          { label: "Raffle" },
+          { label: round.roundTitle ?? "Raffle" },
         ]
       : [
           { label: "Administration", href: "/admin" },
@@ -140,6 +140,7 @@ function managementFacts(
     : null;
 
   return `<dl class="raffle-facts">
+    ${round.roundTitle ? `<dt>Name</dt><dd>${htmlText(round.roundTitle)}</dd>` : ""}
     <dt>Status</dt><dd>${htmlText(status)}</dd>
     <dt>Drawing</dt><dd>${localTime(round.drawingAtUnix)}</dd>
     <dt>Claim cutoff</dt><dd>${localTime(cutoffUnix)}</dd>
@@ -179,6 +180,10 @@ function prizeFields(kind: RaffleRound["prizeKind"], winnerPercentage: number | 
 function createRoundForm(): string {
   return `<form class="raffle-setup-form" data-raffle-admin-create>
     <label class="raffle-setup-field">
+      <span>Raffle name <small>(optional)</small></span>
+      <input data-raffle-admin-title name="roundTitle" type="text" placeholder="Drawing date will be used if left blank">
+    </label>
+    <label class="raffle-setup-field">
       <span>Estimated drawing time</span>
       <input data-raffle-admin-drawing name="drawingAt" type="datetime-local" required>
     </label>
@@ -191,7 +196,7 @@ function createRoundForm(): string {
       <select data-raffle-admin-prize-kind name="prizeKind">${prizeKindOptions()}</select>
     </label>
     ${prizeFields("gold", 50, null)}
-    <button class="raffle-action" type="submit">Create raffle</button>
+    <button class="raffle-action raffle-action-primary raffle-create-submit" type="submit">Create raffle</button>
     <p class="raffle-setup-status" data-raffle-admin-status aria-live="polite"></p>
   </form>`;
 }
@@ -200,6 +205,10 @@ function listedRoundEditor(round: RaffleRound, attributions: AttributionLookup):
   return `<div class="raffle-edit" data-raffle-round-id="${htmlText(round.roundId)}">
     <div class="raffle-status-banner raffle-status-banner-upcoming"><span>Upcoming</span></div>
     <form class="raffle-edit-form" data-raffle-admin-edit data-round-id="${htmlText(round.roundId)}" data-drawing-unix="${round.drawingAtUnix}">
+      <label class="raffle-edit-field">
+        <span>Raffle name <small>(optional)</small></span>
+        <input data-raffle-admin-title name="roundTitle" type="text" value="${htmlText(round.roundTitle ?? "")}" placeholder="Drawing date will be used if left blank">
+      </label>
       <label class="raffle-edit-field">
         <span>Estimated drawing time</span>
         <input data-raffle-admin-drawing name="drawingAt" type="datetime-local" required>
@@ -214,7 +223,7 @@ function listedRoundEditor(round: RaffleRound, attributions: AttributionLookup):
       </label>
       ${prizeFields(round.prizeKind, round.winnerPercentage, round.prizeDescription)}
       <div class="raffle-edit-actions">
-        <button class="raffle-action" type="submit">Save changes</button>
+        <button class="raffle-action raffle-action-primary" type="submit">Save changes</button>
       </div>
       <p class="raffle-edit-status" data-raffle-admin-status aria-live="polite"></p>
     </form>
@@ -226,7 +235,7 @@ function listedRoundEditor(round: RaffleRound, attributions: AttributionLookup):
       <h2 id="raffle-open-heading">Open raffle</h2>
       <p>Opening makes this the guild's live raffle. Only one raffle may be live at a time.</p>
       <div class="raffle-management-controls">
-        <button class="raffle-action raffle-action-success" type="button" data-activate-raffle-round="${htmlText(round.roundId)}">Open raffle</button>
+        <button class="raffle-action raffle-action-success" type="button" data-activate-raffle-round="${htmlText(round.roundId)}">Go live</button>
       </div>
     </section>
     <section class="raffle-edit-cancel" aria-labelledby="raffle-cancel-heading">
@@ -245,6 +254,17 @@ function roundList(rounds: RaffleAdministrationRound[], attributions: Attributio
   return `<div class="raffle-overview-list">
     ${rounds.map((round) => {
       const live = round.status === "live";
+      const identity = round.roundTitle
+        ? htmlText(round.roundTitle)
+        : localTime(round.drawingAtUnix, "medium");
+      const liveSignals = live
+        ? `<p class="raffle-overview-attention"><strong>${round.pendingClaimCount === 0 ? "No claims need review" : `${round.pendingClaimCount} ${round.pendingClaimCount === 1 ? "claim needs" : "claims need"} review`}</strong></p>
+           <p class="raffle-overview-participation">${round.approvedTicketCount} approved ${round.approvedTicketCount === 1 ? "ticket" : "tickets"}</p>`
+        : "";
+      const primaryAction = live
+        ? `<a class="raffle-action raffle-action-primary" href="/admin/raffle/${encodeURIComponent(round.roundId)}">Manage raffle</a>`
+        : `<a class="raffle-action" href="/admin/raffle/${encodeURIComponent(round.roundId)}">Edit raffle</a>
+           <button class="raffle-action raffle-action-success" type="button" data-activate-raffle-round="${htmlText(round.roundId)}">Go live</button>`;
       const draw = live
         ? round.pendingClaimCount === 0
           ? `<button class="raffle-action raffle-action-success" type="button" data-draw-raffle-round="${htmlText(round.roundId)}">Draw raffle</button>`
@@ -253,14 +273,13 @@ function roundList(rounds: RaffleAdministrationRound[], attributions: Attributio
       return `<article class="raffle-overview-item${live ? " raffle-overview-item-live" : ""}">
         <div class="raffle-status-banner raffle-status-banner-${live ? "live" : "upcoming"}"><span>${live ? "Live" : "Upcoming"}</span></div>
         <div class="raffle-overview-identity">
-          <h2>${localTime(round.drawingAtUnix, "medium")}</h2>
+          <h2>${identity}</h2>
           <p>Estimated drawing ${localTime(round.drawingAtUnix)}</p>
         </div>
         ${roundOverviewAttribution(round, attributions)}
-        <p class="raffle-overview-attention"><strong>${round.pendingClaimCount === 0 ? "No claims need review" : `${round.pendingClaimCount} ${round.pendingClaimCount === 1 ? "claim needs" : "claims need"} review`}</strong></p>
-        <p class="raffle-overview-participation">${round.approvedTicketCount} approved ${round.approvedTicketCount === 1 ? "ticket" : "tickets"}</p>
+        ${liveSignals}
         <div class="raffle-management-controls">
-          <a class="raffle-action" href="/admin/raffle/${encodeURIComponent(round.roundId)}">${live ? "Manage raffle" : "Edit raffle"}</a>
+          ${primaryAction}
           ${draw}
           <button class="raffle-action raffle-action-cancel" type="button" data-cancel-raffle-round="${htmlText(round.roundId)}">Cancel raffle</button>
           ${live ? '<a class="raffle-action raffle-action-secondary" href="/events/raffle">View public raffle ↗</a>' : ""}
@@ -291,13 +310,7 @@ function claimLedger(claims: RaffleClaim[], round: RaffleRound, attributions: At
 
 function liveClaimCard(claim: RaffleClaim, attributions: AttributionLookup): string {
   const kind = claim.resolutionKind ?? "pending";
-  const label = kind === "pending"
-    ? "Pending"
-    : kind === "approved"
-      ? "Approved"
-      : kind === "denied"
-        ? "Denied"
-        : "Cancelled";
+  const label = kind === "pending" ? "Pending" : kind === "approved" ? "Approved" : kind === "denied" ? "Denied" : "Cancelled";
   const resolutionAttribution = claimResolutionAttribution(claim, attributions);
   const controls = kind === "pending"
     ? `<div class="raffle-claim-controls">
@@ -322,60 +335,27 @@ function liveClaimCard(claim: RaffleClaim, attributions: AttributionLookup): str
   </li>`;
 }
 
-function liveClaimGroup(
-  label: string,
-  kind: Exclude<RaffleClaim["resolutionKind"], null>,
-  claims: RaffleClaim[],
-  attributions: AttributionLookup,
-): string {
+function liveClaimGroup(label: string, kind: Exclude<RaffleClaim["resolutionKind"], null>, claims: RaffleClaim[], attributions: AttributionLookup): string {
   const groupedClaims = claims.filter((claim) => claim.resolutionKind === kind);
   if (groupedClaims.length === 0) return "";
-
   return `<section class="raffle-claim-group" aria-labelledby="raffle-${kind}-claims-heading">
-    <div class="raffle-claim-group-heading">
-      <h3 id="raffle-${kind}-claims-heading">${label}</h3>
-      <span class="raffle-claim-group-count">${groupedClaims.length}</span>
-    </div>
-    <ol class="raffle-claim-cards">
-      ${groupedClaims.map((claim) => liveClaimCard(claim, attributions)).join("\n")}
-    </ol>
+    <div class="raffle-claim-group-heading"><h3 id="raffle-${kind}-claims-heading">${label}</h3><span class="raffle-claim-group-count">${groupedClaims.length}</span></div>
+    <ol class="raffle-claim-cards">${groupedClaims.map((claim) => liveClaimCard(claim, attributions)).join("\n")}</ol>
   </section>`;
 }
 
 function liveClaims(claims: RaffleClaim[], attributions: AttributionLookup): string {
   if (claims.length === 0) return `<p class="raffle-empty-note">No claims have been submitted for this raffle.</p>`;
-
   const pending = claims.filter((claim) => claim.resolutionKind === null);
-  const pendingGroup = pending.length === 0
-    ? ""
-    : `<section class="raffle-claim-group raffle-claim-group-pending" id="claims-needing-review" aria-labelledby="pending-claims-heading">
-        <div class="raffle-claim-group-heading">
-          <div>
-            <h3 id="pending-claims-heading">Needs review</h3>
-            <p>Confirm the promised bank deposit before approving each claim.</p>
-          </div>
-          <span class="raffle-claim-group-count">${pending.length}</span>
-        </div>
-        <ol class="raffle-claim-cards">
-          ${pending.map((claim) => liveClaimCard(claim, attributions)).join("\n")}
-        </ol>
-      </section>`;
-
-  return `${pendingGroup}
-    ${liveClaimGroup("Approved", "approved", claims, attributions)}
-    ${liveClaimGroup("Denied", "denied", claims, attributions)}
-    ${liveClaimGroup("Cancelled", "cancelled", claims, attributions)}`;
+  const pendingGroup = pending.length === 0 ? "" : `<section class="raffle-claim-group raffle-claim-group-pending" id="claims-needing-review" aria-labelledby="pending-claims-heading">
+    <div class="raffle-claim-group-heading"><div><h3 id="pending-claims-heading">Needs review</h3><p>Confirm the promised bank deposit before approving each claim.</p></div><span class="raffle-claim-group-count">${pending.length}</span></div>
+    <ol class="raffle-claim-cards">${pending.map((claim) => liveClaimCard(claim, attributions)).join("\n")}</ol>
+  </section>`;
+  return `${pendingGroup}${liveClaimGroup("Approved", "approved", claims, attributions)}${liveClaimGroup("Denied", "denied", claims, attributions)}${liveClaimGroup("Cancelled", "cancelled", claims, attributions)}`;
 }
 
-function liveRoundManager(
-  round: RaffleRound,
-  claims: RaffleClaim[],
-  metrics: ReturnType<typeof claimMetrics>,
-  attributions: AttributionLookup,
-): string {
-  const gold = round.prizeKind === "gold"
-    ? goldMetrics(round.ticketPriceGold, round.winnerPercentage, metrics.approvedTicketCount)
-    : null;
+function liveRoundManager(round: RaffleRound, claims: RaffleClaim[], metrics: ReturnType<typeof claimMetrics>, attributions: AttributionLookup): string {
+  const gold = round.prizeKind === "gold" ? goldMetrics(round.ticketPriceGold, round.winnerPercentage, metrics.approvedTicketCount) : null;
   const openedBy = round.liveByGuildieId && round.liveAtUnix !== null
     ? `<p class="raffle-live-attribution">Opened by <strong>${actorName(round.liveByGuildieId, attributions)}</strong> · ${eventTime(round.liveAtUnix)}</p>`
     : "";
@@ -389,7 +369,7 @@ function liveRoundManager(
   return `<div class="raffle-live-workspace">
     <div class="raffle-status-banner raffle-status-banner-live"><span>Live</span></div>
     <section class="raffle-live-section raffle-live-details" aria-labelledby="raffle-details-heading">
-      <h2 id="raffle-details-heading">Current raffle</h2>
+      <h2 id="raffle-details-heading">${htmlText(round.roundTitle ?? "Current raffle")}</h2>
       <dl class="raffle-live-facts">
         <dt>Drawing</dt><dd>${localTime(round.drawingAtUnix)}</dd>
         <dt>Claim cutoff</dt><dd>${localTime(raffleClaimCutoffUnix(round.drawingAtUnix))}</dd>
@@ -402,21 +382,12 @@ function liveRoundManager(
       </dl>
       ${openedBy}
     </section>
-
     <section class="raffle-live-section raffle-live-actions" aria-labelledby="raffle-actions-heading">
-      <h2 id="raffle-actions-heading">Raffle actions</h2>
-      <p>Drawing concludes this raffle. Cancellation revokes participation eligibility before intended resolution.</p>
-      <div class="raffle-management-controls">
-        ${drawControl}
-        <button class="raffle-action raffle-action-cancel" type="button" data-cancel-raffle-round="${htmlText(round.roundId)}">Cancel raffle</button>
-      </div>
+      <h2 id="raffle-actions-heading">Raffle actions</h2><p>Drawing concludes this raffle. Cancellation revokes participation eligibility before intended resolution.</p>
+      <div class="raffle-management-controls">${drawControl}<button class="raffle-action raffle-action-cancel" type="button" data-cancel-raffle-round="${htmlText(round.roundId)}">Cancel raffle</button></div>
       ${attention}
     </section>
-
-    <section class="raffle-live-section raffle-live-claims" aria-labelledby="raffle-claims-heading">
-      <h2 id="raffle-claims-heading">Claims</h2>
-      ${liveClaims(claims, attributions)}
-    </section>
+    <section class="raffle-live-section raffle-live-claims" aria-labelledby="raffle-claims-heading"><h2 id="raffle-claims-heading">Claims</h2>${liveClaims(claims, attributions)}</section>
   </div>`;
 }
 
@@ -433,39 +404,15 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
   app.get("/admin/raffle", async (request, reply) => {
     const { viewer, guildie, authorized } = await adminContext(request.cookies[SESSION_COOKIE_NAME]);
     if (!authorized) {
-      const html = renderPage(assets, {
-        pathname: "/admin/raffle",
-        title: "Raffle Administration · OH CRIT I Pulled! Guild Operations",
-        viewer,
-        secondaryNavigation: adminNavigation(),
-        stylesheets: ["raffle-admin.css"],
-        header: "",
-        body: `<div class="raffle-admin-message">${sectionRule()}<h2>Raffle administration is not available for this account.</h2></div>`,
-      });
+      const html = renderPage(assets, { pathname: "/admin/raffle", title: "Raffle Administration · OH CRIT I Pulled! Guild Operations", viewer, secondaryNavigation: adminNavigation(), stylesheets: ["raffle-admin.css"], header: "", body: `<div class="raffle-admin-message">${sectionRule()}<h2>Raffle administration is not available for this account.</h2></div>` });
       return reply.code(guildie ? 403 : 401).type("text/html; charset=utf-8").send(html);
     }
     const rounds = await raffleRoundsForAdministration();
-    const attributions = await guildieAttributionsForGuildies(rounds.flatMap((round) => [
-      round.createdByGuildieId,
-      round.liveByGuildieId,
-    ]));
+    const attributions = await guildieAttributionsForGuildies(rounds.flatMap((round) => [round.createdByGuildieId, round.liveByGuildieId]));
     const html = renderPage(assets, {
-      pathname: "/admin/raffle",
-      title: "Raffle Administration · OH CRIT I Pulled! Guild Operations",
-      description: "Operate the OH CRIT I Pulled! guild raffle.",
-      viewer,
-      secondaryNavigation: adminNavigation(),
-      stylesheets: ["raffle-admin.css"],
-      scripts: ["raffle.js"],
-      header: "",
-      body: `<section class="raffle-admin-overview" aria-labelledby="raffle-overview-heading">
-        <div class="raffle-overview-heading-row">
-          <h1 class="raffle-overview-title" id="raffle-overview-heading">Raffle Overview</h1>
-          <button class="raffle-start-button" type="button" data-toggle-raffle-setup>Start new raffle</button>
-        </div>
-        <div class="raffle-setup" data-raffle-setup hidden>${createRoundForm()}</div>
-        ${roundList(rounds, attributions)}
-      </section>`,
+      pathname: "/admin/raffle", title: "Raffle Administration · OH CRIT I Pulled! Guild Operations", description: "Operate the OH CRIT I Pulled! guild raffle.", viewer,
+      secondaryNavigation: adminNavigation(), stylesheets: ["raffle-admin.css"], scripts: ["raffle.js"], header: "",
+      body: `<section class="raffle-admin-overview" aria-labelledby="raffle-overview-heading"><div class="raffle-overview-heading-row"><h1 class="raffle-overview-title" id="raffle-overview-heading">Raffle Overview</h1><button class="raffle-start-button" type="button" data-toggle-raffle-setup>Start new raffle</button></div><div class="raffle-setup" data-raffle-setup hidden>${createRoundForm()}</div>${roundList(rounds, attributions)}</section>`,
     });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
@@ -473,96 +420,24 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
   app.get<{ Params: { roundId: string } }>("/admin/raffle/:roundId", async (request, reply) => {
     const { viewer, guildie, authorized } = await adminContext(request.cookies[SESSION_COOKIE_NAME]);
     const pathname = `/admin/raffle/${request.params.roundId}`;
-    if (!authorized) {
-      return reply.code(guildie ? 403 : 401).type("text/html; charset=utf-8").send(renderPage(assets, {
-        pathname,
-        title: "Raffle Administration · OH CRIT I Pulled! Guild Operations",
-        viewer,
-        secondaryNavigation: adminNavigation(),
-        stylesheets: ["raffle-admin.css"],
-        header: "",
-        body: `<div class="raffle-admin-message">${sectionRule()}<h2>Raffle administration is not available for this account.</h2></div>`,
-      }));
-    }
+    if (!authorized) return reply.code(guildie ? 403 : 401).type("text/html; charset=utf-8").send(renderPage(assets, { pathname, title: "Raffle Administration · OH CRIT I Pulled! Guild Operations", viewer, secondaryNavigation: adminNavigation(), stylesheets: ["raffle-admin.css"], header: "", body: `<div class="raffle-admin-message">${sectionRule()}<h2>Raffle administration is not available for this account.</h2></div>` }));
     const round = await raffleRound(request.params.roundId);
-    if (!round) {
-      return reply.code(404).type("text/html; charset=utf-8").send(renderPage(assets, {
-        pathname,
-        title: "Raffle Not Found · OH CRIT I Pulled! Guild Operations",
-        viewer,
-        secondaryNavigation: adminNavigation(),
-        stylesheets: ["raffle-admin.css"],
-        header: "",
-        body: `<div class="raffle-admin-message">${sectionRule()}<h2>Raffle not found</h2><p>This raffle does not exist.</p></div>`,
-      }));
-    }
+    if (!round) return reply.code(404).type("text/html; charset=utf-8").send(renderPage(assets, { pathname, title: "Raffle Not Found · OH CRIT I Pulled! Guild Operations", viewer, secondaryNavigation: adminNavigation(), stylesheets: ["raffle-admin.css"], header: "", body: `<div class="raffle-admin-message">${sectionRule()}<h2>Raffle not found</h2><p>This raffle does not exist.</p></div>` }));
     const claims = await raffleClaims(round.roundId);
-    const attributions = await guildieAttributionsForGuildies([
-      round.createdByGuildieId,
-      round.updatedByGuildieId,
-      round.liveByGuildieId,
-      round.concludedByGuildieId,
-      ...claims.flatMap((claim) => [
-        claim.approvedByGuildieId,
-        claim.deniedByGuildieId,
-        claim.cancelledByGuildieId,
-      ]),
-    ]);
+    const attributions = await guildieAttributionsForGuildies([round.createdByGuildieId, round.updatedByGuildieId, round.liveByGuildieId, round.concludedByGuildieId, ...claims.flatMap((claim) => [claim.approvedByGuildieId, claim.deniedByGuildieId, claim.cancelledByGuildieId])]);
 
     if (round.status === "listed") {
-      const html = renderPage(assets, {
-        pathname,
-        title: "Edit Raffle · OH CRIT I Pulled! Guild Operations",
-        description: "Configure an upcoming guild raffle before it opens.",
-        viewer,
-        secondaryNavigation: adminNavigation(round),
-        stylesheets: ["raffle-admin.css"],
-        scripts: ["raffle.js"],
-        header: "",
-        body: `<section aria-labelledby="page-title">
-          <div class="raffle-overview-heading-row">
-            <h1 class="raffle-overview-title" id="page-title">Edit raffle</h1>
-          </div>
-          ${listedRoundEditor(round, attributions)}
-        </section>`,
-      });
+      const html = renderPage(assets, { pathname, title: "Edit Raffle · OH CRIT I Pulled! Guild Operations", description: "Configure an upcoming guild raffle before it opens.", viewer, secondaryNavigation: adminNavigation(round), stylesheets: ["raffle-admin.css"], scripts: ["raffle.js"], header: "", body: `<section aria-labelledby="page-title"><div class="raffle-overview-heading-row"><h1 class="raffle-overview-title" id="page-title">Edit raffle</h1></div>${listedRoundEditor(round, attributions)}</section>` });
       return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
     }
 
     const metrics = claimMetrics(claims);
-
     if (round.status === "live") {
-      const html = renderPage(assets, {
-        pathname,
-        title: "Manage Raffle · OH CRIT I Pulled! Guild Operations",
-        description: "Operate the currently live guild raffle.",
-        viewer,
-        secondaryNavigation: adminNavigation(round),
-        stylesheets: ["raffle-admin.css"],
-        scripts: ["raffle.js"],
-        header: "",
-        body: `<section class="raffle-live-page" aria-labelledby="page-title">
-          <div class="raffle-overview-heading-row">
-            <h1 class="raffle-overview-title" id="page-title">Manage raffle</h1>
-            <a class="raffle-action raffle-action-secondary" href="/events/raffle">View public raffle ↗</a>
-          </div>
-          ${liveRoundManager(round, claims, metrics, attributions)}
-        </section>`,
-      });
+      const html = renderPage(assets, { pathname, title: "Manage Raffle · OH CRIT I Pulled! Guild Operations", description: "Operate the currently live guild raffle.", viewer, secondaryNavigation: adminNavigation(round), stylesheets: ["raffle-admin.css"], scripts: ["raffle.js"], header: "", body: `<section class="raffle-live-page" aria-labelledby="page-title"><div class="raffle-overview-heading-row"><h1 class="raffle-overview-title" id="page-title">Manage raffle</h1><a class="raffle-action raffle-action-secondary" href="/events/raffle">View public raffle ↗</a></div>${liveRoundManager(round, claims, metrics, attributions)}</section>` });
       return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
     }
 
-    const html = renderPage(assets, {
-      pathname,
-      title: "Raffle Administration · OH CRIT I Pulled! Guild Operations",
-      description: "Review a concluded guild raffle.",
-      viewer,
-      secondaryNavigation: adminNavigation(round),
-      stylesheets: ["raffle-admin.css"],
-      scripts: ["raffle.js"],
-      header: "",
-      body: `<section class="raffle-management" aria-labelledby="page-title"><div class="raffle-overview-heading-row"><h1 class="raffle-overview-title" id="page-title">Raffle record</h1></div>${sectionRule()}<section aria-labelledby="raffle-facts-heading"><h2 id="raffle-facts-heading">Raffle facts</h2>${managementFacts(round, metrics, attributions)}</section><div class="raffle-section-spacer">${sectionRule()}</div><section aria-labelledby="claim-ledger-heading"><h2 id="claim-ledger-heading">Claim ledger</h2><p class="raffle-section-note">Every claim submitted to this raffle remains visible with the outcome established before the raffle closed.</p>${claimLedger(claims, round, attributions)}</section></section>`,
-    });
+    const html = renderPage(assets, { pathname, title: "Raffle Administration · OH CRIT I Pulled! Guild Operations", description: "Review a concluded guild raffle.", viewer, secondaryNavigation: adminNavigation(round), stylesheets: ["raffle-admin.css"], scripts: ["raffle.js"], header: "", body: `<section class="raffle-management" aria-labelledby="page-title"><div class="raffle-overview-heading-row"><h1 class="raffle-overview-title" id="page-title">Raffle record</h1></div>${sectionRule()}<section aria-labelledby="raffle-facts-heading"><h2 id="raffle-facts-heading">Raffle facts</h2>${managementFacts(round, metrics, attributions)}</section><div class="raffle-section-spacer">${sectionRule()}</div><section aria-labelledby="claim-ledger-heading"><h2 id="claim-ledger-heading">Claim ledger</h2><p class="raffle-section-note">Every claim submitted to this raffle remains visible with the outcome established before the raffle closed.</p>${claimLedger(claims, round, attributions)}</section></section>` });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
 }
