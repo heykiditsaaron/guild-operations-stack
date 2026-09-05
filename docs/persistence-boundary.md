@@ -2,365 +2,213 @@
 
 ## Purpose
 
-Define the minimum persistence behavior required to support the Blizzard authentication ceremony without committing the project to a database engine, ORM, or framework.
+Define the persistence behavior required to establish and preserve Guildie continuity from Blizzard account authority without allowing storage mechanics to redefine the domain.
 
-This boundary exists so application code can depend on domain operations rather than on storage mechanics.
+This document is deliberately narrower than the application's complete global persistence model.
 
-## Required persisted records
+## Persisted objects
 
-The first executable identity slice requires four persisted concepts:
+The root Blizzard-authenticated persistence slice contains:
 
 ```text
-GuildSubject
+Guildie
 BlizzardPrincipalBinding
 WoWAccount
 Character
 ```
 
-Authentication-attempt and application-session persistence are separate security/session concerns. They may use the same storage system later, but they are not part of the durable identity aggregate defined here.
+Authentication attempts and application sessions are persisted operational/security state, not additional member objects.
 
-## GuildSubject
+There is no persisted `Subject` object. **Subject** is contextual language for an already-existing object in relation to a question or operation; it is not a domain type or persistence coordinate.
 
-`GuildSubject` is the canonical internal continuity object.
+## Guildie
+
+`Guildie` is the durable Guild Operations representation of the real-world guild organizational member and the account-holder/control representative for their Characters.
 
 Minimum semantics:
 
 ```text
-GuildSubject
-├── subject_id
+Guildie
+├── guildie_id
 ├── created_at
 └── updated_at
 ```
 
-`subject_id` is generated and owned by Guild Operations. It is the identifier referenced by future guild operations such as raffles, Hidden in Plain Sight, raids, rewards, permissions, and Discord linking.
+`guildie_id` is generated and owned by Guild Operations. It is the durable coordinate used when a fact genuinely belongs to the Guildie.
 
-A GuildSubject must not be identified internally by BattleTag, Blizzard principal ID, WoW account ID, character ID, or selected main character.
+Do not replace role-specific object coordinates in participation records with a generic identity coordinate merely because the Guildie is involved.
 
-## BlizzardPrincipalBinding
+## Blizzard principal binding
 
-The Blizzard principal coordinate is modeled explicitly as the authority-bearing external binding that establishes and resolves a GuildSubject.
-
-Minimum semantics:
+The Blizzard principal coordinate is the authority-bearing external binding that establishes and resolves a Guildie.
 
 ```text
 BlizzardPrincipalBinding
-├── subject_id
+├── guildie_id
 ├── region
 ├── blizzard_principal_id
 ├── first_observed_at
 └── last_confirmed_at
 ```
 
-The pair:
+The pair `(region, blizzard_principal_id)` must be unique and resolve to at most one Guildie.
 
-```text
-(region, blizzard_principal_id)
-```
+The principal identifier is opaque. It is not a presentation field and must not be assigned numeric meaning.
 
-must be unique across the persistence store.
+## WoW account
 
-One such coordinate resolves to at most one GuildSubject.
-
-For the initial scope, one GuildSubject has one Blizzard principal binding. This is not a generic provider-identity table and should not be generalized without a concrete requirement.
-
-`blizzard_principal_id` is semantically opaque. Although the live Blizzard response currently exposes numeric and textual representations of the same value, storage code must not perform arithmetic or otherwise assign numeric meaning to it.
-
-## WoWAccount
-
-Each Blizzard-returned `wow_accounts[]` item is persisted as a subordinate record beneath the GuildSubject.
-
-Minimum semantics:
+Each Blizzard-returned WoW account is persisted as observed account structure associated with the Guildie.
 
 ```text
 WoWAccount
-├── subject_id
+├── guildie_id
 ├── region
 ├── wow_account_id
 ├── first_observed_at
 └── last_observed_at
 ```
 
-Within the selected region, a WoW account coordinate must belong to at most one GuildSubject.
-
-The persistence implementation must permit multiple WoW accounts beneath one GuildSubject even if the first live probe exposed only one.
-
-A WoWAccount is not itself an authentication principal and must never become the application session identity.
+A Guildie may have multiple WoW accounts. A WoW account coordinate belongs to at most one Guildie within the observed regional coordinate.
 
 ## Character
 
-Each character returned beneath a WoW account is persisted as a Blizzard-authoritative subordinate identity with mutable current presentation.
-
-Minimum semantics:
+Each Character returned beneath a WoW account is persisted as a durable WoW object with mutable presentation and a currently demonstrated Guildie-control relationship.
 
 ```text
 Character
-├── subject_id
+├── guildie_id
 ├── wow_account_id
 ├── region
 ├── realm_id
 ├── character_id
-├── current_name
-├── current_realm_name
-├── current_realm_slug
+├── current presentation
 ├── first_observed_at
 └── last_observed_at
 ```
 
-The durable character coordinate is:
+The durable Character coordinate is `(region, realm_id, character_id)`.
 
-```text
-(region, realm_id, character_id)
-```
+Character name and other mutable presentation fields do not participate in continuity uniqueness.
 
-That coordinate must resolve to at most one persisted Character.
-
-Name and realm presentation may change and must not participate in continuity uniqueness.
-
-Fields such as level, faction, race, class, and gender may be retained as current presentation when useful to the first interface, but they are not required to establish identity continuity and should not expand the initial persistence boundary unnecessarily.
+Character is also the member object of Blizzard's guild organization. Blizzard's current guild roster is a separate authority-bearing observation from the account-control relationship represented here.
 
 ## Selected main
 
-A selected main is not required to complete authentication and therefore does not belong in the minimum authentication persistence transaction.
+Selected main is mutable Guildie presentation state. It is not required to complete authentication and does not establish Guildie continuity, Character control, current guild participation, or authority.
 
-When introduced, it must be represented as mutable guild state referencing a Character already owned by the same GuildSubject.
+When stored, it references an eligible Character controlled by the same Guildie.
 
-The first vertical slice should not block authentication merely because no main has been selected.
+## Atomic establish-or-resolve
 
-## Atomic establish-or-resolve operation
-
-The persistence boundary must expose one domain operation with semantics equivalent to:
+The persistence boundary exposes behavior equivalent to:
 
 ```text
-establishOrResolveSubject(
+establishOrResolveGuildie(
     region,
     blizzardPrincipalId,
     wowProfileProjection
-) -> subject_id
+) -> guildie_id
 ```
 
-The caller has already completed provider authorization, profile acquisition, and principal corroboration. Persistence must not re-decide Blizzard authority from raw HTTP responses.
+The caller has already completed provider authorization, profile acquisition, and principal corroboration.
 
-The operation performs, atomically:
+Atomically:
 
 ```text
-1. resolve or create GuildSubject for (region, blizzard_principal_id)
-2. confirm/update BlizzardPrincipalBinding.last_confirmed_at
-3. reconcile returned WoWAccount records beneath that subject
-4. reconcile returned Character records beneath their returned WoW accounts
-5. commit the complete identity projection
-6. return subject_id
+1. resolve or create Guildie for (region, blizzard_principal_id)
+2. confirm/update Blizzard principal observation
+3. reconcile returned WoW accounts for that Guildie
+4. reconcile returned controlled Characters
+5. commit the complete projection
+6. return guildie_id
 ```
 
-If any required persistence or reconciliation step fails, the operation fails as a whole.
+No successful `guildie_id` is returned from a partially committed projection.
 
-The authentication layer must not receive a successful `subject_id` from a partially committed projection.
+## Concurrency and uniqueness
 
-## Concurrency behavior
+Application pre-checks are insufficient. Persistence must enforce uniqueness on the Blizzard principal coordinate so concurrent successful callbacks ultimately resolve the same Guildie rather than create duplicates.
 
-Application pre-checks are insufficient to protect canonical identity.
+Equivalent duplicate protection applies to WoW account and Character coordinates.
 
-Two callbacks for the same Blizzard coordinate may race. Therefore persistence must enforce uniqueness on:
-
-```text
-(region, blizzard_principal_id)
-```
-
-and establish-or-resolve must tolerate a concurrent creator.
-
-Conceptually:
-
-```text
-attempt A: sees absent ─┐
-                       ├─ persistence uniqueness decides one subject
-attempt B: sees absent ─┘
-
-both successful callers ultimately resolve the same subject_id
-```
-
-A uniqueness conflict produced by this expected race should be converted into resolution of the winning GuildSubject, not into creation of a second subject.
-
-Equivalent duplicate-safety is required for subordinate WoW account and character coordinates.
-
-## Reconciliation rules
+## Reconciliation
 
 The Blizzard Account Profile response is authoritative for what it positively asserts during that ceremony.
 
-For records present in the response, reconciliation may:
+Reconciliation may create newly observed accounts/Characters, refresh observation timestamps and mutable presentation, and confirm returned parent-child relationships.
 
-- create newly observed WoWAccount records;
-- update `last_observed_at` for known WoWAccount records;
-- create newly observed Character records;
-- update `last_observed_at` for known Character records;
-- refresh mutable current character presentation;
-- confirm the returned parent-child relationships.
-
-Positive contradictory ownership is not a normal refresh.
-
-If a persisted WoW account or character coordinate is already bound to another GuildSubject, the transaction must fail closed and surface an identity-integrity conflict for investigation. Persistence must not silently reparent the coordinate during authentication.
+Positive contradictory ownership is not an ordinary refresh. If a persisted WoW account or Character coordinate is already associated with another Guildie, the transaction fails closed rather than silently reparenting it.
 
 ## Absence is not deletion
 
-A later Blizzard response may omit something seen previously.
+A later Blizzard response omitting an account or Character does not imply it never existed, is safe to delete, or should disappear from historical participation.
 
-The first implementation must interpret omission conservatively:
-
-```text
-not present now != never existed
-not present now != safe to delete
-not present now != historical participation should disappear
-```
-
-Therefore reconciliation must not hard-delete WoWAccount or Character records merely because they are absent from the newest profile response.
-
-The initial model may simply leave their previous record intact while not advancing `last_observed_at`.
-
-A later feature may introduce explicit current-visibility state when the product actually needs to distinguish currently observed from historically known identities.
-
-## Parentage integrity
-
-The Account Profile response carries a hierarchy:
-
-```text
-principal
-└── WoW account
-    └── character
-```
-
-Persistence must preserve that hierarchy.
-
-For a returned character:
-
-- its WoW account must belong to the resolved GuildSubject;
-- its Character record must belong to that same GuildSubject;
-- an existing character coordinate bound elsewhere is an integrity failure;
-- reconciliation must not silently move it between subjects or accounts.
-
-If Blizzard later demonstrates legitimate transfer behavior that requires reparenting, that behavior must be designed explicitly rather than inferred from an ordinary authentication refresh.
+Current observation/control and historical truth are different concerns. Reconciliation remains non-destructive unless a later concrete workflow earns explicit transfer or retirement semantics.
 
 ## Transaction boundary
 
-The durable identity transaction begins only after the application has obtained and corroborated Blizzard authority.
-
-Conceptually:
+External Blizzard acquisition and corroboration happen before the database transaction.
 
 ```text
 outside transaction
-    validate OAuth callback
-    exchange code
-    acquire userinfo
+    validate OAuth ceremony
+    acquire Blizzard authority
     acquire WoW profile
     corroborate principal
 
 inside transaction
-    establish/resolve subject
-    persist principal binding
+    establish/resolve Guildie
+    persist principal observation
     reconcile accounts
-    reconcile characters
+    reconcile controlled Characters
 
-transaction commits
+commit
     ↓
-subject_id may be used to create application session
+guildie_id may be used to create application session
 ```
 
-External Blizzard HTTP calls must not be held open inside the database transaction. Provider latency and provider failure belong outside the persistence transaction.
+Provider latency and failure do not belong inside the persistence transaction.
 
-This keeps the transaction short and ensures its responsibility is limited to applying an already-corroborated authoritative projection.
+## Participation references
 
-## Persistence result
+Persistence must name the actual object and role involved.
 
-A successful operation returns the canonical `subject_id` and may additionally return enough current identity projection for the caller to avoid immediately re-reading it.
-
-The minimum authoritative result is:
+Examples:
 
 ```text
-subject_id
+application session
+    guildie_id
+
+selected main
+    guildie_id + Character coordinate
+
+raffle administrative actor
+    created_by_guildie_id
+
+raffle claimant
+    claimant_guildie_id
+
+raffle participating member
+    character_record_id
 ```
 
-Whether the implementation additionally returns current accounts or characters is an efficiency/API decision, not part of identity semantics.
+A generic `subject_id` must not be introduced as a shortcut across these different relations.
 
-## Failure categories
+## What persistence does not decide
 
-Persistence should distinguish at least these semantic failures:
-
-```text
-storage unavailable
-transaction failed
-principal uniqueness/integrity conflict
-WoW account ownership conflict
-character ownership conflict
-invalid projection supplied by caller
-```
-
-These all mean the establish-or-resolve operation did not complete.
-
-They must not be translated into "new user," "no subject," or a reason to retry by creating another subject.
-
-## Boundary API
-
-The application-facing persistence contract should remain narrow.
-
-At minimum it needs behavior equivalent to:
-
-```text
-establishOrResolveSubject(authoritativeProjection)
-    -> subject_id
-
-resolveSubjectById(subject_id)
-    -> subject | absent
-```
-
-Additional query methods should be added only when an actual interface or guild workflow requires them.
-
-The first implementation should not expose generic CRUD for identity records merely because the storage technology makes CRUD easy.
-
-## What persistence does not own
-
-Persistence does not decide:
-
-- whether Blizzard OAuth succeeded;
-- whether OAuth `state` is valid;
-- whether the token has `wow.profile` scope;
-- whether `/oauth/userinfo` is trustworthy;
-- whether `/profile/user/wow` was successfully acquired;
-- whether the two Blizzard principal representations corroborate;
-- whether a user is authorized to perform guild-officer actions;
-- which character should be selected as main;
-- whether a Discord identity should be linked.
-
-Those decisions belong to their actual authority boundaries.
+Persistence does not decide whether Blizzard OAuth succeeded, whether provider responses are trustworthy, whether a Guildie is authorized for an operation, which Character should be selected as main, or whether Discord should be associated. Those decisions belong to their actual authority/procedure owners.
 
 ## Minimum invariants
 
-1. `subject_id` is Guild Operations-owned and stable.
-2. `(region, blizzard_principal_id)` resolves to at most one GuildSubject.
-3. Establish-or-resolve is atomic.
-4. Concurrent establishment of the same Blizzard coordinate cannot create duplicate subjects.
-5. A GuildSubject may have multiple WoW accounts.
-6. A WoW account coordinate belongs to at most one GuildSubject.
-7. `(region, realm_id, character_id)` resolves to at most one Character.
-8. A Character belongs to one WoW account and one GuildSubject.
-9. Positive contradictory ownership fails closed rather than silently reparenting identity.
-10. Mutable presentation never participates in continuity identity.
-11. Omission from a later Blizzard response does not delete durable identity or historical truth.
-12. No Guild Operations session is issued until the complete identity transaction commits.
-13. External Blizzard HTTP calls occur outside the durable identity transaction.
-
-## Explicitly deferred
-
-The first persistence boundary does not yet decide:
-
-- database engine;
-- ORM or query library;
-- UUID versus another internal `subject_id` representation;
-- exact SQL/collection names;
-- timestamp implementation details;
-- soft-delete machinery;
-- explicit current-visibility flags;
-- character-transfer handling;
-- selected-main storage;
-- Discord identity storage;
-- application-session storage;
-- authentication-attempt storage;
-- audit/event-ledger machinery beyond what concrete guild workflows later require.
-
-The next implementation step may choose concrete technology, but it must preserve this boundary rather than letting storage convenience redefine identity semantics.
+1. `guildie_id` is Guild Operations-owned and stable.
+2. `(region, blizzard_principal_id)` resolves to at most one Guildie.
+3. Establish-or-resolve is atomic and concurrency-safe.
+4. A Guildie may have multiple WoW accounts and controlled Characters.
+5. A WoW account coordinate belongs to at most one Guildie.
+6. `(region, realm_id, character_id)` resolves to at most one Character.
+7. Positive contradictory control/ownership fails closed rather than silently reparenting.
+8. Mutable presentation never participates in continuity identity.
+9. Omission from a later Blizzard response does not delete durable objects or historical truth.
+10. No session is issued until the complete Guildie establishment/reconciliation transaction commits.
+11. External Blizzard HTTP calls occur outside that transaction.
+12. `Subject` is not persisted as an object or coordinate.
