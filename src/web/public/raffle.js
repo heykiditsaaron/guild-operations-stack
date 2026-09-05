@@ -64,6 +64,8 @@ function syncRafflePrizeFields(form) {
   const gold = kindSelect.value === "gold";
   goldField.hidden = !gold;
   descriptionField.hidden = gold;
+  goldField.style.display = gold ? "" : "none";
+  descriptionField.style.display = gold ? "none" : "";
   winnerInput.required = gold;
   winnerInput.disabled = !gold;
   descriptionInput.required = !gold;
