@@ -32,22 +32,22 @@ async function publishClaimEvent(
   }
 }
 
-export async function cancelRaffleRound(actorSubjectId: string, roundId: string): Promise<RaffleRound> {
-  const round = await cancelRaffleRoundDomain(actorSubjectId, roundId);
+export async function cancelRaffleRound(actorGuildieId: string, roundId: string): Promise<RaffleRound> {
+  const round = await cancelRaffleRoundDomain(actorGuildieId, roundId);
   await coupleGuildEventListing(round);
   await publishRaffleEvent({ kind: "raffle.round.cancelled", roundId: round.roundId });
   return round;
 }
 
 export async function submitRaffleClaim(
-  subjectId: string,
+  claimantGuildieId: string,
   roundId: string,
   realmId: string,
   characterId: string,
   requestedTicketCount: number,
 ): Promise<RaffleClaim> {
   const claim = await submitRaffleClaimDomain(
-    subjectId,
+    claimantGuildieId,
     roundId,
     realmId,
     characterId,
@@ -61,27 +61,27 @@ export async function submitRaffleClaim(
   return claim;
 }
 
-export async function cancelOwnRaffleClaim(subjectId: string, claimId: string): Promise<void> {
-  await cancelOwnRaffleClaimDomain(subjectId, claimId);
+export async function cancelOwnRaffleClaim(claimantGuildieId: string, claimId: string): Promise<void> {
+  await cancelOwnRaffleClaimDomain(claimantGuildieId, claimId);
   await publishClaimEvent("raffle.claim.cancelled", claimId);
 }
 
-export async function approveRaffleClaim(actorSubjectId: string, claimId: string): Promise<void> {
-  await approveRaffleClaimDomain(actorSubjectId, claimId);
+export async function approveRaffleClaim(actorGuildieId: string, claimId: string): Promise<void> {
+  await approveRaffleClaimDomain(actorGuildieId, claimId);
   await publishClaimEvent("raffle.claim.approved", claimId);
 }
 
 export async function denyRaffleClaim(
-  actorSubjectId: string,
+  actorGuildieId: string,
   claimId: string,
   reasonInput: string,
 ): Promise<void> {
-  await denyRaffleClaimDomain(actorSubjectId, claimId, reasonInput);
+  await denyRaffleClaimDomain(actorGuildieId, claimId, reasonInput);
   await publishClaimEvent("raffle.claim.denied", claimId);
 }
 
-export async function drawRaffleRound(actorSubjectId: string, roundId: string): Promise<RaffleRound> {
-  const round = await drawRaffleRoundDomain(actorSubjectId, roundId);
+export async function drawRaffleRound(actorGuildieId: string, roundId: string): Promise<RaffleRound> {
+  const round = await drawRaffleRoundDomain(actorGuildieId, roundId);
   await coupleGuildEventListing(round);
 
   if (round.status === "drawn") {
