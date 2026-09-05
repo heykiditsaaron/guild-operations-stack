@@ -1,4 +1,4 @@
-import { pool } from "../../db.js";
+import { pool, withTransaction } from "../../db.js";
 import {
   approveRaffleClaim as approveRaffleClaimDomain,
   cancelOwnRaffleClaim as cancelOwnRaffleClaimDomain,
@@ -9,8 +9,8 @@ import {
   type RaffleClaim,
   type RaffleRound,
 } from "./domain.js";
+import { establishRaffleGuildEvent } from "./guild-event-registration.js";
 import { publishRaffleEvent } from "./publisher.js";
-import { coupleGuildEventListing } from "./registered-operations.js";
 
 async function publishClaimEvent(
   kind: "raffle.claim.approved" | "raffle.claim.denied" | "raffle.claim.cancelled",
@@ -33,8 +33,11 @@ async function publishClaimEvent(
 }
 
 export async function cancelRaffleRound(actorGuildieId: string, roundId: string): Promise<RaffleRound> {
-  const round = await cancelRaffleRoundDomain(actorGuildieId, roundId);
-  await coupleGuildEventListing(round);
+  const round = await withTransaction(async (client) => {
+    const cancelled = await cancelRaffleRoundDomain(actorGuildieId, roundId, client);
+    await establishRaffleGuildEvent(cancelled, client);
+    return cancelled;
+  });
   await publishRaffleEvent({ kind: "raffle.round.cancelled", roundId: round.roundId });
   return round;
 }
@@ -81,8 +84,11 @@ export async function denyRaffleClaim(
 }
 
 export async function drawRaffleRound(actorGuildieId: string, roundId: string): Promise<RaffleRound> {
-  const round = await drawRaffleRoundDomain(actorGuildieId, roundId);
-  await coupleGuildEventListing(round);
+  const round = await withTransaction(async (client) => {
+    const concluded = await drawRaffleRoundDomain(actorGuildieId, roundId, client);
+    await establishRaffleGuildEvent(concluded, client);
+    return concluded;
+  });
 
   if (round.conclusion === "drawn") {
     if (!round.winningClaimId) {
