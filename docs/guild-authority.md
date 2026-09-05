@@ -16,7 +16,7 @@ current Guildie participation surface + effective rank
 
 This avoids asking a member to manually declare guild Character identity when Blizzard can establish both sides of that relationship.
 
-The durable Subject coordinate resolves which Guildie is operating. Subject recognition is not itself guild membership.
+The durable `guildie_id` coordinate identifies which Guildie is operating. Guildie continuity is not itself current guild membership.
 
 ## Live guild coordinate
 
@@ -56,16 +56,16 @@ The durable Character-side join coordinate is:
 region + realm_id + character_id
 ```
 
-A live comparison against the already authenticated Subject established:
+A live comparison against the already authenticated Guildie established:
 
 ```text
-authenticated Characters: 20
+authenticated controlled Characters: 20
 current Character-roster intersections: 9
 ```
 
 All nine intersections matched by Blizzard Character and realm identifiers rather than by character name.
 
-This is sufficient evidence for Guild Operations to resolve which current guild Characters are controlled by the Guildie represented through that Subject.
+This is sufficient evidence for Guild Operations to resolve which current guild Characters are controlled by that Guildie.
 
 ## Character roster and Guildie roster
 
@@ -81,7 +81,7 @@ current Blizzard Character roster
 current Guildie organizational membership
 ```
 
-At least one controlled Character on the current Character roster gives the Guildie a current participation surface. Zero controlled roster Characters removes that current participation surface and rank-derived authority without deleting the Guildie, Subject, associations, preferences, or history.
+At least one controlled Character on the current Character roster gives the Guildie a current participation surface. Zero controlled roster Characters removes that current participation surface and rank-derived authority without deleting the Guildie, associations, preferences, or history.
 
 ## Rank authority
 
@@ -155,4 +155,6 @@ Guild Operations verifies both the Guild Profile and Guild Roster against config
 
 ## Current executable acceptance criterion
 
-Given an authenticated Subject resolving a Guildie and a refreshed Blizzard Character roster, the backend can identify which Characters that Guildie currently controls on the OH CRIT I Pulled! roster, derive whether the Guildie has a current participation surface, and compute the Guildie's effective numeric guild rank from those current Character memberships.
+Given an authenticated Guildie and a refreshed Blizzard Character roster, the backend can identify which Characters that Guildie currently controls on the OH CRIT I Pulled! roster, derive whether the Guildie has a current participation surface, and compute the Guildie's effective numeric guild rank from those current Character memberships.
+
+`Subject` has no role in this persistence or authority model beyond ordinary contextual language about what a particular statement is about.
