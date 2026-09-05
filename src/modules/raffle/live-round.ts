@@ -1,13 +1,13 @@
 import { config } from "../../config.js";
-import { pool } from "../../db.js";
+import { pool, withTransaction } from "../../db.js";
 import {
   RaffleRuleError,
   activateRaffleRound,
   raffleRound,
   type RaffleRound,
 } from "./domain.js";
+import { establishRaffleGuildEvent } from "./guild-event-registration.js";
 import { publishRaffleEvent } from "./publisher.js";
-import { coupleGuildEventListing } from "./registered-operations.js";
 
 export type ActiveRaffleRoundOverview = RaffleRound & {
   approvedTicketCount: number;
@@ -40,8 +40,11 @@ export async function activateSingleRaffleRound(
   roundId: string,
 ): Promise<RaffleRound> {
   try {
-    const round = await activateRaffleRound(actorGuildieId, roundId);
-    await coupleGuildEventListing(round);
+    const round = await withTransaction(async (client) => {
+      const activated = await activateRaffleRound(actorGuildieId, roundId, client);
+      await establishRaffleGuildEvent(activated, client);
+      return activated;
+    });
     await publishRaffleEvent({ kind: "raffle.round.live", roundId: round.roundId });
     return round;
   } catch (error) {
