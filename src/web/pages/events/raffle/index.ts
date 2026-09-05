@@ -1,10 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../../../auth.js";
-import { raffleClaimCutoffUnix, raffleClaimsAreOpen } from "../../../../raffle/domain.js";
+import { raffleClaimCutoffUnix, raffleClaimsAreOpen } from "../../../../modules/raffle/domain.js";
 import {
   activeRaffleRoundOverview,
   type ActiveRaffleRoundOverview,
-} from "../../../../raffle/live-round.js";
+} from "../../../../modules/raffle/live-round.js";
 import { assetUrl, type AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";

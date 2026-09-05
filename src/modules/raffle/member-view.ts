@@ -1,7 +1,7 @@
-import { config } from "../config.js";
-import { discordAssociationForSubject } from "../discord.js";
-import { pool } from "../db.js";
-import { mainCharacterForSubject } from "../main-character.js";
+import { config } from "../../config.js";
+import { discordAssociationForSubject } from "../../discord.js";
+import { pool } from "../../db.js";
+import { mainCharacterForSubject } from "../../main-character.js";
 import type { RaffleClaimResolution } from "./domain.js";
 
 export type RaffleMemberClaim = {

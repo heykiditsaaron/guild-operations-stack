@@ -1,5 +1,5 @@
-import { config } from "../config.js";
-import { pool } from "../db.js";
+import { config } from "../../config.js";
+import { pool } from "../../db.js";
 import type { RaffleRound, RaffleRoundStatus } from "./domain.js";
 
 export type RaffleHistoryRound = RaffleRound & {

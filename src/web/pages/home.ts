@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../auth.js";
-import { activeRaffleRound } from "../../raffle/live-round.js";
+import { activeRaffleRound } from "../../modules/raffle/live-round.js";
 import { assetUrl, type AssetRegistry } from "../assets.js";
 import { renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../../../auth.js";
-import { raffleHistory, type RaffleHistoryRound } from "../../../../raffle/history-view.js";
+import { raffleHistory, type RaffleHistoryRound } from "../../../../modules/raffle/history-view.js";
 import type { AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";

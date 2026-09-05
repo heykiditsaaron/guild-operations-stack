@@ -1,8 +1,8 @@
 import { randomInt } from "node:crypto";
 import type { PoolClient } from "pg";
-import { config } from "../config.js";
-import { pool, withTransaction } from "../db.js";
-import { RAFFLE_ADMIN_CAPABILITY, requireGuildCapability } from "../guild-permissions.js";
+import { config } from "../../config.js";
+import { pool, withTransaction } from "../../db.js";
+import { RAFFLE_ADMIN_CAPABILITY, requireGuildCapability } from "../../guild-permissions.js";
 
 export const RAFFLE_CLAIM_CUTOFF_SECONDS = 60 * 60;
 

@@ -1,4 +1,4 @@
-import { pool } from "../db.js";
+import { pool } from "../../db.js";
 import {
   approveRaffleClaim as approveRaffleClaimDomain,
   cancelOwnRaffleClaim as cancelOwnRaffleClaimDomain,
