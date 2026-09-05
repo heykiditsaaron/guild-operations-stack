@@ -1,0 +1,50 @@
+.admin-page-header {
+  max-width: 42rem;
+}
+
+.admin-destinations,
+.admin-unavailable {
+  max-width: 46rem;
+}
+
+.admin-destinations h2,
+.admin-unavailable h2 {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+  color: #c9c5ba;
+}
+
+.admin-destination {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.35rem 1rem;
+  align-items: center;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.035);
+  text-decoration: none;
+}
+
+.admin-destination:hover,
+.admin-destination:focus-visible {
+  border-color: rgba(232, 201, 134, 0.36);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.admin-destination-title {
+  font-weight: 750;
+}
+
+.admin-destination-description {
+  grid-column: 1;
+  color: #aaa69c;
+  font-size: 0.9rem;
+}
+
+.admin-destination-arrow {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  color: #e8c986;
+  font-size: 1.15rem;
+}
