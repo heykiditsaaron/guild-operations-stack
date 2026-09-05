@@ -1,8 +1,8 @@
 # Raffle
 
-Raffle is a concrete Guild Operations participatory Event module for operating the guild raffle.
+Raffle is a concrete Guild Operations participation module for operating the guild raffle. Individual raffle rounds may be listed as Guild Events through the shared Guild Event contract; the raffle module itself is not contained by Guild Events.
 
-It is deliberately modeled as a raffle-specific domain rather than as an instance of a generic event, workflow, participation, notification, or audit framework. In Guild Operations, **Events** is the product category for participatory guild activities. Raffle may also publish system events after authoritative raffle truth changes; those system events are a supporting integration boundary, not the Events product category itself.
+It is deliberately modeled as a raffle-specific domain rather than as an instance of a generic event, workflow, participation, notification, or audit framework. Raffle may publish system events after authoritative raffle truth changes; those system events are a supporting integration boundary, not the Guild Event product category itself.
 
 ## Purpose
 
@@ -14,14 +14,14 @@ Guild Operations cannot independently observe sufficient guild-bank history to m
 
 Blizzard remains authoritative for:
 
-- current guild membership;
-- current guild rank;
-- which WoW characters the subject currently controls.
+- current Character guild membership;
+- current Character guild rank;
+- which WoW Characters a Guildie currently controls.
 
-The member is authoritative for:
+The Guildie is authoritative for:
 
 - initiating a claim;
-- selecting the controlled guild character through which the promised deposit is made;
+- selecting the controlled guild Character through which the promised deposit is made;
 - requested ticket quantity;
 - cancelling their own unresolved claim.
 
@@ -80,7 +80,7 @@ A claim is a durable promissory record.
 
 It means, approximately:
 
-> This guild member, acting through this controlled guild character, intends to deposit the gold corresponding to this many tickets for this round.
+> This Guildie, acting through this controlled guild Character, intends to deposit the gold corresponding to this many tickets for this round.
 
 A claim is not evidence that the deposit occurred and does not itself establish tickets.
 
@@ -88,14 +88,26 @@ A claim records:
 
 - claim ID;
 - round ID;
-- subject;
-- specific controlled WoW character;
+- claimant Guildie;
+- specific controlled WoW Character;
 - requested ticket count;
 - promised gold value derived from the round's ticket price at submission;
 - creation time;
 - optional terminal resolution.
 
-A subject may create multiple claims in the same round, including multiple claims using the same character, while claim submission remains open.
+The persisted relationships are deliberately explicit:
+
+```text
+claimant_guildie_id
+    → which Guildie owns/authorized the claim
+
+character_record_id
+    → which WoW guild Character participates through the claim
+```
+
+Neither relationship is represented by a generic Subject coordinate. `Subject` is contextual language only.
+
+A Guildie may create multiple claims in the same round, including multiple claims using the same Character, while claim submission remains open.
 
 Claim admission closes one hour before the drawing deadline. This cutoff prevents new promises from arriving during the final adjudication window while leaving existing unresolved claims available for attendant approval or denial.
 
@@ -105,9 +117,9 @@ Claims are not rewritten to correct their original meaning. An unresolved claima
 
 An unresolved claim may end in exactly one of three ways:
 
-- `approved`: explicit approving attendant and approval time;
-- `denied`: explicit denying attendant, denial time, and mandatory reason;
-- `cancelled`: explicit claimant and cancellation time.
+- `approved`: explicit approving Guildie and approval time;
+- `denied`: explicit denying Guildie, denial time, and mandatory reason;
+- `cancelled`: explicit claimant Guildie and cancellation time.
 
 Approval establishes the claim's raffle participation. Pending claims establish no tickets. A denial and a cancellation contribute no participation but remain durable records.
 
@@ -132,7 +144,7 @@ The completed round preserves:
 - total entry count;
 - selected index;
 - winning claim ID;
-- concluding administrator and time.
+- concluding Guildie administrator and time.
 
 Those facts are sufficient to reconstruct why the selected position resolves to the winning claim while retaining the entire claim provenance behind the winner.
 
