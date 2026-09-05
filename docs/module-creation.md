@@ -18,9 +18,11 @@ The `src/modules/` container does not imply a generic module loader, registry, l
 
 A module owns the persistence of the participation truth it establishes. It does not duplicate persistence owned globally by Guild Operations.
 
-Global Guild Operations owns shared authoritative facts and objects such as Subjects, controlled Characters, current Blizzard guild roster observations, Blizzard rank observations, and other application-wide authority state.
+Global Guild Operations owns shared authoritative facts and objects such as Guildies, controlled Characters, current Blizzard guild roster observations, Blizzard rank observations, and other application-wide authority state.
 
-A module may reference those globally owned objects while persisting the module-specific meaning of their participation. Referencing a Subject, Character, guild, rank, or other global coordinate does not transfer ownership of that object or fact to the module.
+A module may reference those globally owned objects while persisting the module-specific meaning of their participation. Referencing a Guildie, Character, guild, rank, or other global coordinate does not transfer ownership of that object or fact to the module.
+
+A module should name the actual object and relationship it persists. `Subject` is contextual language, not a global object or persistence coordinate, and must not be introduced as a generic module reference.
 
 Modules remain subject to application-wide persistence laws and conventions even when the persisted facts belong to the module.
 
@@ -34,7 +36,7 @@ Module authorization may derive a module-specific decision directly from current
 
 A module capability is a semantic permission, not necessarily a globally persisted grant. A module may define a capability such as `raffle.admin` and evaluate it from current global facts without registering that capability as global permission state.
 
-Modules should not duplicate globally owned roster, rank, Subject, Character, or authority state merely to make a permission decision. Global facts remain globally owned; the module owns only its interpretation of those facts for its own procedure.
+Modules should not duplicate globally owned roster, rank, Guildie, Character, or authority state merely to make a permission decision. Global facts remain globally owned; the module owns only its interpretation of those facts for its own procedure.
 
 Using global permission machinery does not transfer ownership of module-specific permission policy to the global layer. Conversely, a module should not reimplement globally owned permission semantics merely because it has local authorization needs.
 
