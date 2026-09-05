@@ -102,6 +102,13 @@ export async function registerRafflePage(app: FastifyInstance, assets: AssetRegi
       title: "Raffle · OH CRIT I Pulled! Guild Operations",
       description: "Current OH CRIT I Pulled! guild raffle information.",
       viewer,
+      secondaryNavigation: {
+        kind: "breadcrumb",
+        items: [
+          { label: "Events" },
+          { label: "Raffle" },
+        ],
+      },
       stylesheets: ["raffle.css"],
       scripts: liveRaffle ? ["raffle-public.js"] : undefined,
       header: `
