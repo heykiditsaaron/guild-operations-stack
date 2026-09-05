@@ -1,6 +1,8 @@
 # Guild Permissioning
 
-Guild Operations derives Guildie-facing authorization from current Blizzard Character roster membership, but Blizzard rank numbers are not themselves application permissions.
+Guild Operations derives Guildie-facing authority from current Blizzard Character roster membership, but Blizzard rank numbers are not themselves application permissions.
+
+This document describes globally owned guild authority facts and globally owned permission provisioning. Module-specific permission policy remains owned by the module that defines the participation procedure.
 
 ## Authority source
 
@@ -23,15 +25,15 @@ Until the guild's real custom rank names are entered, observed ranks use explici
 
 An unobserved rank can remain absent. In particular, rank 6 does not need to be manufactured merely because the numeric position exists.
 
-## Capabilities
+## Global capabilities
 
-Application behavior authorizes against explicit capabilities rather than rank-number comparisons.
+Globally owned Guild Operations behavior may authorize against explicit global capabilities rather than embedding rank-number comparisons throughout application code.
 
-`guild_rank_capabilities` maps a guild rank definition to domain capabilities. Application machinery asks whether the operating Guildie possesses a capability; it does not ask whether the Guildie is, for example, rank 2 or better.
+`guild_rank_capabilities` maps a guild rank definition to globally owned capabilities. Global application machinery may ask whether the operating Guildie possesses one of those capabilities rather than asking whether the Guildie is, for example, rank 2 or better.
 
-A rank's capability set is explicit. No implicit numeric inheritance is assumed by the permission resolver.
+A rank's global capability set is explicit. No implicit numeric inheritance is assumed by the global permission resolver.
 
-The effective authorization path is:
+The global capability path is:
 
 ```text
 Guildie's currently controlled Characters
@@ -44,15 +46,29 @@ highest-authority Blizzard rank
         ↓
 GuildRankDefinition
         ↓
-explicit capability grants
+explicit global capability grants
         ↓
-authorization decision
+global authorization decision
 ```
 
-The application session continues to resolve through `subject_id`; that coordinate identifies which Guildie is operating. Capabilities are derived from current backend truth and are not properties of Subject recognition itself.
+The application session continues to resolve through `subject_id`; that coordinate identifies which Guildie is operating. Global capabilities are derived from current backend truth and are not properties of Subject recognition itself.
 
-This permits future changes to rank names and capability policy without changing Blizzard-derived Character roster facts or durable Guildie continuity.
+This permits future changes to rank names and global capability policy without changing Blizzard-derived Character roster facts or durable Guildie continuity.
+
+## Module permission policy
+
+Modules consume globally authoritative membership, roster, rank, and other authority facts as inputs to their own participation procedures.
+
+A module owns permission policy that is specific to that module. It may derive a module-specific authorization decision directly from current global facts, require an existing globally owned capability, or introduce module-specific permission state if a concrete module requirement proves that additional state is needed.
+
+A module-specific capability does not become a global capability merely because it has a capability name. Module policy does not need to be persisted in `guild_rank_capabilities` when the module can evaluate that policy directly from current authoritative facts.
+
+Global and module-specific permissioning may coexist. Ownership determines which layer defines and provisions the permission rule.
+
+Modules should not duplicate globally owned Subject, Character, roster, rank, or authority state in order to evaluate local authorization. Conversely, the global permission layer should not accumulate module-specific policy merely because it already provides reusable authorization machinery.
 
 ## Current scope
 
-This layer covers guild-rank-equivalent Guildie authorization only. System/operator authorization is intentionally outside the current scope.
+The global permissioning layer covers guild-rank-equivalent authorization for globally owned Guild Operations behavior. System/operator authorization is intentionally outside the current scope.
+
+Module-specific authorization is defined by each module and is documented with that module's participation procedure.
