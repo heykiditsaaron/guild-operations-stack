@@ -2,19 +2,22 @@
 
 A lightweight, WoW-native backend for guild operations.
 
-The system is rooted in a Blizzard-authenticated World of Warcraft subject. Discord is an associated resolver and interaction surface, not an independent identity root.
+Guild Operations represents two related membership realms: Character is the member object of Blizzard's WoW guild organization, while Guildie is the durable member object of the real-world guild organization around it. Blizzard-authenticated account authority establishes or resolves a Guildie and which Characters that Guildie controls. Discord is an optional associated resolver and interaction surface.
 
-## Initial direction
+`Subject` is contextual language for whichever existing object a statement or relation is about; it is not a persisted domain object or canonical identifier.
 
-The first goal is to establish or resolve the canonical WoW-rooted subject from Blizzard authentication. Later guild features such as raffle handling, Hidden in Plain Sight, and other event workflows will build on that same continuity.
+## Project direction
+
+Guild Operations uses Blizzard authority and the current Character roster to establish who can participate, then builds concrete guild participation capabilities such as raffles and other guild activities on that truthful foundation.
 
 ## Project principles
 
-- World of Warcraft is the native identity domain.
-- Blizzard authentication establishes the root subject.
-- Discord resolves onto that WoW-rooted subject.
+- Blizzard owns authenticated account control, Characters, current WoW guild Character membership, and numeric guild rank.
+- Guild Operations owns the durable Guildie representation and guild-established operational truth outside WoW.
+- Discord resolves onto an existing Guildie; it does not establish canonical membership.
+- Persist concrete objects and relationship roles rather than a generic Subject abstraction.
 - Backend state is authoritative; interfaces are projections and interaction surfaces.
 - Human guild decisions remain human decisions. The backend records and enforces procedure rather than inventing authority.
 - Keep the project lightweight. No task ledger or development journals are required.
 
-See `docs/architecture.md` for durable architectural decisions.
+See `docs/architecture.md` and `docs/member-objects.md` for durable architectural decisions.
