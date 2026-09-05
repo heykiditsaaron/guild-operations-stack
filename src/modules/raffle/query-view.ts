@@ -1,11 +1,17 @@
 import { config } from "../../config.js";
 import { pool } from "../../db.js";
-import { raffleRound, type RaffleClaimResolution, type RaffleRoundStatus } from "./domain.js";
+import {
+  raffleRound,
+  type RaffleClaimResolution,
+  type RaffleRoundConclusion,
+  type RaffleRoundStatus,
+} from "./domain.js";
 import { activeRaffleRound } from "./live-round.js";
 
 export type RaffleQueryRound = {
   roundId: string;
   status: RaffleRoundStatus;
+  conclusion: RaffleRoundConclusion;
   drawingAtUnix: number;
   ticketPriceGold: string;
   prizeKind: string;
@@ -40,6 +46,7 @@ export type RaffleQueryClaim = {
   claimId: string;
   roundId: string;
   roundStatus: RaffleRoundStatus;
+  roundConclusion: RaffleRoundConclusion;
   character: {
     characterId: string;
     name: string;
@@ -56,10 +63,6 @@ export type RaffleQueryClaim = {
     denialReason: string | null;
   };
 };
-
-function unixSeconds(value: Date | null): number | null {
-  return value ? Math.floor(value.getTime() / 1000) : null;
-}
 
 export async function raffleRoundQuery(roundId: string): Promise<RaffleQueryRound | null> {
   const round = await raffleRound(roundId);
@@ -131,13 +134,14 @@ export async function raffleRoundQuery(roundId: string): Promise<RaffleQueryRoun
   return {
     roundId: round.roundId,
     status: round.status,
+    conclusion: round.conclusion,
     drawingAtUnix: round.drawingAtUnix,
     ticketPriceGold: round.ticketPriceGold,
     prizeKind: round.prizeKind,
     winnerPercentage: round.winnerPercentage,
-    createdAtUnix: Math.floor(round.createdAt.getTime() / 1000),
-    liveAtUnix: unixSeconds(round.liveAt),
-    concludedAtUnix: unixSeconds(round.concludedAt),
+    createdAtUnix: round.createdAtUnix,
+    liveAtUnix: round.liveAtUnix,
+    concludedAtUnix: round.concludedAtUnix,
     claims: {
       pending: Number(metrics?.pending_claim_count ?? 0),
       approved: Number(metrics?.approved_claim_count ?? 0),
@@ -168,6 +172,7 @@ export async function raffleClaimQuery(claimId: string): Promise<RaffleQueryClai
     claim_id: string;
     round_id: string;
     round_status: RaffleRoundStatus;
+    round_conclusion: RaffleRoundConclusion;
     character_id: string;
     character_name: string;
     realm_id: string;
@@ -175,17 +180,18 @@ export async function raffleClaimQuery(claimId: string): Promise<RaffleQueryClai
     realm_slug: string | null;
     requested_ticket_count: number;
     promised_gold_value: string;
-    created_at: Date;
+    created_at_unix: string;
     resolution_kind: RaffleClaimResolution;
-    approved_at: Date | null;
-    denied_at: Date | null;
-    cancelled_at: Date | null;
+    approved_at_unix: string | null;
+    denied_at_unix: string | null;
+    cancelled_at_unix: string | null;
     denial_reason: string | null;
   }>(
     `SELECT
        rc.claim_id,
        rc.round_id,
        rr.status AS round_status,
+       rr.conclusion AS round_conclusion,
        c.character_id,
        COALESCE(grm.character_name, c.name) AS character_name,
        c.realm_id,
@@ -193,11 +199,11 @@ export async function raffleClaimQuery(claimId: string): Promise<RaffleQueryClai
        COALESCE(grm.realm_slug, c.realm_slug) AS realm_slug,
        rc.requested_ticket_count,
        rc.promised_gold_value,
-       rc.created_at,
+       rc.created_at_unix,
        rc.resolution_kind,
-       rc.approved_at,
-       rc.denied_at,
-       rc.cancelled_at,
+       rc.approved_at_unix,
+       rc.denied_at_unix,
+       rc.cancelled_at_unix,
        rc.denial_reason
      FROM raffle_claims rc
      JOIN raffle_rounds rr
@@ -216,18 +222,19 @@ export async function raffleClaimQuery(claimId: string): Promise<RaffleQueryClai
   const row = result.rows[0];
   if (!row) return null;
 
-  const resolutionAt = row.resolution_kind === "approved"
-    ? row.approved_at
+  const resolutionAtUnix = row.resolution_kind === "approved"
+    ? row.approved_at_unix
     : row.resolution_kind === "denied"
-      ? row.denied_at
+      ? row.denied_at_unix
       : row.resolution_kind === "cancelled"
-        ? row.cancelled_at
+        ? row.cancelled_at_unix
         : null;
 
   return {
     claimId: String(row.claim_id),
     roundId: String(row.round_id),
     roundStatus: row.round_status,
+    roundConclusion: row.round_conclusion,
     character: {
       characterId: String(row.character_id),
       name: String(row.character_name),
@@ -237,10 +244,10 @@ export async function raffleClaimQuery(claimId: string): Promise<RaffleQueryClai
     },
     requestedTicketCount: Number(row.requested_ticket_count),
     promisedGoldValue: String(row.promised_gold_value),
-    createdAtUnix: Math.floor(row.created_at.getTime() / 1000),
+    createdAtUnix: Number(row.created_at_unix),
     resolution: {
       kind: row.resolution_kind,
-      atUnix: unixSeconds(resolutionAt),
+      atUnix: resolutionAtUnix === null ? null : Number(resolutionAtUnix),
       denialReason: row.denial_reason === null ? null : String(row.denial_reason),
     },
   };
