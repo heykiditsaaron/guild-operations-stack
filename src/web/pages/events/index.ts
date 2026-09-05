@@ -1,8 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../../auth.js";
 import {
-  discoverableGuildEventRegistrations,
-  type GuildEventRegistration,
+  discoverableGuildEventListings,
+  type GuildEventListing,
 } from "../../../guild-events/registry.js";
 import type { AssetRegistry } from "../../assets.js";
 import { htmlText, renderPage } from "../../render.js";
@@ -11,7 +11,7 @@ import { viewerForRequest } from "../../viewer.js";
 type EventPresentation = {
   title: string;
   category: string;
-  href: string | null;
+  destination: string | null;
 };
 
 function humanize(value: string): string {
@@ -22,21 +22,13 @@ function humanize(value: string): string {
     .join(" ");
 }
 
-function presentationFor(registration: GuildEventRegistration): EventPresentation {
-  if (registration.guildEventKind === "raffle-round") {
-    return {
-      title: "Guild Raffle",
-      category: "Raffle",
-      href: "/events/raffle",
-    };
-  }
-
+function presentationFor(listing: GuildEventListing): EventPresentation {
   return {
-    title: humanize(registration.guildEventKind),
-    category: registration.guildEventCategory
-      ? humanize(registration.guildEventCategory)
+    title: listing.guildEventTitle ?? humanize(listing.guildEventKind),
+    category: listing.guildEventCategory
+      ? humanize(listing.guildEventCategory)
       : "Guild Event",
-    href: null,
+    destination: listing.guildEventDestination,
   };
 }
 
@@ -45,56 +37,57 @@ function localTime(unixSeconds: number): string {
   return `<time datetime="${instant}" data-local-time-unix="${unixSeconds}" data-local-time-date-style="full">${instant}</time>`;
 }
 
-function eventTime(registration: GuildEventRegistration): string {
-  const [start, end] = registration.guildEventOccursAt;
+function eventTime(listing: GuildEventListing): string {
+  const [start, end] = listing.guildEventOccursAt;
   if (end === undefined) return localTime(start);
   return `${localTime(start)}<span class="events-time-separator" aria-hidden="true">→</span>${localTime(end)}`;
 }
 
-function occursThrough(registration: GuildEventRegistration): number {
-  return registration.guildEventOccursAt.length === 2
-    ? registration.guildEventOccursAt[1]
-    : registration.guildEventOccursAt[0];
+function occursThrough(listing: GuildEventListing): number {
+  return listing.guildEventOccursAt.length === 2
+    ? listing.guildEventOccursAt[1]
+    : listing.guildEventOccursAt[0];
 }
 
-function isHappeningNow(registration: GuildEventRegistration, nowUnix: number): boolean {
-  const [start, end] = registration.guildEventOccursAt;
+function isHappeningNow(listing: GuildEventListing, nowUnix: number): boolean {
+  const [start, end] = listing.guildEventOccursAt;
   if (end === undefined) return start === nowUnix;
   return start <= nowUnix && nowUnix <= end;
 }
 
-function renderEventItem(registration: GuildEventRegistration): string {
-  const presentation = presentationFor(registration);
+function renderEventItem(listing: GuildEventListing): string {
+  const presentation = presentationFor(listing);
   const title = htmlText(presentation.title);
   const category = htmlText(presentation.category);
+  const destination = presentation.destination ? htmlText(presentation.destination) : null;
   const content = `
       <div class="events-item-copy">
         <p class="events-item-category">${category}</p>
         <h3>${title}</h3>
-        <div class="events-item-time">${eventTime(registration)}</div>
+        <div class="events-item-time">${eventTime(listing)}</div>
       </div>
-      ${presentation.href ? '<span class="events-item-action">View event <span aria-hidden="true">→</span></span>' : ""}`;
+      ${destination ? '<span class="events-item-action">View event <span aria-hidden="true">→</span></span>' : ""}`;
 
-  if (!presentation.href) {
+  if (!destination) {
     return `<article class="events-item">${content}</article>`;
   }
 
-  return `<a class="events-item events-item-link" href="${presentation.href}" aria-label="View ${title}">${content}</a>`;
+  return `<a class="events-item events-item-link" href="${destination}" aria-label="View ${title}">${content}</a>`;
 }
 
 function renderSection(
   id: string,
   title: string,
-  registrations: GuildEventRegistration[],
+  listings: GuildEventListing[],
   state: "live" | "upcoming",
 ): string {
-  if (!registrations.length) return "";
+  if (!listings.length) return "";
 
   return `
     <section class="events-section" aria-labelledby="${id}">
       <h2 class="events-status-banner events-status-banner-${state}" id="${id}">${title}</h2>
       <div class="events-list">
-        ${registrations.map(renderEventItem).join("\n")}
+        ${listings.map(renderEventItem).join("\n")}
       </div>
     </section>`;
 }
@@ -111,14 +104,14 @@ function emptyState(): string {
 export async function registerEventsPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/events", async (request, reply) => {
     const nowUnix = Math.floor(Date.now() / 1000);
-    const [viewer, registrations] = await Promise.all([
+    const [viewer, listings] = await Promise.all([
       viewerForRequest(request.cookies[SESSION_COOKIE_NAME]),
-      discoverableGuildEventRegistrations(),
+      discoverableGuildEventListings(),
     ]);
 
-    const relevant = registrations.filter((registration) => occursThrough(registration) >= nowUnix);
-    const happeningNow = relevant.filter((registration) => isHappeningNow(registration, nowUnix));
-    const upcoming = relevant.filter((registration) => !isHappeningNow(registration, nowUnix));
+    const relevant = listings.filter((listing) => occursThrough(listing) >= nowUnix);
+    const happeningNow = relevant.filter((listing) => isHappeningNow(listing, nowUnix));
+    const upcoming = relevant.filter((listing) => !isHappeningNow(listing, nowUnix));
 
     const body = happeningNow.length || upcoming.length
       ? `
