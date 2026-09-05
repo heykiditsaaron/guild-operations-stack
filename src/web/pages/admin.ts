@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
-import { authenticatedSubject, SESSION_COOKIE_NAME } from "../../auth.js";
-import { RAFFLE_ADMIN_CAPABILITY, subjectHasGuildCapability } from "../../guild-permissions.js";
+import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
+import { guildieHasGuildCapability, RAFFLE_ADMIN_CAPABILITY } from "../../guild-permissions.js";
 import type { AssetRegistry } from "../assets.js";
 import { renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
@@ -8,12 +8,12 @@ import { viewerForRequest } from "../viewer.js";
 export async function registerAdminPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/admin", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, subject] = await Promise.all([
+    const [viewer, guildie] = await Promise.all([
       viewerForRequest(sessionToken),
-      authenticatedSubject(sessionToken),
+      authenticatedGuildie(sessionToken),
     ]);
-    const canAdministerRaffle = subject
-      ? await subjectHasGuildCapability(subject.subjectId, RAFFLE_ADMIN_CAPABILITY)
+    const canAdministerRaffle = guildie
+      ? await guildieHasGuildCapability(guildie.guildieId, RAFFLE_ADMIN_CAPABILITY)
       : false;
 
     const body = canAdministerRaffle
@@ -46,7 +46,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
 
     if (!canAdministerRaffle) {
       return reply
-        .code(subject ? 403 : 401)
+        .code(guildie ? 403 : 401)
         .header("Cache-Control", "no-cache")
         .type("text/html; charset=utf-8")
         .send(html);
