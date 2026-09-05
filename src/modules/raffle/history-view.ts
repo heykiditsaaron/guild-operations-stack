@@ -66,3 +66,8 @@ export async function raffleHistory(): Promise<RaffleHistoryRound[]> {
 
   return result.rows.map((row) => mapRound(row as Record<string, unknown>));
 }
+
+export async function latestDrawnRaffleWinner(): Promise<RaffleHistoryRound | null> {
+  const rounds = await raffleHistory();
+  return rounds.find((round) => round.conclusion === "drawn") ?? null;
+}
