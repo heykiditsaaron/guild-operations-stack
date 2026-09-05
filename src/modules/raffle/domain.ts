@@ -12,6 +12,7 @@ export type RafflePrizeKind = "gold" | "item" | "other";
 export type RaffleClaimResolution = "approved" | "denied" | "cancelled" | null;
 
 export type RaffleRoundTerms = {
+  roundTitle?: string | null;
   drawingAtUnix: number;
   ticketPriceGold: number;
   prizeKind: RafflePrizeKind;
@@ -24,6 +25,7 @@ export type RaffleRound = {
   guildId: string;
   status: RaffleRoundStatus;
   conclusion: RaffleRoundConclusion;
+  roundTitle: string | null;
   drawingAtUnix: number;
   ticketPriceGold: string;
   prizeKind: RafflePrizeKind;
@@ -95,6 +97,7 @@ export function raffleClaimsAreOpen(drawingAtUnix: number, nowUnix: number = uni
 }
 
 function validateTerms(terms: RaffleRoundTerms): {
+  roundTitle: string | null;
   drawingAtUnix: number;
   ticketPriceGold: number;
   prizeKind: RafflePrizeKind;
@@ -111,6 +114,7 @@ function validateTerms(terms: RaffleRoundTerms): {
     throw new RaffleRuleError("invalid_prize_kind", "Prize type must be gold, item, or other", 400);
   }
 
+  const roundTitle = terms.roundTitle?.trim() || null;
   const winnerPercentage = terms.winnerPercentage ?? null;
   const prizeDescription = terms.prizeDescription?.trim() || null;
   if (terms.prizeKind === "gold") {
@@ -151,6 +155,7 @@ function validateTerms(terms: RaffleRoundTerms): {
   }
 
   return {
+    roundTitle,
     drawingAtUnix: terms.drawingAtUnix,
     ticketPriceGold: terms.ticketPriceGold,
     prizeKind: terms.prizeKind,
@@ -173,6 +178,7 @@ function mapRound(row: Record<string, unknown>): RaffleRound {
     guildId: String(row.guild_id),
     status: row.status as RaffleRoundStatus,
     conclusion: row.conclusion as RaffleRoundConclusion,
+    roundTitle: nullableString(row.round_title),
     drawingAtUnix: Number(row.drawing_at_unix),
     ticketPriceGold: String(row.ticket_price_gold),
     prizeKind: row.prize_kind as RafflePrizeKind,
@@ -253,12 +259,13 @@ export async function createRaffleRound(
   const executor = client ?? pool;
   const result = await executor.query(
     `INSERT INTO raffle_rounds (
-       guild_id, drawing_at_unix, ticket_price_gold, prize_kind,
+       guild_id, round_title, drawing_at_unix, ticket_price_gold, prize_kind,
        winner_percentage, prize_description, created_by_guildie_id, created_at_unix
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
      RETURNING *`,
     [
       config.guild.id,
+      terms.roundTitle,
       terms.drawingAtUnix,
       String(terms.ticketPriceGold),
       terms.prizeKind,
@@ -287,17 +294,19 @@ export async function updateRaffleRound(
     const updatedAtUnix = unixNow();
     const result = await transactionClient.query(
       `UPDATE raffle_rounds
-          SET drawing_at_unix = $2,
-              ticket_price_gold = $3,
-              prize_kind = $4,
-              winner_percentage = $5,
-              prize_description = $6,
-              updated_by_guildie_id = $7,
-              updated_at_unix = $8
+          SET round_title = $2,
+              drawing_at_unix = $3,
+              ticket_price_gold = $4,
+              prize_kind = $5,
+              winner_percentage = $6,
+              prize_description = $7,
+              updated_by_guildie_id = $8,
+              updated_at_unix = $9
         WHERE round_id = $1
         RETURNING *`,
       [
         roundId,
+        terms.roundTitle,
         terms.drawingAtUnix,
         String(terms.ticketPriceGold),
         terms.prizeKind,
