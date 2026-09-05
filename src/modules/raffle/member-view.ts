@@ -1,7 +1,7 @@
 import { config } from "../../config.js";
-import { discordAssociationForSubject } from "../../discord.js";
+import { discordAssociationForGuildie } from "../../discord.js";
 import { pool } from "../../db.js";
-import { mainCharacterForSubject } from "../../main-character.js";
+import { mainCharacterForGuildie } from "../../main-character.js";
 import type { RaffleClaimResolution } from "./domain.js";
 
 export type RaffleMemberClaim = {
@@ -18,16 +18,16 @@ export type RaffleMemberClaim = {
   denialReason: string | null;
 };
 
-async function subjectAttribution(subjectId: string): Promise<string> {
+async function guildieAttribution(guildieId: string): Promise<string> {
   const [mainCharacter, discordAssociation] = await Promise.all([
-    mainCharacterForSubject(subjectId),
-    discordAssociationForSubject(subjectId),
+    mainCharacterForGuildie(guildieId),
+    discordAssociationForGuildie(guildieId),
   ]);
 
   return mainCharacter?.name ?? discordAssociation?.username ?? "Guild officer";
 }
 
-export async function raffleClaimsForMember(subjectId: string, roundId: string): Promise<RaffleMemberClaim[]> {
+export async function raffleClaimsForMember(guildieId: string, roundId: string): Promise<RaffleMemberClaim[]> {
   const result = await pool.query(
     `SELECT
        rc.claim_id,
@@ -36,8 +36,8 @@ export async function raffleClaimsForMember(subjectId: string, roundId: string):
        rc.promised_gold_value,
        rc.created_at,
        rc.resolution_kind,
-       rc.approved_by_subject_id,
-       rc.denied_by_subject_id,
+       rc.approved_by_guildie_id,
+       rc.denied_by_guildie_id,
        rc.denial_reason,
        c.character_id,
        c.realm_id,
@@ -53,34 +53,34 @@ export async function raffleClaimsForMember(subjectId: string, roundId: string):
       AND grm.realm_id = c.realm_id
       AND grm.character_id = c.character_id
     WHERE rc.round_id = $1
-      AND rc.subject_id = $2
+      AND rc.claimant_guildie_id = $2
     ORDER BY rc.created_at DESC, rc.claim_id DESC`,
-    [roundId, subjectId, config.guild.id],
+    [roundId, guildieId, config.guild.id],
   );
 
-  const actorSubjectIds = new Set<string>();
+  const actorGuildieIds = new Set<string>();
   for (const row of result.rows) {
-    const actorSubjectId = row.resolution_kind === "approved"
-      ? row.approved_by_subject_id
+    const actorGuildieId = row.resolution_kind === "approved"
+      ? row.approved_by_guildie_id
       : row.resolution_kind === "denied"
-        ? row.denied_by_subject_id
+        ? row.denied_by_guildie_id
         : null;
-    if (actorSubjectId !== null) actorSubjectIds.add(String(actorSubjectId));
+    if (actorGuildieId !== null) actorGuildieIds.add(String(actorGuildieId));
   }
 
   const attributionEntries = await Promise.all(
-    [...actorSubjectIds].map(async (actorSubjectId) => [
-      actorSubjectId,
-      await subjectAttribution(actorSubjectId),
+    [...actorGuildieIds].map(async (actorGuildieId) => [
+      actorGuildieId,
+      await guildieAttribution(actorGuildieId),
     ] as const),
   );
-  const attributionBySubjectId = new Map(attributionEntries);
+  const attributionByGuildieId = new Map(attributionEntries);
 
   return result.rows.map((row) => {
-    const resolutionActorSubjectId = row.resolution_kind === "approved"
-      ? row.approved_by_subject_id
+    const resolutionActorGuildieId = row.resolution_kind === "approved"
+      ? row.approved_by_guildie_id
       : row.resolution_kind === "denied"
-        ? row.denied_by_subject_id
+        ? row.denied_by_guildie_id
         : null;
 
     return {
@@ -93,9 +93,9 @@ export async function raffleClaimsForMember(subjectId: string, roundId: string):
       promisedGoldValue: String(row.promised_gold_value),
       createdAt: row.created_at as Date,
       resolutionKind: row.resolution_kind as RaffleClaimResolution,
-      resolutionActorLabel: resolutionActorSubjectId === null
+      resolutionActorLabel: resolutionActorGuildieId === null
         ? null
-        : attributionBySubjectId.get(String(resolutionActorSubjectId)) ?? "Guild officer",
+        : attributionByGuildieId.get(String(resolutionActorGuildieId)) ?? "Guild officer",
       denialReason: row.denial_reason === null ? null : String(row.denial_reason),
     };
   });
