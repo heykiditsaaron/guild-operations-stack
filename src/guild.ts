@@ -43,7 +43,7 @@ type CharacterRosterState = GuildCharacterCoordinate & {
 };
 
 type GuildieRosterState = {
-  subjectId: string;
+  guildieId: string;
   rankIndex: number;
 };
 
@@ -79,8 +79,8 @@ async function characterRosterState(client: PoolClient, guildId: string): Promis
 }
 
 async function guildieRosterState(client: PoolClient, guildId: string): Promise<Map<string, GuildieRosterState>> {
-  const result = await client.query<{ subject_id: string; rank_index: number }>(
-    `SELECT c.subject_id, MIN(grm.rank_index)::integer AS rank_index
+  const result = await client.query<{ guildie_id: string; rank_index: number }>(
+    `SELECT c.guildie_id, MIN(grm.rank_index)::integer AS rank_index
        FROM characters c
        JOIN guild_roster_memberships grm
          ON grm.region = c.region
@@ -89,12 +89,12 @@ async function guildieRosterState(client: PoolClient, guildId: string): Promise<
         AND grm.currently_present = true
       WHERE c.currently_controlled = true
         AND grm.guild_id = $1
-      GROUP BY c.subject_id`,
+      GROUP BY c.guildie_id`,
     [guildId],
   );
 
-  return new Map(result.rows.map((row) => [row.subject_id, {
-    subjectId: row.subject_id,
+  return new Map(result.rows.map((row) => [row.guildie_id, {
+    guildieId: row.guildie_id,
     rankIndex: row.rank_index,
   }]));
 }
@@ -144,18 +144,18 @@ function reconciliationPublications(
     }
   }
 
-  for (const [subjectId, after] of afterGuildies) {
-    const before = beforeGuildies.get(subjectId);
+  for (const [guildieId, after] of afterGuildies) {
+    const before = beforeGuildies.get(guildieId);
     if (!before) {
-      publications.push({ kind: "guildie.joined", subjectId, guildId });
+      publications.push({ kind: "guildie.joined", guildieId, guildId });
     } else if (before.rankIndex !== after.rankIndex) {
-      publications.push({ kind: "guildie.rank.changed", subjectId, guildId });
+      publications.push({ kind: "guildie.rank.changed", guildieId, guildId });
     }
   }
 
-  for (const subjectId of beforeGuildies.keys()) {
-    if (!afterGuildies.has(subjectId)) {
-      publications.push({ kind: "guildie.left", subjectId, guildId });
+  for (const guildieId of beforeGuildies.keys()) {
+    if (!afterGuildies.has(guildieId)) {
+      publications.push({ kind: "guildie.left", guildieId, guildId });
     }
   }
 
@@ -311,7 +311,7 @@ export async function refreshGuildAuthority(): Promise<{
   };
 }
 
-export async function guildCharactersForSubject(subjectId: string): Promise<Array<{
+export async function guildCharactersForGuildie(guildieId: string): Promise<Array<{
   guildId: string; characterId: string; realmId: string; name: string; realmName: string | null;
   rankIndex: number; level: number | null; className: string | null; raceName: string | null;
   activeSpecName: string | null; avatarUrl: string | null; insetUrl: string | null; mainUrl: string | null;
@@ -331,9 +331,9 @@ export async function guildCharactersForSubject(subjectId: string): Promise<Arra
        ON grm.region = c.region AND grm.realm_id = c.realm_id AND grm.character_id = c.character_id AND grm.currently_present = true
      LEFT JOIN wow_character_profiles wcp
        ON wcp.region = grm.region AND wcp.realm_id = grm.realm_id AND wcp.character_id = grm.character_id
-     WHERE c.subject_id = $1 AND c.currently_controlled = true AND grm.guild_id = $2
+     WHERE c.guildie_id = $1 AND c.currently_controlled = true AND grm.guild_id = $2
      ORDER BY grm.rank_index, grm.character_name`,
-    [subjectId, config.guild.id],
+    [guildieId, config.guild.id],
   );
 
   return result.rows.map((row) => ({
