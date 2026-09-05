@@ -1,8 +1,8 @@
 import type { FastifyInstance } from "fastify";
-import { authenticatedSubject, SESSION_COOKIE_NAME } from "../../../../auth.js";
-import { RAFFLE_ADMIN_CAPABILITY, subjectHasGuildCapability } from "../../../../guild-permissions.js";
+import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
+import { guildieHasGuildCapability, RAFFLE_ADMIN_CAPABILITY } from "../../../../guild-permissions.js";
 import {
-  guildieAttributionsForSubjects,
+  guildieAttributionsForGuildies,
   type GuildieAttribution,
 } from "../../../../guildie-attribution.js";
 import { raffleRoundsForAdministration, type RaffleAdministrationRound } from "../../../../modules/raffle/admin-view.js";
@@ -32,36 +32,36 @@ function eventTime(instant: Date): string {
   return localTime(Math.floor(instant.getTime() / 1000), "medium");
 }
 
-function actorName(subjectId: string, attributions: AttributionLookup): string {
-  return htmlText(attributions.get(subjectId)?.displayName ?? `Guildie ${subjectId.slice(0, 8)}`);
+function actorName(guildieId: string, attributions: AttributionLookup): string {
+  return htmlText(attributions.get(guildieId)?.displayName ?? `Guildie ${guildieId.slice(0, 8)}`);
 }
 
 function attributionFact(
   label: string,
-  subjectId: string | null,
+  guildieId: string | null,
   at: Date | null,
   attributions: AttributionLookup,
 ): string {
-  if (!subjectId || !at) return "";
-  return `<dt>${htmlText(label)}</dt><dd>${actorName(subjectId, attributions)} · ${eventTime(at)}</dd>`;
+  if (!guildieId || !at) return "";
+  return `<dt>${htmlText(label)}</dt><dd>${actorName(guildieId, attributions)} · ${eventTime(at)}</dd>`;
 }
 
 function roundOverviewAttribution(round: RaffleAdministrationRound, attributions: AttributionLookup): string {
-  if (round.status === "live" && round.liveBySubjectId) {
-    return `<div class="raffle-overview-attribution"><span>Opened by <strong>${actorName(round.liveBySubjectId, attributions)}</strong></span></div>`;
+  if (round.status === "live" && round.liveByGuildieId) {
+    return `<div class="raffle-overview-attribution"><span>Opened by <strong>${actorName(round.liveByGuildieId, attributions)}</strong></span></div>`;
   }
-  return `<div class="raffle-overview-attribution"><span>Created by <strong>${actorName(round.createdBySubjectId, attributions)}</strong></span></div>`;
+  return `<div class="raffle-overview-attribution"><span>Created by <strong>${actorName(round.createdByGuildieId, attributions)}</strong></span></div>`;
 }
 
 function claimResolutionAttribution(claim: RaffleClaim, attributions: AttributionLookup): string {
-  if (claim.resolutionKind === "approved" && claim.approvedBySubjectId && claim.approvedAt) {
-    return `Approved by ${actorName(claim.approvedBySubjectId, attributions)} · ${eventTime(claim.approvedAt)}`;
+  if (claim.resolutionKind === "approved" && claim.approvedByGuildieId && claim.approvedAt) {
+    return `Approved by ${actorName(claim.approvedByGuildieId, attributions)} · ${eventTime(claim.approvedAt)}`;
   }
-  if (claim.resolutionKind === "denied" && claim.deniedBySubjectId && claim.deniedAt) {
-    return `Denied by ${actorName(claim.deniedBySubjectId, attributions)} · ${eventTime(claim.deniedAt)}`;
+  if (claim.resolutionKind === "denied" && claim.deniedByGuildieId && claim.deniedAt) {
+    return `Denied by ${actorName(claim.deniedByGuildieId, attributions)} · ${eventTime(claim.deniedAt)}`;
   }
-  if (claim.resolutionKind === "cancelled" && claim.cancelledBySubjectId && claim.cancelledAt) {
-    return `Cancelled by ${actorName(claim.cancelledBySubjectId, attributions)} · ${eventTime(claim.cancelledAt)}`;
+  if (claim.resolutionKind === "cancelled" && claim.cancelledByGuildieId && claim.cancelledAt) {
+    return `Cancelled by ${actorName(claim.cancelledByGuildieId, attributions)} · ${eventTime(claim.cancelledAt)}`;
   }
   return "";
 }
@@ -143,10 +143,10 @@ function managementFacts(
     <dt>Approved tickets</dt><dd>${metrics.approvedTicketCount}</dd>
     ${gold ? `<dt>Current pot</dt><dd>${gold.pot.toString()} gold</dd>` : ""}
     ${gold?.prize !== null && gold?.prize !== undefined ? `<dt>Current prize</dt><dd>${gold.prize.toString()} gold</dd>` : ""}
-    ${attributionFact("Created", round.createdBySubjectId, round.createdAt, attributions)}
-    ${attributionFact("Updated", round.updatedBySubjectId, round.updatedAt, attributions)}
-    ${attributionFact("Opened", round.liveBySubjectId, round.liveAt, attributions)}
-    ${attributionFact("Concluded", round.concludedBySubjectId, round.concludedAt, attributions)}
+    ${attributionFact("Created", round.createdByGuildieId, round.createdAt, attributions)}
+    ${attributionFact("Updated", round.updatedByGuildieId, round.updatedAt, attributions)}
+    ${attributionFact("Opened", round.liveByGuildieId, round.liveAt, attributions)}
+    ${attributionFact("Concluded", round.concludedByGuildieId, round.concludedAt, attributions)}
   </dl>`;
 }
 
@@ -200,8 +200,8 @@ function pendingRoundEditor(round: RaffleRound, attributions: AttributionLookup)
       <p class="raffle-edit-status" data-raffle-edit-status aria-live="polite"></p>
     </form>
     <div class="raffle-edit-attribution">
-      <span>Created by <strong>${actorName(round.createdBySubjectId, attributions)}</strong> · ${eventTime(round.createdAt)}</span>
-      ${round.updatedBySubjectId && round.updatedAt ? `<span>Last updated by <strong>${actorName(round.updatedBySubjectId, attributions)}</strong> · ${eventTime(round.updatedAt)}</span>` : ""}
+      <span>Created by <strong>${actorName(round.createdByGuildieId, attributions)}</strong> · ${eventTime(round.createdAt)}</span>
+      ${round.updatedByGuildieId && round.updatedAt ? `<span>Last updated by <strong>${actorName(round.updatedByGuildieId, attributions)}</strong> · ${eventTime(round.updatedAt)}</span>` : ""}
     </div>
     <section class="raffle-edit-transition" aria-labelledby="raffle-open-heading">
       <h2 id="raffle-open-heading">Open raffle</h2>
@@ -350,8 +350,8 @@ function liveRoundManager(
   const gold = round.prizeKind === "gold"
     ? goldMetrics(round.ticketPriceGold, round.winnerPercentage, metrics.approvedTicketCount)
     : null;
-  const openedBy = round.liveBySubjectId && round.liveAt
-    ? `<p class="raffle-live-attribution">Opened by <strong>${actorName(round.liveBySubjectId, attributions)}</strong> · ${eventTime(round.liveAt)}</p>`
+  const openedBy = round.liveByGuildieId && round.liveAt
+    ? `<p class="raffle-live-attribution">Opened by <strong>${actorName(round.liveByGuildieId, attributions)}</strong> · ${eventTime(round.liveAt)}</p>`
     : "";
   const drawControl = metrics.pendingClaimCount === 0
     ? `<button class="raffle-action raffle-action-success" type="button" data-draw-raffle-round="${htmlText(round.roundId)}">Draw raffle</button>`
@@ -393,9 +393,9 @@ function liveRoundManager(
 }
 
 async function adminContext(sessionToken: string | undefined) {
-  const [viewer, subject] = await Promise.all([viewerForRequest(sessionToken), authenticatedSubject(sessionToken)]);
-  const authorized = subject ? await subjectHasGuildCapability(subject.subjectId, RAFFLE_ADMIN_CAPABILITY) : false;
-  return { viewer, subject, authorized };
+  const [viewer, guildie] = await Promise.all([viewerForRequest(sessionToken), authenticatedGuildie(sessionToken)]);
+  const authorized = guildie ? await guildieHasGuildCapability(guildie.guildieId, RAFFLE_ADMIN_CAPABILITY) : false;
+  return { viewer, guildie, authorized };
 }
 
 export async function registerRaffleAdminPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
@@ -403,7 +403,7 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
   app.get<{ Params: { roundId: string } }>("/events/raffle/admin/:roundId", async (request, reply) => reply.code(308).header("Location", `/admin/raffle/${encodeURIComponent(request.params.roundId)}`).send());
 
   app.get("/admin/raffle", async (request, reply) => {
-    const { viewer, subject, authorized } = await adminContext(request.cookies[SESSION_COOKIE_NAME]);
+    const { viewer, guildie, authorized } = await adminContext(request.cookies[SESSION_COOKIE_NAME]);
     if (!authorized) {
       const html = renderPage(assets, {
         pathname: "/admin/raffle",
@@ -414,14 +414,14 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
         header: "",
         body: `<div class="raffle-admin-message">${sectionRule()}<h2>Raffle administration is not available for this account.</h2></div>`,
       });
-      return reply.code(subject ? 403 : 401).type("text/html; charset=utf-8").send(html);
+      return reply.code(guildie ? 403 : 401).type("text/html; charset=utf-8").send(html);
     }
     const rounds = (await raffleRoundsForAdministration())
       .filter((round) => round.status === "live" || round.status === "created")
       .sort((a, b) => a.drawingAtUnix - b.drawingAtUnix);
-    const attributions = await guildieAttributionsForSubjects(rounds.flatMap((round) => [
-      round.createdBySubjectId,
-      round.liveBySubjectId,
+    const attributions = await guildieAttributionsForGuildies(rounds.flatMap((round) => [
+      round.createdByGuildieId,
+      round.liveByGuildieId,
     ]));
     const html = renderPage(assets, {
       pathname: "/admin/raffle",
@@ -445,10 +445,10 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
   });
 
   app.get<{ Params: { roundId: string } }>("/admin/raffle/:roundId", async (request, reply) => {
-    const { viewer, subject, authorized } = await adminContext(request.cookies[SESSION_COOKIE_NAME]);
+    const { viewer, guildie, authorized } = await adminContext(request.cookies[SESSION_COOKIE_NAME]);
     const pathname = `/admin/raffle/${request.params.roundId}`;
     if (!authorized) {
-      return reply.code(subject ? 403 : 401).type("text/html; charset=utf-8").send(renderPage(assets, {
+      return reply.code(guildie ? 403 : 401).type("text/html; charset=utf-8").send(renderPage(assets, {
         pathname,
         title: "Raffle Administration · OH CRIT I Pulled! Guild Operations",
         viewer,
@@ -471,15 +471,15 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
       }));
     }
     const claims = await raffleClaims(round.roundId);
-    const attributions = await guildieAttributionsForSubjects([
-      round.createdBySubjectId,
-      round.updatedBySubjectId,
-      round.liveBySubjectId,
-      round.concludedBySubjectId,
+    const attributions = await guildieAttributionsForGuildies([
+      round.createdByGuildieId,
+      round.updatedByGuildieId,
+      round.liveByGuildieId,
+      round.concludedByGuildieId,
       ...claims.flatMap((claim) => [
-        claim.approvedBySubjectId,
-        claim.deniedBySubjectId,
-        claim.cancelledBySubjectId,
+        claim.approvedByGuildieId,
+        claim.deniedByGuildieId,
+        claim.cancelledByGuildieId,
       ]),
     ]);
 
