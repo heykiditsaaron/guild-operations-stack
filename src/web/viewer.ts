@@ -1,17 +1,17 @@
-import { authenticatedSubject } from "../auth.js";
-import { discordAssociationForSubject } from "../discord.js";
-import { guildCharactersForSubject } from "../guild.js";
-import { mainCharacterForSubject } from "../main-character.js";
+import { authenticatedGuildie } from "../auth.js";
+import { discordAssociationForGuildie } from "../discord.js";
+import { guildCharactersForGuildie } from "../guild.js";
+import { mainCharacterForGuildie } from "../main-character.js";
 import type { WebViewer } from "./render.js";
 
 export async function viewerForRequest(sessionToken: string | undefined): Promise<WebViewer> {
-  const subject = await authenticatedSubject(sessionToken);
-  if (!subject) return { authenticated: false };
+  const guildie = await authenticatedGuildie(sessionToken);
+  if (!guildie) return { authenticated: false };
 
   const [mainCharacter, characters, discordAssociation] = await Promise.all([
-    mainCharacterForSubject(subject.subjectId),
-    guildCharactersForSubject(subject.subjectId),
-    discordAssociationForSubject(subject.subjectId),
+    mainCharacterForGuildie(guildie.guildieId),
+    guildCharactersForGuildie(guildie.guildieId),
+    discordAssociationForGuildie(guildie.guildieId),
   ]);
 
   const selectedCharacter = mainCharacter
