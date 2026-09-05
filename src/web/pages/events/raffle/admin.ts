@@ -5,14 +5,14 @@ import {
   guildieAttributionsForSubjects,
   type GuildieAttribution,
 } from "../../../../guildie-attribution.js";
-import { raffleRoundsForAdministration, type RaffleAdministrationRound } from "../../../../raffle/admin-view.js";
+import { raffleRoundsForAdministration, type RaffleAdministrationRound } from "../../../../modules/raffle/admin-view.js";
 import {
   raffleClaimCutoffUnix,
   raffleClaims,
   raffleRound,
   type RaffleClaim,
   type RaffleRound,
-} from "../../../../raffle/domain.js";
+} from "../../../../modules/raffle/domain.js";
 import type { AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage, type SecondaryNavigation } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";

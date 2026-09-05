@@ -2,7 +2,7 @@ import type { PoolClient } from "pg";
 import {
   establishGuildEventRegistration,
   withdrawGuildEventRegistration,
-} from "../guild-events/registry.js";
+} from "../../guild-events/registry.js";
 import type { RaffleRound } from "./domain.js";
 
 export const RAFFLE_GUILD_EVENT_KIND = "raffle-round";

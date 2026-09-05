@@ -1,10 +1,10 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { authenticatedSubject, SESSION_COOKIE_NAME } from "../auth.js";
+import { authenticatedSubject, SESSION_COOKIE_NAME } from "../../auth.js";
 import {
   GuildCapabilityDeniedError,
   RAFFLE_ADMIN_CAPABILITY,
   requireGuildCapability,
-} from "../guild-permissions.js";
+} from "../../guild-permissions.js";
 import {
   RaffleRuleError,
   raffleClaims,

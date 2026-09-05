@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedSubject, SESSION_COOKIE_NAME } from "../../../../auth.js";
-import { activeRaffleRoundOverview } from "../../../../raffle/live-round.js";
-import { raffleClaimsForMember, type RaffleMemberClaim } from "../../../../raffle/member-view.js";
+import { activeRaffleRoundOverview } from "../../../../modules/raffle/live-round.js";
+import { raffleClaimsForMember, type RaffleMemberClaim } from "../../../../modules/raffle/member-view.js";
 import type { AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
