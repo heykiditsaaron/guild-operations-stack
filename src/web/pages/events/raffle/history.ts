@@ -96,7 +96,14 @@ export async function registerRaffleHistoryPage(app: FastifyInstance, assets: As
       title: "Previous Raffles · OH CRIT I Pulled! Guild Operations",
       description: "Completed OH CRIT I Pulled! guild raffle rounds.",
       viewer,
-      secondaryNavigation: { kind: "back", label: "Back to raffle", href: "/events/raffle" },
+      secondaryNavigation: {
+        kind: "breadcrumb",
+        items: [
+          { label: "Events" },
+          { label: "Raffle", href: "/events/raffle" },
+          { label: "Previous Raffles" },
+        ],
+      },
       stylesheets: ["raffle.css"],
       header: `
         <div class="raffle-page-header">
