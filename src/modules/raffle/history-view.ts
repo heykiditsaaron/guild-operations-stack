@@ -1,6 +1,11 @@
 import { config } from "../../config.js";
 import { pool } from "../../db.js";
-import type { RaffleRound, RaffleRoundConclusion, RaffleRoundStatus } from "./domain.js";
+import type {
+  RafflePrizeKind,
+  RaffleRound,
+  RaffleRoundConclusion,
+  RaffleRoundStatus,
+} from "./domain.js";
 
 export type RaffleHistoryRound = RaffleRound & {
   approvedTicketCount: number;
@@ -23,8 +28,9 @@ function mapRound(row: Record<string, unknown>): RaffleHistoryRound {
     conclusion: row.conclusion as RaffleRoundConclusion,
     drawingAtUnix: Number(row.drawing_at_unix),
     ticketPriceGold: String(row.ticket_price_gold),
-    prizeKind: String(row.prize_kind),
+    prizeKind: row.prize_kind as RafflePrizeKind,
     winnerPercentage: nullableNumber(row.winner_percentage),
+    prizeDescription: nullableString(row.prize_description),
     createdByGuildieId: String(row.created_by_guildie_id),
     createdAtUnix: Number(row.created_at_unix),
     updatedByGuildieId: nullableString(row.updated_by_guildie_id),
