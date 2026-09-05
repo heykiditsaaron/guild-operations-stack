@@ -76,6 +76,13 @@ function unixNow(): number {
   return Math.floor(Date.now() / 1000);
 }
 
+async function withOptionalTransaction<T>(
+  client: PoolClient | null,
+  operation: (transactionClient: PoolClient) => Promise<T>,
+): Promise<T> {
+  return client ? operation(client) : withTransaction(operation);
+}
+
 export function raffleClaimCutoffUnix(drawingAtUnix: number): number {
   return drawingAtUnix - RAFFLE_CLAIM_CUTOFF_SECONDS;
 }
@@ -216,11 +223,13 @@ async function lockedClaim(client: PoolClient, claimId: string): Promise<Record<
 export async function createRaffleRound(
   actorGuildieId: string,
   termsInput: RaffleRoundTerms,
+  client: PoolClient | null = null,
 ): Promise<RaffleRound> {
   await requireRaffleAdmin(actorGuildieId);
   const terms = validateTerms(termsInput);
   const createdAtUnix = unixNow();
-  const result = await pool.query(
+  const executor = client ?? pool;
+  const result = await executor.query(
     `INSERT INTO raffle_rounds (
        guild_id, drawing_at_unix, ticket_price_gold, prize_kind,
        winner_percentage, created_by_guildie_id, created_at_unix
@@ -243,16 +252,17 @@ export async function updateRaffleRound(
   actorGuildieId: string,
   roundId: string,
   termsInput: RaffleRoundTerms,
+  client: PoolClient | null = null,
 ): Promise<RaffleRound> {
   await requireRaffleAdmin(actorGuildieId);
   const terms = validateTerms(termsInput);
-  return withTransaction(async (client) => {
-    const round = await lockedRound(client, roundId);
+  return withOptionalTransaction(client, async (transactionClient) => {
+    const round = await lockedRound(transactionClient, roundId);
     if (round.status !== "listed") {
       throw new RaffleRuleError("round_terms_locked", "Round terms are locked once the round is live");
     }
     const updatedAtUnix = unixNow();
-    const result = await client.query(
+    const result = await transactionClient.query(
       `UPDATE raffle_rounds
           SET drawing_at_unix = $2,
               ticket_price_gold = $3,
@@ -276,15 +286,19 @@ export async function updateRaffleRound(
   });
 }
 
-export async function activateRaffleRound(actorGuildieId: string, roundId: string): Promise<RaffleRound> {
+export async function activateRaffleRound(
+  actorGuildieId: string,
+  roundId: string,
+  client: PoolClient | null = null,
+): Promise<RaffleRound> {
   await requireRaffleAdmin(actorGuildieId);
-  return withTransaction(async (client) => {
-    const round = await lockedRound(client, roundId);
+  return withOptionalTransaction(client, async (transactionClient) => {
+    const round = await lockedRound(transactionClient, roundId);
     if (round.status !== "listed") {
       throw new RaffleRuleError("round_not_listed", "Only a listed raffle round can become live");
     }
     const liveAtUnix = unixNow();
-    const result = await client.query(
+    const result = await transactionClient.query(
       `UPDATE raffle_rounds
           SET status = 'live', live_by_guildie_id = $2, live_at_unix = $3
         WHERE round_id = $1
@@ -295,15 +309,19 @@ export async function activateRaffleRound(actorGuildieId: string, roundId: strin
   });
 }
 
-export async function cancelRaffleRound(actorGuildieId: string, roundId: string): Promise<RaffleRound> {
+export async function cancelRaffleRound(
+  actorGuildieId: string,
+  roundId: string,
+  client: PoolClient | null = null,
+): Promise<RaffleRound> {
   await requireRaffleAdmin(actorGuildieId);
-  return withTransaction(async (client) => {
-    const round = await lockedRound(client, roundId);
+  return withOptionalTransaction(client, async (transactionClient) => {
+    const round = await lockedRound(transactionClient, roundId);
     if (round.status !== "listed" && round.status !== "live") {
       throw new RaffleRuleError("round_already_concluded", "Only a listed or live round can be administratively cancelled");
     }
     const concludedAtUnix = unixNow();
-    const result = await client.query(
+    const result = await transactionClient.query(
       `UPDATE raffle_rounds
           SET status = 'concluded',
               conclusion = 'operator_cancelled',
@@ -474,15 +492,19 @@ export async function denyRaffleClaim(
   });
 }
 
-export async function drawRaffleRound(actorGuildieId: string, roundId: string): Promise<RaffleRound> {
+export async function drawRaffleRound(
+  actorGuildieId: string,
+  roundId: string,
+  client: PoolClient | null = null,
+): Promise<RaffleRound> {
   await requireRaffleAdmin(actorGuildieId);
-  return withTransaction(async (client) => {
-    const round = await lockedRound(client, roundId);
+  return withOptionalTransaction(client, async (transactionClient) => {
+    const round = await lockedRound(transactionClient, roundId);
     if (round.status !== "live") {
       throw new RaffleRuleError("round_not_live", "Only a live raffle round can be drawn");
     }
 
-    const pending = await client.query<{ count: string }>(
+    const pending = await transactionClient.query<{ count: string }>(
       `SELECT count(*)::text AS count
          FROM raffle_claims
         WHERE round_id = $1
@@ -496,7 +518,7 @@ export async function drawRaffleRound(actorGuildieId: string, roundId: string): 
       );
     }
 
-    const approved = await client.query<{ claim_id: string; requested_ticket_count: number }>(
+    const approved = await transactionClient.query<{ claim_id: string; requested_ticket_count: number }>(
       `SELECT claim_id, requested_ticket_count
          FROM raffle_claims
         WHERE round_id = $1
@@ -514,7 +536,7 @@ export async function drawRaffleRound(actorGuildieId: string, roundId: string): 
 
     const concludedAtUnix = unixNow();
     if (population.length === 0) {
-      const result = await client.query(
+      const result = await transactionClient.query(
         `UPDATE raffle_rounds
             SET status = 'concluded',
                 conclusion = 'no_participation',
@@ -529,7 +551,7 @@ export async function drawRaffleRound(actorGuildieId: string, roundId: string): 
 
     const selectedIndex = randomInt(population.length);
     const winningClaimId = population[selectedIndex];
-    const result = await client.query(
+    const result = await transactionClient.query(
       `UPDATE raffle_rounds
           SET status = 'concluded',
               conclusion = 'drawn',
