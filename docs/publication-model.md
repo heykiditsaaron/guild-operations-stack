@@ -28,19 +28,9 @@ subscriber converges its local projection
 
 ## Recognition and membership vocabulary
 
-### Subject
-
-A **Subject** is the durable recognition coordinate Guild Operations uses to resolve the same human across sessions, characters, and optional external associations. Subject is infrastructure; it is not the guild-facing name for the human member.
-
-### Character
-
-A **Character** is a durable WoW character object. For guild participation, a Character is either currently present on the Blizzard guild roster with a Blizzard-owned numeric rank, or it is not.
-
-The current Character roster is dictated by the actual in-game guild environment. Guild Operations observes and reconciles that roster; it does not manufacture Character membership.
-
 ### Guildie
 
-A **Guildie** is Guild Operations' durable human guild-member representation resolved through a Subject.
+A **Guildie** is Guild Operations' durable representation of the real-world guild organizational member. The durable coordinate is `guildie_id`.
 
 Guildie continuity is non-destructive. A Guildie does not cease to exist merely because none of their controlled Characters are currently on the guild roster.
 
@@ -54,9 +44,21 @@ current Blizzard Character roster
 current Guildie organizational membership
 ```
 
-A Guildie with at least one controlled Character on the current roster has a current participation surface. A Guildie with no controlled Characters on the current roster remains recognized but has no current guild participation surface or rank-derived authority.
+A Guildie with at least one controlled Character on the current roster has a current participation surface. A Guildie with no controlled Characters on the current roster remains known but has no current guild participation surface or rank-derived authority.
 
 Effective Guildie rank is the highest-authority Blizzard rank among the Guildie's currently controlled roster Characters. Under the current Blizzard ordering, the lower numeric rank index has higher authority.
+
+### Character
+
+A **Character** is a durable WoW character object and the member object of Blizzard's guild organization. For guild participation, a Character is either currently present on the Blizzard guild roster with a Blizzard-owned numeric rank, or it is not.
+
+The current Character roster is dictated by the actual in-game guild environment. Guild Operations observes and reconciles that roster; it does not manufacture Character membership.
+
+### Subject
+
+**Subject is not a publication object or coordinate.** It is contextual language designating whichever existing object a statement or relation is about.
+
+Publications therefore carry the actual object coordinates relevant to the occurrence: `guildie_id`, Character coordinates, `round_id`, `claim_id`, `guild_event_id`, or other concrete coordinates earned by the domain. They do not introduce a generic Subject coordinate.
 
 ## Publication scopes
 
@@ -72,7 +74,7 @@ A Character may be on the guild roster without any known Guildie controlling it.
 
 ### Guildie publications
 
-Guildie publications concern meaningful Guild Operations state belonging to the human guild member, including current organizational participation state and Guild Operations-owned associations or preferences:
+Guildie publications concern meaningful Guild Operations state belonging to the real-world guild member, including current organizational participation state and Guild Operations-owned associations or preferences:
 
 - `guildie.joined`
 - `guildie.left`
@@ -83,7 +85,7 @@ Guildie publications concern meaningful Guild Operations state belonging to the 
 
 `guildie.joined` and `guildie.left` are not object-creation or closeout states. They mean that the Guildie respectively acquired or lost a current participation surface because the controlled-Character intersection with the Character roster crossed between zero and at least one.
 
-Guildie state can change when either side of that intersection changes. Blizzard roster reconciliation can change Character state, while Blizzard account reconciliation can change which Characters are currently controlled by the Subject.
+Guildie state can change when either side of that intersection changes. Blizzard roster reconciliation can change Character state, while Blizzard account reconciliation can change which Characters are currently controlled by the Guildie.
 
 ### Guild
 
@@ -94,6 +96,7 @@ Guild publications concern meaningful changes to the guild object or its authori
 - Publish only after the authoritative operation succeeds.
 - Publish only when meaningful truth actually changed. A repeated ceremony or no-op does not qualify.
 - Publications carry semantic occurrence plus small authority-oriented coordinates, not flattened state snapshots.
+- Publications name actual domain objects and relationships; they do not create a generic Subject abstraction.
 - Subscribers query Guild Operations afterward to establish what is true now.
 - Publication failure does not undo a successful authoritative operation.
 - BotGhost is the first transport and subscriber surface, not the owner or semantic target of the publication model.
