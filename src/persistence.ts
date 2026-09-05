@@ -25,39 +25,39 @@ function localizedValue(value: unknown): string | null {
   return null;
 }
 
-async function resolveOrCreateSubject(
+async function resolveOrCreateGuildie(
   client: PoolClient,
   region: Region,
   principalId: string,
 ): Promise<string> {
   await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [`${region}:${principalId}`]);
 
-  const existing = await client.query<{ subject_id: string }>(
-    "SELECT subject_id FROM blizzard_principals WHERE region = $1 AND principal_id = $2",
+  const existing = await client.query<{ guildie_id: string }>(
+    "SELECT guildie_id FROM blizzard_principals WHERE region = $1 AND principal_id = $2",
     [region, principalId],
   );
   if (existing.rowCount) {
     await client.query(
-      "UPDATE blizzard_principals SET last_seen_at = now() WHERE subject_id = $1",
-      [existing.rows[0].subject_id],
+      "UPDATE blizzard_principals SET last_seen_at = now() WHERE guildie_id = $1",
+      [existing.rows[0].guildie_id],
     );
-    return existing.rows[0].subject_id;
+    return existing.rows[0].guildie_id;
   }
 
-  const created = await client.query<{ subject_id: string }>(
-    "INSERT INTO guild_subjects DEFAULT VALUES RETURNING subject_id",
+  const created = await client.query<{ guildie_id: string }>(
+    "INSERT INTO guildies DEFAULT VALUES RETURNING guildie_id",
   );
-  const subjectId = created.rows[0].subject_id;
+  const guildieId = created.rows[0].guildie_id;
   await client.query(
-    "INSERT INTO blizzard_principals (subject_id, region, principal_id) VALUES ($1, $2, $3)",
-    [subjectId, region, principalId],
+    "INSERT INTO blizzard_principals (guildie_id, region, principal_id) VALUES ($1, $2, $3)",
+    [guildieId, region, principalId],
   );
-  return subjectId;
+  return guildieId;
 }
 
 async function effectiveGuildieRank(
   client: PoolClient,
-  subjectId: string,
+  guildieId: string,
 ): Promise<number | null> {
   const result = await client.query<{ rank_index: number | null }>(
     `SELECT MIN(grm.rank_index)::integer AS rank_index
@@ -67,67 +67,67 @@ async function effectiveGuildieRank(
         AND grm.realm_id = c.realm_id
         AND grm.character_id = c.character_id
         AND grm.currently_present = true
-      WHERE c.subject_id = $1
+      WHERE c.guildie_id = $1
         AND c.currently_controlled = true
         AND grm.guild_id = $2`,
-    [subjectId, config.guild.id],
+    [guildieId, config.guild.id],
   );
   return result.rows[0]?.rank_index ?? null;
 }
 
 function guildiePublication(
-  subjectId: string,
+  guildieId: string,
   beforeRank: number | null,
   afterRank: number | null,
 ): PublishedEvent | null {
   if (beforeRank === null && afterRank !== null) {
-    return { kind: "guildie.joined", subjectId, guildId: config.guild.id };
+    return { kind: "guildie.joined", guildieId, guildId: config.guild.id };
   }
   if (beforeRank !== null && afterRank === null) {
-    return { kind: "guildie.left", subjectId, guildId: config.guild.id };
+    return { kind: "guildie.left", guildieId, guildId: config.guild.id };
   }
   if (beforeRank !== null && afterRank !== null && beforeRank !== afterRank) {
-    return { kind: "guildie.rank.changed", subjectId, guildId: config.guild.id };
+    return { kind: "guildie.rank.changed", guildieId, guildId: config.guild.id };
   }
   return null;
 }
 
-export async function establishOrResolveSubject(input: {
+export async function establishOrResolveGuildie(input: {
   region: Region;
   principalId: string;
   profile: BlizzardWowProfile;
 }): Promise<string> {
   const established = await withTransaction(async (client) => {
-    const subjectId = await resolveOrCreateSubject(client, input.region, input.principalId);
-    const beforeGuildieRank = await effectiveGuildieRank(client, subjectId);
+    const guildieId = await resolveOrCreateGuildie(client, input.region, input.principalId);
+    const beforeGuildieRank = await effectiveGuildieRank(client, guildieId);
 
     // Preserve every previously observed character, but make the latest successful
     // Blizzard profile observation authoritative for current control.
     await client.query(
-      "UPDATE characters SET currently_controlled = false WHERE subject_id = $1 AND region = $2",
-      [subjectId, input.region],
+      "UPDATE characters SET currently_controlled = false WHERE guildie_id = $1 AND region = $2",
+      [guildieId, input.region],
     );
 
     for (const account of input.profile.wow_accounts ?? []) {
       const accountResult = await client.query<{ wow_account_record_id: string }>(
-        `INSERT INTO wow_accounts (subject_id, region, wow_account_id)
+        `INSERT INTO wow_accounts (guildie_id, region, wow_account_id)
          VALUES ($1, $2, $3)
          ON CONFLICT (region, wow_account_id) DO UPDATE
            SET last_seen_at = now()
-           WHERE wow_accounts.subject_id = EXCLUDED.subject_id
+           WHERE wow_accounts.guildie_id = EXCLUDED.guildie_id
          RETURNING wow_account_record_id`,
-        [subjectId, input.region, String(account.id)],
+        [guildieId, input.region, String(account.id)],
       );
 
       if (!accountResult.rowCount) {
-        throw new Error("Blizzard WoW account coordinate is already owned by another subject");
+        throw new Error("Blizzard WoW account coordinate is already owned by another Guildie");
       }
       const wowAccountRecordId = accountResult.rows[0].wow_account_record_id;
 
       for (const character of account.characters ?? []) {
         const result = await client.query(
           `INSERT INTO characters (
-             subject_id, wow_account_record_id, region, realm_id, character_id,
+             guildie_id, wow_account_record_id, region, realm_id, character_id,
              name, realm_name, realm_slug, level, faction, currently_controlled
            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,true)
            ON CONFLICT (region, realm_id, character_id) DO UPDATE SET
@@ -139,10 +139,10 @@ export async function establishOrResolveSubject(input: {
              faction = EXCLUDED.faction,
              currently_controlled = true,
              last_seen_at = now()
-           WHERE characters.subject_id = EXCLUDED.subject_id
+           WHERE characters.guildie_id = EXCLUDED.guildie_id
            RETURNING character_record_id`,
           [
-            subjectId,
+            guildieId,
             wowAccountRecordId,
             input.region,
             String(character.realm.id),
@@ -155,18 +155,18 @@ export async function establishOrResolveSubject(input: {
           ],
         );
         if (!result.rowCount) {
-          throw new Error("Blizzard character coordinate is already owned by another subject");
+          throw new Error("Blizzard character coordinate is already owned by another Guildie");
         }
       }
     }
 
-    const afterGuildieRank = await effectiveGuildieRank(client, subjectId);
-    const publication = guildiePublication(subjectId, beforeGuildieRank, afterGuildieRank);
+    const afterGuildieRank = await effectiveGuildieRank(client, guildieId);
+    const publication = guildiePublication(guildieId, beforeGuildieRank, afterGuildieRank);
 
-    await client.query("UPDATE guild_subjects SET updated_at = now() WHERE subject_id = $1", [subjectId]);
-    return { subjectId, publication };
+    await client.query("UPDATE guildies SET updated_at = now() WHERE guildie_id = $1", [guildieId]);
+    return { guildieId, publication };
   });
 
   if (established.publication) await publishEvent(established.publication);
-  return established.subjectId;
+  return established.guildieId;
 }
