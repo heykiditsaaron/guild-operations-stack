@@ -24,6 +24,10 @@ Global Guild Operations owns shared authoritative facts and objects such as Guil
 
 A module may reference those globally owned objects while persisting the module-specific meaning of their participation. Referencing a Guildie, Character, guild, rank, or other global coordinate does not transfer ownership of that object or fact to the module.
 
+Current membership is likewise referenced, not recreated. Modules use the globally observed Character roster and globally derived Guildie participation state when membership matters. A module may persist that a Guildie or Character participated in its procedure, but that historical participation fact does not become a competing source of current membership or rank truth.
+
+A module must not copy current membership into module state and later treat that copy as authoritative, infer guild membership from the presence or absence of module records, or overrule globally established membership and rank facts.
+
 A module should name the actual object and relationship it persists. `Subject` is contextual language, not a global object or persistence coordinate, and must not be introduced as a generic module reference.
 
 Modules remain subject to application-wide persistence laws and conventions even when the persisted facts belong to the module.
