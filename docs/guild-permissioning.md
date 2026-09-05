@@ -8,8 +8,10 @@ This document describes globally owned guild authority facts and globally owned 
 
 For a Guildie, effective guild authority is determined from Characters that are both:
 
-- currently controlled by that Guildie, resolved through the durable Subject coordinate; and
+- currently controlled by that Guildie; and
 - currently present in the configured Blizzard Character roster.
+
+The durable `guildie_id` identifies the operating Guildie. There is no intermediate persisted Subject coordinate.
 
 If more than one qualifying Character exists, the lowest Blizzard `rank_index` is the highest-authority membership and is used as the Guildie's effective guild rank.
 
@@ -51,13 +53,13 @@ explicit global capability grants
 global authorization decision
 ```
 
-The application session continues to resolve through `subject_id`; that coordinate identifies which Guildie is operating. Global capabilities are derived from current backend truth and are not properties of Subject recognition itself.
+The application session resolves to `guildie_id`. Global capabilities are derived from current backend truth and are not permanent properties of the Guildie or session.
 
 This permits future changes to rank names and global capability policy without changing Blizzard-derived Character roster facts or durable Guildie continuity.
 
 ## Module permission policy
 
-Modules consume globally authoritative membership, roster, rank, and other authority facts as inputs to their own participation procedures.
+Modules consume globally authoritative Guildie, Character, roster, rank, and other authority facts as inputs to their own participation procedures.
 
 A module owns permission policy that is specific to that module. It may derive a module-specific authorization decision directly from current global facts, require an existing globally owned capability, or introduce module-specific permission state if a concrete module requirement proves that additional state is needed.
 
@@ -65,7 +67,9 @@ A module-specific capability does not become a global capability merely because 
 
 Global and module-specific permissioning may coexist. Ownership determines which layer defines and provisions the permission rule.
 
-Modules should not duplicate globally owned Subject, Character, roster, rank, or authority state in order to evaluate local authorization. Conversely, the global permission layer should not accumulate module-specific policy merely because it already provides reusable authorization machinery.
+Modules should not duplicate globally owned Guildie, Character, roster, rank, or authority state in order to evaluate local authorization. Conversely, the global permission layer should not accumulate module-specific policy merely because it already provides reusable authorization machinery.
+
+`Subject` is not an authority object. If ordinary language calls some object the subject of an authorization question, that designation is contextual and creates no persistence or permission semantics of its own.
 
 ## Current scope
 
