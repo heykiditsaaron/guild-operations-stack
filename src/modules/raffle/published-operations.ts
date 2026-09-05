@@ -84,7 +84,7 @@ export async function drawRaffleRound(actorGuildieId: string, roundId: string): 
   const round = await drawRaffleRoundDomain(actorGuildieId, roundId);
   await coupleGuildEventListing(round);
 
-  if (round.status === "drawn") {
+  if (round.conclusion === "drawn") {
     if (!round.winningClaimId) {
       console.error(`[raffle-publisher] drawn raffle round ${round.roundId} has no winning claim to publish`);
       return round;
@@ -94,7 +94,7 @@ export async function drawRaffleRound(actorGuildieId: string, roundId: string): 
       roundId: round.roundId,
       winningClaimId: round.winningClaimId,
     });
-  } else if (round.status === "no_entry_cancelled") {
+  } else if (round.conclusion === "no_participation") {
     await publishRaffleEvent({
       kind: "raffle.round.no-entry-cancelled",
       roundId: round.roundId,
