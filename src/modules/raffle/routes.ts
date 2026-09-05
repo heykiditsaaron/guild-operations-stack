@@ -1,10 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
-import {
-  GuildCapabilityDeniedError,
-  RAFFLE_ADMIN_CAPABILITY,
-  requireGuildCapability,
-} from "../../guild-permissions.js";
+import { GuildCapabilityDeniedError } from "../../guild-permissions.js";
+import { requireRaffleAdmin } from "./authorization.js";
 import {
   RaffleRuleError,
   raffleClaims,
@@ -147,7 +144,7 @@ export async function registerRaffleRoutes(app: FastifyInstance): Promise<void> 
     const guildieId = await requireGuildie(request, reply);
     if (!guildieId) return;
     try {
-      await requireGuildCapability(guildieId, RAFFLE_ADMIN_CAPABILITY);
+      await requireRaffleAdmin(guildieId);
       const round = await raffleRound(request.params.roundId);
       if (!round) return reply.code(404).send({ error: "round_not_found" });
       return { round_id: round.roundId, claims: await raffleClaims(round.roundId) };
