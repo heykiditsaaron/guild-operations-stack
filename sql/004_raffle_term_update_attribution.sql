@@ -1,5 +1,5 @@
 ALTER TABLE raffle_rounds
-  ADD COLUMN IF NOT EXISTS updated_by_subject_id uuid REFERENCES guild_subjects(subject_id) ON DELETE RESTRICT;
+  ADD COLUMN IF NOT EXISTS updated_by_guildie_id uuid REFERENCES guildies(guildie_id) ON DELETE RESTRICT;
 
 ALTER TABLE raffle_rounds
   ADD COLUMN IF NOT EXISTS updated_at timestamptz;
