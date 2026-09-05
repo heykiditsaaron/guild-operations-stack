@@ -139,6 +139,27 @@
 .raffle-overview-attention { margin: 0.8rem 0 0; color: #aaa69c; line-height: 1.5; }
 .raffle-overview-participation { margin: 0.35rem 0 0; color: #aaa69c; font-size: 0.9rem; }
 
+.raffle-overview-item-live .raffle-management-controls > a[href="/events/raffle"] {
+  flex-basis: 100%;
+  width: fit-content;
+  min-height: 0;
+  justify-content: flex-start;
+  padding: 0.35rem 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #c9c5ba;
+  font-weight: 650;
+}
+
+.raffle-overview-item-live .raffle-management-controls > a[href="/events/raffle"]:hover,
+.raffle-overview-item-live .raffle-management-controls > a[href="/events/raffle"]:focus-visible {
+  color: #f7f4ea;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  outline: none;
+}
+
 .raffle-edit,
 .raffle-management,
 .raffle-admin-message,
