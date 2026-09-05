@@ -79,12 +79,12 @@ function adminNavigation(round?: RaffleRound): SecondaryNavigation {
     kind: "breadcrumb",
     items: round
       ? [
-          { label: "Administration" },
+          { label: "Administration", href: "/admin" },
           { label: "Raffle", href: "/admin/raffle" },
           { label: `${new Date(round.drawingAtUnix * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })} Raffle` },
         ]
       : [
-          { label: "Administration" },
+          { label: "Administration", href: "/admin" },
           { label: "Raffle" },
         ],
   };
