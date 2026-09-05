@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../../../auth.js";
 import { raffleClaimCutoffUnix, raffleClaimsAreOpen } from "../../../../modules/raffle/domain.js";
+import { latestDrawnRaffleWinner, type RaffleHistoryRound } from "../../../../modules/raffle/history-view.js";
 import {
   activeRaffleRoundOverview,
   nextListedRaffleRoundOverview,
@@ -32,6 +33,15 @@ function configuredPrize(round: ActiveRaffleRoundOverview): string {
   return round.prizeDescription ?? round.prizeKind;
 }
 
+function historicalPrize(round: RaffleHistoryRound): string | null {
+  if (round.prizeKind === "gold" && round.winnerPercentage !== null) {
+    const entries = round.totalEntries ?? round.approvedTicketCount;
+    const pot = BigInt(round.ticketPriceGold) * BigInt(entries);
+    return `${formatGold((pot * BigInt(round.winnerPercentage)) / 100n)} gold`;
+  }
+  return round.prizeDescription;
+}
+
 function referenceLinks(): string {
   return `<nav class="raffle-reference-links" aria-label="Raffle information">
     <a class="raffle-reference-link" href="/events/raffle/history">
@@ -45,7 +55,24 @@ function referenceLinks(): string {
   </nav>`;
 }
 
-function activeRaffleBody(round: ActiveRaffleRoundOverview, assets: AssetRegistry): string {
+function recentWinnerBody(round: RaffleHistoryRound | null): string {
+  if (!round?.winnerCharacterName) return "";
+  const concluded = round.concludedAtUnix === null ? "" : localTime(round.concludedAtUnix);
+  const prize = historicalPrize(round);
+  const context = round.roundTitle
+    ? `${htmlText(round.roundTitle)}${concluded ? ` · ${concluded}` : ""}`
+    : concluded || "Previous raffle";
+
+  return `<section class="raffle-workspace" aria-labelledby="raffle-recent-winner-title">
+    <p class="raffle-plaque-label">Most Recent Winner</p>
+    <h2 id="raffle-recent-winner-title">${htmlText(round.winnerCharacterName)}</h2>
+    <p class="raffle-status-copy">${context}</p>
+    ${prize ? `<p class="raffle-status-copy"><strong>${htmlText(prize)}</strong></p>` : ""}
+    <a class="raffle-back-link" href="/events/raffle/history">View Previous Raffles →</a>
+  </section>`;
+}
+
+function activeRaffleBody(round: ActiveRaffleRoundOverview, assets: AssetRegistry, recentWinner: RaffleHistoryRound | null): string {
   const cutoffUnix = raffleClaimCutoffUnix(round.drawingAtUnix);
   const claimsOpen = raffleClaimsAreOpen(round.drawingAtUnix);
   const prize = goldPrize(round);
@@ -90,11 +117,12 @@ function activeRaffleBody(round: ActiveRaffleRoundOverview, assets: AssetRegistr
         </section>
       </div>
 
+      ${recentWinnerBody(recentWinner)}
       ${referenceLinks()}
     </div>`;
 }
 
-function listedRaffleBody(round: ActiveRaffleRoundOverview, assets: AssetRegistry): string {
+function listedRaffleBody(round: ActiveRaffleRoundOverview, assets: AssetRegistry, recentWinner: RaffleHistoryRound | null): string {
   return `
     <div class="raffle-public-shell">
       <div class="raffle-plaque-wrap">
@@ -121,31 +149,37 @@ function listedRaffleBody(round: ActiveRaffleRoundOverview, assets: AssetRegistr
         </section>
       </div>
 
+      ${recentWinnerBody(recentWinner)}
       ${referenceLinks()}
     </div>`;
 }
 
-function noActiveRaffleBody(): string {
-  return `
+function noActiveRaffleBody(recentWinner: RaffleHistoryRound | null): string {
+  return `<div class="raffle-public-shell">
     <section class="raffle-empty-state" aria-labelledby="raffle-empty-title">
       <h2 id="raffle-empty-title">No active or upcoming raffle.</h2>
-    </section>`;
+    </section>
+
+    ${recentWinnerBody(recentWinner)}
+    ${referenceLinks()}
+  </div>`;
 }
 
 export async function registerRafflePage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/events/raffle", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, liveRaffle, listedRaffle] = await Promise.all([
+    const [viewer, liveRaffle, listedRaffle, recentWinner] = await Promise.all([
       viewerForRequest(sessionToken),
       activeRaffleRoundOverview(),
       nextListedRaffleRoundOverview(),
+      latestDrawnRaffleWinner(),
     ]);
 
     const body = liveRaffle
-      ? activeRaffleBody(liveRaffle, assets)
+      ? activeRaffleBody(liveRaffle, assets, recentWinner)
       : listedRaffle
-        ? listedRaffleBody(listedRaffle, assets)
-        : noActiveRaffleBody();
+        ? listedRaffleBody(listedRaffle, assets, recentWinner)
+        : noActiveRaffleBody(recentWinner);
 
     const html = renderPage(assets, {
       pathname: "/events/raffle",
