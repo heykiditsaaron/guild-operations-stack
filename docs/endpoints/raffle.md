@@ -10,13 +10,13 @@ Raffle endpoints use three distinct authority classes.
 
 ### Member session
 
-A signed-in Guild Operations subject authenticated by the normal application session cookie.
+A signed-in Guildie authenticated by the normal application session cookie.
 
 Member session authority is used for member-owned raffle participation and for browser-facing authenticated reads.
 
 ### `raffle.admin`
 
-A signed-in subject whose current guild authority resolves to the `raffle.admin` capability.
+A signed-in Guildie whose current guild authority resolves to the `raffle.admin` capability.
 
 This authority is required for raffle preparation, activation, adjudication, drawing, administrative cancellation, and claim-ledger inspection.
 
@@ -163,7 +163,7 @@ Not found:
 { "error": "claim_not_found" }
 ```
 
-The machine claim projection intentionally omits canonical subject IDs and attendant subject IDs. External consumers receive the raffle fact and useful WoW recognition coordinates, not unrelated identity authority.
+The machine claim projection intentionally omits canonical Guildie IDs and attendant Guildie IDs. External consumers receive the raffle fact and useful WoW recognition coordinates, not unrelated member authority.
 
 ## Authenticated raffle reads
 
@@ -171,7 +171,7 @@ These routes primarily support Guild Operations browser/application interactions
 
 ### GET `/raffle/rounds/:roundId`
 
-Returns the domain round object for an authenticated subject.
+Returns the domain round object for an authenticated Guildie.
 
 Authority: member session.
 
@@ -259,7 +259,7 @@ The resulting publication depends on whether approved entries exist. See `docs/p
 
 ### POST `/raffle/rounds/:roundId/claims`
 
-Submits a member-authored raffle claim for a currently controlled character on the current guild roster.
+Submits a Guildie-authored raffle claim for a currently controlled Character on the current guild roster.
 
 Authority: member session.
 
@@ -275,13 +275,15 @@ Body:
 
 Success: `201` with the established claim.
 
+The claim preserves two different relationships: the claimant Guildie and the participating Character. Those roles are not collapsed into a generic Subject coordinate.
+
 A rejected submission does not create a claim, so no raffle system event is established and nothing is published.
 
 ### POST `/raffle/claims/:claimId/cancel`
 
 Cancels the caller's own unresolved claim while its round is live.
 
-Authority: member session; claim ownership is enforced by the domain.
+Authority: member session; Guildie claim ownership is enforced by the domain.
 
 Success: `204`.
 
@@ -320,3 +322,5 @@ The canonical list of published raffle system events and their coordinates lives
 All HTTP time values that represent operational instants use Unix seconds. Consumers decide how to express those instants to humans in the viewer's local timezone.
 
 `datetime-local` is a browser input concern only and is converted to a timezone-neutral instant before a raffle operation crosses the backend boundary.
+
+`Subject` is not an endpoint authority class or response identity. It remains contextual language only.
