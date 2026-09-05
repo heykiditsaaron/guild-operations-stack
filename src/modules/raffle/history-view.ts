@@ -26,6 +26,7 @@ function mapRound(row: Record<string, unknown>): RaffleHistoryRound {
     guildId: String(row.guild_id),
     status: row.status as RaffleRoundStatus,
     conclusion: row.conclusion as RaffleRoundConclusion,
+    roundTitle: nullableString(row.round_title),
     drawingAtUnix: Number(row.drawing_at_unix),
     ticketPriceGold: String(row.ticket_price_gold),
     prizeKind: row.prize_kind as RafflePrizeKind,
