@@ -59,7 +59,14 @@ export async function registerRaffleRulesPage(app: FastifyInstance, assets: Asse
       title: "Rules and Regulations · OH CRIT I Pulled! Guild Operations",
       description: "Rules and regulations for OH CRIT I Pulled! guild raffles.",
       viewer,
-      secondaryNavigation: { kind: "back", label: "Back to raffle", href: "/events/raffle" },
+      secondaryNavigation: {
+        kind: "breadcrumb",
+        items: [
+          { label: "Events" },
+          { label: "Raffle", href: "/events/raffle" },
+          { label: "Rules and Regulations" },
+        ],
+      },
       stylesheets: ["raffle.css"],
       header: `
         <div class="raffle-page-header">
