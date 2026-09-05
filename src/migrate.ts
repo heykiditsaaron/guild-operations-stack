@@ -8,10 +8,7 @@ const migrationFiles = [
   "000_guildie_persistence.sql",
   "001_initial.sql",
   "002_raffle.sql",
-  "003_raffle_single_live_round.sql",
-  "004_raffle_term_update_attribution.sql",
   "005_guild_event_registry.sql",
-  "006_raffle_guild_event_registration_backfill.sql",
 ];
 
 for (const migrationFile of migrationFiles) {
