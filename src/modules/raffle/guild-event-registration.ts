@@ -27,7 +27,7 @@ export async function establishRaffleGuildEvent(
     guildEventId: round.roundId,
     guildEventKind: RAFFLE_GUILD_EVENT_KIND,
     guildEventOccursAt: occursAt,
-    guildEventTitle: RAFFLE_GUILD_EVENT_TITLE,
+    guildEventTitle: round.roundTitle ?? RAFFLE_GUILD_EVENT_TITLE,
     guildEventDestination: RAFFLE_GUILD_EVENT_DESTINATION,
     guildEventCategory: RAFFLE_GUILD_EVENT_CATEGORY,
   }, client);
