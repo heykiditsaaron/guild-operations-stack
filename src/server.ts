@@ -6,6 +6,7 @@ import { registerAuthRoutes } from "./auth.js";
 import { registerDiscordRoutes } from "./discord.js";
 import { registerEventQueryRoutes } from "./events/query-routes.js";
 import { registerGuildRoutes } from "./guild-routes.js";
+import { registerRaffleGuildEventOffering } from "./modules/raffle/offering.js";
 import { registerRaffleQueryRoutes } from "./modules/raffle/query-routes.js";
 import { registerRaffleRoutes } from "./modules/raffle/routes.js";
 import { loadAssetRegistry, registerAssetRoutes } from "./web/assets.js";
@@ -27,6 +28,7 @@ const app = Fastify({
   disableRequestLogging: true,
 });
 await app.register(cookie);
+registerRaffleGuildEventOffering();
 
 app.get("/health", async () => {
   await pool.query("SELECT 1");
