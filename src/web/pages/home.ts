@@ -32,7 +32,7 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
       title: "OH CRIT I Pulled! Guild Operations",
       description: "Guild operations and community participation for OH CRIT I Pulled!",
       viewer,
-      stylesheets: liveRaffle ? ["home.css", "home-raffle.css"] : ["home.css"],
+      stylesheets: liveRaffle ? ["home-raffle.css"] : [],
       header: `
         <div class="home-header-copy">
           <p class="eyebrow">Guild Operations</p>
