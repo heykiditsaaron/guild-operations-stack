@@ -3,8 +3,9 @@
 }
 
 .admin-destinations,
-.admin-unavailable {
-  max-width: 46rem;
+.admin-unavailable,
+.operations-inspection {
+  max-width: 54rem;
 }
 
 .admin-destinations h2,
@@ -24,6 +25,10 @@
   border-radius: 0.8rem;
   background: rgba(255, 255, 255, 0.035);
   text-decoration: none;
+}
+
+.admin-destination + .admin-destination {
+  margin-top: 0.75rem;
 }
 
 .admin-destination:hover,
@@ -47,4 +52,123 @@
   grid-row: 1 / span 2;
   color: #e8c986;
   font-size: 1.15rem;
+}
+
+.operations-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+  margin-bottom: 1.5rem;
+}
+
+.operations-filters label {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 10rem;
+}
+
+.operations-filters label span {
+  color: #aaa69c;
+  font-size: 0.82rem;
+}
+
+.operations-filters input,
+.operations-filters select,
+.operations-filters button {
+  min-height: 2.5rem;
+  padding: 0.55rem 0.7rem;
+}
+
+.operations-filters a {
+  align-self: center;
+}
+
+.operations-records-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+  margin-bottom: 0.75rem;
+}
+
+.operations-records-heading h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.operations-records-heading span,
+.operations-record-heading,
+.operations-record-actor {
+  color: #aaa69c;
+  font-size: 0.82rem;
+}
+
+.operations-record {
+  padding: 1rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.operations-record-heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.operations-record-source,
+.operations-record-operation {
+  color: #d8d4ca;
+  font-weight: 700;
+}
+
+.operations-record-kind,
+.operations-record-result {
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  text-transform: lowercase;
+}
+
+.operations-record-result-success {
+  color: #b8d5b1;
+}
+
+.operations-record-result-partial {
+  color: #e8c986;
+}
+
+.operations-record-result-failure {
+  color: #e3aaa3;
+}
+
+.operations-record-summary {
+  margin: 0.55rem 0 0;
+}
+
+.operations-record-actor {
+  display: block;
+  margin-top: 0.45rem;
+}
+
+.operations-record-details {
+  margin-top: 0.65rem;
+}
+
+.operations-record-details summary {
+  cursor: pointer;
+  color: #c9c5ba;
+}
+
+.operations-record-details pre {
+  overflow-x: auto;
+  padding: 0.8rem;
+  border-radius: 0.55rem;
+  background: rgba(0, 0, 0, 0.22);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.operations-empty {
+  color: #aaa69c;
 }
