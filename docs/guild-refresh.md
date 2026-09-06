@@ -1,11 +1,5 @@
 # Guild refresh
 
-> **Investigation note: implementation consolidation remains pending.**
->
-> The refresh responsibilities are now settled: Guildie account/control reconciliation, guild-roster reconciliation, and Character presentation acquisition are distinct concerns. Guild refresh owns guild-roster reconciliation and may request follow-up Character presentation acquisition for Characters whose current roster observation requires it. Self account refresh owns Guildie account/control reconciliation and may independently request Character presentation acquisition for Characters that are already eligible for Guild Operations.
->
-> The remaining implementation question is how to expose Character presentation acquisition as a reusable capability without making it responsible for either account-control authority or guild-roster authority. Also inspect whether existing-Guildie account reconciliation should continue to reuse the broader Guildie establishment persistence boundary. Those are implementation questions, not unresolved authority questions.
-
 Guild refresh is the authoritative reconciliation procedure for Blizzard-owned guild state.
 
 It is not a full-roster enrichment sweep. A refresh first acquires the current Blizzard guild profile and roster, persists that observation, and then determines what Character presentation work is actually required.
@@ -34,11 +28,19 @@ Guild refresh may change the roster side of that intersection. Self account refr
 
 ## Trigger model
 
-The same `refreshGuildAuthority()` procedure is used regardless of trigger.
+The same `refreshGuildAuthority()` procedure owns reconciliation regardless of invocation surface.
 
-- Scheduled or other system-owned execution may invoke it directly.
-- Manual web execution requires the `guild.refresh` capability.
-- `guild.refresh` is granted to Blizzard guild rank indexes 0, 1, and 2.
+Current invocation surfaces are:
+
+- `npm run guild:sync`, a one-shot operator/system CLI;
+- a protected manual HTTP refresh endpoint requiring the `guild.refresh` capability;
+- the `guild-refresh` Compose worker, which currently runs the one-shot CLI and then waits 24 hours before running it again.
+
+The temporary public-home refresh control has been removed. The protected manual endpoint remains intentional operational machinery and can support a future administrative surface or scheduler.
+
+The Compose worker is deliberately a minimal scheduling mechanism, not a generalized scheduler abstraction. It runs immediately when the worker starts and then repeats after each 24-hour wait. Container restarts can therefore cause an additional refresh. If operational pressure later requires calendar-aware scheduling, richer retry policy, backoff, or other orchestration, that should be introduced around the same authoritative refresh procedure rather than duplicating guild reconciliation semantics.
+
+Manual web execution requires the `guild.refresh` capability. `guild.refresh` is granted to Blizzard guild rank indexes 0, 1, and 2.
 
 Blizzard rank authority is inverse to the numeric index for this guild: rank 0 is the highest authority. Authorization consumers do not encode that ordering themselves; they ask for the capability.
 
@@ -56,6 +58,8 @@ Character profile/media acquisition is requested when:
 An unchanged current Character with complete profile and media data causes no Character API work.
 
 Characters absent from the latest roster are marked `currently_present = false`. Historical observations are not deleted.
+
+The one-shot CLI reports the observed roster count plus Character presentation reconciliation counts and failures. The automatic worker uses that same CLI, so its container logs provide the same operational evidence for each scheduled run.
 
 ## Presentation availability
 
@@ -77,7 +81,7 @@ All Blizzard authority GET requests share one request gate. The gate currently l
 
 The same boundary retries HTTP 429 and 5xx responses, honors `Retry-After` when supplied, and otherwise applies exponential backoff.
 
-A manual trigger, scheduled trigger, authentication acquisition, guild acquisition, or Character presentation acquisition cannot opt out of the shared request gate.
+A manual trigger, automatic trigger, authentication acquisition, guild acquisition, or Character presentation acquisition cannot opt out of the shared request gate.
 
 OAuth token exchange/client-credential token acquisition are authentication operations and remain outside the Blizzard authority GET request gate.
 
@@ -92,5 +96,7 @@ Guild refresh answers what current guild-roster truth changed and which follow-u
 Guildie account/control reconciliation answers which Characters a Guildie currently controls.
 
 Character presentation acquisition answers what richer Blizzard profile/media state can currently be observed for a Character that another authority procedure has already identified as relevant.
+
+Scheduling answers when the guild refresh procedure should be invoked. It does not own guild reconciliation semantics.
 
 These responsibilities remain separate even when one procedure triggers follow-up work in another.
