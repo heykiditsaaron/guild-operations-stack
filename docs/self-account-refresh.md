@@ -1,10 +1,6 @@
 # Self account refresh
 
-> **Status: implementation repair pending.**
->
-> The current implementation reacquires Blizzard account/control observations but does not yet complete the Character presentation refresh described below. This document records the accepted responsibility boundary for that repair; it must be reconciled with the finished implementation before the warning is removed.
-
-Self account refresh lets a currently authenticated Guildie ask Guild Operations to reacquire Blizzard-owned account and Character-control truth for that Guildie and then refresh presentation only for Characters that are eligible for Guild Operations.
+Self account refresh lets a currently authenticated Guildie reacquire Blizzard-owned account and Character-control truth for that Guildie and refresh presentation for Characters that are currently eligible for Guild Operations.
 
 It is not an administrative guild refresh and it is not delegated authority over another Guildie.
 
@@ -16,7 +12,7 @@ Three Blizzard-owned observations remain distinct:
 2. **Guild roster observation** answers which Characters are currently members of OH CRIT I Pulled! and what numeric guild rank each holds.
 3. **Character presentation observation** supplies richer profile and media state for an already identified Character.
 
-Self account refresh owns the first observation and may request follow-up acquisition of the third. It does not reacquire or replace the second.
+Self account refresh owns the first observation and requests follow-up acquisition of the third. It does not reacquire or replace the second.
 
 Character presentation acquisition never grants Guild Operations eligibility.
 
@@ -32,7 +28,7 @@ current Blizzard guild Character roster
 eligible Guild Operations Characters
 ```
 
-A fresh Blizzard account observation may legitimately reveal every Character controlled through the authenticated account context. Guild Operations may persist those control observations as Blizzard authority evidence, but Characters outside the current guild roster do not enter the Guildie's usable or presentable Character set.
+A fresh Blizzard account observation may legitimately reveal every Character controlled through the authenticated account context. Guild Operations persists those control observations as Blizzard authority evidence, but Characters outside the current guild roster do not enter the Guildie's usable or presentable Character set.
 
 If account refresh reveals a Character that has joined the in-game guild but the persisted guild roster has not yet observed that membership, self refresh does not independently admit the Character. Guild roster authority must establish current membership first.
 
@@ -49,7 +45,7 @@ The caller must:
 
 The server derives the Guildie from the session. The caller never supplies a Guildie identifier to refresh.
 
-A different Blizzard principal cannot migrate, replace, or create Guildie identity through this ceremony. Principal mismatch fails before persistence.
+A different Blizzard principal cannot migrate, replace, or create Guildie identity through this ceremony. Principal mismatch fails before account/control reconciliation.
 
 ## Ceremony
 
@@ -57,20 +53,24 @@ A different Blizzard principal cannot migrate, replace, or create Guildie identi
 
 The existing Blizzard callback consumes the attempt and distinguishes it from ordinary login.
 
-For self refresh, the repaired ceremony is responsible for:
+For self refresh, the ceremony:
 
-1. reacquiring the Blizzard authenticated principal and WoW account profile;
-2. verifying the browser still carries the same Guildie session that requested the refresh;
-3. verifying the Guildie still has current organizational participation;
-4. verifying the freshly authenticated Blizzard principal is already bound to that Guildie;
-5. reconciling the fresh Blizzard account/control observation without creating a new Guildie;
-6. intersecting the newly observed controlled Characters with the persisted current Blizzard guild roster;
-7. requesting fresh Character presentation for those eligible Guild Operations Characters;
-8. redirecting back to `/me` or the safe local `return_to` supplied when refresh began.
+1. reacquires the Blizzard authenticated principal and WoW account profile;
+2. verifies the browser still carries the same Guildie session that requested the refresh;
+3. verifies the Guildie still has current organizational participation;
+4. verifies the freshly authenticated Blizzard principal is already bound to that Guildie;
+5. reconciles the fresh Blizzard account/control observation through the existing-Guildie persistence boundary;
+6. intersects the newly observed controlled Characters with the persisted current Blizzard guild roster;
+7. requests fresh Character profile and media presentation for those eligible Guild Operations Characters;
+8. redirects back to `/me` or the safe local `return_to` supplied when refresh began.
 
 No new Guild Operations session is created by a successful self refresh.
 
-The account/control reconciliation and Character presentation acquisition are separate responsibilities even when performed within one user-facing refresh ceremony. A presentation acquisition failure must not retroactively invalidate an otherwise valid account/control observation.
+Self refresh deliberately uses `reconcileExistingGuildieBlizzardObservation()` rather than the establishment-capable persistence path. The existing Guildie and exact Blizzard principal binding must already exist; this ceremony has no path through Guildie creation.
+
+The account/control reconciliation and Character presentation acquisition are separate responsibilities even though they occur within one user-facing refresh ceremony. Presentation acquisition failure is reported independently and does not retroactively invalidate a successfully committed account/control observation.
+
+Unlike ordinary guild refresh reconciliation, explicit self refresh requests fresh profile and media acquisition for every currently eligible Character. The user has explicitly requested fresh presentation rather than merely stale/missing reconciliation.
 
 ## Continuity
 
