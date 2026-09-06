@@ -26,13 +26,6 @@ function goldPrize(round: ActiveRaffleRoundOverview): bigint | null {
   return (pot * BigInt(round.winnerPercentage)) / 100n;
 }
 
-function configuredPrize(round: ActiveRaffleRoundOverview): string {
-  if (round.prizeKind === "gold") {
-    return round.winnerPercentage === null ? "Gold" : `${round.winnerPercentage}% of the pot`;
-  }
-  return round.prizeDescription ?? round.prizeKind;
-}
-
 function historicalPrize(round: RaffleHistoryRound): string | null {
   if (round.prizeKind === "gold" && round.winnerPercentage !== null) {
     const entries = round.totalEntries ?? round.approvedTicketCount;
@@ -72,6 +65,7 @@ function recentWinnerBody(round: RaffleHistoryRound | null): string {
     <h2 id="raffle-recent-winner-title">${htmlText(round.winnerCharacterName)}</h2>
     <p class="raffle-status-copy">${context}</p>
     ${prize ? `<p class="raffle-status-copy"><strong>${htmlText(prize)}</strong></p>` : ""}
+    <p><a class="raffle-back-link" href="/events/raffle/${encodeURIComponent(round.roundId)}">Inspect this round →</a></p>
   </section>`;
 }
 
@@ -81,7 +75,7 @@ function activeRaffleBody(round: ActiveRaffleRoundOverview, assets: AssetRegistr
   const prize = goldPrize(round);
   const prizeValue = round.prizeKind === "gold" && prize !== null
     ? `${formatGold(prize)} gold`
-    : htmlText(configuredPrize(round));
+    : htmlText(round.prizeDescription ?? round.prizeKind);
 
   return `
     <div class="raffle-public-shell">
@@ -115,6 +109,7 @@ function activeRaffleBody(round: ActiveRaffleRoundOverview, assets: AssetRegistr
             <div class="raffle-actions" aria-label="Raffle actions">
               ${claimsOpen ? '<a class="raffle-action" data-raffle-entry-action href="/events/raffle/enter">Enter to win</a>' : ""}
               <a class="raffle-action raffle-action-secondary" href="/events/raffle/claims">View claims</a>
+              <a class="raffle-action raffle-action-secondary" href="/events/raffle/${encodeURIComponent(round.roundId)}">Inspect round</a>
             </div>
           </div>
         </section>
@@ -125,42 +120,22 @@ function activeRaffleBody(round: ActiveRaffleRoundOverview, assets: AssetRegistr
     </div>`;
 }
 
-function listedRaffleBody(round: ActiveRaffleRoundOverview, assets: AssetRegistry, recentWinner: RaffleHistoryRound | null): string {
-  return `
-    <div class="raffle-public-shell">
-      <div class="raffle-plaque-wrap">
-        <section class="raffle-plaque" aria-labelledby="raffle-upcoming-title">
-          <img class="raffle-plaque-art" src="${assetUrl(assets, "images/raffle/gold-sack.png")}" alt="" aria-hidden="true">
-          <div class="raffle-plaque-copy">
-            <p class="raffle-live-kicker" id="raffle-upcoming-title">Upcoming raffle</p>
-            <p class="raffle-status-copy">This raffle has been announced but is not open for participation yet.</p>
-            <div class="raffle-drawing">
-              <p class="raffle-plaque-label">Estimated drawing time</p>
-              ${localTime(round.drawingAtUnix)}
-            </div>
-            <div class="raffle-stats">
-              <div class="raffle-stat">
-                <span class="raffle-plaque-label">Ticket price</span>
-                <strong class="raffle-stat-value">${formatGold(round.ticketPriceGold)} gold</strong>
-              </div>
-              <div class="raffle-stat">
-                <span class="raffle-plaque-label">Prize</span>
-                <strong class="raffle-stat-value">${htmlText(configuredPrize(round))}</strong>
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
+function standingRaffleBody(listedRound: ActiveRaffleRoundOverview | null, recentWinner: RaffleHistoryRound | null): string {
+  const upcoming = listedRound
+    ? `<a class="raffle-reference-link raffle-upcoming-record" href="/events/raffle/${encodeURIComponent(listedRound.roundId)}">
+        <span>
+          <span class="raffle-reference-title">An upcoming raffle has been announced</span>
+          <span class="raffle-status-copy">Inspect its prize, price, and drawing time.</span>
+        </span>
+        <span class="raffle-reference-arrow" aria-hidden="true">→</span>
+      </a>`
+    : "";
 
-      ${recentWinnerBody(recentWinner)}
-      ${referenceLinks()}
-    </div>`;
-}
-
-function noActiveRaffleBody(recentWinner: RaffleHistoryRound | null): string {
   return `<div class="raffle-public-shell">
-    <section class="raffle-empty-state" aria-labelledby="raffle-empty-title">
-      <h2 id="raffle-empty-title">No active or upcoming raffle.</h2>
+    <section class="raffle-empty-state raffle-home-intro" aria-labelledby="raffle-home-intro-title">
+      <h2 id="raffle-home-intro-title">Guild Raffle</h2>
+      <p class="raffle-status-copy">When a raffle is live, this page becomes the quickest place to participate and manage your claims. Every round remains available afterward as a public record that guild members can inspect.</p>
+      ${upcoming}
     </section>
 
     ${recentWinnerBody(recentWinner)}
@@ -180,14 +155,12 @@ export async function registerRafflePage(app: FastifyInstance, assets: AssetRegi
 
     const body = liveRaffle
       ? activeRaffleBody(liveRaffle, assets, recentWinner)
-      : listedRaffle
-        ? listedRaffleBody(listedRaffle, assets, recentWinner)
-        : noActiveRaffleBody(recentWinner);
+      : standingRaffleBody(listedRaffle, recentWinner);
 
     const html = renderPage(assets, {
       pathname: "/events/raffle",
-      title: "Raffle · OH CRIT I Pulled! Guild Operations",
-      description: "Current OH CRIT I Pulled! guild raffle information.",
+      title: "Raffle · OH CRIT I Pulled!",
+      description: "OH CRIT I Pulled! guild raffle participation and information.",
       viewer,
       secondaryNavigation: {
         kind: "breadcrumb",
