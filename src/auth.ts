@@ -3,6 +3,10 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import { acquireAuthority, authorizationUrl, exchangeAuthorizationCode } from "./blizzard.js";
 import { config, parseRegion, type Region } from "./config.js";
 import { pool } from "./db.js";
+import {
+  acquireCharacterPresentation,
+  type CharacterPresentationAcquisitionTarget,
+} from "./guild-character-enrichment.js";
 import { effectiveGuildAuthority } from "./guild-permissions.js";
 import { guildCharactersForGuildie } from "./guild.js";
 import { mainCharacterForGuildie, selectMainCharacter } from "./main-character.js";
@@ -131,6 +135,46 @@ async function guildieForBlizzardPrincipal(region: Region, principalId: string):
   return result.rows[0]?.guildie_id ?? null;
 }
 
+async function eligibleCharacterPresentationTargets(
+  guildieId: string,
+): Promise<CharacterPresentationAcquisitionTarget[]> {
+  const result = await pool.query<{
+    region: Region;
+    realm_id: string;
+    character_id: string;
+    character_name: string;
+    realm_slug: string | null;
+  }>(
+    `SELECT c.region, c.realm_id, c.character_id, c.name AS character_name, c.realm_slug
+       FROM characters c
+       JOIN guild_roster_memberships grm
+         ON grm.region = c.region
+        AND grm.realm_id = c.realm_id
+        AND grm.character_id = c.character_id
+        AND grm.currently_present = true
+      WHERE c.guildie_id = $1
+        AND c.currently_controlled = true
+        AND grm.guild_id = $2
+      ORDER BY grm.rank_index, c.name`,
+    [guildieId, config.guild.id],
+  );
+
+  return result.rows.map((row) => {
+    if (!row.realm_slug) {
+      throw new Error(`Eligible character ${row.character_name} is missing realm_slug from the fresh account observation`);
+    }
+    return {
+      region: row.region,
+      realmId: row.realm_id,
+      characterId: row.character_id,
+      characterName: row.character_name,
+      realmSlug: row.realm_slug,
+      needsProfile: true,
+      needsMedia: true,
+    };
+  });
+}
+
 async function redirectAfterIdentityCeremony(
   guildieId: string,
   returnTo: string,
@@ -219,6 +263,17 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
           principalId: authority.principalId,
           profile: authority.profile,
         });
+
+        try {
+          const targets = await eligibleCharacterPresentationTargets(guildie.guildieId);
+          const presentation = await acquireCharacterPresentation({ targets });
+          if (presentation.failedProfiles > 0 || presentation.failedMedia > 0) {
+            request.log.warn({ presentation }, "Self refresh completed with Character presentation acquisition failures");
+          }
+        } catch (error) {
+          request.log.error({ err: error }, "Self refresh account reconciliation succeeded but Character presentation acquisition failed");
+        }
+
         return reply.redirect(await redirectAfterIdentityCeremony(guildie.guildieId, returnTo, "success"));
       }
 
