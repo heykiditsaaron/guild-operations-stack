@@ -1,6 +1,6 @@
 # Raffle
 
-Raffle is a concrete Guild Operations participation module for operating the guild raffle. Individual raffle rounds may contribute temporal occurrences to the shared Guild Event Calendar; the raffle module itself is not contained by Guild Events or by the calendar.
+Raffle is a concrete Guild Operations participation module for operating the guild raffle. The module registers an enduring Guild Event Offering so the shared Events shell can promote Raffle even when no round is currently live or scheduled. Individual raffle rounds may separately contribute temporal occurrences to the shared Guild Event Calendar; the raffle module itself is not contained by Guild Events, the Offering registry, or the calendar.
 
 It is deliberately modeled as a raffle-specific domain rather than as an instance of a generic event, workflow, participation, notification, or audit framework. Raffle may publish system events after authoritative raffle truth changes; those system events are a supporting integration boundary, not the Guild Event product category itself.
 
@@ -283,6 +283,17 @@ The raffle intentionally derives as much as possible from a small set of authori
 
 The raffle domain owns raffle meaning. Interfaces own expression of that meaning.
 
+The raffle module exposes the enduring Guild Event Offering:
+
+```text
+id          → raffle
+title       → Raffle
+tagline     → Take your shot at the pot.
+destination → /events/raffle
+```
+
+That Offering exists independently of raffle-round lifecycle. The Events shell may promote Raffle even when no round is live or scheduled. The Offering does not explain raffle procedure; `/events/raffle` remains the module-owned informational and participation surface.
+
 Current participant-facing web surfaces are:
 
 - `/events/raffle` — durable raffle landing surface for live participation, upcoming promotion, the most recent winner, and standing raffle references;
@@ -298,7 +309,7 @@ The former `/events/raffle/admin/*` paths are compatibility redirects rather tha
 
 The administration root intentionally excludes concluded raffles because terminal rounds no longer represent active officer work. Their durable history remains available through the ordinary raffle history projection.
 
-Raffle is not permanently promoted in primary navigation. A live raffle may be promoted from the home surface; when no raffle is live there is no active raffle to promote.
+Raffle is not permanently promoted in primary navigation. A live raffle may additionally be promoted from the home surface; that home promotion is lifecycle-sensitive and separate from the enduring Guild Event Offering.
 
 Discord and other subscribers remain interaction surfaces over the same backend truth. They do not become independent owners of raffle state.
 
