@@ -13,6 +13,7 @@ export type AssetName =
   | "home-raffle.css"
   | "events.css"
   | "admin.css"
+  | "operations.js"
   | "raffle.css"
   | "raffle-admin.css"
   | "raffle-winner.css"
@@ -43,6 +44,7 @@ const assetDefinitions: Array<{ name: AssetName; contentType: string }> = [
   { name: "raffle-round.css", contentType: "text/css; charset=utf-8" },
   { name: "app.js", contentType: "text/javascript; charset=utf-8" },
   { name: "navigation-shelves.js", contentType: "text/javascript; charset=utf-8" },
+  { name: "operations.js", contentType: "text/javascript; charset=utf-8" },
   { name: "raffle.js", contentType: "text/javascript; charset=utf-8" },
   { name: "raffle-entry.js", contentType: "text/javascript; charset=utf-8" },
   { name: "raffle-public.js", contentType: "text/javascript; charset=utf-8" },
