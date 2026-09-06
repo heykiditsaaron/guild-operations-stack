@@ -6,7 +6,7 @@ import {
   raffleRound,
   type RaffleRound,
 } from "./domain.js";
-import { establishRaffleGuildEvent } from "./guild-event-registration.js";
+import { establishRaffleCalendarListing } from "./calendar-listing.js";
 import { publishRaffleEvent } from "./publisher.js";
 
 export type ActiveRaffleRoundOverview = RaffleRound & {
@@ -42,7 +42,7 @@ export async function activateSingleRaffleRound(
   try {
     const round = await withTransaction(async (client) => {
       const activated = await activateRaffleRound(actorGuildieId, roundId, client);
-      await establishRaffleGuildEvent(activated, client);
+      await establishRaffleCalendarListing(activated, client);
       return activated;
     });
     await publishRaffleEvent({ kind: "raffle.round.live", roundId: round.roundId });
