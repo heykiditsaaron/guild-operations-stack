@@ -1,5 +1,13 @@
 # Guild Character Enrichment
 
+> **Investigation note: do not consolidate this document yet.**
+>
+> The documentation-repair audit originally identified this document as an older standalone enrichment model whose durable doctrine could likely be absorbed into `guild-refresh.md`. That consolidation is intentionally deferred while the known self account refresh bug is investigated.
+>
+> The current self-refresh path reacquires a Guildie's Blizzard account/control observation but does not explicitly invoke Character profile/media acquisition. This document describes presentation acquisition as a separate capability, while `guild-refresh.md` now owns targeted follow-up presentation acquisition after guild-roster reconciliation. Investigate whether the evolution from standalone enrichment to targeted guild refresh left self refresh without a responsible path for bringing newly controlled or newly relevant Characters' presentation observations up to date.
+>
+> Do not assume the answer is for self refresh to invoke guild refresh: account-control authority and guild-roster authority are different Blizzard observations. Determine instead whether an existing Character acquisition capability should be reused directly, or whether the implementations reveal a smaller shared reconciliation seam. Preserve the distinction that roster authority, account-control authority, and Character presentation observations do not become the same fact merely because one change may require follow-up acquisition of another.
+
 Guild roster authority and Character presentation are separate concerns.
 
 The Blizzard guild roster establishes which Characters are currently members of OH CRIT I Pulled!. Character enrichment observes richer Blizzard profile and media data for those current roster Characters.
