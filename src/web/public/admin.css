@@ -2,13 +2,18 @@
   max-width: 42rem;
 }
 
-.admin-destinations,
+.admin-sections,
 .admin-unavailable,
 .operations-inspection {
   max-width: 54rem;
 }
 
-.admin-destinations h2,
+.admin-sections {
+  display: grid;
+  gap: 2rem;
+}
+
+.admin-section h2,
 .admin-unavailable h2 {
   margin: 0 0 1rem;
   font-size: 1rem;
