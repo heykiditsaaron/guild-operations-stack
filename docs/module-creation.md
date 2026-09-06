@@ -8,9 +8,9 @@ A module should establish or operate a real guild activity, preserve its history
 
 Concrete participation modules belong under `src/modules/<module>/` once the application has earned a module boundary for that capability. This is an implementation ownership boundary, not a requirement that source layout mirror member-facing URLs.
 
-A module may establish Guild Event registrations without being contained by Guild Events. Shared Guild Event registration and registry machinery belongs to `src/guild-events/`, while a member-facing projection may still appropriately live under `src/web/pages/events/`.
+A module may contribute Guild Event Calendar Listings without being contained by Guild Events or by the calendar. Shared Guild Event calendar infrastructure belongs to `src/guild-events/calendar/`, while a member-facing calendar projection may still appropriately live under `src/web/pages/events/`.
 
-Raffle is the current concrete example: raffle procedure and truth belong to `src/modules/raffle/`, while `/events/raffle` remains the appropriate member-facing route.
+Raffle is the current concrete example: raffle procedure and truth belong to `src/modules/raffle/`, while `/events/raffle` remains the appropriate member-facing route and raffle rounds may be contributed to the Guild Event Calendar.
 
 The `src/modules/` container does not imply a generic module loader, registry, lifecycle, or framework. Add shared module machinery only when multiple concrete participation capabilities demonstrate that the same machinery is actually needed.
 
@@ -67,6 +67,8 @@ Examples include:
 Modules should declare the semantic information the global renderer needs rather than reproducing global presentation locally.
 
 For secondary navigation, this means the module declares navigation intent and hierarchy while the shared renderer owns the resulting semantics and presentation. Breadcrumb order is significant: the terminal item is the module's declaration of the current location.
+
+The Guild Event Calendar follows the same ownership rule. Modules establish calendar listings; calendar consumers and shell surfaces own how those listings are organized and presented in their medium. The same calendar truth may therefore support multiple presentations without moving presentation ownership into the producing module.
 
 ### Attach module-specific rendering
 
