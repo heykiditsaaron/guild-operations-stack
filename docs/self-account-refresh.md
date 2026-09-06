@@ -1,5 +1,7 @@
 # Self account refresh
 
+> **Status: currently bugged.** The self account refresh capability is not currently functioning correctly. This document is retained as a record of the intended capability, but its current ceremony and terminology should not be treated as authoritative implementation guidance. A full rewrite of this document is required when the underlying self account refresh machinery is repaired.
+
 Self account refresh lets a currently authenticated guild member ask Guild Operations to reacquire Blizzard-owned account and character truth for their own canonical subject.
 
 It is not an administrative refresh and it is not delegated authority over another subject.
