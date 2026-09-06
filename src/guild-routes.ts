@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "./auth.js";
-import { refreshGuildAuthority } from "./guild.js";
+import { performGuildRefresh } from "./guild-refresh-operation.js";
 import {
   GUILD_REFRESH_CAPABILITY,
   GuildCapabilityDeniedError,
@@ -14,7 +14,12 @@ export async function registerGuildRoutes(app: FastifyInstance): Promise<void> {
 
     try {
       const authority = await requireGuildCapability(guildie.guildieId, GUILD_REFRESH_CAPABILITY);
-      const result = await refreshGuildAuthority();
+      const result = await performGuildRefresh({
+        actorGuildieId: guildie.guildieId,
+        onInspectionFailure: (error) => {
+          request.log.error({ err: error }, "Operational inspection publication failed for guild refresh");
+        },
+      });
       return reply.send({
         guild_id: result.guildId,
         roster_count: result.rosterCount,
