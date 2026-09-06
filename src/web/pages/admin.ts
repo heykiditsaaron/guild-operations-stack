@@ -9,6 +9,29 @@ import type { AssetRegistry } from "../assets.js";
 import { renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
 
+function destination(title: string, description: string, href: string): string {
+  return `<a class="admin-destination" href="${href}">
+    <span class="admin-destination-title">${title}</span>
+    <span class="admin-destination-description">${description}</span>
+    <span class="admin-destination-arrow" aria-hidden="true">→</span>
+  </a>`;
+}
+
+function administrationSection(
+  headingId: string,
+  heading: string,
+  destinations: string[],
+): string {
+  if (!destinations.length) return "";
+
+  return `<section class="admin-section" aria-labelledby="${headingId}">
+    <h2 id="${headingId}">${heading}</h2>
+    <div class="admin-destinations">
+      ${destinations.join("\n")}
+    </div>
+  </section>`;
+}
+
 export async function registerAdminPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/admin", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
@@ -23,30 +46,39 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
         ])
       : [false, false];
 
-    const destinations: string[] = [];
+    const globalAdministration: string[] = [];
+    const availableAdministration: string[] = [];
 
     if (canInspectOperations) {
-      destinations.push(`<a class="admin-destination" href="/admin/operations">
-        <span class="admin-destination-title">Operations</span>
-        <span class="admin-destination-description">Review operational results and exceptions.</span>
-        <span class="admin-destination-arrow" aria-hidden="true">→</span>
-      </a>`);
+      globalAdministration.push(destination(
+        "Operational logging",
+        "Review operational results and exceptions.",
+        "/admin/operations",
+      ));
     }
 
     if (canAdministerRaffle) {
-      destinations.push(`<a class="admin-destination" href="/admin/raffle">
-        <span class="admin-destination-title">Raffle</span>
-        <span class="admin-destination-description">Create and operate guild raffles.</span>
-        <span class="admin-destination-arrow" aria-hidden="true">→</span>
-      </a>`);
+      availableAdministration.push(destination(
+        "Raffle",
+        "Create and operate guild raffles.",
+        "/admin/raffle",
+      ));
     }
 
-    const hasAdministration = destinations.length > 0;
+    const hasAdministration = globalAdministration.length > 0 || availableAdministration.length > 0;
     const body = hasAdministration
-      ? `<section class="admin-destinations" aria-labelledby="admin-destinations-heading">
-          <h2 id="admin-destinations-heading">Available administration</h2>
-          ${destinations.join("\n")}
-        </section>`
+      ? `<div class="admin-sections">
+          ${administrationSection(
+            "global-administration-heading",
+            "Global administration",
+            globalAdministration,
+          )}
+          ${administrationSection(
+            "available-administration-heading",
+            "Available administration",
+            availableAdministration,
+          )}
+        </div>`
       : `<section class="admin-unavailable" aria-labelledby="admin-unavailable-heading">
           <h2 id="admin-unavailable-heading">Administration is not available for this account.</h2>
         </section>`;
@@ -59,7 +91,6 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       stylesheets: ["admin.css"],
       header: `
         <div class="admin-page-header">
-          <p class="eyebrow">Guild Operations</p>
           <h1 id="page-title">Administration</h1>
           <p class="lede">Operate the guild systems available to you.</p>
         </div>`,
