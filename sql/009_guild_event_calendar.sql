@@ -53,7 +53,7 @@ UPDATE guild_event_calendar_listings AS listing
    SET guild_event_title = round.round_title
   FROM raffle_rounds AS round
  WHERE listing.guild_event_kind = 'raffle-round'
-   AND listing.guild_event_id = round.round_id
+   AND listing.guild_event_id = round.round_id::text
    AND round.round_title IS NOT NULL
    AND length(btrim(round.round_title)) > 0;
 
