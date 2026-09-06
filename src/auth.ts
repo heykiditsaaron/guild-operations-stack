@@ -10,7 +10,10 @@ import {
 import { effectiveGuildAuthority } from "./guild-permissions.js";
 import { guildCharactersForGuildie } from "./guild.js";
 import { mainCharacterForGuildie, selectMainCharacter } from "./main-character.js";
-import { establishOrResolveGuildie } from "./persistence.js";
+import {
+  establishOrResolveGuildie,
+  reconcileExistingGuildieBlizzardObservation,
+} from "./persistence.js";
 
 export const SESSION_COOKIE_NAME = "guild_session";
 
@@ -258,7 +261,8 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
           return reply.redirect(withQueryValue(returnTo, "refresh", "failed"));
         }
 
-        await establishOrResolveGuildie({
+        await reconcileExistingGuildieBlizzardObservation({
+          guildieId: guildie.guildieId,
           region: attempt.region,
           principalId: authority.principalId,
           profile: authority.profile,
