@@ -80,6 +80,7 @@ Response:
     "ticketPriceGold": "1000",
     "prizeKind": "gold",
     "winnerPercentage": 50,
+    "prizeDescription": null,
     "createdAtUnix": 0,
     "liveAtUnix": 0,
     "concludedAtUnix": null,
@@ -101,6 +102,8 @@ Response:
   }
 }
 ```
+
+For item and other prizes, `winnerPercentage` is `null`, `prizeDescription` contains the configured descriptive prize, and `gold` is `null`.
 
 No live raffle:
 
@@ -228,14 +231,29 @@ Creates a raffle round and establishes it immediately as `listed`. A listed roun
 
 Authority: `raffle.admin`.
 
-Body:
+Gold-prize body:
 
 ```json
 {
+  "round_title": "September Raffle",
   "drawing_at_unix": 0,
   "ticket_price_gold": 1000,
   "prize_kind": "gold",
-  "winner_percentage": 50
+  "winner_percentage": 50,
+  "prize_description": null
+}
+```
+
+`round_title` is optional; omitted, `null`, or blank input is normalized to no title. For item or other prizes, `winner_percentage` must be `null` and `prize_description` must be non-empty descriptive text:
+
+```json
+{
+  "round_title": null,
+  "drawing_at_unix": 0,
+  "ticket_price_gold": 1000,
+  "prize_kind": "item",
+  "winner_percentage": null,
+  "prize_description": "Reins of the Swift Spectral Tiger"
 }
 ```
 
