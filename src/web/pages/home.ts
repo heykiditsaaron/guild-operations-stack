@@ -20,21 +20,6 @@ function liveRafflePromotion(assets: AssetRegistry): string {
     </a>`;
 }
 
-function temporaryGuildRefreshControl(authenticated: boolean): string {
-  if (!authenticated) return "";
-
-  return `
-    <section class="home-panel" aria-labelledby="guild-refresh-title">
-      <p class="eyebrow">Temporary operations control</p>
-      <h2 id="guild-refresh-title">Guild roster refresh</h2>
-      <p class="lede">Refresh Blizzard guild authority and reconcile the current roster.</p>
-      <button class="home-guild-refresh-action" type="button" data-refresh-guild>
-        Refresh guild roster
-      </button>
-      <p data-guild-refresh-status aria-live="polite"></p>
-    </section>`;
-}
-
 export async function registerHomePage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/", async (request, reply) => {
     const [viewer, liveRaffle] = await Promise.all([
@@ -56,7 +41,6 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
         </div>`,
       body: `
         ${liveRaffle ? liveRafflePromotion(assets) : ""}
-        ${temporaryGuildRefreshControl(viewer.authenticated)}
         <section class="home-panel" aria-labelledby="projection-status">
           <div class="status-line" id="projection-status">
             <span class="status-dot" aria-hidden="true"></span>
