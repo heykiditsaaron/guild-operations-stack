@@ -81,7 +81,7 @@ export async function registerRaffleHistoryPage(app: FastifyInstance, assets: As
           { label: "Previous Raffles" },
         ],
       },
-      stylesheets: ["raffle.css"],
+      stylesheets: ["raffle.css", "raffle-round.css"],
       header: `
         <div class="raffle-page-header">
           <p class="eyebrow">Events · Raffle</p>
