@@ -10,10 +10,6 @@ function localTime(unixSeconds: number): string {
   return `<time datetime="${instant}" data-local-time-unix="${unixSeconds}" data-local-time-date-style="medium">${instant}</time>`;
 }
 
-function formatGold(value: bigint | string): string {
-  return BigInt(value).toLocaleString("en-US");
-}
-
 function statusLabel(round: RaffleHistoryRound): string {
   if (round.conclusion === "drawn") return "Drawn";
   if (round.conclusion === "operator_cancelled") return "Cancelled";
@@ -21,47 +17,29 @@ function statusLabel(round: RaffleHistoryRound): string {
   return "Concluded";
 }
 
-function historicalValues(round: RaffleHistoryRound): { entries: number; pot: bigint; prize: bigint | null } {
-  const entries = round.totalEntries ?? round.approvedTicketCount;
-  const pot = BigInt(round.ticketPriceGold) * BigInt(entries);
-  const prize = round.conclusion === "drawn"
-    && round.prizeKind === "gold"
-    && round.winnerPercentage !== null
-      ? (pot * BigInt(round.winnerPercentage)) / 100n
-      : null;
-
-  return { entries, pot, prize };
-}
-
-function historyFact(label: string, value: string): string {
-  return `<div class="raffle-history-fact"><dt>${htmlText(label)}</dt><dd>${value}</dd></div>`;
-}
-
 function historyEntry(round: RaffleHistoryRound): string {
-  const { entries, pot, prize } = historicalValues(round);
-  const concluded = round.concludedAtUnix === null ? "Unknown" : localTime(round.concludedAtUnix);
+  const concluded = round.concludedAtUnix === null ? "Conclusion time unavailable" : localTime(round.concludedAtUnix);
+  const title = round.roundTitle ?? "Guild Raffle";
   const winner = round.conclusion === "drawn" && round.winnerCharacterName
-    ? historyFact("Winner", htmlText(round.winnerCharacterName))
+    ? `<span>Winner: <strong>${htmlText(round.winnerCharacterName)}</strong></span>`
     : "";
-  const prizeRow = prize !== null
-    ? historyFact("Prize", `${formatGold(prize)} gold`)
-    : "";
-  const potLabel = round.conclusion === "drawn" ? "Final pot" : "Confirmed gold at closure";
-  const entryLabel = round.conclusion === "drawn" ? "Final entries" : "Approved tickets at closure";
 
   return `
     <li class="raffle-history-item">
-      <div class="raffle-history-heading">
-        <strong>${htmlText(statusLabel(round))}</strong>
-        <span>${concluded}</span>
-      </div>
-      <dl class="raffle-history-facts">
-        ${winner}
-        ${historyFact(entryLabel, entries.toLocaleString("en-US"))}
-        ${historyFact(potLabel, `${formatGold(pot)} gold`)}
-        ${prizeRow}
-        ${historyFact("Ticket price", `${formatGold(round.ticketPriceGold)} gold`)}
-      </dl>
+      <a class="raffle-history-record-link" href="/events/raffle/${encodeURIComponent(round.roundId)}">
+        <div class="raffle-history-heading">
+          <div>
+            <strong>${htmlText(title)}</strong>
+            <span class="raffle-history-status">${htmlText(statusLabel(round))}</span>
+          </div>
+          <span>${concluded}</span>
+        </div>
+        <div class="raffle-history-summary">
+          ${winner}
+          <span>${round.approvedTicketCount.toLocaleString("en-US")} approved ${round.approvedTicketCount === 1 ? "entry" : "entries"}</span>
+          <span class="raffle-reference-arrow" aria-hidden="true">Inspect round →</span>
+        </div>
+      </a>
     </li>`;
 }
 
@@ -92,8 +70,8 @@ export async function registerRaffleHistoryPage(app: FastifyInstance, assets: As
 
     const html = renderPage(assets, {
       pathname: "/events/raffle/history",
-      title: "Previous Raffles · OH CRIT I Pulled! Guild Operations",
-      description: "Completed OH CRIT I Pulled! guild raffle rounds.",
+      title: "Previous Raffles · OH CRIT I Pulled!",
+      description: "Previous OH CRIT I Pulled! guild raffle rounds.",
       viewer,
       secondaryNavigation: {
         kind: "breadcrumb",
@@ -108,7 +86,7 @@ export async function registerRaffleHistoryPage(app: FastifyInstance, assets: As
         <div class="raffle-page-header">
           <p class="eyebrow">Events · Raffle</p>
           <h1 id="page-title">Previous Raffles</h1>
-          <p class="lede">Concluded raffles, preserved as guild history.</p>
+          <p class="lede">Concluded rounds, preserved for inspection.</p>
         </div>`,
       body: historyBody(rounds),
     });
