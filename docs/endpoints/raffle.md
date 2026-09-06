@@ -259,7 +259,7 @@ Gold-prize body:
 
 Success: `201` with the listed round.
 
-The Raffle module establishes the corresponding Guild Event Listing in the same database transaction as the round. If listing establishment fails, round creation fails rather than leaving the Registry out of sync.
+The Raffle module establishes the corresponding Guild Event Calendar Listing in the same database transaction as the round. If calendar listing establishment fails, round creation fails rather than leaving the Calendar Registry out of sync.
 
 ### PATCH `/raffle/rounds/:roundId`
 
@@ -269,7 +269,7 @@ Authority: `raffle.admin`.
 
 Body: same terms shape as round creation.
 
-The updated raffle truth and its updated Guild Event Listing commit together.
+The updated raffle truth and its updated Guild Event Calendar Listing commit together.
 
 ### POST `/raffle/rounds/:roundId/live`
 
@@ -279,7 +279,7 @@ Authority: `raffle.admin`.
 
 The guild may have at most one live raffle. A conflicting activation returns `409 active_round_exists`.
 
-The live transition and the corresponding Guild Event Listing update commit together. Publication, where configured, occurs only after that authoritative transaction succeeds.
+The live transition and the corresponding Guild Event Calendar Listing update commit together. Publication, where configured, occurs only after that authoritative transaction succeeds.
 
 ### POST `/raffle/rounds/:roundId/cancel`
 
@@ -294,7 +294,7 @@ Administratively concludes a listed or live round with:
 
 Authority: `raffle.admin`.
 
-Operator cancellation is a short-circuited conclusion. It revokes participation eligibility before intended resolution. Raffle therefore withdraws its Guild Event Listing in the same transaction that records the conclusion.
+Operator cancellation is a short-circuited conclusion. It revokes participation eligibility before intended resolution. Raffle therefore withdraws its Guild Event Calendar Listing in the same transaction that records the conclusion.
 
 Cancellation does not rewrite claims or other pre-conclusion raffle state. Unresolved claims may remain unresolved because the preserved round is an audit record, not a cleaned-up reconstruction.
 
@@ -330,7 +330,7 @@ If the derived ticket population is empty, the result is:
 
 `no_participation` is not cancellation. No draw-result fields are invented for the empty population; the zero population remains reconstructable from preserved claim truth.
 
-Both normal conclusions retain and update the raffle's Guild Event Listing to the best-known occurrence range. The raffle conclusion and listing update commit together.
+Both normal conclusions retain and update the raffle's Guild Event Calendar Listing to the best-known occurrence range. The raffle conclusion and calendar listing update commit together.
 
 ## Claim operations
 
