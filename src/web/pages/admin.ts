@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
+import { guildRefreshStatus } from "../../guild-admin.js";
 import {
   GUILD_REFRESH_CAPABILITY,
   OPERATIONS_INSPECT_CAPABILITY,
@@ -29,6 +30,35 @@ function administrationSection(
   </section>`;
 }
 
+function renderGuildRefresh(status: Awaited<ReturnType<typeof guildRefreshStatus>>): string {
+  const memberCount = status
+    ? `<strong>${status.currentMemberCount.toLocaleString("en-US")}</strong><span>current members</span>`
+    : `<strong>—</strong><span>current members</span>`;
+  const lastReconciled = status
+    ? `<time data-unix-time="${status.lastReconciledAtUnix}">${status.lastReconciledAtUnix}</time>`
+    : "Not yet observed";
+
+  return `<div class="guild-refresh-admin" data-guild-refresh-admin>
+    <div class="guild-refresh-admin-heading">
+      <div>
+        <h3>Guild refresh</h3>
+        <p>Reconcile current guild membership and rank authority from Blizzard.</p>
+      </div>
+      <button type="button" class="guild-refresh-button" data-guild-refresh-button>Refresh now</button>
+    </div>
+    <div class="guild-refresh-status">
+      <div class="guild-refresh-stat">
+        ${memberCount}
+      </div>
+      <div class="guild-refresh-stat">
+        <span>Last reconciled</span>
+        <strong>${lastReconciled}</strong>
+      </div>
+    </div>
+    <p class="guild-refresh-feedback" data-guild-refresh-feedback role="status" aria-live="polite"></p>
+  </div>`;
+}
+
 export async function registerAdminPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/admin", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
@@ -43,6 +73,10 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
           raffleGuildieCanAdminister(guildie.guildieId),
         ])
       : [false, false, false];
+
+    const [refreshStatus] = await Promise.all([
+      canRefreshGuild ? guildRefreshStatus() : Promise.resolve(null),
+    ]);
 
     const availableAdministration: string[] = [];
 
@@ -59,7 +93,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       ? administrationSection(
           "guild-settings-heading",
           "Guild settings",
-          '<div class="admin-section-content" aria-hidden="true"></div>',
+          renderGuildRefresh(refreshStatus),
         )
       : "";
     const modules = availableAdministration.length
@@ -89,6 +123,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       description: "Guild Operations administration.",
       viewer,
       stylesheets: ["admin.css"],
+      scripts: ["admin.js"],
       header: `
         <div class="admin-page-header-row">
           <div class="admin-page-header">
