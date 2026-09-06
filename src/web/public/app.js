@@ -184,41 +184,9 @@ async function saveMain(button) {
   }
 }
 
-async function refreshGuild(button) {
-  const status = document.querySelector("[data-guild-refresh-status]");
-  button.disabled = true;
-  const previousLabel = button.textContent;
-  button.textContent = "Refreshing…";
-  if (status instanceof HTMLElement) status.textContent = "";
-
-  try {
-    const response = await fetch("/guild/refresh", { method: "POST" });
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      if (status instanceof HTMLElement) status.textContent = result.error || `Refresh failed (${response.status}).`;
-      return;
-    }
-
-    if (status instanceof HTMLElement) {
-      status.textContent = `Refreshed ${result.roster_count ?? "the"} roster members.`;
-    }
-  } catch {
-    if (status instanceof HTMLElement) status.textContent = "Unable to refresh the guild roster.";
-  } finally {
-    button.disabled = false;
-    button.textContent = previousLabel;
-  }
-}
-
 document.addEventListener("click", (event) => {
   const target = event.target;
   if (!(target instanceof Element)) return;
-
-  const guildRefresh = target.closest("[data-refresh-guild]");
-  if (guildRefresh instanceof HTMLButtonElement) {
-    void refreshGuild(guildRefresh);
-    return;
-  }
 
   const refresh = target.closest("[data-refresh-characters]");
   if (refresh) {
