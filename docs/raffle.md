@@ -45,7 +45,7 @@ Guild Operations is authoritative for:
 
 Raffle owns the `raffle.admin` authorization policy because it governs raffle-specific procedure. The current guild policy grants that module capability to Guildies whose globally derived effective Blizzard rank is 0, 1, or 2. Raffle consumes globally authoritative Guildie, Character-control, roster, and rank facts as inputs; it does not own, duplicate, or reinterpret those facts as raffle state.
 
-Raffle code authorizes against `raffle.admin` rather than scattering numeric rank comparisons through the module. The current implementation still provisions `raffle.admin` through the global `guild_rank_capabilities` machinery. That provisioning path is conformity debt against the module-ownership boundary and should be corrected when raffle administration is next revised; it does not make `raffle.admin` a globally owned permission.
+Raffle code authorizes against the module-owned `raffle.admin` policy rather than provisioning raffle authority through the global `guild_rank_capabilities` machinery or scattering numeric rank comparisons through the module.
 
 ## Round
 
@@ -54,10 +54,12 @@ A round is the bounded raffle drawing cycle.
 Its operating terms are intentionally small:
 
 - round ID;
+- optional round title for recognition;
 - drawing deadline as a timezone-neutral Unix instant;
 - ticket price in gold;
 - prize kind;
-- winner percentage when the prize kind is gold.
+- winner percentage when the prize kind is gold;
+- prize description when the prize kind is item or other.
 
 The configured drawing deadline establishes the raffle's expected resolution time but does not automatically mutate lifecycle state or initiate a draw. New claim submission closes exactly one hour before that deadline so raffle administrators have a dedicated adjudication window for pending claims. Interfaces derive human-readable times from persisted Unix values and express them in the viewer's local timezone when possible.
 
@@ -122,7 +124,7 @@ concluded after going live
 
 A scheduled boundary is not considered false merely because it may later move; it is the best available truth while the boundary remains future or estimated. Once the raffle establishes an observed boundary, that observed Unix value supersedes the estimate in the Guild Event occurrence projection.
 
-A listed round that is cancelled before going live remains a historically real raffle occurrence. Cancellation does not erase the fact that the guild established and listed it.
+Operator cancellation withdraws the Guild Event Listing because it revokes participation eligibility before intended resolution. The raffle round itself remains durable raffle history; withdrawing the listing does not erase the fact that the guild established and operated the round.
 
 ## Claim
 
@@ -253,7 +255,7 @@ This preservation rule also applies to `drawn` and `no_participation`: drawing c
 
 ## Prize model
 
-Prize kind is declarable raffle state. Gold is the first implemented prize kind, not the conceptual limit of the module.
+Prize kind is declarable raffle state.
 
 For a gold raffle:
 
@@ -264,6 +266,8 @@ guild share = pot - winner share
 ```
 
 Only approved claims contribute to the pot or prize projection.
+
+For item and other raffles, the configured prize is descriptive text rather than a calculated share of the gold pot. Ticket price remains denominated in WoW gold regardless of prize kind.
 
 ## Historical behavior
 
@@ -281,7 +285,7 @@ The raffle domain owns raffle meaning. Interfaces own expression of that meaning
 
 Current participant-facing web surfaces are:
 
-- `/events/raffle` — current participatory raffle surface;
+- `/events/raffle` — durable raffle landing surface for live participation, upcoming promotion, the most recent winner, and standing raffle references;
 - `/events/raffle/history` — concluded raffle history;
 - `/events/raffle/rules` — standing guild raffle rules and regulations.
 
@@ -302,9 +306,9 @@ Discord and other subscribers remain interaction surfaces over the same backend 
 
 Raffle publishes system events when meaningful authoritative raffle reality successfully changes. A publication creates attention rather than truth: it carries the occurrence kind and small authority-oriented coordinates so a subscriber can query Guild Operations for current state.
 
-The publication vocabulary must follow raffle truth rather than preserve obsolete lifecycle terminology. A successful manual draw may publish a draw conclusion event with the winning claim coordinate. A normal draw resolution with no ticket population may publish a `no_participation` conclusion event. Operator cancellation may publish its own conclusion event when an external interaction surface needs attention.
+The publication vocabulary should follow raffle truth rather than create competing raffle state. A successful manual draw may publish a draw conclusion event with the winning claim coordinate. A normal draw resolution with no ticket population may publish a no-participation occurrence. Operator cancellation may publish its own conclusion occurrence when an external interaction surface needs attention.
 
-Exact system-event names are an integration contract and should be reconciled with this doctrine during implementation alignment rather than inferred from the obsolete `drawn`, `admin_cancelled`, or `no_entry_cancelled` lifecycle states.
+The current publication surface remains provisional because no subscriber architecture has been accepted yet. Exact system-event names are therefore not raffle lifecycle doctrine and should not be used to infer new lifecycle states.
 
 Failed attempts, authorization failures, database failures, transport failures, and other machinery errors are not raffle system events. Publication failure does not undo an authoritative raffle operation that already succeeded.
 
