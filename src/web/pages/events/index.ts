@@ -65,14 +65,14 @@ function renderOffering(offering: GuildEventOffering): string {
   const destination = htmlText(offering.destination);
 
   return `
-    <a class="events-offering" href="${destination}" aria-label="Explore ${title}">
+    <a class="events-offering" href="${destination}" aria-label="Check out ${title}">
       <div class="events-offering-copy">
-        <p class="events-offering-kicker">Guild offering</p>
+        <p class="events-offering-kicker">Guild activity</p>
         <h3>${title}</h3>
         <p class="events-offering-tagline">${tagline}</p>
       </div>
       <span class="events-offering-action">
-        <span>Explore</span>
+        <span>Check it out</span>
         <span class="events-offering-arrow" aria-hidden="true">→</span>
       </span>
     </a>`;
