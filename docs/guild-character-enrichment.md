@@ -1,16 +1,6 @@
-# Guild Character Enrichment
+# Character presentation acquisition
 
-> **Investigation note: do not consolidate this document yet.**
->
-> The documentation-repair audit originally identified this document as an older standalone enrichment model whose durable doctrine could likely be absorbed into `guild-refresh.md`. That consolidation is intentionally deferred while the known self account refresh bug is investigated.
->
-> The current self-refresh path reacquires a Guildie's Blizzard account/control observation but does not explicitly invoke Character profile/media acquisition. This document describes presentation acquisition as a separate capability, while `guild-refresh.md` now owns targeted follow-up presentation acquisition after guild-roster reconciliation. Investigate whether the evolution from standalone enrichment to targeted guild refresh left self refresh without a responsible path for bringing newly controlled or newly relevant Characters' presentation observations up to date.
->
-> Do not assume the answer is for self refresh to invoke guild refresh: account-control authority and guild-roster authority are different Blizzard observations. Determine instead whether an existing Character acquisition capability should be reused directly, or whether the implementations reveal a smaller shared reconciliation seam. Preserve the distinction that roster authority, account-control authority, and Character presentation observations do not become the same fact merely because one change may require follow-up acquisition of another.
-
-Guild roster authority and Character presentation are separate concerns.
-
-The Blizzard guild roster establishes which Characters are currently members of OH CRIT I Pulled!. Character enrichment observes richer Blizzard profile and media data for those current roster Characters.
+Character presentation acquisition observes richer Blizzard profile and media state for specifically identified Characters. It is a reusable acquisition capability, not an authority source for Character control or guild membership.
 
 ## Canonical coordinate
 
@@ -22,63 +12,86 @@ region + realm_id + character_id
 
 Names, realm presentation, level, class, race, specialization, and media URLs are observed presentation state and may change without changing Character continuity.
 
-## Enrichment scope
+## Responsibility boundary
 
-The current enrichment pass operates across the persisted current guild roster, not only Characters controlled by authenticated Guildies.
+Three questions remain separate:
 
-For each current roster Character it attempts:
+```text
+Guildie account/control reconciliation
+    = which Characters this Guildie currently controls
 
-1. Blizzard Character Profile
-2. Blizzard Character Media
+Guild roster reconciliation
+    = which Characters are currently members of the guild
 
-The profile observation is persisted independently from the media observation. A media failure does not discard a successful profile observation, and enrichment failures do not alter guild roster authority.
+Character presentation acquisition
+    = what richer Blizzard profile/media state can be observed
+      for Characters already selected by another procedure
+```
+
+Presentation acquisition does not inspect account control or determine guild membership. It cannot make a Character eligible for Guild Operations and it does not widen the target set supplied by its caller.
+
+The caller owns why a Character is relevant and which presentation resources need acquisition.
+
+## Shared acquisition primitive
+
+`acquireCharacterPresentation()` accepts explicit Character targets containing:
+
+- canonical Character coordinate;
+- Character name and realm slug needed to address Blizzard's Character APIs;
+- whether profile acquisition is required;
+- whether media acquisition is required.
+
+For those targets it owns:
+
+- Blizzard application-token acquisition;
+- bounded concurrency;
+- shared Blizzard request pacing and retry/backoff behavior;
+- Character Profile and Character Media requests;
+- corroboration that returned Blizzard coordinates match the requested Character;
+- persistence of successful profile and media observations;
+- independent acquisition-attempt recording;
+- structured success and failure reporting.
+
+Profile and media observations are independent. A media failure does not discard a successful profile observation, and a presentation failure does not alter account-control or guild-roster authority.
 
 The complete Blizzard profile and media payloads are retained as observations alongside normalized fields needed by Guild Operations projections.
 
 Guild Operations stores Blizzard media URLs; it does not ingest or own Blizzard media assets.
 
-## Invocation
+## Guild-roster wrapper
 
-The first caller is intentionally manual:
+`enrichGuildCharacters()` remains the guild-specific wrapper around the shared acquisition primitive.
 
-```text
-npm run guild:enrich
-```
+It selects from the persisted current guild roster, intersects any explicitly supplied Character coordinates with that roster, derives the Blizzard API locator from the roster observation, and delegates the resulting targets to `acquireCharacterPresentation()`.
 
-The reusable `enrichGuildCharacters()` service owns acquisition, bounded concurrency, request pacing, retry/backoff, persistence, and structured outcome reporting. The CLI is only an invocation surface.
+With no explicit targets, the wrapper can operate across the current roster. The `npm run guild:enrich` CLI remains an operator invocation surface for that behavior.
 
-Default request behavior is deliberately conservative:
+Ordinary `refreshGuildAuthority()` does not perform a blind full-roster enrichment sweep. After roster reconciliation it determines which current roster Characters actually need profile or media work and invokes the guild-specific wrapper only for those targets.
 
-- concurrency: 8 workers
-- request pacing: 10 requests/second
-- retries: up to 4 attempts for 429 and server failures
-- `Retry-After` is honored when Blizzard supplies it
+## Self account refresh
 
-The service reports profile and media success/failure independently and counts actual Blizzard requests, including retries.
+Self account refresh reuses the shared acquisition primitive directly rather than invoking guild refresh or the guild-roster enrichment wrapper.
 
-## Future invocation surfaces
-
-The enrichment service is intended to remain independent of transport so the same capability can later be invoked by:
-
-- a protected operator HTTP endpoint
-- scheduled or stale-aware automatic refresh
-- single-Character or missing-observation refresh
-
-Those invocation surfaces must not duplicate enrichment semantics or make Character presentation responsible for guild-membership authority.
-
-## Authority boundary
+After account/control reconciliation it selects Characters that satisfy:
 
 ```text
-Guild roster sync
-    = current Blizzard Character guild-membership observation
-
-Character enrichment
-    = Blizzard Character presentation observation
-
-Guild Operations projections
-    = presentation of those persisted facts
+currently controlled by the Guildie
+        ∩
+currently present in the persisted guild roster
 ```
 
-Failure to enrich a Character never removes the Character from the guild roster and never changes a Guildie's established Character-control authority.
+It uses the fresh account observation for the Character name and realm slug, then explicitly requests both profile and media acquisition for each eligible Character.
 
-`Subject` has no role in Character enrichment or control persistence; it is contextual language only.
+This reuse does not transfer eligibility decisions into presentation acquisition. Self refresh establishes the target set before calling the acquisition primitive.
+
+## Request behavior
+
+Default acquisition concurrency is 8 workers, with a maximum accepted concurrency of 20.
+
+All Blizzard authority GET requests pass through the shared request gate, which currently limits requests to 10 per second. The request boundary retries HTTP 429 and 5xx responses, honors `Retry-After` when supplied, and otherwise applies exponential backoff.
+
+Structured results report profile and media success/failure independently and count actual Blizzard requests, including retries.
+
+## Authority invariant
+
+Failure to acquire presentation never removes a Character from the guild roster, never changes a Guildie's established Character-control observation, and never grants or revokes Guild Operations Character eligibility.
