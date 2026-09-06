@@ -42,8 +42,74 @@
   color: #c9c5ba;
 }
 
-.admin-section-content {
-  min-height: 0.25rem;
+.guild-refresh-admin {
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.guild-refresh-admin-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.guild-refresh-admin-heading h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.guild-refresh-admin-heading p {
+  margin: 0.35rem 0 0;
+  color: #aaa69c;
+  font-size: 0.9rem;
+}
+
+.guild-refresh-button {
+  flex: none;
+  min-height: 2.45rem;
+  padding: 0.55rem 0.8rem;
+}
+
+.guild-refresh-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.guild-refresh-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.guild-refresh-stat {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.guild-refresh-stat span {
+  color: #aaa69c;
+  font-size: 0.82rem;
+}
+
+.guild-refresh-stat strong {
+  font-weight: 700;
+}
+
+.guild-refresh-feedback {
+  min-height: 1.15rem;
+  margin: 0.75rem 0 0;
+  color: #aaa69c;
+  font-size: 0.85rem;
+}
+
+.guild-refresh-admin[data-refresh-state="failure"] .guild-refresh-feedback {
+  color: #e3aaa3;
 }
 
 .admin-destination {
@@ -205,7 +271,12 @@
 }
 
 @media (max-width: 42rem) {
-  .admin-page-header-row {
+  .admin-page-header-row,
+  .guild-refresh-admin-heading {
     align-items: baseline;
+  }
+
+  .guild-refresh-admin-heading {
+    flex-direction: column;
   }
 }
