@@ -4,6 +4,10 @@ import {
   discoverableGuildEventCalendarListings,
   type GuildEventCalendarListing,
 } from "../../../guild-events/calendar/registry.js";
+import {
+  guildEventOfferings,
+  type GuildEventOffering,
+} from "../../../guild-events/offerings/registry.js";
 import type { AssetRegistry } from "../../assets.js";
 import { htmlText, renderPage } from "../../render.js";
 import { viewerForRequest } from "../../viewer.js";
@@ -55,6 +59,41 @@ function isHappeningNow(listing: GuildEventCalendarListing, nowUnix: number): bo
   return start <= nowUnix && nowUnix <= end;
 }
 
+function renderOffering(offering: GuildEventOffering): string {
+  const title = htmlText(offering.title);
+  const tagline = htmlText(offering.tagline);
+  const destination = htmlText(offering.destination);
+
+  return `
+    <a class="events-offering" href="${destination}" aria-label="Explore ${title}">
+      <div class="events-offering-copy">
+        <p class="events-offering-kicker">Guild offering</p>
+        <h3>${title}</h3>
+        <p class="events-offering-tagline">${tagline}</p>
+      </div>
+      <span class="events-offering-action">
+        <span>Explore</span>
+        <span class="events-offering-arrow" aria-hidden="true">→</span>
+      </span>
+    </a>`;
+}
+
+function renderOfferings(offerings: readonly GuildEventOffering[]): string {
+  if (!offerings.length) return "";
+
+  return `
+    <section class="events-offerings" aria-labelledby="events-offerings-title">
+      <div class="events-section-heading">
+        <p class="eyebrow">Participation offerings</p>
+        <h2 id="events-offerings-title">Ways to join in</h2>
+        <p>Explore the activities the guild operates, whether or not one is scheduled right now.</p>
+      </div>
+      <div class="events-offering-grid">
+        ${offerings.map(renderOffering).join("\n")}
+      </div>
+    </section>`;
+}
+
 function renderEventItem(listing: GuildEventCalendarListing): string {
   const presentation = presentationFor(listing);
   const title = htmlText(presentation.title);
@@ -85,19 +124,42 @@ function renderSection(
 
   return `
     <section class="events-section" aria-labelledby="${id}">
-      <h2 class="events-status-banner events-status-banner-${state}" id="${id}">${title}</h2>
+      <h3 class="events-status-banner events-status-banner-${state}" id="${id}">${title}</h3>
       <div class="events-list">
         ${listings.map(renderEventItem).join("\n")}
       </div>
     </section>`;
 }
 
-function emptyState(): string {
+function emptyCalendarState(): string {
   return `
-    <section class="events-empty" aria-labelledby="events-empty-title">
+    <div class="events-empty">
       <p class="eyebrow">Quiet for now</p>
-      <h2 id="events-empty-title">Nothing is scheduled.</h2>
+      <h3>Nothing is scheduled.</h3>
       <p>When the guild has something happening or coming up, it will appear here.</p>
+    </div>`;
+}
+
+function renderCalendar(
+  happeningNow: GuildEventCalendarListing[],
+  upcoming: GuildEventCalendarListing[],
+): string {
+  const calendarBody = happeningNow.length || upcoming.length
+    ? `
+      <div class="events-discovery">
+        ${renderSection("events-happening-now", "Happening now", happeningNow, "live")}
+        ${renderSection("events-upcoming", "Upcoming", upcoming, "upcoming")}
+      </div>`
+    : emptyCalendarState();
+
+  return `
+    <section class="events-calendar" aria-labelledby="events-calendar-title">
+      <div class="events-section-heading">
+        <p class="eyebrow">Guild Event Calendar</p>
+        <h2 id="events-calendar-title">What&apos;s happening</h2>
+        <p>Current and upcoming guild-operated events, ordered by the temporal truth established by their owning modules.</p>
+      </div>
+      ${calendarBody}
     </section>`;
 }
 
@@ -108,30 +170,29 @@ export async function registerEventsPage(app: FastifyInstance, assets: AssetRegi
       viewerForRequest(request.cookies[SESSION_COOKIE_NAME]),
       discoverableGuildEventCalendarListings(),
     ]);
+    const offerings = guildEventOfferings();
 
     const relevant = listings.filter((listing) => occursThrough(listing) >= nowUnix);
     const happeningNow = relevant.filter((listing) => isHappeningNow(listing, nowUnix));
     const upcoming = relevant.filter((listing) => !isHappeningNow(listing, nowUnix));
 
-    const body = happeningNow.length || upcoming.length
-      ? `
-        <div class="events-discovery">
-          ${renderSection("events-happening-now", "Happening now", happeningNow, "live")}
-          ${renderSection("events-upcoming", "Upcoming", upcoming, "upcoming")}
-        </div>`
-      : emptyState();
+    const body = `
+      <div class="events-shell">
+        ${renderOfferings(offerings)}
+        ${renderCalendar(happeningNow, upcoming)}
+      </div>`;
 
     const html = renderPage(assets, {
       pathname: "/events",
       title: "Events · OH CRIT I Pulled! Guild Operations",
-      description: "Current and upcoming OH CRIT I Pulled! guild events.",
+      description: "Discover OH CRIT I Pulled! guild participation offerings and current or upcoming events.",
       viewer,
       stylesheets: ["events.css"],
       header: `
         <div class="events-page-header">
           <p class="eyebrow">Guild participation</p>
           <h1 id="page-title">Events</h1>
-          <p class="lede">See what the guild is doing now and what is coming up next.</p>
+          <p class="lede">Find ways to take part in guild life, then see what is happening now and what is coming up next.</p>
         </div>`,
       body,
     });
