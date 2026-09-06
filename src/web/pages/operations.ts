@@ -112,13 +112,13 @@ export async function registerOperationsAdminPage(
           </div>
         </section>`
       : `<section class="admin-unavailable">
-          <h2>Operational inspection is not available for this account.</h2>
+          <h2>Operational logging is not available for this account.</h2>
         </section>`;
 
     const html = renderPage(assets, {
       pathname: "/admin/operations",
-      title: "Operations · OH CRIT I Pulled!",
-      description: "Administrative operational inspection.",
+      title: "Operational logging · OH CRIT I Pulled!",
+      description: "Administrative operational logging.",
       viewer,
       stylesheets: ["admin.css"],
       scripts: ["operations.js"],
@@ -126,12 +126,12 @@ export async function registerOperationsAdminPage(
         kind: "breadcrumb",
         items: [
           { label: "Administration", href: "/admin" },
-          { label: "Operations" },
+          { label: "Operational logging" },
         ],
       },
       header: `
         <div class="admin-page-header">
-          <h1 id="page-title">Operations</h1>
+          <h1 id="page-title">Operational logging</h1>
           <p class="lede">Review operational results and exceptions published for administrative inspection.</p>
         </div>`,
       body,
