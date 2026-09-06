@@ -1,16 +1,36 @@
 # Guild refresh
 
-> **Investigation note: consolidation with Character enrichment is deferred.**
+> **Investigation note: implementation consolidation remains pending.**
 >
-> The known self account refresh bug should be investigated before this document becomes the sole home for the older `guild-character-enrichment.md` doctrine. Guild refresh currently owns targeted Character profile/media acquisition after guild-roster reconciliation, while self account refresh reacquires a Guildie's Blizzard account/control observation through a different authority ceremony.
+> The refresh responsibilities are now settled: Guildie account/control reconciliation, guild-roster reconciliation, and Character presentation acquisition are distinct concerns. Guild refresh owns guild-roster reconciliation and may request follow-up Character presentation acquisition for Characters whose current roster observation requires it. Self account refresh owns Guildie account/control reconciliation and may independently request Character presentation acquisition for Characters that are already eligible for Guild Operations.
 >
-> The brittle point is responsibility for follow-up observations: when self refresh changes which Characters a Guildie currently controls, there is no obvious explicit step in that ceremony that asks whether those Characters now require profile/media acquisition. Investigate whether the existing targeted Character acquisition machinery can be invoked independently of guild-roster refresh, or whether a smaller shared reconciliation seam is warranted by the two real callers. Do not collapse guild-roster authority, Guildie account-control authority, and Character presentation acquisition into one refresh concept merely to share implementation.
->
-> Also inspect the self-refresh reuse of the Guildie establishment persistence boundary. `establishOrResolveGuildie()` currently reconciles controlled Characters and has broader establishment-related effects; determine during the bug fix whether an existing-Guildie refresh should deliberately reuse that entire boundary or should have a narrower account-observation reconciliation procedure. This note records an investigation target, not a predetermined replacement architecture.
+> The remaining implementation question is how to expose Character presentation acquisition as a reusable capability without making it responsible for either account-control authority or guild-roster authority. Also inspect whether existing-Guildie account reconciliation should continue to reuse the broader Guildie establishment persistence boundary. Those are implementation questions, not unresolved authority questions.
 
 Guild refresh is the authoritative reconciliation procedure for Blizzard-owned guild state.
 
-It is not a full-roster enrichment sweep. A refresh first acquires the current Blizzard guild profile and roster, persists that observation, and then determines what character presentation work is actually required.
+It is not a full-roster enrichment sweep. A refresh first acquires the current Blizzard guild profile and roster, persists that observation, and then determines what Character presentation work is actually required.
+
+## Responsibility boundary
+
+Guild refresh owns this question:
+
+> Which Characters are currently members of OH CRIT I Pulled!, and what Blizzard-owned numeric guild rank does each currently hold?
+
+It does not establish which Characters a Guildie controls. That comes from Blizzard account authority through Guildie account/control reconciliation.
+
+It also does not make Character presentation authoritative for membership. Profile/media acquisition enriches an already identified Character but cannot add a Character to the guild roster or make it eligible for Guild Operations.
+
+Current Guildie-facing Character eligibility remains the intersection:
+
+```text
+Guildie's currently controlled Characters
+                ∩
+current Blizzard guild Character roster
+                ↓
+eligible Guild Operations Characters
+```
+
+Guild refresh may change the roster side of that intersection. Self account refresh may change the control side. Neither side can substitute for the other.
 
 ## Trigger model
 
@@ -24,28 +44,28 @@ Blizzard rank authority is inverse to the numeric index for this guild: rank 0 i
 
 ## Reconciliation
 
-After the guild profile and roster are persisted, current roster characters are checked for targeted follow-up acquisition.
+After the guild profile and roster are persisted, current roster Characters are checked for targeted follow-up acquisition.
 
 Character profile/media acquisition is requested when:
 
-- a current roster character is newly observed or returns after being absent;
+- a current roster Character is newly observed or returns after being absent;
 - presentation coordinates observed in the roster change;
-- a current roster character is missing persisted profile data and is not in a known-unavailable cooldown;
-- a current roster character is missing persisted media data and is not in a known-unavailable cooldown.
+- a current roster Character is missing persisted profile data and is not in a known-unavailable cooldown;
+- a current roster Character is missing persisted media data and is not in a known-unavailable cooldown.
 
-An unchanged current character with complete profile and media data causes no character API work.
+An unchanged current Character with complete profile and media data causes no Character API work.
 
 Characters absent from the latest roster are marked `currently_present = false`. Historical observations are not deleted.
 
 ## Presentation availability
 
-Roster membership and character presentation availability are separate Blizzard observations.
+Roster membership and Character presentation availability are separate Blizzard observations.
 
-A character may be authoritatively present in the guild roster while Blizzard's character profile or media endpoint returns HTTP 404. A 404 therefore does not negate roster membership and does not cause the character to be deleted or treated as nonexistent.
+A Character may be authoritatively present in the guild roster while Blizzard's Character profile or media endpoint returns HTTP 404. A 404 therefore does not negate roster membership and does not cause the Character to be deleted or treated as nonexistent.
 
 Profile and media acquisition attempts record their last attempt and HTTP failure status independently. A 404 marks that presentation resource as currently unavailable. Ordinary guild refreshes suppress another request for that same missing resource for seven days.
 
-The suppression is not permanent. The resource becomes eligible for another acquisition after the cooldown. A newly observed, returning, or presentation-changed roster character bypasses the cooldown immediately because the changed Blizzard observation is reason to reconsider availability.
+The suppression is not permanent. The resource becomes eligible for another acquisition after the cooldown. A newly observed, returning, or presentation-changed roster Character bypasses the cooldown immediately because the changed Blizzard observation is reason to reconsider availability.
 
 Successful acquisition clears the corresponding failure status.
 
@@ -57,7 +77,7 @@ All Blizzard authority GET requests share one request gate. The gate currently l
 
 The same boundary retries HTTP 429 and 5xx responses, honors `Retry-After` when supplied, and otherwise applies exponential backoff.
 
-A manual trigger, scheduled trigger, authentication acquisition, guild acquisition, or character enrichment cannot opt out of the shared request gate.
+A manual trigger, scheduled trigger, authentication acquisition, guild acquisition, or Character presentation acquisition cannot opt out of the shared request gate.
 
 OAuth token exchange/client-credential token acquisition are authentication operations and remain outside the Blizzard authority GET request gate.
 
@@ -67,6 +87,10 @@ Authorization answers whether a caller may request a refresh.
 
 The Blizzard request boundary answers when an external request may actually be made.
 
-Guild refresh answers what current guild truth changed and which follow-up acquisitions are required.
+Guild refresh answers what current guild-roster truth changed and which follow-up Character presentation acquisitions are required.
 
-These responsibilities remain separate even when they execute as one procedure.
+Guildie account/control reconciliation answers which Characters a Guildie currently controls.
+
+Character presentation acquisition answers what richer Blizzard profile/media state can currently be observed for a Character that another authority procedure has already identified as relevant.
+
+These responsibilities remain separate even when one procedure triggers follow-up work in another.
