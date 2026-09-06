@@ -8,7 +8,7 @@ import {
   guildEventOfferings,
   type GuildEventOffering,
 } from "../../../guild-events/offerings/registry.js";
-import type { AssetRegistry } from "../../assets.js";
+import { assetUrl, type AssetName, type AssetRegistry } from "../../assets.js";
 import { htmlText, renderPage } from "../../render.js";
 import { viewerForRequest } from "../../viewer.js";
 
@@ -59,13 +59,25 @@ function isHappeningNow(listing: GuildEventCalendarListing, nowUnix: number): bo
   return start <= nowUnix && nowUnix <= end;
 }
 
-function renderOffering(offering: GuildEventOffering): string {
+function offeringArtworkUrl(offering: GuildEventOffering, assets: AssetRegistry): string | null {
+  if (!offering.artwork) return null;
+  if (offering.artwork.kind === "url") return offering.artwork.url;
+  return assetUrl(assets, offering.artwork.asset as AssetName);
+}
+
+function renderOffering(offering: GuildEventOffering, assets: AssetRegistry): string {
   const title = htmlText(offering.title);
   const tagline = htmlText(offering.tagline);
   const destination = htmlText(offering.destination);
+  const artwork = offeringArtworkUrl(offering, assets);
+  const artworkMarkup = artwork
+    ? `<img class="events-offering-art" src="${htmlText(artwork)}" alt="" aria-hidden="true">`
+    : "";
+  const artworkClass = artwork ? " events-offering-with-art" : "";
 
   return `
-    <a class="events-offering" href="${destination}" aria-label="Check out ${title}">
+    <a class="events-offering${artworkClass}" href="${destination}" aria-label="Check out ${title}">
+      ${artworkMarkup}
       <div class="events-offering-copy">
         <p class="events-offering-kicker">Guild activity</p>
         <h3>${title}</h3>
@@ -78,7 +90,7 @@ function renderOffering(offering: GuildEventOffering): string {
     </a>`;
 }
 
-function renderOfferings(offerings: readonly GuildEventOffering[]): string {
+function renderOfferings(offerings: readonly GuildEventOffering[], assets: AssetRegistry): string {
   if (!offerings.length) return "";
 
   return `
@@ -89,7 +101,7 @@ function renderOfferings(offerings: readonly GuildEventOffering[]): string {
         <p>Explore the activities the guild operates, whether or not one is scheduled right now.</p>
       </div>
       <div class="events-offering-grid">
-        ${offerings.map(renderOffering).join("\n")}
+        ${offerings.map((offering) => renderOffering(offering, assets)).join("\n")}
       </div>
     </section>`;
 }
@@ -178,7 +190,7 @@ export async function registerEventsPage(app: FastifyInstance, assets: AssetRegi
 
     const body = `
       <div class="events-shell">
-        ${renderOfferings(offerings)}
+        ${renderOfferings(offerings, assets)}
         ${renderCalendar(happeningNow, upcoming)}
       </div>`;
 
