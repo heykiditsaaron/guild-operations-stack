@@ -96,9 +96,9 @@ function renderCurrentCharacter(viewer: Extract<WebViewer, { authenticated: true
   if (!viewer.mainCharacter) {
     return `<div class="me-character-summary me-character-summary-empty">
       <span class="me-character-name" data-me-character-name>No main selected</span>
-      <span class="me-character-meta" data-me-character-meta>Choose a guild character to present as.</span>
+      <span class="me-character-meta" data-me-character-meta>Choose a character as your main.</span>
       <span class="me-character-context" data-me-character-context hidden></span>
-      <button type="button" class="me-change-main" data-open-main-picker>Select main</button>
+      <button type="button" class="me-change-main" data-open-main-picker>Manage</button>
     </div>`;
   }
 
@@ -115,7 +115,7 @@ function renderCurrentCharacter(viewer: Extract<WebViewer, { authenticated: true
     <span class="me-character-name" data-me-character-name>${escapeHtml(character.name)}</span>
     <span class="me-character-meta" data-me-character-meta>${escapeHtml(role)}</span>
     <span class="me-character-context" data-me-character-context><span data-me-character-realm>${escapeHtml(realm)}</span>${rank}</span>
-    <button type="button" class="me-change-main" data-open-main-picker>Change main</button>
+    <button type="button" class="me-change-main" data-open-main-picker>Manage</button>
   </div>`;
 }
 
@@ -145,7 +145,7 @@ function renderMeControl(viewer: WebViewer, pathname: string): string {
         ${renderDiscordAssociation(viewer, pathname)}
       </section>
       <section class="me-menu-section me-session-section">
-        <button type="button" class="me-sign-out" data-logout>Sign out</button>
+        <button type="button" class="session-sign-out-action" data-logout>Sign out</button>
       </section>
     </div>
   </details>`;
@@ -202,19 +202,23 @@ function renderMainPicker(viewer: WebViewer): string {
   return `<dialog class="main-picker" data-main-picker data-has-main="${viewer.mainCharacter ? "true" : "false"}" aria-labelledby="main-picker-title">
     <div class="main-picker-sheet">
       <div class="main-picker-heading">
-        <div>
-          <p class="eyebrow">Your character</p>
-          <h2 id="main-picker-title">Select your main</h2>
+        <h2 id="main-picker-title">Manage characters</h2>
+        <button type="button" class="dialog-close" data-close-main-picker aria-label="Close character management">×</button>
+      </div>
+      <section class="main-picker-section main-picker-section-refresh" aria-labelledby="refresh-characters-title">
+        <h3 id="refresh-characters-title">Refresh characters</h3>
+        <p class="main-picker-section-copy">Update your characters from Blizzard.</p>
+        <button type="button" class="refresh-characters-action" data-refresh-characters>
+          <span data-refresh-label>Refresh characters</span>
+        </button>
+      </section>
+      <section class="main-picker-section main-picker-section-main" aria-labelledby="main-character-title">
+        <h3 id="main-character-title">Main character</h3>
+        <p class="main-picker-section-copy">Choose the character you want shown as your main.</p>
+        <div class="character-choices" data-character-choices>
+          ${characters || '<p class="main-picker-empty">No currently eligible guild characters were found.</p>'}
         </div>
-        <button type="button" class="dialog-close" data-close-main-picker aria-label="Close main character picker">×</button>
-      </div>
-      <p class="main-picker-intro">Choose the OH CRIT I Pulled! character you want Guild Operations to present as your current main.</p>
-      <button type="button" class="refresh-characters-action" data-refresh-characters>
-        <span data-refresh-label>Refresh characters</span>
-      </button>
-      <div class="character-choices" data-character-choices>
-        ${characters || '<p class="main-picker-empty">No currently eligible guild characters were found.</p>'}
-      </div>
+      </section>
       <p class="main-picker-status" data-main-picker-status aria-live="polite"></p>
     </div>
   </dialog>`;
@@ -271,7 +275,7 @@ function renderSecondaryNavigation(navigation: SecondaryNavigation | undefined):
 
 export function renderPage(assets: AssetRegistry, input: RenderPageInput): string {
   const title = escapeHtml(input.title);
-  const description = escapeHtml(input.description ?? "OH CRIT I Pulled! Guild Operations");
+  const description = escapeHtml(input.description ?? "OH CRIT I Pulled!");
   const canonicalUrl = new URL(input.pathname, config.appOrigin).toString();
   const stylesheets = (input.stylesheets ?? [])
     .map((name) => `  <link rel="stylesheet" href="${assetUrl(assets, name)}">`)
@@ -289,6 +293,7 @@ export function renderPage(assets: AssetRegistry, input: RenderPageInput): strin
   <meta name="description" content="${description}">
   <link rel="canonical" href="${canonicalUrl}">
   <link rel="stylesheet" href="${assetUrl(assets, "app.css")}">
+  <link rel="stylesheet" href="${assetUrl(assets, "me.css")}">
   <link rel="stylesheet" href="${assetUrl(assets, "navigation-shelves.css")}">
 ${stylesheets ? `${stylesheets}\n` : ""}  <title>${title}</title>
 </head>
@@ -298,7 +303,7 @@ ${stylesheets ? `${stylesheets}\n` : ""}  <title>${title}</title>
     ${secondaryNavigation ? `<div class="secondary-navigation-zone">${secondaryNavigation}</div>` : ""}
     <header class="page-header${secondaryNavigation ? " page-header-after-secondary-navigation" : ""}">${input.header}</header>
     <main class="app-main">${input.body}</main>
-    <footer class="app-footer">OH CRIT I Pulled! Guild Operations</footer>
+    <footer class="app-footer">OH CRIT I Pulled!</footer>
   </div>
   ${renderMainPicker(input.viewer)}
   <script src="${assetUrl(assets, "app.js")}" defer></script>
