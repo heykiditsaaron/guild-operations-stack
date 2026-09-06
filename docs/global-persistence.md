@@ -122,36 +122,36 @@ The rule is:
 
 ## Shared-contract persistence
 
-Some persistence belongs to shared machinery even though the truth represented there originates elsewhere.
+Some persistence belongs to shared infrastructure even though the truth represented there originates elsewhere.
 
-The Guild Event Registry is the current earned example.
+The Guild Event Calendar is the current earned example.
 
 ```text
 module
     owns ceremony-specific truth
         ↓ establishes
-Guild Event Listing
+Guild Event Calendar Listing
         ↓ persisted by
-Guild Event Registry
+Guild Event Calendar Registry
         ↓ read by
-consumer
+calendar consumer
 ```
 
-The registry owns storage and enforcement of the shared Guild Event Listing contract.
+The calendar owns storage and enforcement of the shared Guild Event Calendar Listing contract.
 
-The producing module remains authoritative for whether the concrete Guild Event exists and for the listing facts it establishes. Persisting the registration in shared machinery does not transfer ownership of the module's procedure or ceremony-specific truth to the registry.
+The producing module remains authoritative for whether the concrete occurrence belongs on the calendar and for the calendar listing facts it establishes. Persisting the listing in shared calendar infrastructure does not transfer ownership of the module's procedure, ceremony-specific truth, informational surfaces, administrative surfaces, or history to the calendar.
 
 Therefore:
 
 ```text
 storage owner
-    shared Guild Event machinery
+    shared Guild Event Calendar infrastructure
 
 truth origin
     appropriate participation module
 
 consumer
-    shared/global projection or integration
+    calendar projection or integration
 ```
 
 Shared storage and truth origin are intentionally separate concepts.
@@ -170,7 +170,7 @@ Blizzard remains authoritative for facts such as:
 
 Guild Operations may persist observations of those facts because they are needed to operate the guild organization outside WoW. Persisting an observation does not make Guild Operations authoritative for the underlying Blizzard fact.
 
-Guild Operations is authoritative for facts and meanings it establishes itself, including Guildie continuity, selected-main preference, Discord association, globally defined permissions for globally owned operations, shared registry state, and module-owned participation outcomes.
+Guild Operations is authoritative for facts and meanings it establishes itself, including Guildie continuity, selected-main preference, Discord association, globally defined permissions for globally owned operations, shared calendar infrastructure state, and module-owned participation outcomes.
 
 ## Persist actual objects and relationships
 
@@ -241,7 +241,7 @@ Participation module persistence
 └── concrete procedure-specific truth and history
 
 Shared-contract persistence
-└── common contract state whose truth may originate in modules
+└── common infrastructure contract state whose truth may originate in modules
 ```
 
 The database may physically contain all three. Their semantic ownership remains distinct.
