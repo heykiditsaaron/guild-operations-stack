@@ -14,7 +14,7 @@ Three Blizzard-owned observations remain distinct:
 
 Self account refresh owns the first observation and requests follow-up acquisition of the third. It does not reacquire or replace the second.
 
-Character presentation acquisition never grants Guild Operations eligibility.
+Character presentation acquisition never grants Guild Operations eligibility. Its shared contract is documented in [`character-presentation-acquisition.md`](character-presentation-acquisition.md).
 
 ## Eligible Guild Operations Characters
 
