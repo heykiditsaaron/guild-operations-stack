@@ -1,9 +1,9 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../../auth.js";
 import {
-  discoverableGuildEventListings,
-  type GuildEventListing,
-} from "../../../guild-events/registry.js";
+  discoverableGuildEventCalendarListings,
+  type GuildEventCalendarListing,
+} from "../../../guild-events/calendar/registry.js";
 import type { AssetRegistry } from "../../assets.js";
 import { htmlText, renderPage } from "../../render.js";
 import { viewerForRequest } from "../../viewer.js";
@@ -22,7 +22,7 @@ function humanize(value: string): string {
     .join(" ");
 }
 
-function presentationFor(listing: GuildEventListing): EventPresentation {
+function presentationFor(listing: GuildEventCalendarListing): EventPresentation {
   return {
     title: listing.guildEventTitle ?? humanize(listing.guildEventKind),
     category: listing.guildEventCategory
@@ -37,25 +37,25 @@ function localTime(unixSeconds: number): string {
   return `<time datetime="${instant}" data-local-time-unix="${unixSeconds}" data-local-time-date-style="full">${instant}</time>`;
 }
 
-function eventTime(listing: GuildEventListing): string {
+function eventTime(listing: GuildEventCalendarListing): string {
   const [start, end] = listing.guildEventOccursAt;
   if (end === undefined) return localTime(start);
   return `${localTime(start)}<span class="events-time-separator" aria-hidden="true">→</span>${localTime(end)}`;
 }
 
-function occursThrough(listing: GuildEventListing): number {
+function occursThrough(listing: GuildEventCalendarListing): number {
   return listing.guildEventOccursAt.length === 2
     ? listing.guildEventOccursAt[1]
     : listing.guildEventOccursAt[0];
 }
 
-function isHappeningNow(listing: GuildEventListing, nowUnix: number): boolean {
+function isHappeningNow(listing: GuildEventCalendarListing, nowUnix: number): boolean {
   const [start, end] = listing.guildEventOccursAt;
   if (end === undefined) return start === nowUnix;
   return start <= nowUnix && nowUnix <= end;
 }
 
-function renderEventItem(listing: GuildEventListing): string {
+function renderEventItem(listing: GuildEventCalendarListing): string {
   const presentation = presentationFor(listing);
   const title = htmlText(presentation.title);
   const category = htmlText(presentation.category);
@@ -78,7 +78,7 @@ function renderEventItem(listing: GuildEventListing): string {
 function renderSection(
   id: string,
   title: string,
-  listings: GuildEventListing[],
+  listings: GuildEventCalendarListing[],
   state: "live" | "upcoming",
 ): string {
   if (!listings.length) return "";
@@ -106,7 +106,7 @@ export async function registerEventsPage(app: FastifyInstance, assets: AssetRegi
     const nowUnix = Math.floor(Date.now() / 1000);
     const [viewer, listings] = await Promise.all([
       viewerForRequest(request.cookies[SESSION_COOKIE_NAME]),
-      discoverableGuildEventListings(),
+      discoverableGuildEventCalendarListings(),
     ]);
 
     const relevant = listings.filter((listing) => occursThrough(listing) >= nowUnix);
