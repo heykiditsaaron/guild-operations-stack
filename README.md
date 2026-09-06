@@ -1,23 +1,95 @@
-# Guild Operations Stack
+# Guild Operations
 
-A lightweight, WoW-native backend for guild operations.
+Guild Operations is the interactive participation and operation layer for **OH CRIT I Pulled!** outside World of Warcraft.
 
-Guild Operations represents two related membership realms: Character is the member object of Blizzard's WoW guild organization, while Guildie is the durable member object of the real-world guild organization around it. Blizzard-authenticated account authority establishes or resolves a Guildie and which Characters that Guildie controls. Discord is an optional associated resolver and interaction surface.
+The guild primarily exists and operates through World of Warcraft and Discord. Those are essential places where members play, communicate, and participate, but neither is well suited to being a neutral, knowledgeable place where the guild can establish its own operational truth and then express that truth appropriately across different interfaces.
 
-`Subject` is contextual language for whichever existing object a statement or relation is about; it is not a persisted domain object or canonical identifier.
+Guild Operations fills that gap. It enables guild activities outside the game client, gives members durable ways to participate in them, provides the procedures needed to operate them, and preserves their results and history.
 
-## Project direction
+It is not an Armory replacement, a generic identity platform, a generic guild-management product, or an attempt to move the guild out of WoW or Discord. It exists around those places so OH CRIT I Pulled! can participate as a guild across interfaces and across time.
 
-Guild Operations uses Blizzard authority and the current Character roster to establish who can participate, then builds concrete guild participation capabilities such as raffles and other guild activities on that truthful foundation.
+A useful product test is:
 
-## Project principles
+> **Does this help establish authority to participate, enable guild participation, operate that participation, or preserve its history?**
 
-- Blizzard owns authenticated account control, Characters, current WoW guild Character membership, and numeric guild rank.
-- Guild Operations owns the durable Guildie representation and guild-established operational truth outside WoW.
-- Discord resolves onto an existing Guildie; it does not establish canonical membership.
-- Persist concrete objects and relationship roles rather than a generic Subject abstraction.
-- Backend state is authoritative; interfaces are projections and interaction surfaces.
-- Human guild decisions remain human decisions. The backend records and enforces procedure rather than inventing authority.
-- Keep the project lightweight. No task ledger or development journals are required.
+If not, it probably does not belong.
 
-See `docs/architecture.md` and `docs/member-objects.md` for durable architectural decisions.
+## What the application does
+
+Guild Operations is built around concrete guild participation capabilities rather than around infrastructure for its own sake.
+
+Current examples include the guild's Raffle and Events experiences. A member can encounter an activity through a member-facing surface while authorized guild members operate that same activity through administrative surfaces. Both are projections over the same backend-owned operational truth.
+
+This relationship is intentional:
+
+```text
+Guild activity
+    ↓
+Guild Operations owns its operational truth
+    ↓
+member participation + guild operation
+    ↓
+web / Discord / future WoW-facing expressions
+```
+
+The interfaces may express an activity differently because their mediums differ. They should not become independent owners of the same operational facts.
+
+## Authority to participate
+
+Participation needs a trustworthy answer to who is acting and what guild authority they currently possess.
+
+Guild Operations therefore maintains a deliberately WoW-rooted member model:
+
+```text
+Guildie
+├── Blizzard account authority
+├── WoW account(s)
+│   └── Character(s)
+├── selected main
+├── optional Discord association
+└── derived Guild Operations capabilities
+```
+
+A **Guildie** provides durable continuity for the real-world guild member. A **Character** is the durable WoW object through which that member is normally recognized in game. Blizzard authentication establishes account control, while Blizzard's current guild roster independently establishes current Character membership and numeric guild rank. Guild Operations joins those facts to determine current guild participation and authority.
+
+A selected main is presentation preference, not identity or authorization. Discord may resolve to an existing Guildie after association, but Discord does not create the canonical member.
+
+The member and authority machinery exists to make participation trustworthy. It is infrastructure supporting the guild activities, not the product destination itself.
+
+## Ownership of truth
+
+Authority follows the system or person that can legitimately establish the fact.
+
+- **Blizzard** owns facts such as authenticated account control, Characters, current WoW guild membership, and numeric guild rank.
+- **Guild Operations** owns facts and meanings established by OH CRIT I Pulled! outside WoW, including the operational state of its own participation capabilities.
+- **Guild members and officers** remain authoritative for judgments no machine can legitimately make. Software may constrain, record, enforce, and present those decisions without manufacturing the judgment itself.
+
+The backend owns singular Guild Operations operational state. Web, Discord, and future WoW integrations are projections or interaction surfaces over that state.
+
+## Building the project
+
+Guild Operations favors concrete guild capabilities over generalized foundations.
+
+Build the guild activity first. Let common machinery reveal itself under pressure. Shared abstractions should be introduced only after multiple real features demonstrate that the same responsibility is genuinely shared.
+
+The existing identity, authority, persistence, rendering, and Guild Event machinery should therefore be treated as infrastructure that has been earned by concrete needs, not as an invitation to generalize the application into a platform.
+
+When future expression is likely but the feature itself has not been earned, prepare an inexpensive semantic seam rather than implementing the speculative feature.
+
+> **Prepare the seam, not the speculative feature.**
+
+## Documentation
+
+The architecture and domain documents describe the durable contracts behind the application:
+
+- [`docs/architecture.md`](docs/architecture.md) — system-level architectural laws and ownership boundaries.
+- [`docs/member-objects.md`](docs/member-objects.md) — Guildie, Character, roster, selected-main, session, Discord, and capability meanings.
+- [`docs/guild-permissioning.md`](docs/guild-permissioning.md) — global authority and permission boundaries.
+- [`docs/global-persistence.md`](docs/global-persistence.md) — semantic ownership of persisted truth.
+- [`docs/web-rendering.md`](docs/web-rendering.md) — web projection and rendering ownership.
+- [`docs/guild-event-calendar.md`](docs/guild-event-calendar.md) — shared temporal discovery for concrete guild occurrences.
+- [`docs/guild-event-offerings.md`](docs/guild-event-offerings.md) — enduring Events discovery for participation capabilities.
+- [`docs/module-creation.md`](docs/module-creation.md) — guidance for introducing concrete participation modules.
+- [`docs/raffle.md`](docs/raffle.md) — the Raffle domain and procedure.
+
+Detailed authority ceremonies and feature-specific contracts live in their corresponding documents under `docs/`.
