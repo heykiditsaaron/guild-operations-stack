@@ -19,19 +19,14 @@ export type GuildCharacterEnrichmentTarget = GuildCharacterCoordinate & {
   needsMedia: boolean;
 };
 
-type RosterCharacter = GuildCharacterCoordinate & {
+export type CharacterPresentationAcquisitionTarget = GuildCharacterCoordinate & {
   characterName: string;
   realmSlug: string;
-};
-
-type ReconciliationCharacter = RosterCharacter & {
   needsProfile: boolean;
   needsMedia: boolean;
 };
 
-export type GuildCharacterEnrichmentResult = {
-  guildId: string;
-  rosterCount: number;
+export type CharacterPresentationAcquisitionResult = {
   attempted: number;
   profilesUpdated: number;
   mediaUpdated: number;
@@ -45,6 +40,16 @@ export type GuildCharacterEnrichmentResult = {
     stage: "profile" | "media";
     error: string;
   }>;
+};
+
+type RosterCharacter = GuildCharacterCoordinate & {
+  characterName: string;
+  realmSlug: string;
+};
+
+export type GuildCharacterEnrichmentResult = CharacterPresentationAcquisitionResult & {
+  guildId: string;
+  rosterCount: number;
 };
 
 const NOT_FOUND_RETRY_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
@@ -165,7 +170,7 @@ export async function guildCharactersNeedingEnrichment(
   });
 }
 
-function characterBaseUrl(character: RosterCharacter): string {
+function characterBaseUrl(character: CharacterPresentationAcquisitionTarget): string {
   const realm = encodeURIComponent(character.realmSlug.toLowerCase());
   const name = encodeURIComponent(character.characterName.toLowerCase());
   return `https://${character.region}.api.blizzard.com/profile/wow/character/${realm}/${name}`;
@@ -189,9 +194,13 @@ async function recordAcquisitionAttempt(
   );
 }
 
-async function persistProfile(character: RosterCharacter, profile: BlizzardCharacterProfile, observedAt: Date): Promise<void> {
+async function persistProfile(
+  character: CharacterPresentationAcquisitionTarget,
+  profile: BlizzardCharacterProfile,
+  observedAt: Date,
+): Promise<void> {
   if (String(profile.id) !== character.characterId || String(profile.realm.id) !== character.realmId) {
-    throw new Error("Blizzard character profile did not corroborate roster character coordinate");
+    throw new Error("Blizzard character profile did not corroborate character coordinate");
   }
 
   await pool.query(
@@ -215,9 +224,13 @@ async function persistProfile(character: RosterCharacter, profile: BlizzardChara
   );
 }
 
-async function persistMedia(character: RosterCharacter, media: BlizzardCharacterMedia, observedAt: Date): Promise<void> {
+async function persistMedia(
+  character: CharacterPresentationAcquisitionTarget,
+  media: BlizzardCharacterMedia,
+  observedAt: Date,
+): Promise<void> {
   if (media.character?.id != null && String(media.character.id) !== character.characterId) {
-    throw new Error("Blizzard character media did not corroborate roster character coordinate");
+    throw new Error("Blizzard character media did not corroborate character coordinate");
   }
   const assets = media.assets ?? [];
   await pool.query(
@@ -233,33 +246,23 @@ function failureStatus(error: unknown): number | null {
   return error instanceof BlizzardAuthorityRequestError ? error.status : null;
 }
 
-export async function enrichGuildCharacters(options: {
-  guildId?: string;
+export async function acquireCharacterPresentation(options: {
+  targets: CharacterPresentationAcquisitionTarget[];
   concurrency?: number;
-  targets?: GuildCharacterEnrichmentTarget[];
-} = {}): Promise<GuildCharacterEnrichmentResult> {
-  const guildId = options.guildId ?? config.guild.id;
+}): Promise<CharacterPresentationAcquisitionResult> {
   const concurrency = options.concurrency ?? 8;
   if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 20) {
     throw new Error("concurrency must be an integer between 1 and 20");
   }
 
-  const fullRoster = await currentRosterCharacters(guildId);
-  const requested = options.targets ? new Map(options.targets.map((target) => [coordinateKey(target), target])) : null;
-  const roster: ReconciliationCharacter[] = requested
-    ? fullRoster.flatMap((character) => {
-        const target = requested.get(coordinateKey(character));
-        return target ? [{ ...character, needsProfile: target.needsProfile, needsMedia: target.needsMedia }] : [];
-      })
-    : fullRoster.map((character) => ({ ...character, needsProfile: true, needsMedia: true }));
-
-  if (roster.length === 0) {
-    return { guildId, rosterCount: fullRoster.length, attempted: 0, profilesUpdated: 0, mediaUpdated: 0,
+  const targets = options.targets;
+  if (targets.length === 0) {
+    return { attempted: 0, profilesUpdated: 0, mediaUpdated: 0,
       failedProfiles: 0, failedMedia: 0, apiCalls: 0, failures: [] };
   }
 
   const accessToken = await applicationAccessToken();
-  const failures: GuildCharacterEnrichmentResult["failures"] = [];
+  const failures: CharacterPresentationAcquisitionResult["failures"] = [];
   let profilesUpdated = 0;
   let mediaUpdated = 0;
   let apiCalls = 0;
@@ -269,8 +272,8 @@ export async function enrichGuildCharacters(options: {
   async function worker(): Promise<void> {
     while (true) {
       const index = cursor++;
-      if (index >= roster.length) return;
-      const character = roster[index];
+      if (index >= targets.length) return;
+      const character = targets[index];
       const base = characterBaseUrl(character);
       const suffix = `namespace=profile-${character.region}&locale=en_US`;
 
@@ -303,8 +306,41 @@ export async function enrichGuildCharacters(options: {
     }
   }
 
-  await Promise.all(Array.from({ length: Math.min(concurrency, roster.length) }, () => worker()));
-  return { guildId, rosterCount: fullRoster.length, attempted: roster.length, profilesUpdated, mediaUpdated,
+  await Promise.all(Array.from({ length: Math.min(concurrency, targets.length) }, () => worker()));
+  return {
+    attempted: targets.length,
+    profilesUpdated,
+    mediaUpdated,
     failedProfiles: failures.filter((failure) => failure.stage === "profile").length,
-    failedMedia: failures.filter((failure) => failure.stage === "media").length, apiCalls, failures };
+    failedMedia: failures.filter((failure) => failure.stage === "media").length,
+    apiCalls,
+    failures,
+  };
+}
+
+export async function enrichGuildCharacters(options: {
+  guildId?: string;
+  concurrency?: number;
+  targets?: GuildCharacterEnrichmentTarget[];
+} = {}): Promise<GuildCharacterEnrichmentResult> {
+  const guildId = options.guildId ?? config.guild.id;
+  const fullRoster = await currentRosterCharacters(guildId);
+  const requested = options.targets ? new Map(options.targets.map((target) => [coordinateKey(target), target])) : null;
+  const acquisitionTargets: CharacterPresentationAcquisitionTarget[] = requested
+    ? fullRoster.flatMap((character) => {
+        const target = requested.get(coordinateKey(character));
+        return target ? [{ ...character, needsProfile: target.needsProfile, needsMedia: target.needsMedia }] : [];
+      })
+    : fullRoster.map((character) => ({ ...character, needsProfile: true, needsMedia: true }));
+
+  const acquisition = await acquireCharacterPresentation({
+    targets: acquisitionTargets,
+    concurrency: options.concurrency,
+  });
+
+  return {
+    guildId,
+    rosterCount: fullRoster.length,
+    ...acquisition,
+  };
 }
