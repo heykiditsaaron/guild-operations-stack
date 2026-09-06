@@ -5,6 +5,7 @@ import { pool } from "./db.js";
 import { registerAuthRoutes } from "./auth.js";
 import { registerDiscordRoutes } from "./discord.js";
 import { registerGuildRoutes } from "./guild-routes.js";
+import { reconcileRaffleCalendarListingDestinations } from "./modules/raffle/calendar-listing.js";
 import { registerRaffleGuildEventOffering } from "./modules/raffle/offering.js";
 import { registerRaffleQueryRoutes } from "./modules/raffle/query-routes.js";
 import { registerRaffleRoutes } from "./modules/raffle/routes.js";
@@ -30,6 +31,7 @@ const app = Fastify({
 });
 await app.register(cookie);
 registerRaffleGuildEventOffering();
+await reconcileRaffleCalendarListingDestinations();
 
 app.get("/health", async () => {
   await pool.query("SELECT 1");
