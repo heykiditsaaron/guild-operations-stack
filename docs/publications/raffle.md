@@ -16,6 +16,8 @@ Subscribers use those coordinates to query Guild Operations for current authorit
 
 A failed attempt to mutate raffle state publishes nothing. Publication delivery failure does not undo a successful raffle operation.
 
+The current publication surface is provisional because subscriber architecture has not yet been accepted. Publication names therefore must not be interpreted as raffle lifecycle states.
+
 ## Round publications
 
 ### `raffle.round.live`
@@ -58,7 +60,7 @@ The claim query is optional when the round projection provides everything the su
 
 ### `raffle.round.cancelled`
 
-Published after a created or live round is administratively cancelled.
+Published after a listed or live round is administratively cancelled with raffle conclusion `operator_cancelled`.
 
 Coordinates:
 
@@ -72,7 +74,9 @@ GET /raffle/query/rounds/:roundId
 
 ### `raffle.round.no-entry-cancelled`
 
-Published when a live round is drawn with no approved entries and concludes as `no_entry_cancelled`.
+Legacy provisional publication name emitted when a live round is drawn with no approved ticket population and the authoritative raffle conclusion is `no_participation`.
+
+The publication name does not create a `no_entry_cancelled` raffle state. Raffle truth remains `status = concluded` and `conclusion = no_participation`. The name may be reconciled later when publication architecture is intentionally revisited.
 
 Coordinates:
 
