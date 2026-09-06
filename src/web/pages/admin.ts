@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
 import {
+  GUILD_REFRESH_CAPABILITY,
   OPERATIONS_INSPECT_CAPABILITY,
   guildieHasGuildCapability,
 } from "../../guild-permissions.js";
@@ -20,15 +21,11 @@ function destination(title: string, description: string, href: string): string {
 function administrationSection(
   headingId: string,
   heading: string,
-  destinations: string[],
+  content: string,
 ): string {
-  if (!destinations.length) return "";
-
   return `<section class="admin-section" aria-labelledby="${headingId}">
     <h2 id="${headingId}">${heading}</h2>
-    <div class="admin-destinations">
-      ${destinations.join("\n")}
-    </div>
+    ${content}
   </section>`;
 }
 
@@ -39,23 +36,15 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       viewerForRequest(sessionToken),
       authenticatedGuildie(sessionToken),
     ]);
-    const [canInspectOperations, canAdministerRaffle] = guildie
+    const [canRefreshGuild, canInspectOperations, canAdministerRaffle] = guildie
       ? await Promise.all([
+          guildieHasGuildCapability(guildie.guildieId, GUILD_REFRESH_CAPABILITY),
           guildieHasGuildCapability(guildie.guildieId, OPERATIONS_INSPECT_CAPABILITY),
           raffleGuildieCanAdminister(guildie.guildieId),
         ])
-      : [false, false];
+      : [false, false, false];
 
-    const globalAdministration: string[] = [];
     const availableAdministration: string[] = [];
-
-    if (canInspectOperations) {
-      globalAdministration.push(destination(
-        "Operational logging",
-        "Review operational results and exceptions.",
-        "/admin/operations",
-      ));
-    }
 
     if (canAdministerRaffle) {
       availableAdministration.push(destination(
@@ -65,23 +54,34 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       ));
     }
 
-    const hasAdministration = globalAdministration.length > 0 || availableAdministration.length > 0;
+    const hasAdministration = canRefreshGuild || canInspectOperations || availableAdministration.length > 0;
+    const guildSettings = canRefreshGuild
+      ? administrationSection(
+          "guild-settings-heading",
+          "Guild settings",
+          '<div class="admin-section-content" aria-hidden="true"></div>',
+        )
+      : "";
+    const modules = availableAdministration.length
+      ? administrationSection(
+          "available-administration-heading",
+          "Available administration",
+          `<div class="admin-destinations">${availableAdministration.join("\n")}</div>`,
+        )
+      : "";
+
     const body = hasAdministration
       ? `<div class="admin-sections">
-          ${administrationSection(
-            "global-administration-heading",
-            "Global administration",
-            globalAdministration,
-          )}
-          ${administrationSection(
-            "available-administration-heading",
-            "Available administration",
-            availableAdministration,
-          )}
+          ${guildSettings}
+          ${modules}
         </div>`
       : `<section class="admin-unavailable" aria-labelledby="admin-unavailable-heading">
           <h2 id="admin-unavailable-heading">Administration is not available for this account.</h2>
         </section>`;
+
+    const logUtility = canInspectOperations
+      ? '<a class="admin-header-utility" href="/admin/operations">View logs</a>'
+      : "";
 
     const html = renderPage(assets, {
       pathname: "/admin",
@@ -90,9 +90,12 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       viewer,
       stylesheets: ["admin.css"],
       header: `
-        <div class="admin-page-header">
-          <h1 id="page-title">Administration</h1>
-          <p class="lede">Operate the guild systems available to you.</p>
+        <div class="admin-page-header-row">
+          <div class="admin-page-header">
+            <h1 id="page-title">Administration</h1>
+            <p class="lede">Operate and configure the guild.</p>
+          </div>
+          ${logUtility}
         </div>`,
       body,
     });
