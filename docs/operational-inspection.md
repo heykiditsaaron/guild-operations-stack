@@ -72,7 +72,7 @@ No severity taxonomy is established initially. It should be introduced only if r
 
 Operational evidence is explicitly published by the code that owns the operation.
 
-The shared publication boundary should remain small. Conceptually, a producer supplies:
+The shared publication boundary remains small. A producer supplies:
 
 - `source` — the producer-declared semantic owner;
 - `operation` — a stable producer-owned operation coordinate;
@@ -80,14 +80,43 @@ The shared publication boundary should remain small. Conceptually, a producer su
 - `result` — `success`, `partial`, or `failure` when the record is a result;
 - an optional Guildie actor when a Guildie meaningfully initiated the operation;
 - a concise human-readable summary;
-- optional structured details useful for inspection;
-- the completion or occurrence time.
+- optional structured details useful for inspection.
 
-The infrastructure validates the common envelope and persists one record.
+The infrastructure assigns the occurrence time at publication, validates the common envelope, and persists one record.
 
-It must not become a generic execution wrapper, event bus, notification mechanism, subscriber system, exception interceptor, module registry, or operation lifecycle framework.
+It does not become a generic execution wrapper, event bus, notification mechanism, subscriber system, exception interceptor, module registry, or operation lifecycle framework.
 
 The producer decides when publication is warranted.
+
+Publication failure must not retroactively change the truth or result of the operation being inspected. Producers therefore treat inspection publication as best-effort relative to their domain operation and report inspection-write failure through runtime logging. Operational inspection does not recursively publish records about its own publication failures.
+
+## Persisted contract
+
+Operational records are stored in `operational_records` with the following common envelope:
+
+```text
+operational_record_id
+occurred_at_unix
+source
+operation
+kind
+result
+actor_guildie_id
+a summary
+details
+```
+
+`occurred_at_unix` is a Unix timestamp.
+
+`source`, `operation`, and summary are required non-empty values.
+
+`kind = result` requires a result classification. `kind = exception` does not carry a result classification; the exception itself is the record kind.
+
+`actor_guildie_id` is optional and references the concrete global Guildie object. There is no generic subject, target, or resource identity in the shared envelope.
+
+`details` is optional JSON owned semantically by the producer. Operational inspection does not register or enforce producer-specific details schemas.
+
+The persisted table is append-oriented from application code. No general-purpose update or deletion API is provided.
 
 ## Source and operation ownership
 
@@ -158,25 +187,34 @@ For that reason, the system should not be described as an audit log unless those
 
 ## Administrative inspection
 
-Operational evidence is intended for authorized administrative review inside Guild Operations.
+Operational evidence is reviewed at:
 
-The initial web surface belongs under the global `/admin` area because the inspection capability itself is global infrastructure even when individual records originate from modules.
+```text
+/admin/operations
+```
 
-The surface should prioritize troubleshooting and testing:
+The surface belongs under the global `/admin` area because the inspection capability itself is global infrastructure even when individual records originate from modules.
 
-- newest records first;
-- clear occurrence time;
+The page uses the global shell's secondary-navigation contract and declares the breadcrumb hierarchy:
+
+```text
+Administration > Operations
+```
+
+The initial view is deliberately bounded to the 100 newest matching records and presents:
+
+- client-local occurrence time derived from the persisted Unix timestamp;
 - source;
 - operation;
 - record kind;
 - result when applicable;
 - concise summary;
-- optional structured details;
-- meaningful Guildie actor when present.
+- meaningful Guildie actor when present;
+- optional structured details.
 
-Filtering by source and record kind is appropriate initial inspection behavior because those are stable common coordinates and directly support troubleshooting.
+Filtering is initially limited to source and record kind. Search infrastructure, generalized query languages, dashboards, analytics, notification behavior, retention controls, and elaborate observability presentation remain outside the capability.
 
-The inspection UI should remain deliberately simple. Search infrastructure, generalized query languages, dashboards, analytics, notification behavior, retention controls, and elaborate observability presentation are outside the initial capability.
+The `/admin` destination page evaluates Operations inspection and module administration independently. Access to one administrative destination does not imply access to another.
 
 ## Authorization
 
@@ -184,13 +222,51 @@ Viewing operational inspection is a distinct global administrative authority con
 
 It must not be inferred from access to an `/admin` route, from raffle administration, or from an unrelated mutation capability such as `guild.refresh`.
 
-The intended permission seam is a dedicated global capability:
+The dedicated global capability is:
 
 ```text
 operations.inspect
 ```
 
+The current guild policy grants it to observed Blizzard guild rank indexes 0, 1, and 2 through the same explicit global capability mapping used by other globally owned permissions. The migration also provisions the capability for already observed eligible ranks.
+
 Publishing operational evidence is not itself a Guildie-facing capability. Producers publish records while executing procedures whose own authorization and authority rules remain independently owned.
+
+## Initial proving producers
+
+The infrastructure is initially exercised by two existing global operations.
+
+### Guild refresh
+
+Guild refresh publishes:
+
+```text
+source: guild
+operation: refresh
+```
+
+Manual web refresh and scheduled/CLI refresh use the same concrete operation boundary. A completed refresh publishes one `success` or `partial` result. Character presentation acquisition failures make the result partial without negating successfully reconciled Blizzard guild-roster truth.
+
+A refresh that does not complete publishes one operational exception and still preserves the underlying runtime exception in runtime logging.
+
+A manually initiated refresh records the initiating Guildie actor. Scheduled/CLI refresh has no Guildie actor.
+
+### Guildie self refresh
+
+Validated Guildie self refresh publishes:
+
+```text
+source: guildie
+operation: self_refresh
+```
+
+OAuth cancellation, invalid/expired state, invalid session continuity, missing current membership, and Blizzard-principal mismatch do not publish operational records because the actual self-refresh operation has not been admitted.
+
+After admission, account/Character-control reconciliation failure publishes an exception.
+
+Successful account/Character-control reconciliation followed by ordinary presentation acquisition publishes `success` or `partial` depending on presentation failures.
+
+If presentation acquisition raises an exception after account/Character-control reconciliation has already succeeded, the operation publishes an exception whose details preserve that distinction. The successful account/control truth is not reclassified or rolled back.
 
 ## Safety of preserved details
 
