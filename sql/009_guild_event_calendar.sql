@@ -1,0 +1,5 @@
+ALTER TABLE IF EXISTS guild_event_registrations
+  RENAME TO guild_event_calendar_listings;
+
+ALTER INDEX IF EXISTS guild_event_registrations_discoverable_occurs_idx
+  RENAME TO guild_event_calendar_listings_discoverable_occurs_idx;
