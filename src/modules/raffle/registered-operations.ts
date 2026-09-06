@@ -5,7 +5,7 @@ import {
   type RaffleRound,
   type RaffleRoundTerms,
 } from "./domain.js";
-import { establishRaffleGuildEvent } from "./guild-event-registration.js";
+import { establishRaffleCalendarListing } from "./calendar-listing.js";
 
 export async function createRegisteredRaffleRound(
   actorGuildieId: string,
@@ -13,7 +13,7 @@ export async function createRegisteredRaffleRound(
 ): Promise<RaffleRound> {
   return withTransaction(async (client) => {
     const round = await createRaffleRoundDomain(actorGuildieId, terms, client);
-    await establishRaffleGuildEvent(round, client);
+    await establishRaffleCalendarListing(round, client);
     return round;
   });
 }
@@ -25,7 +25,7 @@ export async function updateRegisteredRaffleRound(
 ): Promise<RaffleRound> {
   return withTransaction(async (client) => {
     const round = await updateRaffleRoundDomain(actorGuildieId, roundId, terms, client);
-    await establishRaffleGuildEvent(round, client);
+    await establishRaffleCalendarListing(round, client);
     return round;
   });
 }
