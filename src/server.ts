@@ -17,6 +17,7 @@ import { registerRaffleClaimsPage } from "./web/pages/events/raffle/claims.js";
 import { registerRaffleEntryPage } from "./web/pages/events/raffle/enter.js";
 import { registerRaffleHistoryPage } from "./web/pages/events/raffle/history.js";
 import { registerRafflePage } from "./web/pages/events/raffle/index.js";
+import { registerRaffleRoundPage } from "./web/pages/events/raffle/round.js";
 import { registerRaffleRulesPage } from "./web/pages/events/raffle/rules.js";
 import { registerHomePage } from "./web/pages/home.js";
 
@@ -45,6 +46,7 @@ await registerRaffleEntryPage(app, webAssets);
 await registerRaffleClaimsPage(app, webAssets);
 await registerRaffleHistoryPage(app, webAssets);
 await registerRaffleRulesPage(app, webAssets);
+await registerRaffleRoundPage(app, webAssets);
 await registerRaffleAdminPage(app, webAssets);
 
 await registerAuthRoutes(app);
