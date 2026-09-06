@@ -1,6 +1,10 @@
 # Self account refresh
 
-> **Status: currently bugged.** The self account refresh capability is not currently functioning correctly. This document is retained as a record of the intended capability, but its current ceremony and terminology should not be treated as authoritative implementation guidance. A full rewrite of this document is required when the underlying self account refresh machinery is repaired.
+> **Status: currently bugged and pending repair.**
+>
+> The self account refresh capability is not currently functioning correctly. This document is retained as a record of the intended capability, not as authoritative guidance for the current implementation. The underlying machinery must be repaired before this contract is treated as current, and this document must be rewritten against the repaired implementation.
+>
+> When that repair is undertaken, reevaluate the document's domain model and ceremony rather than mechanically preserving the language below. The current document predates the established Guildie model and incorrectly treats `subject` as a canonical Guild Operations object/coordinate. In particular, verify and rewrite references to the caller's "canonical subject," a "Guild Operations subject," session-derived subject identity, principal-to-subject binding, and subject continuity in terms of the current Guildie/member model. Also verify the actual persistence boundary used by the repaired implementation before retaining or replacing the documented `establishOrResolveSubject()` call; the function name and ceremony described here must not be assumed to remain correct.
 
 Self account refresh lets a currently authenticated guild member ask Guild Operations to reacquire Blizzard-owned account and character truth for their own canonical subject.
 
