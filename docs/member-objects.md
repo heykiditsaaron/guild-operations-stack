@@ -127,6 +127,20 @@ current Blizzard Character roster
 current Guildie organizational participation
 ```
 
+The same intersection defines which Characters a Guildie may currently manage or represent as inside Guild Operations:
+
+```text
+currently controlled by Guildie
+        ∩
+currently present in Blizzard guild roster
+        ↓
+eligible Guild Operations Character
+```
+
+Control alone is insufficient. Guild-roster membership alone is insufficient. Character profile or media availability is also insufficient and cannot grant eligibility.
+
+Guild Operations may retain account-control observations for Characters outside the current guild roster, but those Characters do not become usable or presentable Guildie Characters until Blizzard guild-roster authority also establishes current membership.
+
 The invariant is:
 
 ```text
@@ -236,6 +250,8 @@ Use **Character** when the fact genuinely concerns a specific WoW Character or i
 Use current **Character roster** state when Blizzard-owned in-game guild membership matters.
 
 Use current **Guildie roster** state when Guild Operations organizational participation or rank-derived authority matters.
+
+Use the controlled-Character ∩ current-roster intersection when deciding which Characters a Guildie may manage or represent as in Guild Operations.
 
 Use selected main for presentation, not identity or authorization.
 
