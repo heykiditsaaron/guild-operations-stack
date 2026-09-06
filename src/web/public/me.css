@@ -1,0 +1,83 @@
+.me-menu-panel {
+  width: max-content;
+  min-width: 15rem;
+  max-width: min(18rem, calc(100vw - 2rem));
+  padding: 0.45rem;
+}
+
+.me-menu-section {
+  padding: 0.6rem;
+}
+
+.me-session-section {
+  padding-bottom: 0.6rem;
+}
+
+.me-menu-panel .session-sign-out-action {
+  width: auto;
+  min-height: 0;
+  justify-content: center;
+  margin: 0;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.55rem;
+  background: rgba(255, 255, 255, 0.04);
+  color: #c9c5ba;
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.me-menu-panel .session-sign-out-action:hover,
+.me-menu-panel .session-sign-out-action:focus-visible {
+  border-color: rgba(232, 201, 134, 0.24);
+  background: rgba(255, 255, 255, 0.075);
+  color: #f7f4ea;
+}
+
+.main-picker-sheet {
+  padding-top: 1rem;
+}
+
+.main-picker-heading {
+  align-items: center;
+}
+
+.main-picker-heading h2 {
+  font-family: inherit;
+  font-size: 1.15rem;
+  letter-spacing: 0;
+}
+
+.main-picker-section {
+  padding: 1rem 0;
+}
+
+.main-picker-section + .main-picker-section {
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.main-picker-section h3 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.main-picker-section-copy {
+  margin: 0.35rem 0 0.75rem;
+  color: #aaa69c;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.main-picker-section .refresh-characters-action {
+  width: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.main-picker-section-main {
+  padding-bottom: 0;
+}
