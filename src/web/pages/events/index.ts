@@ -1,5 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../../auth.js";
+import { config } from "../../../config.js";
+import { pool } from "../../../db.js";
 import {
   discoverableGuildEventCalendarListings,
   type GuildEventCalendarListing,
@@ -59,6 +61,16 @@ function isHappeningNow(listing: GuildEventCalendarListing, nowUnix: number): bo
   return start <= nowUnix && nowUnix <= end;
 }
 
+async function guildNameFromStorage(): Promise<string | null> {
+  const result = await pool.query<{ name: string }>(
+    `SELECT name
+       FROM guilds
+      WHERE guild_id = $1`,
+    [config.guild.id],
+  );
+  return result.rows[0]?.name ?? null;
+}
+
 function offeringArtworkUrl(offering: GuildEventOffering, assets: AssetRegistry): string | null {
   if (!offering.artwork) return null;
   if (offering.artwork.kind === "url") return offering.artwork.url;
@@ -81,7 +93,7 @@ function renderOffering(offering: GuildEventOffering, assets: AssetRegistry): st
         ${artworkMarkup}
         <div class="events-offering-copy">
           <p class="events-offering-kicker">Guild activity</p>
-          <h3>${title}</h3>
+          <h2>${title}</h2>
           <p class="events-offering-tagline">${tagline}</p>
         </div>
       </div>
@@ -96,12 +108,7 @@ function renderOfferings(offerings: readonly GuildEventOffering[], assets: Asset
   if (!offerings.length) return "";
 
   return `
-    <section class="events-offerings" aria-labelledby="events-offerings-title">
-      <div class="events-section-heading">
-        <p class="eyebrow">Participation offerings</p>
-        <h2 id="events-offerings-title">Ways to join in</h2>
-        <p>Explore the activities the guild operates, whether or not one is scheduled right now.</p>
-      </div>
+    <section class="events-offerings" aria-label="Participation offerings">
       <div class="events-offering-grid">
         ${offerings.map((offering) => renderOffering(offering, assets)).join("\n")}
       </div>
@@ -167,12 +174,8 @@ function renderCalendar(
     : emptyCalendarState();
 
   return `
-    <section class="events-calendar" aria-labelledby="events-calendar-title">
-      <div class="events-section-heading">
-        <p class="eyebrow">Guild Event Calendar</p>
-        <h2 id="events-calendar-title">What&apos;s happening</h2>
-        <p>Current and upcoming guild-operated events, ordered by the temporal truth established by their owning modules.</p>
-      </div>
+    <section class="events-calendar-widget" aria-labelledby="events-calendar-title">
+      <h2 class="eyebrow events-calendar-title" id="events-calendar-title">Guild Event Calendar</h2>
       ${calendarBody}
     </section>`;
 }
@@ -180,15 +183,17 @@ function renderCalendar(
 export async function registerEventsPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/events", async (request, reply) => {
     const nowUnix = Math.floor(Date.now() / 1000);
-    const [viewer, listings] = await Promise.all([
+    const [viewer, listings, guildName] = await Promise.all([
       viewerForRequest(request.cookies[SESSION_COOKIE_NAME]),
       discoverableGuildEventCalendarListings(),
+      guildNameFromStorage(),
     ]);
     const offerings = guildEventOfferings();
 
     const relevant = listings.filter((listing) => occursThrough(listing) >= nowUnix);
     const happeningNow = relevant.filter((listing) => isHappeningNow(listing, nowUnix));
     const upcoming = relevant.filter((listing) => !isHappeningNow(listing, nowUnix));
+    const guildCommunity = guildName ? `${htmlText(guildName)}&apos;s community` : "the guild&apos;s community";
 
     const body = `
       <div class="events-shell">
@@ -206,7 +211,7 @@ export async function registerEventsPage(app: FastifyInstance, assets: AssetRegi
         <div class="events-page-header">
           <p class="eyebrow">Guild participation</p>
           <h1 id="page-title">Events</h1>
-          <p class="lede">Find ways to take part in guild life, then see what is happening now and what is coming up next.</p>
+          <p class="lede">Find out ways to take part in ${guildCommunity}. Below you&apos;ll find what the guild offers and when you can join along.</p>
         </div>`,
       body,
     });
