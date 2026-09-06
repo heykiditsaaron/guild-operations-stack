@@ -1,5 +1,13 @@
 # Guild refresh
 
+> **Investigation note: consolidation with Character enrichment is deferred.**
+>
+> The known self account refresh bug should be investigated before this document becomes the sole home for the older `guild-character-enrichment.md` doctrine. Guild refresh currently owns targeted Character profile/media acquisition after guild-roster reconciliation, while self account refresh reacquires a Guildie's Blizzard account/control observation through a different authority ceremony.
+>
+> The brittle point is responsibility for follow-up observations: when self refresh changes which Characters a Guildie currently controls, there is no obvious explicit step in that ceremony that asks whether those Characters now require profile/media acquisition. Investigate whether the existing targeted Character acquisition machinery can be invoked independently of guild-roster refresh, or whether a smaller shared reconciliation seam is warranted by the two real callers. Do not collapse guild-roster authority, Guildie account-control authority, and Character presentation acquisition into one refresh concept merely to share implementation.
+>
+> Also inspect the self-refresh reuse of the Guildie establishment persistence boundary. `establishOrResolveGuildie()` currently reconciles controlled Characters and has broader establishment-related effects; determine during the bug fix whether an existing-Guildie refresh should deliberately reuse that entire boundary or should have a narrower account-observation reconciliation procedure. This note records an investigation target, not a predetermined replacement architecture.
+
 Guild refresh is the authoritative reconciliation procedure for Blizzard-owned guild state.
 
 It is not a full-roster enrichment sweep. A refresh first acquires the current Blizzard guild profile and roster, persists that observation, and then determines what character presentation work is actually required.
