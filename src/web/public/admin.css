@@ -1,5 +1,27 @@
+.admin-page-header-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  max-width: 54rem;
+}
+
 .admin-page-header {
   max-width: 42rem;
+}
+
+.admin-header-utility {
+  flex: none;
+  margin-top: 0.15rem;
+  color: #aaa69c;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.admin-header-utility:hover,
+.admin-header-utility:focus-visible {
+  color: #e8c986;
+  text-decoration: underline;
 }
 
 .admin-sections,
@@ -18,6 +40,10 @@
   margin: 0 0 1rem;
   font-size: 1rem;
   color: #c9c5ba;
+}
+
+.admin-section-content {
+  min-height: 0.25rem;
 }
 
 .admin-destination {
@@ -176,4 +202,10 @@
 
 .operations-empty {
   color: #aaa69c;
+}
+
+@media (max-width: 42rem) {
+  .admin-page-header-row {
+    align-items: baseline;
+  }
 }
