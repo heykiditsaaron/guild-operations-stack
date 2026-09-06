@@ -1,8 +1,8 @@
-import { refreshGuildAuthority } from "./guild.js";
 import { pool } from "./db.js";
+import { performGuildRefresh } from "./guild-refresh-operation.js";
 
 try {
-  const result = await refreshGuildAuthority();
+  const result = await performGuildRefresh();
   console.log(JSON.stringify({
     guild_id: result.guildId,
     roster_count: result.rosterCount,
