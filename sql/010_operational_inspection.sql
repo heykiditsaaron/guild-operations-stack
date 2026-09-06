@@ -22,3 +22,10 @@ CREATE INDEX IF NOT EXISTS operational_records_source_occurred_idx
 
 CREATE INDEX IF NOT EXISTS operational_records_kind_occurred_idx
   ON operational_records(kind, occurred_at_unix DESC);
+
+INSERT INTO guild_rank_capabilities (guild_id, rank_index, capability)
+SELECT guild_id, rank_index, 'operations.inspect'
+  FROM guild_rank_definitions
+ WHERE active = true
+   AND rank_index IN (0, 1, 2)
+ON CONFLICT (guild_id, rank_index, capability) DO NOTHING;
