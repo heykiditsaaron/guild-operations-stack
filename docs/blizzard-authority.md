@@ -1,57 +1,47 @@
-# Blizzard Identity Authority Reconnaissance
+# Blizzard Authority Evidence
 
 ## Purpose
 
-Identify what Blizzard can authoritatively assert during Guild Operations authentication before fixing the persistence schema or implementation stack.
+This document records the Blizzard API evidence that informed Guild Operations' member and guild authority model.
 
-The desired ceremony is:
+It is an evidentiary record rather than the canonical definition of Guildie, authentication, persistence, or guild-authority semantics. Those contracts live in:
+
+- [`member-objects.md`](member-objects.md)
+- [`authentication-ceremony.md`](authentication-ceremony.md)
+- [`persistence-boundary.md`](persistence-boundary.md)
+- [`guild-authority.md`](guild-authority.md)
+
+The evidence here is preserved because several architectural choices were earned through direct Blizzard observation rather than assumed from API shape alone.
+
+## User-authorized WoW profile authority
+
+Blizzard exposes user-specific World of Warcraft account profile data through OAuth 2.0 Authorization Code Flow.
+
+The World of Warcraft Account Profile surface requires a user token carrying `wow.profile`. The relevant observed flow was:
 
 ```text
 Battle.net authorization
         ↓
-user-authorized WoW profile access
+GET /oauth/userinfo
+        +
+GET /profile/user/wow for selected region
         ↓
-authoritative account/profile coordinates
-        ↓
-resolve or establish the Guildie
+corroborated Blizzard principal
+        +
+WoW account(s)
+        +
+controlled Character coordinates
 ```
 
-## Confirmed authority boundary
+This is user-authorized account authority rather than ordinary application-level Game Data access.
 
-Blizzard exposes user-specific World of Warcraft account profile data through OAuth 2.0 Authorization Code Flow.
+A controlled OAuth probe confirmed that callback `state` round-tripped as expected and that the authorization-code exchange returned a bearer token carrying `wow.profile` with an approximately 24-hour lifetime.
 
-The World of Warcraft Account Profile endpoints require a user access token carrying the `wow.profile` scope. Blizzard's published Account Profile announcement identifies these endpoints:
+No credential, access token, BattleTag, account identifier, realm name, or Character name is recorded in this document.
 
-- `GET /profile/user/wow`
-- `GET /profile/user/wow/protected-character/{realm-id}-{character-id}`
-- account collection endpoints beneath `/profile/user/wow/collections`
+## Observed account hierarchy
 
-The important distinction is that this is user-authorized profile access, not ordinary application-level Game Data API access. A successful response therefore carries authority about which WoW profile data belongs to the authenticated Battle.net user.
-
-## Live OAuth probe
-
-A controlled authorization ceremony was completed against the Guild Operations Blizzard client.
-
-The authorization request required a `state` parameter. The callback returned the same value that was generated before authorization, confirming the expected CSRF-binding behavior.
-
-The authorization-code exchange succeeded and returned:
-
-```text
-token_type: bearer
-scope: wow.profile
-expires_in: approximately 24 hours
-```
-
-The probe then queried:
-
-- `GET https://oauth.battle.net/userinfo`
-- `GET https://us.api.blizzard.com/profile/user/wow?namespace=profile-us&locale=en_US`
-
-No credential, token, account identifier, BattleTag, realm name, or character name is recorded in this document.
-
-## Confirmed identity hierarchy
-
-The live `userinfo` response contained exactly the relevant identity fields:
+The live `userinfo` response exposed:
 
 ```text
 battletag
@@ -59,45 +49,29 @@ id
 sub
 ```
 
-The live WoW Account Profile response contained:
-
-```text
-_links
-collections
-houses
-id
-wow_accounts
-```
-
-Each returned WoW account had:
+The live WoW Account Profile response exposed:
 
 ```text
 id
-characters
+wow_accounts[]
 ```
 
-The sampled character shape contained:
+Each returned WoW account exposed its own `id` and `characters[]` collection.
+
+The observed hierarchy was therefore:
 
 ```text
-character
-faction
-gender
-id
-level
-name
-playable_class
-playable_race
-protected_character
-realm
+Authenticated Blizzard principal
+└── WoW Account Profile projection
+    └── wow_accounts[]
+        └── characters[]
 ```
 
-The live account used for this probe exposed one WoW account/license and twenty characters. That count is an observation from the probe, not a system invariant.
+The probe account happened to expose one WoW account/license and twenty Characters. Those counts are observations, not invariants.
 
-## Principal identifier relationship
+## Principal-coordinate evidence
 
-The live probe established a particularly important relationship among Blizzard identifiers.
-
-Observed types:
+The live probe established these types:
 
 ```text
 userinfo.id: integer
@@ -112,175 +86,127 @@ When compared by textual value:
 userinfo.id == userinfo.sub == profile.id
 ```
 
-The profile-level identifier did **not** equal the returned `wow_accounts[].id`.
+The top-level profile identifier did **not** equal the subordinate `wow_accounts[].id`.
 
-This is strong evidence that `/profile/user/wow` is a WoW profile projection of the authenticated Battle.net principal rather than a representation of one specific WoW license/account. The subordinate `wow_accounts[]` records occupy a distinct identity layer beneath that principal.
-
-For Guild Operations, this materially strengthens the authenticated Blizzard principal as the external authority anchor used to establish or resolve a Guildie and materially weakens any design that would use one arbitrary WoW license/account ID as the member root.
-
-## Character coordinate structure
-
-The live character entry confirmed that the direct character identifier is exposed as a numeric `characters[].id`.
-
-The associated references were shaped as:
+A second independent OAuth ceremony, with fresh state, code, token, and API calls, confirmed that the following remained stable for the same Blizzard user:
 
 ```text
-character
-└── href
-
-realm
-├── id
-├── key
-├── name
-└── slug
-
-protected_character
-└── href
+principal identifier
+profile identifier
+WoW account identifier set
+Character coordinates
 ```
 
-The nested `character` object is therefore a link reference, not a second copy of the character identifier. The authoritative character identity data available directly in the parent response is the numeric character ID together with the realm coordinate.
-
-For Guild Operations, the safe character continuity coordinate is therefore:
+This evidence supports the current external authority coordinate:
 
 ```text
-region + realm_id + character_id
+region + Blizzard authenticated principal identifier
 ```
 
-Character name and realm slug remain presentation/discovery data rather than continuity anchors.
+and supports treating subordinate WoW-account identifiers as account structure rather than as Guildie continuity.
 
-## Identifier stability probe
+Whether Blizzard guarantees principal uniqueness globally across regions has not been established strongly enough to remove region from the coordinate, so region remains explicit.
 
-A second, independent Blizzard OAuth authorization ceremony was completed with a fresh `state`, fresh authorization code, fresh bearer token, and fresh calls to both `/oauth/userinfo` and `/profile/user/wow`.
+## Character-coordinate evidence
 
-The second ceremony was compared to the first without recording any identifier values.
+Character entries in the account profile exposed numeric Character IDs together with realm identifiers and locators.
 
-Observed result:
-
-```text
-principal_stable: true
-profile_id_stable: true
-wow_account_ids_stable: true
-character_coordinates_stable: true
-first_character_count: 20
-second_character_count: 20
-```
-
-This confirms that, across two independent authorization ceremonies for the same Battle.net user:
-
-- the authenticated principal identifier remained stable;
-- the top-level WoW profile identifier remained stable;
-- the subordinate WoW account/license identifier set remained stable;
-- the returned character coordinates remained stable.
-
-This is sufficient live evidence for Guild Operations to treat these Blizzard-native identifiers as persisted external authority and continuity coordinates rather than merely ephemeral observations.
-
-## Two relevant identity layers
-
-### Authenticated Blizzard principal
-
-Battle.net's user-info endpoint returns an authenticated account identifier (`sub` / account id) and BattleTag.
-
-The live probe confirmed that the numeric `userinfo.id`, textual `userinfo.sub`, and numeric top-level WoW Account Profile `id` carry the same identifier value.
-
-BattleTag is presentation data and must not be treated as the durable coordinate.
-
-### World of Warcraft account/license records
-
-`GET /profile/user/wow` returns the authenticated principal's WoW profile summary and contains subordinate `wow_accounts[]` records.
-
-Conceptually, the observed hierarchy is:
-
-```text
-Authenticated Blizzard principal
-└── WoW Account Profile projection
-    └── wow_accounts[]
-        └── characters[]
-```
-
-A single authenticated principal may expose more than one WoW account/license. The probe account happened to expose one; the API shape itself remains plural.
-
-Therefore `wow_accounts[].id` must not be used as the canonical Guildie coordinate.
-
-## Character control
-
-The Account Profile response contains the characters belonging to the user-authorized WoW account profile. Character entries expose Blizzard-native character/realm coordinates and links to the protected-character profile endpoint.
-
-The protected endpoint is addressed using:
+The protected Character endpoint was addressed using:
 
 ```text
 {realm-id}-{character-id}
 ```
 
-This gives Guild Operations a substantially stronger Character coordinate than character name plus realm slug. Names can change; Blizzard-native IDs should be preferred.
+Across independent authorization ceremonies, the Character coordinates remained stable.
 
-For the initial project scope, Retail is the target. Classic behavior is not part of the root-object requirement.
-
-## Region is part of the ceremony
-
-WoW Profile API calls are region/namespace scoped, such as `profile-us`.
-
-Blizzard has historically not provided a reliable way to infer a user's WoW region before making the regional profile request. Guild Operations should therefore treat region selection/resolution as an explicit part of authentication unless live testing demonstrates a newer authoritative mechanism.
-
-The durable external authority coordinate must not silently assume that a numeric Blizzard identifier is globally unique across regions unless Blizzard documents that property or live API semantics establish it safely. Region should remain explicit in our model until proven unnecessary.
-
-## Current architectural conclusion
-
-The live evidence supports using the Blizzard-authenticated principal that has successfully demonstrated a WoW profile in the selected region as the authority-bearing external coordinate through which Guild Operations establishes or resolves a Guildie.
-
-Conceptually:
+This supports the durable Character coordinate used throughout Guild Operations:
 
 ```text
-Guildie
-    ↑ established/resolved through
-Authenticated Blizzard principal
-├── region-bound successful WoW profile acquisition
-├── WoW account/license(s)
-│   └── controlled Character(s)
-└── later: optional Discord association resolves the Guildie separately
+region + realm_id + character_id
 ```
 
-This remains WoW-rooted operationally: Guild Operations does not create a Guildie merely because a Battle.net account exists. Establishment requires successful Blizzard authorization plus successful acquisition of the user's WoW Account Profile.
+Character name, realm name, realm slug, and other presentation fields are therefore not continuity anchors.
 
-A Discord identity remains incapable of establishing a Guildie.
+## Guild-roster evidence
 
-## Durable coordinate contract
-
-The strongest current external authority coordinate is:
+Separate live Blizzard guild reconnaissance established the configured guild as:
 
 ```text
-Blizzard authenticated principal identifier + region
+guild_id: 65431436
+region: us
+realm_id: 129
+realm_slug: gurubashi
+name: OH CRIT I Pulled
 ```
 
-with the successful `/profile/user/wow` response acting as the ceremony that admits that principal as authority for a Guildie and its controlled Characters.
+The numeric Blizzard `guild_id` is the stable guild coordinate used by Guild Operations. Name, realm labels, faction, and lookup locators are observations or addressing material rather than guild continuity.
 
-The live probes established that:
+The live roster sample used during authority modeling contained 517 Character members. Each membership supplied Blizzard Character coordinates and a numeric `rank`.
+
+When that roster was compared with one authenticated Guildie's account-control observation, the sample contained:
 
 ```text
-userinfo.id == userinfo.sub == profile.id
+authenticated controlled Characters: 20
+current roster intersections: 9
 ```
 
-by identifier value, and that this value remains stable across independent authorization ceremonies.
+All nine intersections matched through Blizzard Character and realm identifiers rather than Character name.
 
-The subordinate WoW-account/license IDs and Character coordinates likewise remained stable and can be retained as Blizzard-authoritative subordinate coordinates.
+That empirical result established that account-control and guild-roster observations can be joined through Blizzard-native Character coordinates. The resulting Guildie participation semantics are defined in [`guild-authority.md`](guild-authority.md).
 
-The Guild Operations-owned durable member coordinate is `guildie_id`; it is distinct from these external Blizzard coordinates.
+## Rank evidence
 
-`Subject` is not an object in this hierarchy. It is contextual language for whichever existing object is being discussed in a particular relation.
+The live roster sample contained populated numeric ranks:
 
-## Remaining verification
+```text
+0, 1, 2, 3, 4, 5, 7
+```
 
-The root authority and subordinate Character coordinate questions are sufficiently resolved for persistence design. Remaining reconnaissance is narrower and no longer blocks the root model:
+Rank `6` had no roster occupants and was intentionally unused by the guild at the time of observation.
 
-1. verify that a protected-character link resolves using the same realm and character IDs exposed in the parent profile response;
-2. determine whether Blizzard documents the principal identifier as globally unique or whether Guild Operations should permanently retain region as part of its external authority coordinate;
-3. determine how Guild Operations should handle a successful Blizzard principal whose selected regional WoW profile contains no relevant guild Character.
+The Blizzard Guild Profile and Guild Roster responses observed during reconnaissance did not expose the guild's custom human-readable rank names.
 
-## Sources used for reconnaissance
+This evidence supports two durable conclusions used elsewhere:
 
-Primary Blizzard material:
+- the numeric rank attached to a current roster Character is Blizzard-owned truth;
+- Guild Operations must not infer the complete rank-definition space from whichever rank values happen to be populated in one roster observation.
 
-- Battle.net Developer Portal — OAuth documentation
-- Battle.net Developer Portal — World of Warcraft Profile APIs
-- Blizzard API Discussion announcement, "World of Warcraft API Update - Visions of N'zoth," documenting Account Profile and the `wow.profile` requirement
+How numeric rank becomes current Guildie authority or application permission is defined in [`guild-authority.md`](guild-authority.md) and [`guild-permissioning.md`](guild-permissioning.md).
 
-Current API descriptions were cross-checked against recently maintained API catalogs/client libraries because the current Blizzard developer portal is difficult to retrieve through automated documentation tooling. Those secondary descriptions are useful reconnaissance, but live Blizzard responses remain the final authority for our schema.
+## Region evidence
+
+WoW Profile API requests are region/namespace scoped, for example `profile-us`.
+
+No sufficiently authoritative mechanism was established during reconnaissance for deriving a user's WoW region before regional profile acquisition. Region therefore remains an explicit part of the authentication ceremony and persisted Blizzard principal coordinate.
+
+## What this evidence established
+
+The probes were sufficient to support these architectural choices:
+
+```text
+Guild Operations Guildie continuity
+    → guildie_id
+
+external Blizzard authority binding
+    → region + authenticated principal identifier
+
+subordinate account structure
+    → WoW account identifier(s)
+
+Character continuity
+    → region + realm_id + character_id
+
+guild continuity
+    → Blizzard numeric guild_id
+
+current guild rank
+    → Blizzard numeric rank on current roster membership
+```
+
+This document does not independently define the ceremonies or persistence rules that consume those coordinates.
+
+## Remaining evidence questions
+
+The root coordinate questions are no longer blockers. Narrower Blizzard questions may still be investigated when concrete work requires them, including whether Blizzard formally guarantees principal uniqueness across regions or exposes stronger region-discovery semantics.
+
+New evidence should update the appropriate canonical contract only when it materially changes what Guild Operations can legitimately assert.
