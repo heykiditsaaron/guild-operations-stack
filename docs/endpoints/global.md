@@ -177,7 +177,7 @@ Missing session authority returns `401`. A current Guildie without the required 
 
 These endpoints require `EVENT_QUERY_API_KEY`. The credential may be supplied either directly as the `Authorization` header value or as a Bearer token.
 
-### GET `/events/query/guildies/:guildieId`
+### GET `/query/guildies/:guildieId`
 
 Returns the current Guildie projection for one durable `guildie_id`.
 
@@ -202,7 +202,7 @@ A `null` membership does not mean the Guildie was deleted or closed. It means th
 
 Effective rank is the highest-authority rank among currently controlled roster Characters. Selected main remains presentation preference, not identity or authorization.
 
-### GET `/events/query/guilds/:guildId/character-members/:region/:realmId/:characterId`
+### GET `/query/guilds/:guildId/character-members/:region/:realmId/:characterId`
 
 Returns current authoritative roster truth for exactly one Blizzard Character coordinate.
 

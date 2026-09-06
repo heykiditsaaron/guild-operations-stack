@@ -20,7 +20,7 @@ Coordinates:
 Follow-up query:
 
 ```http
-GET /events/query/guildies/:guildieId
+GET /query/guildies/:guildieId
 ```
 
 ## `guildie.discord.unlinked`
@@ -35,7 +35,7 @@ Coordinates:
 Follow-up query:
 
 ```http
-GET /events/query/guildies/:guildieId
+GET /query/guildies/:guildieId
 ```
 
 `discordUserId` is intentionally retained as the disappearing external coordinate so a subscriber can clean up its projection after current Guildie truth no longer contains the association.
@@ -52,7 +52,7 @@ Coordinates:
 Follow-up query:
 
 ```http
-GET /events/query/guildies/:guildieId
+GET /query/guildies/:guildieId
 ```
 
 Selecting the already-selected main is a no-op and does not publish.
@@ -61,6 +61,6 @@ Selecting the already-selected main is a no-op and does not publish.
 
 | Publication | Coordinates | Authoritative follow-up |
 | --- | --- | --- |
-| `guildie.discord.linked` | `guildieId`, `discordUserId` | `GET /events/query/guildies/:guildieId` |
-| `guildie.discord.unlinked` | `guildieId`, `discordUserId` | `GET /events/query/guildies/:guildieId` |
-| `guildie.main.changed` | `guildieId`, `guildId` | `GET /events/query/guildies/:guildieId` |
+| `guildie.discord.linked` | `guildieId`, `discordUserId` | `GET /query/guildies/:guildieId` |
+| `guildie.discord.unlinked` | `guildieId`, `discordUserId` | `GET /query/guildies/:guildieId` |
+| `guildie.main.changed` | `guildieId`, `guildId` | `GET /query/guildies/:guildieId` |
