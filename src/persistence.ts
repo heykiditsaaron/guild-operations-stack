@@ -92,6 +92,111 @@ function guildiePublication(
   return null;
 }
 
+async function reconcileGuildieBlizzardObservation(
+  client: PoolClient,
+  input: {
+    guildieId: string;
+    region: Region;
+    profile: BlizzardWowProfile;
+  },
+): Promise<PublishedEvent | null> {
+  const beforeGuildieRank = await effectiveGuildieRank(client, input.guildieId);
+
+  // Preserve every previously observed character, but make the latest successful
+  // Blizzard profile observation authoritative for current control.
+  await client.query(
+    "UPDATE characters SET currently_controlled = false WHERE guildie_id = $1 AND region = $2",
+    [input.guildieId, input.region],
+  );
+
+  for (const account of input.profile.wow_accounts ?? []) {
+    const accountResult = await client.query<{ wow_account_record_id: string }>(
+      `INSERT INTO wow_accounts (guildie_id, region, wow_account_id)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (region, wow_account_id) DO UPDATE
+         SET last_seen_at = now()
+         WHERE wow_accounts.guildie_id = EXCLUDED.guildie_id
+       RETURNING wow_account_record_id`,
+      [input.guildieId, input.region, String(account.id)],
+    );
+
+    if (!accountResult.rowCount) {
+      throw new Error("Blizzard WoW account coordinate is already owned by another Guildie");
+    }
+    const wowAccountRecordId = accountResult.rows[0].wow_account_record_id;
+
+    for (const character of account.characters ?? []) {
+      const result = await client.query(
+        `INSERT INTO characters (
+           guildie_id, wow_account_record_id, region, realm_id, character_id,
+           name, realm_name, realm_slug, level, faction, currently_controlled
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,true)
+         ON CONFLICT (region, realm_id, character_id) DO UPDATE SET
+           wow_account_record_id = EXCLUDED.wow_account_record_id,
+           name = EXCLUDED.name,
+           realm_name = EXCLUDED.realm_name,
+           realm_slug = EXCLUDED.realm_slug,
+           level = EXCLUDED.level,
+           faction = EXCLUDED.faction,
+           currently_controlled = true,
+           last_seen_at = now()
+         WHERE characters.guildie_id = EXCLUDED.guildie_id
+         RETURNING character_record_id`,
+        [
+          input.guildieId,
+          wowAccountRecordId,
+          input.region,
+          String(character.realm.id),
+          String(character.id),
+          character.name,
+          localizedValue(character.realm.name),
+          character.realm.slug ?? null,
+          character.level ?? null,
+          factionValue(character.faction),
+        ],
+      );
+      if (!result.rowCount) {
+        throw new Error("Blizzard character coordinate is already owned by another Guildie");
+      }
+    }
+  }
+
+  const afterGuildieRank = await effectiveGuildieRank(client, input.guildieId);
+  const publication = guildiePublication(input.guildieId, beforeGuildieRank, afterGuildieRank);
+  await client.query("UPDATE guildies SET updated_at = now() WHERE guildie_id = $1", [input.guildieId]);
+  return publication;
+}
+
+export async function reconcileExistingGuildieBlizzardObservation(input: {
+  guildieId: string;
+  region: Region;
+  principalId: string;
+  profile: BlizzardWowProfile;
+}): Promise<void> {
+  const reconciled = await withTransaction(async (client) => {
+    const principal = await client.query(
+      `UPDATE blizzard_principals
+          SET last_seen_at = now()
+        WHERE guildie_id = $1
+          AND region = $2
+          AND principal_id = $3
+      RETURNING guildie_id`,
+      [input.guildieId, input.region, input.principalId],
+    );
+    if (!principal.rowCount) {
+      throw new Error("Blizzard principal is not bound to the existing Guildie");
+    }
+
+    return reconcileGuildieBlizzardObservation(client, {
+      guildieId: input.guildieId,
+      region: input.region,
+      profile: input.profile,
+    });
+  });
+
+  if (reconciled) await publishEvent(reconciled);
+}
+
 export async function establishOrResolveGuildie(input: {
   region: Region;
   principalId: string;
@@ -99,71 +204,11 @@ export async function establishOrResolveGuildie(input: {
 }): Promise<string> {
   const established = await withTransaction(async (client) => {
     const guildieId = await resolveOrCreateGuildie(client, input.region, input.principalId);
-    const beforeGuildieRank = await effectiveGuildieRank(client, guildieId);
-
-    // Preserve every previously observed character, but make the latest successful
-    // Blizzard profile observation authoritative for current control.
-    await client.query(
-      "UPDATE characters SET currently_controlled = false WHERE guildie_id = $1 AND region = $2",
-      [guildieId, input.region],
-    );
-
-    for (const account of input.profile.wow_accounts ?? []) {
-      const accountResult = await client.query<{ wow_account_record_id: string }>(
-        `INSERT INTO wow_accounts (guildie_id, region, wow_account_id)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (region, wow_account_id) DO UPDATE
-           SET last_seen_at = now()
-           WHERE wow_accounts.guildie_id = EXCLUDED.guildie_id
-         RETURNING wow_account_record_id`,
-        [guildieId, input.region, String(account.id)],
-      );
-
-      if (!accountResult.rowCount) {
-        throw new Error("Blizzard WoW account coordinate is already owned by another Guildie");
-      }
-      const wowAccountRecordId = accountResult.rows[0].wow_account_record_id;
-
-      for (const character of account.characters ?? []) {
-        const result = await client.query(
-          `INSERT INTO characters (
-             guildie_id, wow_account_record_id, region, realm_id, character_id,
-             name, realm_name, realm_slug, level, faction, currently_controlled
-           ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,true)
-           ON CONFLICT (region, realm_id, character_id) DO UPDATE SET
-             wow_account_record_id = EXCLUDED.wow_account_record_id,
-             name = EXCLUDED.name,
-             realm_name = EXCLUDED.realm_name,
-             realm_slug = EXCLUDED.realm_slug,
-             level = EXCLUDED.level,
-             faction = EXCLUDED.faction,
-             currently_controlled = true,
-             last_seen_at = now()
-           WHERE characters.guildie_id = EXCLUDED.guildie_id
-           RETURNING character_record_id`,
-          [
-            guildieId,
-            wowAccountRecordId,
-            input.region,
-            String(character.realm.id),
-            String(character.id),
-            character.name,
-            localizedValue(character.realm.name),
-            character.realm.slug ?? null,
-            character.level ?? null,
-            factionValue(character.faction),
-          ],
-        );
-        if (!result.rowCount) {
-          throw new Error("Blizzard character coordinate is already owned by another Guildie");
-        }
-      }
-    }
-
-    const afterGuildieRank = await effectiveGuildieRank(client, guildieId);
-    const publication = guildiePublication(guildieId, beforeGuildieRank, afterGuildieRank);
-
-    await client.query("UPDATE guildies SET updated_at = now() WHERE guildie_id = $1", [guildieId]);
+    const publication = await reconcileGuildieBlizzardObservation(client, {
+      guildieId,
+      region: input.region,
+      profile: input.profile,
+    });
     return { guildieId, publication };
   });
 
