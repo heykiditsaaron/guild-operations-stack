@@ -69,6 +69,7 @@ function roundFacts(round: RafflePublicRound): string {
     </div>
     <dl class="raffle-history-facts">
       ${fact("Status", htmlText(statusLabel(round)))}
+      ${fact("Established", localTime(round.createdAtUnix))}
       ${fact("Estimated drawing time", localTime(round.drawingAtUnix, "full"))}
       ${fact("Ticket price", `${formatGold(round.ticketPriceGold)} gold`)}
       ${fact("Prize", htmlText(configuredPrize(round)))}
@@ -129,6 +130,7 @@ function claimLedger(round: RafflePublicRound): string {
       <td><strong>${htmlText(claim.characterName)}</strong></td>
       <td>${claim.requestedTicketCount.toLocaleString("en-US")}</td>
       <td>${formatGold(claim.promisedGoldValue)} gold</td>
+      <td>${localTime(claim.createdAtUnix)}</td>
       <td><span class="raffle-ledger-status">${htmlText(claimStatus(claim))}</span>${reason}</td>
       <td>${resolutionTime}</td>
     </tr>`;
@@ -137,12 +139,12 @@ function claimLedger(round: RafflePublicRound): string {
   return `<section class="raffle-round-section" aria-labelledby="raffle-round-ledger-title">
     <div class="raffle-round-section-heading">
       <h2 id="raffle-round-ledger-title">Claims</h2>
-      <p class="raffle-status-copy">One row represents one claim. Requested entry count is the claim's draw weight only when that claim is approved.</p>
+      <p class="raffle-status-copy">One row represents one claim. Requested entry count becomes draw weight only when that claim is approved.</p>
     </div>
     ${round.claims.length === 0
       ? '<p class="raffle-status-copy">No claims were recorded for this round.</p>'
       : `<div class="raffle-ledger-wrap"><table class="raffle-ledger">
-          <thead><tr><th scope="col">Character</th><th scope="col">Requested</th><th scope="col">Promised</th><th scope="col">Status</th><th scope="col">Resolved</th></tr></thead>
+          <thead><tr><th scope="col">Character</th><th scope="col">Requested</th><th scope="col">Promised</th><th scope="col">Claimed</th><th scope="col">Status</th><th scope="col">Resolved</th></tr></thead>
           <tbody>${rows}</tbody>
         </table></div>`}
   </section>`;
@@ -160,10 +162,11 @@ function roundBody(round: RafflePublicRound): string {
     : round.status === "live"
       ? "This is the current public record of the live round. Participation remains on the Raffle homepage."
       : "This concluded round is preserved as a durable public record.";
+  const statusClass = round.status === "live" ? "raffle-live-kicker" : "raffle-plaque-label";
 
   return `<div class="raffle-public-shell raffle-round-record">
     <section class="raffle-round-summary" aria-labelledby="raffle-round-summary-title">
-      <p class="raffle-live-kicker">${htmlText(statusLabel(round))}</p>
+      <p class="${statusClass}">${htmlText(statusLabel(round))}</p>
       <h2 id="raffle-round-summary-title">${htmlText(round.roundTitle ?? "Guild Raffle")}</h2>
       <p class="raffle-status-copy">${htmlText(intro)}</p>
       ${participationLink(round)}
@@ -197,7 +200,7 @@ export async function registerRaffleRoundPage(app: FastifyInstance, assets: Asse
             { label: "Round" },
           ],
         },
-        stylesheets: ["raffle.css"],
+        stylesheets: ["raffle.css", "raffle-round.css"],
         header: `<div class="raffle-page-header"><h1 id="page-title">Raffle round not found</h1></div>`,
         body: '<section class="raffle-reference-page raffle-reference-empty"><p>This raffle round does not exist.</p></section>',
       }));
@@ -217,7 +220,7 @@ export async function registerRaffleRoundPage(app: FastifyInstance, assets: Asse
           { label: title },
         ],
       },
-      stylesheets: ["raffle.css"],
+      stylesheets: ["raffle.css", "raffle-round.css"],
       header: `
         <div class="raffle-page-header">
           <p class="eyebrow">Events · Raffle</p>
