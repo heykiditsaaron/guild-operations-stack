@@ -59,6 +59,8 @@ An unchanged current Character with complete profile and media data causes no Ch
 
 Characters absent from the latest roster are marked `currently_present = false`. Historical observations are not deleted.
 
+The follow-up presentation capability is defined in [`character-presentation-acquisition.md`](character-presentation-acquisition.md). Guild refresh selects the roster-derived targets; presentation acquisition does not decide why those Characters are relevant.
+
 The one-shot CLI reports the observed roster count plus Character presentation reconciliation counts and failures. The automatic worker uses that same CLI, so its container logs provide the same operational evidence for each scheduled run.
 
 ## Presentation availability
