@@ -10,6 +10,7 @@ import {
 import { effectiveGuildAuthority } from "./guild-permissions.js";
 import { guildCharactersForGuildie } from "./guild.js";
 import { mainCharacterForGuildie, selectMainCharacter } from "./main-character.js";
+import { publishOperationalRecord } from "./operational-inspection.js";
 import {
   establishOrResolveGuildie,
   reconcileExistingGuildieBlizzardObservation,
@@ -190,6 +191,17 @@ async function redirectAfterIdentityCeremony(
   return destination;
 }
 
+async function publishSelfRefreshRecord(
+  input: Parameters<typeof publishOperationalRecord>[0],
+  onFailure: (error: unknown) => void,
+): Promise<void> {
+  try {
+    await publishOperationalRecord(input);
+  } catch (error) {
+    onFailure(error);
+  }
+}
+
 export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
   app.get("/auth/blizzard/start", async (request, reply) => {
     const query = request.query as { region?: unknown; return_to?: unknown };
@@ -261,21 +273,83 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
           return reply.redirect(withQueryValue(returnTo, "refresh", "failed"));
         }
 
-        await reconcileExistingGuildieBlizzardObservation({
-          guildieId: guildie.guildieId,
-          region: attempt.region,
-          principalId: authority.principalId,
-          profile: authority.profile,
-        });
+        try {
+          await reconcileExistingGuildieBlizzardObservation({
+            guildieId: guildie.guildieId,
+            region: attempt.region,
+            principalId: authority.principalId,
+            profile: authority.profile,
+          });
+        } catch (error) {
+          await publishSelfRefreshRecord({
+            source: "guildie",
+            operation: "self_refresh",
+            kind: "exception",
+            actorGuildieId: guildie.guildieId,
+            summary: "Guildie self refresh did not complete account and Character-control reconciliation.",
+            details: {
+              account_reconciliation_succeeded: false,
+              error: error instanceof Error ? error.message : String(error),
+            },
+          }, (inspectionError) => {
+            request.log.error({ err: inspectionError }, "Operational inspection publication failed for Guildie self refresh");
+          });
+          throw error;
+        }
 
         try {
           const targets = await eligibleCharacterPresentationTargets(guildie.guildieId);
           const presentation = await acquireCharacterPresentation({ targets });
-          if (presentation.failedProfiles > 0 || presentation.failedMedia > 0) {
+          const partial = presentation.failedProfiles > 0 || presentation.failedMedia > 0;
+
+          if (partial) {
             request.log.warn({ presentation }, "Self refresh completed with Character presentation acquisition failures");
           }
+
+          await publishSelfRefreshRecord({
+            source: "guildie",
+            operation: "self_refresh",
+            kind: "result",
+            result: partial ? "partial" : "success",
+            actorGuildieId: guildie.guildieId,
+            summary: partial
+              ? "Refreshed Blizzard account and Character-control state; some Character presentation acquisition failed."
+              : "Refreshed Blizzard account, Character-control, and Character presentation state.",
+            details: {
+              account_reconciliation_succeeded: true,
+              characters_targeted: targets.length,
+              characters_attempted: presentation.attempted,
+              profiles_updated: presentation.profilesUpdated,
+              media_updated: presentation.mediaUpdated,
+              failed_profiles: presentation.failedProfiles,
+              failed_media: presentation.failedMedia,
+              api_calls: presentation.apiCalls,
+              failures: presentation.failures.map((failure) => ({
+                character_id: failure.characterId,
+                realm_id: failure.realmId,
+                name: failure.name,
+                stage: failure.stage,
+                error: failure.error,
+              })),
+            },
+          }, (inspectionError) => {
+            request.log.error({ err: inspectionError }, "Operational inspection publication failed for Guildie self refresh");
+          });
         } catch (error) {
           request.log.error({ err: error }, "Self refresh account reconciliation succeeded but Character presentation acquisition failed");
+          await publishSelfRefreshRecord({
+            source: "guildie",
+            operation: "self_refresh",
+            kind: "exception",
+            actorGuildieId: guildie.guildieId,
+            summary: "Guildie self refresh updated account and Character-control state, but Character presentation acquisition raised an exception.",
+            details: {
+              account_reconciliation_succeeded: true,
+              error: error instanceof Error ? error.message : String(error),
+            },
+          }, (inspectionError) => {
+            request.log.error({ err: inspectionError }, "Operational inspection publication failed for Guildie self refresh");
+          });
         }
 
         return reply.redirect(await redirectAfterIdentityCeremony(guildie.guildieId, returnTo, "success"));
