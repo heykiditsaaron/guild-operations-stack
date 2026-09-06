@@ -41,7 +41,7 @@ function renderRecord(record: OperationalRecord): string {
 
   return `<article class="operations-record">
     <div class="operations-record-heading">
-      <time datetime="${record.occurredAtUnix}" data-unix-time="${record.occurredAtUnix}">${record.occurredAtUnix}</time>
+      <time data-unix-time="${record.occurredAtUnix}">${record.occurredAtUnix}</time>
       <span class="operations-record-source">${escapeHtml(record.source)}</span>
       <span aria-hidden="true">·</span>
       <span class="operations-record-operation">${escapeHtml(record.operation)}</span>
@@ -121,6 +121,7 @@ export async function registerOperationsAdminPage(
       description: "Administrative operational inspection.",
       viewer,
       stylesheets: ["admin.css"],
+      scripts: ["operations.js"],
       secondaryNavigation: {
         kind: "breadcrumb",
         items: [
