@@ -2,18 +2,11 @@
 
 ## Purpose
 
-Guild Operations exists specifically for **OH CRIT I Pulled!** and its Discord community.
+Guild Operations exists specifically for **OH CRIT I Pulled!**.
 
-Its purpose is to provide an interactive participation layer for the guild outside of World of Warcraft. World of Warcraft remains where the guild exists; Guild Operations extends the guild's activities into places and times where the game client is not available or appropriate.
+It is the guild's interactive **participation and operation layer outside World of Warcraft**. World of Warcraft and Discord remain primary places where the guild exists and communicates; Guild Operations provides a neutral, knowledgeable place where guild-owned operational truth can be established and then expressed appropriately across those interfaces.
 
-Guild Operations is not an Armory replacement, a generic identity-linking platform, or a general-purpose guild product.
-
-The system should be judged primarily by whether a capability helps to:
-
-- establish authority to participate as a guild member;
-- enable guild participation;
-- operate guild participation; or
-- preserve the history and results of that participation.
+Guild Operations is not an Armory replacement, a generic identity platform, a general-purpose guild-management product, or an attempt to move the guild out of WoW or Discord.
 
 A useful product test is:
 
@@ -23,415 +16,147 @@ If not, it probably does not belong.
 
 ## Architectural center
 
-OH CRIT I Pulled! is represented in two related organizational realms:
+The backend owns singular truthful operational state.
 
-```text
-World of Warcraft / Blizzard
-    → guild organization
-    → member object: Character
+Web, Discord, and any future WoW-facing integration are projections or interaction surfaces over that truth. They may express the same facts differently because their media differ, but they must not become independent owners of the same operational facts.
 
-real-world guild organization around it
-    → Guild Operations
-    → member object: Guildie
-```
+Authority remains with the system that legitimately owns each fact:
 
-Blizzard account authority establishes or resolves the Guildie and which Characters that Guildie currently controls. Blizzard's guild roster separately establishes which Characters currently belong to the WoW guild and their numeric ranks.
+- **Blizzard** owns authenticated account control, current WoW guild membership, Characters, and numeric guild rank.
+- **Guild Operations** owns meanings and procedures established by the guild outside WoW.
+- **Human guild members** remain authoritative for judgments no machine can legitimately make.
 
-Conceptually:
+Guild Operations should automate procedure, enforcement, recording, resolution, and presentation where useful. It should not manufacture authority merely because software could make a decision.
 
-```text
-Blizzard authentication
-        ↓
-Guildie establishment / resolution
-        ↓
-controlled Characters
-        ∩
-Blizzard Character roster
-        ↓
-current Guildie participation surface + effective rank
-        ↓
-participate in OH CRIT I Pulled!
-```
+## Member and authority model
 
-Blizzard authentication answers:
-
-> Which Blizzard account context and Characters is this Guildie allowed to act through?
-
-Guild Operations then answers:
-
-> What does this Guildie do, receive, join, claim, earn, and participate in within OH CRIT I Pulled!?
-
-The foundational authority model exists to make that second question safe and durable. It is not the product destination by itself.
-
-## Subject is contextual language
-
-Guild Operations has no universal domain object called **Subject** and does not persist one.
-
-A subject is whichever already-existing object is being designated in relation to a particular question, statement, event, or operation. That role can legitimately change with context:
-
-```text
-"What event happens tomorrow?"
-    subject may be a raffle round
-
-"Who won the raffle?"
-    subject may be a Character
-
-"Who controls that Character?"
-    relevant object is the Guildie
-```
-
-Subjecthood therefore creates no durable coordinate, ownership, persistence, authorization, or identity semantics of its own.
-
-Persist and name actual objects and relationships such as `guildie_id`, Character coordinates, `round_id`, `claim_id`, and `guild_event_id`. Do not introduce a generic `subject_id` as a domain shortcut.
-
-## Guildie continuity
-
-A **Guildie** is Guild Operations' durable representation of the real-world guild organizational member: the account holder and control representative for their WoW Characters.
-
-The durable Guild Operations coordinate is:
-
-```text
-guildie_id
-```
+Guild Operations distinguishes durable guild-member continuity from the Blizzard objects and observations used to establish current authority.
 
 Conceptually:
 
 ```text
 Guildie
-├── guildie_id
 ├── Blizzard account authority
-├── controlled Characters
+├── WoW account(s)
+│   └── Character(s)
 ├── selected main
 ├── optional Discord association
-├── participation history
-└── current derived guild state
+└── derived Guild Operations capabilities
 ```
 
-Discord must never create the Guildie or an independent canonical member. A Discord identity may resolve to an existing Guildie after an explicit linking flow.
+The important architectural distinctions are:
 
-Changing Discord accounts or changing a selected main character must not create a new Guildie and must not rewrite historical guild activity.
+- **Guildie** is durable member continuity in the real-world guild organization.
+- **Blizzard authentication** establishes account authority.
+- **Character** is a durable WoW object and a useful recognition surface.
+- **Current guild membership and numeric rank** are current Blizzard observations.
+- **Selected main** is Guild Operations presentation preference, never identity or authorization.
+- **Discord association** is an optional resolver to an existing Guildie. Discord never creates the canonical member.
+- **Capabilities** translate current authority into explicit Guild Operations permissions.
+- **Session identity** resolves to the Guildie.
 
-Guildie continuity is non-destructive. A Guildie remains known even when none of their controlled Characters are currently on the Blizzard Character roster. What disappears in that state is the current guild participation surface and rank-derived authority, not the Guildie.
+These concepts must not be collapsed merely because they currently describe the same human.
 
-## Authentication and member authority
+The detailed member contract lives in [`member-objects.md`](member-objects.md). Authentication and authority ceremonies are documented separately in [`authentication-ceremony.md`](authentication-ceremony.md), [`guild-authority.md`](guild-authority.md), and [`guild-permissioning.md`](guild-permissioning.md).
 
-Blizzard authentication exists so a person interacting outside of the game can prove authority over the WoW account context that contains their Characters.
+## Subject is contextual language
 
-The authenticated Blizzard account provides an authoritative observation of Characters currently controlled by the Guildie. Guild Operations can use that control relationship to support declarations such as:
+Guild Operations has no universal persisted domain object called **Subject**.
 
-- selecting a guild main;
-- identifying which Character made a raffle deposit;
-- selecting a Character for a raid signup;
-- identifying the Character used for an activity or submission.
+A subject is only the object currently being designated by a statement, question, event, or operation. Subjecthood creates no durable coordinate, ownership, persistence, authorization, or identity semantics of its own.
 
-Authentication is therefore primarily an authority boundary, not a rich profile surface.
+Persist and name actual objects and relationships such as `guildie_id`, Character coordinates, `round_id`, `claim_id`, and `guild_event_id`. Do not introduce a generic `subject_id` as a domain shortcut.
 
-## Character representation and recognition
+## Recognition over profile completeness
 
-A **Character** is the durable WoW object and the member object of Blizzard's guild organization. Character representation should remain deliberately light and should favor **recognition cues** over profile completeness.
+Character presentation should favor recognition over profile completeness.
 
-For Guild Operations, the most useful current recognition cues are the facts that answer how a member is encountered in normal guild play:
+Useful recognition cues currently include:
 
 - character name;
 - class and active specialization, when available;
 - realm; and
 - current guild rank.
 
-Those cues are operationally meaningful for distinct reasons:
+Additional Blizzard data should be introduced when a concrete guild workflow requires it, not because Blizzard exposes it. Guild Operations should not drift toward an Armory-style profile product.
 
-```text
-class / specialization
-    → how the Character primarily participates in gameplay
+Where likely future presentation needs are inexpensive to accommodate, prepare semantic seams without inventing the future feature itself:
 
-realm
-    → where that Character exists in WoW
+> Prepare the seam, not the speculative feature.
 
-guild rank
-    → how that Character currently participates in OH CRIT I Pulled!
-```
+## Persistence and observation
 
-Other Blizzard facts such as level, race, item level, achievements, and similar profile information may be legitimate observations but are incidental to this recognition purpose unless a concrete guild workflow requires them.
+Guild Operations preserves distinctions between durable objects, current external observations, guild-owned meaning, and historical participation.
 
-Guild Operations should not recreate an Armory-style character profile. Rich character inspection already exists elsewhere and is outside this system's purpose.
+Current Blizzard observations may change without erasing durable continuity or rewriting history. For example, a Character may cease to be currently present on the guild roster without deleting the Character, the Guildie who controls it, or prior participation records involving either.
 
-A portrait or avatar is useful because it improves quick recognition in selection interfaces; it is presentation enrichment, not identity-critical state.
+Persistence ownership and transactional boundaries are defined in [`global-persistence.md`](global-persistence.md) and [`persistence-boundary.md`](persistence-boundary.md).
 
-Recognition surfaces should prepare semantic styling seams when a known guild fact is likely to gain stronger recognition treatment later. For example, guild rank presentation may expose a stable rank-specific presentation hook without prematurely defining colors, badges, or other visual policy. Prepare the seam, not the speculative feature.
+### Time
 
-## Character roster and Guildie roster
+All persisted values representing instants in time use **Unix timestamps**. Human-readable date, time, and timezone are presentation concerns derived from those persisted values.
 
-The **Character roster** is the current in-game guild roster dictated by the actual World of Warcraft environment and observed through Blizzard.
+Interfaces should present time in the viewer's local timezone when the medium can determine it. Local wall-clock input must be converted to canonical Unix time before persistence. Server or container timezone must not silently become persistence or presentation policy.
 
-For a Character, the relevant guild state is deliberately simple:
-
-```text
-currently on the Character roster
-    → Blizzard numeric guild rank
-
-not currently on the Character roster
-    → no current guild membership
-```
-
-The **Guildie roster** is Guild Operations-derived organizational membership. It is computed by intersecting the Characters currently controlled by a Guildie with the current Blizzard Character roster:
-
-```text
-Guildie's currently controlled Characters
-                ∩
-current Blizzard Character roster
-                ↓
-current Guildie organizational membership
-```
-
-At least one controlled roster Character gives the Guildie a current participation surface. Zero controlled roster Characters leaves the Guildie durable and known but without current guild-facing participation or rank-derived authority.
-
-This allows the system to distinguish among:
-
-- Characters known to Blizzard and Guild Operations;
-- Characters currently present on the Blizzard Character roster;
-- Characters controlled by a particular Guildie; and
-- the derived Guildie organizational membership created by the intersection of those facts.
-
-## Guild authority
-
-Blizzard publishes two independent authority surfaces that Guild Operations can join:
-
-```text
-Authenticated Account Profile
-        ∩
-Public OH CRIT I Pulled! Character Roster
-        ↓
-current roster Characters controlled by the Guildie
-        ↓
-current Guildie participation surface + effective rank
-```
-
-Live reconnaissance proved that both Blizzard surfaces expose the same durable Character coordinate shape: region, realm id, and character id. Character roster membership should therefore be resolved by those Blizzard-native coordinates rather than by character name.
-
-The canonical guild reference is Blizzard numeric guild id `65431436`. The guild's name, realm labels, faction, and similar fields are observed presentation state. They may change without changing the guild's identity.
-
-Roster observations are current Blizzard truth, not destructive history reconciliation. A Character disappearing from a later roster observation should cease to be currently present without erasing that Character, the Guildie, or historical Guild Operations activity involving either.
-
-## Guild rank projection
-
-Blizzard publishes a numeric rank on each Character roster membership but does not expose OH CRIT I Pulled!'s custom rank names through the Guild Profile or Guild Roster surfaces observed in live reconnaissance.
-
-Therefore:
-
-> Blizzard owns the numeric guild rank fact on each current Character. Guild Operations owns configurable meaning and presentation for that number outside WoW and derives a Guildie's effective rank from current controlled roster Characters.
-
-Conceptually:
-
-```text
-Guild 65431436 / Rank N
-├── canonical
-│   └── rank_index = N
-└── Guild Operations metadata
-    ├── display_name
-    ├── active/inactive presentation state
-    ├── later: Discord role projection
-    └── member-facing capabilities
-```
-
-A Guildie's effective rank is the highest-authority rank among their currently controlled Characters on the Character roster. Under Blizzard's current ordering, the lowest numeric `rank_index` is the highest-authority rank.
-
-Rank metadata must be keyed by the canonical numeric rank rather than inferred from currently populated roster values. The guild intentionally leaves rank `6` unused today, demonstrating that the observed rank set may be sparse.
-
-Discord roles and Guild Operations capabilities may both project from the same rank metadata, but Discord role membership must not become backend authorization truth. System operator authority remains a separate first-party authorization concern and is not implied by WoW guild rank.
-
-Guild rank is also a valid Character and Guildie recognition cue. Presentation may eventually use rank names, colors, badges, or other distinctions, but those treatments are Guild Operations presentation policy layered over Blizzard's current numeric rank fact.
-
-## Interface model
-
-The backend owns singular truthful operational state. Interfaces present and manipulate that state according to their medium.
-
-Expected interfaces include:
-
-- Web dashboard
-- Discord bot / BotGhost integration
-- A possible future WoW addon
-
-No interface should become the sole keeper of meaningful guild operational state.
-
-Member-facing interfaces may display a small persistent member context or "member strip" so the user can recognize which Guildie is acting while participating. That presentation is context for interaction, not a profile product.
-
-The member context should answer three progressively different questions without collapsing them into one generic account surface:
-
-```text
-Who am I presenting as?
-What is associated with me?
-What can I do in this session?
-```
-
-For web access, authentication begins with Blizzard/Battle.net authorization and resolves or establishes the durable `guildie_id` that identifies which Guildie is operating the application session.
-
-### Time representation and presentation
-
-All persisted values that represent an instant in time **must be Unix timestamps**. Persistence must not encode a human-readable date/time string, server-local wall-clock value, or timezone-formatted representation in place of the canonical Unix value.
-
-Human-readable date and time are presentation. Interfaces derive them from the persisted Unix timestamp and should express the instant in the **viewer's local timezone** whenever the medium can determine it. In the web application, browser-side formatting should therefore be preferred over server-local date formatting for member- and administrator-facing timestamps.
-
-A local date/time input represents the entering person's local wall-clock choice and must be converted to the canonical Unix timestamp before persistence.
-
-The distinction is:
-
-```text
-persistence
-    → Unix timestamp
-
-human expression
-    → derive from Unix
-    → viewer-local date and time
-```
-
-Server/container timezone must not silently become persistence or presentation policy.
+A temporal range is represented by two Unix values; an instant by one. Contracts that use time define the semantic meaning of those values rather than introducing a separate generic time-type framework.
 
 ## Human authority
 
-Guild Operations automates persistence, procedure, visibility, and lifecycle management. It does not manufacture human judgment.
+Some guild procedures require judgment that Guild Operations cannot legitimately derive from external data.
 
-Where a guild workflow requires an officer, attendant, or other authorized person to decide something, the backend should record and constrain that decision rather than pretending to verify facts it cannot authoritatively observe.
+In those cases the backend should establish who may decide, constrain the procedure, record the decision, and preserve the result. It should not pretend to verify facts outside its authority.
 
-For example, a raffle claim may precisely reference a Blizzard-authoritative guild Character, while an authorized raffle attendant still decides whether the corresponding guild-bank deposit was actually made.
+This distinction allows software to automate ceremony without replacing the guild members who are actually authorized to make the judgment.
 
-## Participation model
+## Participation and modules
 
-Guild Operations exists to support guild activity across interfaces and across time.
+Concrete guild activities are the product pressure that should drive architecture.
 
-Examples include:
+A **module** owns a concrete participation capability and its procedure. Shared machinery may project or organize module-owned truth, but it must not silently become the owner of that truth.
 
-- raffle claims and adjudication;
-- Hidden in Plain Sight events;
-- raid signups and participation;
-- rewards;
-- guild events;
-- participation history; and
-- future guild activities not yet designed.
+Raffle is the first substantial example: the raffle module owns raffle procedure and truth even when raffle rounds appear on shared Events surfaces, administrative interfaces, Discord projections, or preserved history.
 
-These activities may be synchronous or asynchronous. The system should allow the guild to continue participating as a community even when members are not simultaneously logged into World of Warcraft.
-
-Guild Operations preserves, enables, and enriches community participation. It does not replace the human and social processes that give that participation meaning.
-
-## Guild Events
-
-A **Guild Event** is the operational domain representation of a guild-operated ceremony. Member-facing presentation should normally call these simply **Events**; the `guild_event` vocabulary exists to distinguish the operational concept from technical events used by system machinery.
-
-A **module** owns a concrete guild participation capability and its procedure. Guild Event infrastructure must not become a container for module truth merely because a module participates in a shared Event surface.
-
-Raffle is the first concrete example: the raffle module owns raffle truth and procedure. A raffle round may have temporal presence on the Guild Event Calendar, a member-facing destination, administrative surfaces, and preserved raffle history without transferring any of those underlying meanings to shared Event infrastructure.
-
-Shared Event behavior should therefore be introduced as concrete infrastructure with a clear responsibility and populated by modules that own the relevant truth. The first earned infrastructure is the **Guild Event Calendar**.
-
-### Guild Event Calendar
-
-The Guild Event Calendar is shared temporal-discovery infrastructure. Modules may establish Guild Event Calendar Listings when their concrete occurrences have calendar meaning.
-
-The required Calendar Listing coordinates are deliberately small:
-
-```text
-guild_event_id
-    → which concrete Guild Event occurrence is this?
-
-guild_event_kind
-    → what concrete ceremony type is represented?
-
-guild_event_occurs_at
-    → when does the owning module say this occurrence happens?
-```
-
-`guild_event_id` must be globally unique among Guild Event calendar occurrences in Guild Operations. A calendar consumer should be able to address a concrete occurrence without also supplying its kind or owning module.
-
-`guild_event_kind` names the concrete ceremony type represented by the listing, not necessarily the module that implements it. For example, the raffle module owns raffle procedure while a concrete raffle round uses kind `raffle-round`.
-
-`guild_event_occurs_at` is established by the owning module. It expresses module-authoritative temporal meaning; it is not calendar-registry lifecycle, publication time, participation eligibility, or generic module status unless the module itself establishes that as the occurrence's temporal meaning.
-
-`guild_event_occurs_at` follows the repository's Unix time persistence rule:
-
-```text
-[unix]
-    → instant
-
-[unix, unix]
-    → range from start to end
-```
-
-The module determines which shape is valid for each concrete occurrence. The same Guild Event kind may legitimately have an instant in one state and a range in another. For raffle, an upcoming round may expose only its estimated drawing Unix, while a live round may expose actual opening time through estimated drawing time. The raffle module establishes that distinction; the calendar does not infer it from raffle status.
-
-Calendar listings may additionally contain contract-defined optional coordinates such as title, destination, and category. Those fields exist only when calendar consumers can understand them without knowing which module produced the listing. The calendar contract does not provide an arbitrary metadata bag.
-
-Conceptually:
-
-```text
-Module
-├── owns participation truth and procedure
-└── establishes temporal truth when appropriate
-        ↓
-Guild Event Calendar Listing
-├── guild_event_id
-├── guild_event_kind
-├── guild_event_occurs_at
-└── optional calendar coordinates
-        ↓
-Guild Event Calendar Registry
-├── persists the shared calendar contract
-└── exposes listings
-        ↓
-Calendar Consumers
-├── decide temporal relevance
-├── organize
-└── present
-```
-
-Calendar registration is a projection of module-owned truth; it does not transfer ownership of the participation capability, its procedure, its informational surfaces, its administration, or its history to the calendar.
-
-Calendar listing state may change when a module establishes better temporal truth about the same occurrence. Such a change must be posted by the owning module rather than inferred by the calendar. Pastness likewise does not require withdrawal: calendar consumers decide temporal relevance from the established occurrence time.
-
-The shell or another consumer may present the same calendar listings in multiple ways. Web, Discord, or a future WoW-facing surface may each organize and render the same established temporal truth according to their medium without becoming independent owners of it.
-
-The current `/events` page contains one such prospective calendar presentation: it separates happenings from upcoming occurrences using calendar time. That calendar presentation is only one part of the broader Events page and should not be treated as the definition of Guild Events generally.
-
-Member-facing route hierarchy describes where users encounter capabilities; it does not define source or module ownership. A module may therefore be presented under `/events` without being structurally contained by Guild Events. `/events/raffle` remains appropriate member-facing information architecture while raffle implementation ownership remains with the raffle module.
-
-The detailed calendar contract lives in [`guild-event-calendar.md`](guild-event-calendar.md).
-
-In short:
-
-> Module truth → Guild Event Calendar Listing → Calendar Registry → calendar consumer.
-
-## Model maturity and feature pressure
-
-The foundational model is now sufficient to support concrete member-facing work. It establishes:
-
-- durable Guildie continuity through `guildie_id`;
-- Blizzard account authority;
-- durable Character continuity;
-- Blizzard-authoritative Character roster state;
-- derived Guildie organizational membership and effective rank;
-- selected-main presentation;
-- optional Discord association;
-- rank-derived Guild Operations capabilities;
-- external refresh and reconciliation boundaries; and
-- a renderer boundary in which interfaces project backend truth.
-
-It also establishes a negative boundary:
-
-- `Subject` is contextual designation, not an entity category or persistence coordinate.
-
-Further generalized modeling should not be performed merely because another abstraction can be imagined.
-
-The next useful pressure should come from real guild participation features. Shared event, notification, audit, participation, or interface abstractions should emerge only when multiple concrete workflows demonstrate that they are actually shared.
-
-In short:
+Shared abstractions should be introduced only after multiple real features demonstrate the need. Do not pre-design generic event, notification, identity, audit, participation, or similar frameworks merely because they can be imagined.
 
 > Build the guild activity. Let the common machinery reveal itself under pressure.
 
-## Current implementation direction
+Module-authoring guidance lives in [`module-creation.md`](module-creation.md).
 
-The foundational authority and interface model is in place. The next product-level question is no longer primarily "who is this user?" but:
+## Guild Events
 
-> **What does a Guildie get to do with Guild Operations?**
+Guild Events provide shared discovery infrastructure around concrete guild-operated happenings without taking ownership of the participating module's domain truth.
 
-Concrete participation features should now drive the next architectural discoveries.
+Two distinct shared contracts have been earned:
+
+- **Guild Event Calendar** answers what concrete occurrence happens when.
+- **Guild Event Offerings** answer what enduring participation capabilities the guild offers.
+
+These contracts are intentionally separate. A capability may be discoverable as an offering without a currently scheduled occurrence, while a concrete occurrence may have calendar meaning established by its owning module.
+
+Temporal occurrences are documented in [`guild-event-calendar.md`](guild-event-calendar.md). Enduring activity discovery is documented in [`guild-event-offerings.md`](guild-event-offerings.md).
+
+Member-facing route hierarchy describes where users encounter a capability; it does not define implementation ownership. A module may therefore appear under `/events` without becoming structurally owned by Guild Events.
+
+## Interface model
+
+Interfaces are projections and interaction surfaces over backend truth.
+
+The web application, Discord, and possible future WoW integrations may each organize and present established facts according to their medium. No interface should become the sole keeper of meaningful guild operational state.
+
+Member-facing context should help a user recognize who is acting and what they may do without turning Guild Operations into a generic profile surface.
+
+Web rendering and navigation ownership are documented in [`web-rendering.md`](web-rendering.md).
+
+## Model maturity and feature pressure
+
+The foundational authority model is infrastructure, not the product destination.
+
+It is intentionally sufficient rather than exhaustive. The next useful architectural pressure should come from concrete guild participation and operation capabilities.
+
+When a new feature creates tension, prefer the smallest concrete change that lets that feature work correctly. Introduce another shared distinction only when the feature proves one is necessary.
 
 ## Workflow
 
-This repository intentionally uses a lightweight development process. It does not use numbered task documents or development journals. Architecture documentation should preserve only durable decisions that materially constrain later work.
+This repository intentionally uses a lightweight development process. It does not use numbered task documents or development journals.
+
+Durable architecture documentation should preserve decisions that materially constrain later work. Historical implementation sequence belongs in Git history rather than permanent architecture documents.
