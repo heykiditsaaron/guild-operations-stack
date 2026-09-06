@@ -7,8 +7,11 @@ import type { RaffleRound } from "./domain.js";
 
 export const RAFFLE_GUILD_EVENT_KIND = "raffle-round";
 export const RAFFLE_GUILD_EVENT_TITLE = "Guild Raffle";
-export const RAFFLE_GUILD_EVENT_DESTINATION = "/events/raffle";
 export const RAFFLE_GUILD_EVENT_CATEGORY = "raffle";
+
+export function raffleRoundDestination(roundId: string): string {
+  return `/events/raffle/${encodeURIComponent(roundId)}`;
+}
 
 export async function establishRaffleCalendarListing(
   round: RaffleRound,
@@ -28,7 +31,7 @@ export async function establishRaffleCalendarListing(
     guildEventKind: RAFFLE_GUILD_EVENT_KIND,
     guildEventOccursAt: occursAt,
     guildEventTitle: round.roundTitle ?? RAFFLE_GUILD_EVENT_TITLE,
-    guildEventDestination: RAFFLE_GUILD_EVENT_DESTINATION,
+    guildEventDestination: raffleRoundDestination(round.roundId),
     guildEventCategory: RAFFLE_GUILD_EVENT_CATEGORY,
   }, client);
 }
