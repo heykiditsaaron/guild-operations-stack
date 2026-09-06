@@ -10,6 +10,8 @@ Concrete participation modules belong under `src/modules/<module>/` once the app
 
 A module may contribute Guild Event Calendar Listings without being contained by Guild Events or by the calendar. Shared Guild Event calendar infrastructure belongs to `src/guild-events/calendar/`, while a member-facing calendar projection may still appropriately live under `src/web/pages/events/`.
 
+A module may also register a Guild Event Offering when the Events shell should promote that enduring kind of guild participation independently of whether a concrete occurrence is live or scheduled. Shared Offering contract machinery belongs to `src/guild-events/offerings/`. The Offering gives the shell enough semantic material to promote the activity and route members into its module-owned informational surface; it does not move explanation, procedure, administration, or history into the shell.
+
 Raffle is the current concrete example: raffle procedure and truth belong to `src/modules/raffle/`, while `/events/raffle` remains the appropriate member-facing route and raffle rounds may be contributed to the Guild Event Calendar.
 
 The `src/modules/` container does not imply a generic module loader, registry, lifecycle, or framework. Add shared module machinery only when multiple concrete participation capabilities demonstrate that the same machinery is actually needed.
@@ -69,6 +71,8 @@ Modules should declare the semantic information the global renderer needs rather
 For secondary navigation, this means the module declares navigation intent and hierarchy while the shared renderer owns the resulting semantics and presentation. Breadcrumb order is significant: the terminal item is the module's declaration of the current location.
 
 The Guild Event Calendar follows the same ownership rule. Modules establish calendar listings; calendar consumers and shell surfaces own how those listings are organized and presented in their medium. The same calendar truth may therefore support multiple presentations without moving presentation ownership into the producing module.
+
+Guild Event Offerings follow that rule as well. A module registers the offering identity, title, promotional tagline, and member-facing destination. The Events shell owns whether that contribution becomes a card, banner, tile, or another shared promotional treatment. Modules must not register shell markup, layout instructions, or arbitrary presentation metadata through the Offering contract.
 
 ### Attach module-specific rendering
 
