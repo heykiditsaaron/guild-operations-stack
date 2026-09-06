@@ -9,7 +9,7 @@ import {
   type RaffleClaim,
   type RaffleRound,
 } from "./domain.js";
-import { establishRaffleGuildEvent } from "./guild-event-registration.js";
+import { establishRaffleCalendarListing } from "./calendar-listing.js";
 import { publishRaffleEvent } from "./publisher.js";
 
 async function publishClaimEvent(
@@ -35,7 +35,7 @@ async function publishClaimEvent(
 export async function cancelRaffleRound(actorGuildieId: string, roundId: string): Promise<RaffleRound> {
   const round = await withTransaction(async (client) => {
     const cancelled = await cancelRaffleRoundDomain(actorGuildieId, roundId, client);
-    await establishRaffleGuildEvent(cancelled, client);
+    await establishRaffleCalendarListing(cancelled, client);
     return cancelled;
   });
   await publishRaffleEvent({ kind: "raffle.round.cancelled", roundId: round.roundId });
@@ -86,7 +86,7 @@ export async function denyRaffleClaim(
 export async function drawRaffleRound(actorGuildieId: string, roundId: string): Promise<RaffleRound> {
   const round = await withTransaction(async (client) => {
     const concluded = await drawRaffleRoundDomain(actorGuildieId, roundId, client);
-    await establishRaffleGuildEvent(concluded, client);
+    await establishRaffleCalendarListing(concluded, client);
     return concluded;
   });
 
