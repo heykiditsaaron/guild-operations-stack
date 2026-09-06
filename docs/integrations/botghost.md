@@ -53,12 +53,12 @@ BOTGHOST_GUILDIE_WEBHOOK_URL
 
 | Publication | Variables available in BotGhost | Query afterward |
 | --- | --- | --- |
-| `guildie.discord.linked` | `{event_kind}`, `{guildie_id}`, `{discord_user_id}` | `GET /events/query/guildies/{guildie_id}` |
-| `guildie.discord.unlinked` | `{event_kind}`, `{guildie_id}`, `{discord_user_id}` | `GET /events/query/guildies/{guildie_id}` |
-| `guildie.main.changed` | `{event_kind}`, `{guildie_id}`, `{guild_id}` | `GET /events/query/guildies/{guildie_id}` |
-| `guildie.joined` | `{event_kind}`, `{guildie_id}`, `{guild_id}` | `GET /events/query/guildies/{guildie_id}` |
-| `guildie.left` | `{event_kind}`, `{guildie_id}`, `{guild_id}` | `GET /events/query/guildies/{guildie_id}` |
-| `guildie.rank.changed` | `{event_kind}`, `{guildie_id}`, `{guild_id}` | `GET /events/query/guildies/{guildie_id}` |
+| `guildie.discord.linked` | `{event_kind}`, `{guildie_id}`, `{discord_user_id}` | `GET /query/guildies/{guildie_id}` |
+| `guildie.discord.unlinked` | `{event_kind}`, `{guildie_id}`, `{discord_user_id}` | `GET /query/guildies/{guildie_id}` |
+| `guildie.main.changed` | `{event_kind}`, `{guildie_id}`, `{guild_id}` | `GET /query/guildies/{guildie_id}` |
+| `guildie.joined` | `{event_kind}`, `{guildie_id}`, `{guild_id}` | `GET /query/guildies/{guildie_id}` |
+| `guildie.left` | `{event_kind}`, `{guildie_id}`, `{guild_id}` | `GET /query/guildies/{guildie_id}` |
+| `guildie.rank.changed` | `{event_kind}`, `{guildie_id}`, `{guild_id}` | `GET /query/guildies/{guildie_id}` |
 
 `guildie_id` identifies the affected Guildie directly. There is no generic Subject transport coordinate.
 
@@ -74,9 +74,9 @@ BOTGHOST_CHARACTER_WEBHOOK_URL
 
 | Publication | Variables available in BotGhost | Query afterward |
 | --- | --- | --- |
-| `character.joined` | `{event_kind}`, `{guild_id}`, `{region}`, `{realm_id}`, `{character_id}` | `GET /events/query/guilds/{guild_id}/character-members/{region}/{realm_id}/{character_id}` |
-| `character.left` | `{event_kind}`, `{guild_id}`, `{region}`, `{realm_id}`, `{character_id}` | `GET /events/query/guilds/{guild_id}/character-members/{region}/{realm_id}/{character_id}` |
-| `character.rank.changed` | `{event_kind}`, `{guild_id}`, `{region}`, `{realm_id}`, `{character_id}` | `GET /events/query/guilds/{guild_id}/character-members/{region}/{realm_id}/{character_id}` |
+| `character.joined` | `{event_kind}`, `{guild_id}`, `{region}`, `{realm_id}`, `{character_id}` | `GET /query/guilds/{guild_id}/character-members/{region}/{realm_id}/{character_id}` |
+| `character.left` | `{event_kind}`, `{guild_id}`, `{region}`, `{realm_id}`, `{character_id}` | `GET /query/guilds/{guild_id}/character-members/{region}/{realm_id}/{character_id}` |
+| `character.rank.changed` | `{event_kind}`, `{guild_id}`, `{region}`, `{realm_id}`, `{character_id}` | `GET /query/guilds/{guild_id}/character-members/{region}/{realm_id}/{character_id}` |
 
 Machine-query credential used for Guildie and Character follow-up requests:
 

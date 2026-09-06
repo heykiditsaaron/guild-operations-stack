@@ -1,9 +1,9 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import { config, parseRegion } from "../config.js";
-import { pool } from "../db.js";
-import { discordAssociationForGuildie } from "../discord.js";
-import { effectiveGuildAuthority } from "../guild-permissions.js";
-import { mainCharacterForGuildie } from "../main-character.js";
+import { config, parseRegion } from "./config.js";
+import { pool } from "./db.js";
+import { discordAssociationForGuildie } from "./discord.js";
+import { effectiveGuildAuthority } from "./guild-permissions.js";
+import { mainCharacterForGuildie } from "./main-character.js";
 
 function authorized(request: FastifyRequest): boolean {
   const configured = process.env.EVENT_QUERY_API_KEY;
@@ -12,8 +12,8 @@ function authorized(request: FastifyRequest): boolean {
   return header === configured || header === `Bearer ${configured}`;
 }
 
-export async function registerEventQueryRoutes(app: FastifyInstance): Promise<void> {
-  app.get("/events/query/guildies/:guildieId", async (request, reply) => {
+export async function registerQueryRoutes(app: FastifyInstance): Promise<void> {
+  app.get("/query/guildies/:guildieId", async (request, reply) => {
     if (!authorized(request)) return reply.code(401).send({ error: "invalid_machine_authority" });
 
     const params = request.params as { guildieId?: unknown };
@@ -66,7 +66,7 @@ export async function registerEventQueryRoutes(app: FastifyInstance): Promise<vo
     });
   });
 
-  app.get("/events/query/guilds/:guildId/character-members/:region/:realmId/:characterId", async (request, reply) => {
+  app.get("/query/guilds/:guildId/character-members/:region/:realmId/:characterId", async (request, reply) => {
     if (!authorized(request)) return reply.code(401).send({ error: "invalid_machine_authority" });
 
     const params = request.params as {
