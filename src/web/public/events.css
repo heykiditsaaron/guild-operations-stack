@@ -5,31 +5,7 @@
 .events-shell {
   width: min(100%, 52rem);
   display: grid;
-  gap: clamp(3rem, 8vw, 5rem);
-}
-
-.events-section-heading {
-  max-width: 38rem;
-  margin-bottom: 1.1rem;
-}
-
-.events-section-heading h2 {
-  margin: 0;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(1.8rem, 5vw, 2.45rem);
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: -0.025em;
-}
-
-.events-section-heading .eyebrow {
-  margin-bottom: 0.5rem;
-}
-
-.events-section-heading > p:last-child {
-  margin: 0.75rem 0 0;
-  color: #aaa69c;
-  line-height: 1.55;
+  gap: clamp(2.4rem, 7vw, 4rem);
 }
 
 .events-offering-grid {
@@ -130,7 +106,7 @@
   text-transform: uppercase;
 }
 
-.events-offering h3 {
+.events-offering h2 {
   margin: 0.45rem 0 0;
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(1.75rem, 5vw, 2.35rem);
@@ -174,8 +150,13 @@
   transform: translateX(0.2rem);
 }
 
-.events-calendar {
+.events-calendar-widget {
   display: grid;
+  gap: 0.9rem;
+}
+
+.events-calendar-title {
+  margin: 0;
 }
 
 .events-discovery {
@@ -332,7 +313,7 @@
 }
 
 .events-empty {
-  padding: 1rem 0 0;
+  padding: 0.25rem 0 0;
 }
 
 .events-empty h3 {
@@ -357,7 +338,7 @@
 
 @media (max-width: 36rem) {
   .events-shell {
-    gap: 3.25rem;
+    gap: 2.75rem;
   }
 
   .events-offering {
