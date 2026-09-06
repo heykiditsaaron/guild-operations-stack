@@ -77,11 +77,13 @@ function renderOffering(offering: GuildEventOffering, assets: AssetRegistry): st
 
   return `
     <a class="events-offering${artworkClass}" href="${destination}" aria-label="Check out ${title}">
-      ${artworkMarkup}
-      <div class="events-offering-copy">
-        <p class="events-offering-kicker">Guild activity</p>
-        <h3>${title}</h3>
-        <p class="events-offering-tagline">${tagline}</p>
+      <div class="events-offering-main">
+        ${artworkMarkup}
+        <div class="events-offering-copy">
+          <p class="events-offering-kicker">Guild activity</p>
+          <h3>${title}</h3>
+          <p class="events-offering-tagline">${tagline}</p>
+        </div>
       </div>
       <span class="events-offering-action">
         <span>Check it out</span>
