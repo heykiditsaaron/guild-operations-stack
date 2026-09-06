@@ -2,53 +2,74 @@
 
 ## Purpose
 
-Guild Operations derives a Guildie's current organizational membership by joining two independent Blizzard-authoritative surfaces:
+Guild Operations derives a Guildie's current organizational participation and effective guild rank by joining two independent Blizzard-authoritative observations:
 
 ```text
-Authenticated Account Profile
+Guildie account/control observation
         ∩
-Public Guild Character Roster
+current Blizzard guild Character roster
         ↓
-current roster Characters controlled by the Guildie
+controlled roster Characters
         ↓
-current Guildie participation surface + effective rank
+current Guildie participation surface
+        +
+effective numeric guild rank
 ```
 
-This avoids asking a member to manually declare guild Character identity when Blizzard can establish both sides of that relationship.
+This document owns that derivation. The member objects themselves are defined in [`member-objects.md`](member-objects.md), while the Blizzard evidence that established the underlying coordinates is recorded in [`blizzard-authority.md`](blizzard-authority.md).
 
-The durable `guildie_id` coordinate identifies which Guildie is operating. Guildie continuity is not itself current guild membership.
+## Independent authority surfaces
 
-## Live guild coordinate
+Blizzard account authority establishes which Characters a Guildie currently controls.
 
-Live Blizzard reconnaissance established the guild as:
+Blizzard guild-roster authority separately establishes which Characters are currently members of OH CRIT I Pulled! and the numeric guild rank attached to each current roster Character.
+
+Neither observation substitutes for the other:
 
 ```text
-guild_id: 65431436
-region: us
-realm_id: 129
-realm_slug: gurubashi
-name: OH CRIT I Pulled
+control without roster membership
+    → known controlled Character
+    → not currently eligible for Guild Operations guild participation
+
+roster membership without demonstrated Guildie control
+    → current guild Character
+    → not attributable to that Guildie
+
+control + roster membership
+    → eligible Guild Operations Character for that Guildie
 ```
 
-The numeric Blizzard `guild_id` is the canonical guild reference inside Guild Operations. Name, realm labels, faction, and other descriptive fields are observations or presentation data and may change without changing the guild's identity.
+Character profile or media presentation is another independent Blizzard observation and cannot establish either control or guild membership.
 
-The current name and realm slug remain necessary as Blizzard API lookup coordinates. Guild Operations therefore configures those locators separately and verifies that the returned Blizzard object resolves to canonical guild id `65431436` before admitting a roster observation.
+## Current Guildie participation
 
-## Live roster result
-
-The live roster response contained 517 Character members. Each roster member exposed:
+A Guildie has a current participation surface when at least one Character they currently control is also currently present on the Blizzard guild roster.
 
 ```text
-character.id
-character.realm.id
-character.name
-character.realm
-character.level
-character.playable_class
-character.playable_race
-character.faction
-rank
+at least one controlled roster Character
+    → current Guildie organizational participation
+
+zero controlled roster Characters
+    → Guildie remains durable and known
+    → no current guild participation surface
+    → no rank-derived authority
 ```
+
+This is derived current state, not a second independently persisted source of membership truth.
+
+A change to either side of the intersection may change the Guildie's current participation surface. Guild refresh changes the roster observation; Blizzard account/control reconciliation may change the control observation. Neither procedure owns the other's authority.
+
+## Effective guild rank
+
+Blizzard owns the numeric rank on each current Character roster membership. Guild Operations derives the Guildie's effective rank from the controlled Characters that survive the authority intersection.
+
+When more than one controlled roster Character exists, the effective rank is the highest-authority Blizzard rank among them. Under the guild's current Blizzard ordering, lower numeric `rank_index` means higher authority.
+
+The selected main does not participate in this calculation.
+
+Guild Operations may attach first-party meaning or presentation to numeric rank values, but it does not rewrite the Blizzard rank fact itself. Rank definitions and application permission translation are documented in [`guild-permissioning.md`](guild-permissioning.md).
+
+## Canonical join coordinates
 
 The durable Character-side join coordinate is:
 
@@ -56,105 +77,22 @@ The durable Character-side join coordinate is:
 region + realm_id + character_id
 ```
 
-A live comparison against the already authenticated Guildie established:
+Current authority must be joined by Blizzard-native Character coordinates rather than by mutable presentation fields such as Character name or realm name.
 
-```text
-authenticated controlled Characters: 20
-current Character-roster intersections: 9
-```
+The configured guild is identified internally by Blizzard's numeric `guild_id`. Descriptive guild fields and API lookup locators may change without changing that identity.
 
-All nine intersections matched by Blizzard Character and realm identifiers rather than by character name.
+The empirical Blizzard observations that established these coordinate choices belong in [`blizzard-authority.md`](blizzard-authority.md), not in this derivation contract.
 
-This is sufficient evidence for Guild Operations to resolve which current guild Characters are controlled by that Guildie.
+## Persistence and refresh boundaries
 
-## Character roster and Guildie roster
+Guild Operations persists Blizzard account-control and roster observations so current authority can be derived consistently. Persistence ownership is documented in [`global-persistence.md`](global-persistence.md), while account/control transaction behavior is documented in [`persistence-boundary.md`](persistence-boundary.md).
 
-The **Character roster** is Blizzard-owned current in-game guild membership. A Character is either currently present with a Blizzard numeric rank or it is not currently present.
+Guild roster reconciliation is documented in [`guild-refresh.md`](guild-refresh.md). Self account refresh is documented in [`self-account-refresh.md`](self-account-refresh.md).
 
-The **Guildie roster** is Guild Operations-derived organizational membership:
+Those procedures may change one side of the authority intersection, but this derivation remains the same.
 
-```text
-Guildie's currently controlled Characters
-                ∩
-current Blizzard Character roster
-                ↓
-current Guildie organizational membership
-```
+## Authority invariant
 
-At least one controlled Character on the current Character roster gives the Guildie a current participation surface. Zero controlled roster Characters removes that current participation surface and rank-derived authority without deleting the Guildie, associations, preferences, or history.
+> A Guildie's current guild participation and rank-derived authority exist only where Blizzard-demonstrated Character control intersects Blizzard's current guild roster.
 
-## Rank authority
-
-Blizzard publishes guild rank as an integer on each current Character roster membership. Live observation found ranks:
-
-```text
-0, 1, 2, 3, 4, 5, 7
-```
-
-Rank `6` currently has no roster occupants and is intentionally unused by the guild. This demonstrates that Guild Operations must not infer the available rank space from currently populated roster values.
-
-Blizzard does not expose the guild's custom human-readable rank names in the Guild Profile or Guild Roster payloads observed during reconnaissance.
-
-Therefore:
-
-> Blizzard owns the numeric rank fact on each current Character. Guild Operations owns configurable meaning and presentation for that number outside WoW and derives each current Guildie's effective rank from their controlled roster Characters.
-
-A Guildie's effective rank is the highest-authority rank among all currently controlled Characters on the Character roster. Under Blizzard's current ordering, lower numeric `rank_index` means higher authority.
-
-Conceptually:
-
-```text
-Guild 65431436 / Rank 2
-├── canonical: rank_index = 2
-└── Guild Operations metadata
-    ├── display_name
-    ├── active/inactive presentation state
-    ├── later: Discord role projection
-    └── later: Guildie-facing permissions
-```
-
-Discord role mapping and Guild Operations authorization must remain separate consumers of rank metadata. A Discord role must never become the source of backend permission authority.
-
-## Persistence boundary
-
-The executable model separates three concerns.
-
-### Guild
-
-The canonical row is keyed by Blizzard `guild_id`. Current descriptive Blizzard fields are retained as observed metadata and refreshed without changing identity.
-
-### Character roster membership
-
-A Character roster membership is keyed by:
-
-```text
-guild_id + region + realm_id + character_id
-```
-
-It retains current Blizzard rank and presentation observations plus `first_seen_at`, `last_seen_at`, and `currently_present`.
-
-Roster refresh is non-destructive. A Character omitted by a later Blizzard roster response is marked not currently present rather than deleted. Historical Guild Operations activity must not depend on continued roster presence.
-
-### Guild rank definition
-
-Guild Operations rank metadata is keyed by:
-
-```text
-guild_id + rank_index
-```
-
-The numeric rank remains the durable reference. Display names and other projections are mutable configuration.
-
-The Guildie roster itself is derived from current Character control and current Character roster state rather than persisted as an independent authority source.
-
-## Acquisition boundary
-
-Guild profile and Character roster acquisition use a Blizzard client-credentials token rather than member OAuth. External Blizzard HTTP calls complete before the database transaction begins.
-
-Guild Operations verifies both the Guild Profile and Guild Roster against configured canonical guild id `65431436` before persisting the observation.
-
-## Current executable acceptance criterion
-
-Given an authenticated Guildie and a refreshed Blizzard Character roster, the backend can identify which Characters that Guildie currently controls on the OH CRIT I Pulled! roster, derive whether the Guildie has a current participation surface, and compute the Guildie's effective numeric guild rank from those current Character memberships.
-
-`Subject` has no role in this persistence or authority model beyond ordinary contextual language about what a particular statement is about.
+Guildie continuity survives changes to that intersection. Current authority does not.
