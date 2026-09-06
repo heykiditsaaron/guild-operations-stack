@@ -2,71 +2,87 @@
 
 Guild Operations' web layer owns presentation composition and delivery. It does not redefine operational truth supplied by the backend.
 
-The renderer is intentionally small and grows with real application needs rather than predicted information architecture.
+The renderer should grow from real application needs rather than predicted information architecture.
 
 ## Projection contract
 
 Routes acquire or assemble view data, then hand presentation-ready values to the renderer. Rendering code must not perform database queries, make authority decisions, or manufacture backend state.
 
-Presentation-owned content such as articles, announcements, and editorial material may follow different authority rules when those systems are introduced. That does not permit the web layer to counteract authoritative backend state.
+Presentation-owned content may follow different authority rules when such systems are introduced. That does not permit the web layer to counteract authoritative backend state.
 
 ## Application shell
 
-The current shell is:
+The shared shell owns application-level presentation such as:
+
+- primary navigation;
+- optional secondary navigation;
+- shared action surfaces;
+- responsive shell behavior;
+- common page composition; and
+- persistent member context.
+
+The renderer may change presentation across breakpoints without changing the meaning of the interaction or navigation it represents.
+
+The authenticated member context is projected from the current Guildie. A selected main or Character portrait may improve recognition, but those presentation choices do not determine Guildie continuity or authorization.
+
+`Subject` is not a rendering identity object. If a page has a grammatical or domain subject, that role belongs to the concrete object the page is about.
+
+## Secondary navigation
+
+The shared renderer owns the optional navigation zone immediately below primary navigation. Modules and pages declare navigation intent; they do not reproduce shared breadcrumb or back-link presentation locally.
+
+Secondary navigation currently expresses two distinct relationships:
 
 ```text
-Action bar
-Header
-Main
-Footer
+breadcrumb
+    → where is this durable location in the application?
+
+back
+    → where should this focused interaction return?
 ```
 
-The action bar is currently reserved for navigation and immediate user interactions. That is a first-design-phase choice rather than permanent doctrine; the shell may evolve when real needs justify it.
+A breadcrumb is appropriate for a durable location within an application realm. Items are declared in semantic hierarchy order. Navigable ancestors may supply destinations; the terminal item represents the current location. The renderer owns separators, current-location semantics, styling, placement, accessibility, and constrained-space behavior.
 
-Navigation is deliberately sparse. Mobile presents it through a hamburger menu and larger screens expose the same destinations directly. The renderer changes presentation across breakpoints, not navigation meaning.
+A breadcrumb root may remain inert when a higher navigation layer already owns movement to that realm. It may be navigable when no higher layer owns that movement and a real parent surface exists. This is an ownership distinction, not a route-specific rule.
 
-The right side of the action bar is the Me surface. A signed-out viewer receives a Blizzard sign-in action and generic account glyph. A signed-in viewer is projected from the authenticated Guildie and, when selected, presents the current main character name and Blizzard portrait. The selected main remains presentation state and does not determine Guildie continuity or authorization.
+Back navigation is appropriate when a surface is better understood as a focused interaction branching from one owning surface than as another durable location. The page supplies the semantic destination and label; the renderer owns the visual and accessibility treatment.
 
-The current Me menu contains only capabilities that already exist: selecting a main character and signing out.
+The useful distinction is **location versus return from an interaction**, not a mechanical classification derived from URL structure.
 
-Main selection is a shell interaction rather than a separate application destination. The shell receives the Guildie's currently eligible guild Characters as presentation-ready data, opens a responsive character picker over the current page, and submits the selected durable Character coordinate to `PUT /me/main-character`. Successful selection updates the current Me presentation without navigating away from the active page. The backend remains the authority for eligibility and persistence.
+Secondary navigation remains separate from page identity. Breadcrumbs or back navigation communicate application relationship; eyebrows, titles, states, and other identity cues remain owned by the page or module.
 
-On mobile the picker is presented as a bottom sheet. On larger screens the same interaction is presented as a centered dialog. This is one interaction contract with responsive presentation, not two separate features.
+## Rendering ownership
 
-`Subject` is not a rendering identity object. If a page has a grammatical or domain subject, that role belongs to whichever concrete object the page is about and does not affect authenticated Guildie resolution.
+Rendering ownership follows semantic ownership:
+
+1. **Global rendering** for presentation that belongs to the shared application language.
+2. **Module rendering** for reusable presentation that belongs specifically to a module.
+3. **Inline rendering** for genuinely exceptional surfaces with no demonstrated reusable owner.
+
+Do not promote one-off presentation merely to create reuse, and do not duplicate shared shell or navigation behavior inside modules.
 
 ## Application origin
 
-`APP_ORIGIN` is the canonical externally visible application origin. It contains only scheme, host, and optional port. Public application URLs are derived from it rather than hardcoded deployment addresses.
+`APP_ORIGIN` is the canonical externally visible application origin. Public application URLs are derived from it rather than hardcoded deployment addresses.
 
-`PORT` remains the local process listen port and is independent of the external origin.
+The local process listen port remains independent of the externally visible origin.
 
-The Blizzard OAuth callback is derived as `/auth/blizzard/callback` beneath `APP_ORIGIN`; `BLIZZARD_REDIRECT_URI` is no longer independently configured.
+OAuth callback URLs should be derived from the canonical application origin rather than introducing competing deployment coordinates.
 
-## Asset delivery and cache busting
+## Asset delivery
 
-Shared web assets are loaded when the application starts. Each asset receives a URL containing the first twelve hexadecimal characters of its SHA-256 content digest, for example:
+Shared web assets should use content-derived addressing so changed content receives a new URL while unchanged assets remain safely cacheable.
 
-```text
-/assets/app.<content-hash>.css
-```
+Rendered HTML should remain revalidatable so interface state is not made stale by long-lived document caching.
 
-Changing asset content therefore changes its address automatically. Fingerprinted assets are served with:
+The implementation may evolve, but cache behavior must preserve the distinction between immutable versioned assets and current rendered application state.
 
-```text
-Cache-Control: public, max-age=31536000, immutable
-```
+## Page and module identity
 
-Rendered HTML is served with:
+Navigation presentation is global shell behavior. Page and module identity presentation is local.
 
-```text
-Cache-Control: no-cache
-```
+The shell owns navigation hierarchy, active/current treatment, responsive behavior, spacing, casing, separators, and shared accessibility semantics.
 
-This makes stale CSS or JavaScript structurally unable to survive a content change while allowing unchanged assets to remain cached efficiently.
+Modules own identity cues whose meaning belongs to their domain, including page titles, section labels, event states, and status treatments.
 
-## Current scope
-
-`GET /` is the first page rendered inside the shared application shell. Its navigation currently contains only Home.
-
-The former standalone `/select-main` page has been retired. Main selection now belongs to the shared Me interaction surface and can remain available while the member stays on the page they were already using.
+Do not use module-specific identity styling to recreate navigation behavior, and do not push module identity into the shared navigation renderer.
