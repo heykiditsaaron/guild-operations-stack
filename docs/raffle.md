@@ -1,6 +1,6 @@
 # Raffle
 
-Raffle is a concrete Guild Operations participation module for operating the guild raffle. Individual raffle rounds may be listed as Guild Events through the shared Guild Event contract; the raffle module itself is not contained by Guild Events.
+Raffle is a concrete Guild Operations participation module for operating the guild raffle. Individual raffle rounds may contribute temporal occurrences to the shared Guild Event Calendar; the raffle module itself is not contained by Guild Events or by the calendar.
 
 It is deliberately modeled as a raffle-specific domain rather than as an instance of a generic event, workflow, participation, notification, or audit framework. Raffle may publish system events after authoritative raffle truth changes; those system events are a supporting integration boundary, not the Guild Event product category itself.
 
@@ -105,11 +105,11 @@ conclusion
 
 Drawing, cancellation, and creation are operations. They are not lifecycle states.
 
-### Temporal truth and Guild Event occurrence
+### Temporal truth and Guild Event Calendar
 
 Raffle scheduling is operated by humans, not by a deterministic automation system. Scheduled time therefore represents the best established expectation until actual operational boundaries become known.
 
-For a raffle round registered as a Guild Event, `guild_event_occurs_at` expresses the best currently established temporal truth of the ceremony and may change as better truth becomes available:
+For a raffle round contributed to the Guild Event Calendar, `guild_event_occurs_at` expresses the best currently established temporal truth of the ceremony and may change as better truth becomes available:
 
 ```text
 listed
@@ -122,9 +122,9 @@ concluded after going live
     → [live_at_unix, concluded_at_unix]
 ```
 
-A scheduled boundary is not considered false merely because it may later move; it is the best available truth while the boundary remains future or estimated. Once the raffle establishes an observed boundary, that observed Unix value supersedes the estimate in the Guild Event occurrence projection.
+A scheduled boundary is not considered false merely because it may later move; it is the best available truth while the boundary remains future or estimated. Once the raffle establishes an observed boundary, that observed Unix value supersedes the estimate in the Guild Event Calendar Listing.
 
-Operator cancellation withdraws the Guild Event Listing because it revokes participation eligibility before intended resolution. The raffle round itself remains durable raffle history; withdrawing the listing does not erase the fact that the guild established and operated the round.
+Operator cancellation withdraws the Guild Event Calendar Listing because it revokes the occurrence from calendar discovery before intended resolution. The raffle round itself remains durable raffle history; withdrawing the calendar listing does not erase the fact that the guild established and operated the round.
 
 ## Claim
 
