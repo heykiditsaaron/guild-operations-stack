@@ -25,11 +25,16 @@ An Offering is therefore not a substitute for the module's informational surface
 The current contract is deliberately small:
 
 ```ts
+type GuildEventOfferingArtwork =
+  | { kind: "asset"; asset: string }
+  | { kind: "url"; url: string };
+
 type GuildEventOffering = {
   offeringId: string;
   title: string;
   tagline: string;
   destination: string;
+  artwork?: GuildEventOfferingArtwork;
 };
 ```
 
@@ -59,6 +64,14 @@ It is intentionally not a summary of rules or participation procedure. The Event
 
 The shell uses the destination to move a member from discovery into the module-owned experience. Route hierarchy does not transfer implementation or domain ownership to the shell.
 
+### `artwork`
+
+`artwork` is optional recognition and promotional artwork for consumers that can make useful visual use of it.
+
+It is an either/or coordinate. A module may identify a bundled application asset with `kind: "asset"`, or supply an external image location with `kind: "url"`. Supplying artwork does not instruct the shell how to size, position, crop, decorate, or otherwise lay it out.
+
+Consumers remain responsible for resolving and presenting artwork appropriately for their medium. Consumers must also remain useful when an Offering supplies no artwork.
+
 ## Registration
 
 Offerings are registered through the shared contract under:
@@ -81,7 +94,7 @@ Modules must not register HTML, CSS, arbitrary presentation metadata, or shell l
 
 The Events shell owns the promotional treatment. This allows the shell to render Offerings as contextual, eye-catching participation promotions while keeping a coherent shared page grammar.
 
-The current contract does **not** require artwork. Visual enrichment such as module-specific artwork may be added later if concrete presentation work proves that the shell needs another semantic coordinate. It should not be added merely because a richer card can be imagined.
+Artwork is optional. It is a recognition resource rather than a layout requirement: an Offering without artwork remains a complete Offering, and the shell owns its artwork-free treatment.
 
 ## Relationship to the Guild Event Calendar
 
@@ -123,7 +136,7 @@ The shared Events shell owns:
 The module owns:
 
 - whether it exposes an Offering contribution;
-- the Offering's title, tagline, and destination;
+- the Offering's title, tagline, destination, and optional artwork coordinate;
 - the participation capability itself;
 - explanation and rules;
 - participation procedure;
@@ -149,7 +162,7 @@ The contract also does not currently include:
 - administrative destinations;
 - notification policy;
 - arbitrary metadata;
-- artwork requirements; or
+- artwork layout instructions; or
 - presentation markup.
 
 Add another coordinate only when real shell presentation or another concrete consumer demonstrates that it is required.
