@@ -46,3 +46,63 @@ if (
     }
   });
 }
+
+const scheduleForm = document.querySelector("[data-guild-refresh-schedule-form]");
+const scheduleEnabled = document.querySelector("[data-guild-refresh-schedule-enabled]");
+const scheduleInterval = document.querySelector("[data-guild-refresh-schedule-interval]");
+const scheduleSave = document.querySelector("[data-guild-refresh-schedule-save]");
+const scheduleFeedback = document.querySelector("[data-guild-refresh-schedule-feedback]");
+
+if (
+  scheduleForm instanceof HTMLFormElement
+  && scheduleEnabled instanceof HTMLInputElement
+  && scheduleInterval instanceof HTMLInputElement
+  && scheduleSave instanceof HTMLButtonElement
+  && scheduleFeedback instanceof HTMLElement
+) {
+  const toggleLabel = scheduleEnabled.parentElement?.querySelector("span");
+  scheduleEnabled.addEventListener("change", () => {
+    if (toggleLabel) toggleLabel.textContent = scheduleEnabled.checked ? "On" : "Off";
+  });
+
+  scheduleForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (scheduleSave.disabled) return;
+
+    const intervalSeconds = Number(scheduleInterval.value);
+    if (!Number.isInteger(intervalSeconds) || intervalSeconds < 300) {
+      scheduleFeedback.textContent = "Automatic refresh interval must be at least 300 seconds.";
+      return;
+    }
+
+    scheduleSave.disabled = true;
+    scheduleSave.textContent = "Saving…";
+    scheduleFeedback.textContent = "Saving automatic refresh settings…";
+
+    try {
+      const response = await fetch("/guild/refresh/schedule", {
+        method: "PUT",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          enabled: scheduleEnabled.checked,
+          interval_seconds: intervalSeconds,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Guild refresh schedule update returned ${response.status}`);
+      }
+
+      scheduleFeedback.textContent = "Automatic refresh settings saved. Updating status…";
+      window.location.reload();
+    } catch (error) {
+      console.error("Guild refresh schedule update failed", error);
+      scheduleSave.disabled = false;
+      scheduleSave.textContent = "Save";
+      scheduleFeedback.textContent = "Automatic refresh settings could not be saved.";
+    }
+  });
+}
