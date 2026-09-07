@@ -27,6 +27,22 @@ The authenticated member context is projected from the current Guildie. A select
 
 `Subject` is not a rendering identity object. If a page has a grammatical or domain subject, that role belongs to the concrete object the page is about.
 
+## Shared interaction presentation
+
+Standard interactive controls are global presentation infrastructure. Feature surfaces consume the shared fallback language rather than redefining ordinary controls by default.
+
+The shared fallback currently covers ordinary buttons and button-like actions, text/number inputs, text areas, selects, focus and disabled states, and switch presentation for boolean enabled/disabled controls.
+
+This is not a requirement for every interaction to look identical. A producer may define scoped CSS when its domain genuinely requires a different treatment, and rare exceptional surfaces may override presentation inline when neither the global nor producer scope is the correct owner. The precedence is therefore:
+
+1. global shell fallback;
+2. producer-scoped refinement or override; and
+3. rare inline exception.
+
+Checkbox semantics remain distinct from switch semantics. A boolean control whose meaning is an enabled/disabled state may use the shared switch presentation while retaining a native checkbox input for semantics and accessibility. Ordinary checkbox choices should not become switches merely because they use the same HTML input type.
+
+Shared presentation should be promoted only after real application pressure demonstrates a common interaction. The purpose is fallback uniformity, not a speculative component or design-system framework.
+
 ## Secondary navigation
 
 The shared renderer owns the optional navigation zone immediately below primary navigation. Modules and pages declare navigation intent; they do not reproduce shared breadcrumb or back-link presentation locally.
