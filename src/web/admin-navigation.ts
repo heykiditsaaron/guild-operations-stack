@@ -1,7 +1,10 @@
+import type { EffectiveGuildAuthority } from "../guild-permissions.js";
+
 export type ModuleAdministrationDestinationRegistration = {
   label: string;
   destination: string;
   permissionScope: string;
+  authorized: (authority: EffectiveGuildAuthority) => boolean;
 };
 
 export type AdministrationNavigationDestination = {
@@ -27,15 +30,22 @@ export function registerModuleAdministrationDestination(
   if (moduleAdministrationDestinations.some((published) => published.destination === destination)) {
     throw new Error(`Duplicate module administration destination: ${destination}`);
   }
+  if (moduleAdministrationDestinations.some((published) => published.permissionScope === permissionScope)) {
+    throw new Error(`Duplicate module administration permission scope: ${permissionScope}`);
+  }
 
-  moduleAdministrationDestinations.push({ label, destination, permissionScope });
+  moduleAdministrationDestinations.push({
+    label,
+    destination,
+    permissionScope,
+    authorized: registration.authorized,
+  });
 }
 
 export function authorizedModuleAdministrationDestinations(
-  capabilities: readonly string[],
+  authority: EffectiveGuildAuthority,
 ): AdministrationNavigationDestination[] {
-  const authorizedScopes = new Set(capabilities);
   return moduleAdministrationDestinations
-    .filter((published) => authorizedScopes.has(published.permissionScope))
+    .filter((published) => published.authorized(authority))
     .map((published) => ({ label: published.label, href: published.destination }));
 }
