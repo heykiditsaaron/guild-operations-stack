@@ -1,3 +1,33 @@
+.me-menu .me-control [data-me-label] {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+}
+
+.me-menu .me-control [data-me-label]::after {
+  content: "";
+  width: 0.46rem;
+  height: 0.46rem;
+  flex: 0 0 auto;
+  margin-top: -0.18rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  color: #8f8b82;
+  transform: rotate(45deg);
+  transition: transform 140ms ease, color 140ms ease;
+}
+
+.me-menu[open] .me-control [data-me-label]::after {
+  margin-top: 0.18rem;
+  transform: rotate(225deg);
+}
+
+.me-menu .me-control:hover [data-me-label]::after,
+.me-menu .me-control:focus-visible [data-me-label]::after,
+.me-menu[open] .me-control [data-me-label]::after {
+  color: #c9c5ba;
+}
+
 .me-menu-panel {
   width: max-content;
   min-width: 15rem;
