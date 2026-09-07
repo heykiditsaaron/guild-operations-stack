@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../auth.js";
 import { activeRaffleRound } from "../../modules/raffle/live-round.js";
-import { assetUrl, type AssetRegistry } from "../assets.js";
+import { assetUrl, type AssetName, type AssetRegistry } from "../assets.js";
 import { renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
 
@@ -44,12 +44,17 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
       activeRaffleRound(),
     ]);
 
+    const stylesheets: AssetName[] = ["home.css"];
+    if (liveRaffle) {
+      stylesheets.push("home-raffle.css");
+    }
+
     const html = renderPage(assets, {
       pathname: "/",
       title: "OH CRIT I Pulled!",
       description: "OH CRIT I Pulled! — a World of Warcraft guild built around good people, shared adventures, and playing the game your way.",
       viewer,
-      stylesheets: ["home.css", ...(liveRaffle ? ["home-raffle.css"] : [])],
+      stylesheets,
       header: `
         <div class="home-community-header">
           <p class="home-community-mark">World of Warcraft guild</p>
