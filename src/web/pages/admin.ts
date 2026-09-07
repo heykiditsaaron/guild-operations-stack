@@ -56,7 +56,7 @@ function renderGuildRefresh(
         <h3>Guild refresh</h3>
         <p>Reconcile current guild membership and rank authority from Blizzard.</p>
       </div>
-      <button type="button" class="guild-refresh-button" data-guild-refresh-button>Refresh now</button>
+      <button type="button" class="guild-refresh-button button-primary" data-guild-refresh-button>Refresh now</button>
     </div>
     <div class="guild-refresh-status">
       <div class="guild-refresh-stat">
@@ -75,9 +75,10 @@ function renderGuildRefresh(
           <h4>Automatic refresh</h4>
           <p>Run guild refresh from Guild Operations on a repeating cadence.</p>
         </div>
-        <label class="guild-refresh-toggle">
+        <label class="switch guild-refresh-toggle">
           <input type="checkbox" data-guild-refresh-schedule-enabled${schedule.enabled ? " checked" : ""}>
-          <span>${schedule.enabled ? "On" : "Off"}</span>
+          <span class="switch-control" aria-hidden="true"></span>
+          <span data-switch-label>${schedule.enabled ? "On" : "Off"}</span>
         </label>
       </div>
       <div class="guild-refresh-schedule-controls">
@@ -93,7 +94,7 @@ function renderGuildRefresh(
           >
           <span>seconds</span>
         </label>
-        <button type="submit" data-guild-refresh-schedule-save>Save</button>
+        <button type="submit" class="button-primary" data-guild-refresh-schedule-save>Save</button>
       </div>
       <div class="guild-refresh-schedule-next">
         <span>Next automatic refresh</span>
