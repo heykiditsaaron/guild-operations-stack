@@ -66,7 +66,11 @@ export async function registerGuildRoutes(app: FastifyInstance): Promise<void> {
     if (typeof enabled !== "boolean") {
       return reply.code(400).send({ error: "enabled_must_be_boolean" });
     }
-    if (!Number.isInteger(intervalSeconds) || (intervalSeconds as number) < GUILD_REFRESH_MINIMUM_INTERVAL_SECONDS) {
+    if (
+      typeof intervalSeconds !== "number"
+      || !Number.isInteger(intervalSeconds)
+      || intervalSeconds < GUILD_REFRESH_MINIMUM_INTERVAL_SECONDS
+    ) {
       return reply.code(400).send({
         error: "invalid_interval_seconds",
         minimum_interval_seconds: GUILD_REFRESH_MINIMUM_INTERVAL_SECONDS,
@@ -75,7 +79,7 @@ export async function registerGuildRoutes(app: FastifyInstance): Promise<void> {
 
     const schedule = await configureGuildRefreshSchedule({
       enabled,
-      intervalSeconds: intervalSeconds as number,
+      intervalSeconds,
     });
 
     return reply.send({
