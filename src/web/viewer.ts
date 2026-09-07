@@ -26,6 +26,7 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
   return {
     authenticated: true,
     administrationAvailable: administration.available,
+    administrationDestinations: administration.navigationDestinations,
     mainCharacter: mainCharacter
       ? {
           characterId: mainCharacter.characterId,
