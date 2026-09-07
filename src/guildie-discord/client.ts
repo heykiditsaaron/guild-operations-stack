@@ -1,6 +1,7 @@
 import { config } from "../config.js";
 
 const DISCORD_API_BASE = "https://discord.com/api/v10";
+const DISCORD_RATE_LIMIT_RETRIES = 4;
 
 export type DiscordGuildMember = {
   userId: string;
@@ -31,15 +32,55 @@ function integrationConfig(): { guildId: string; botToken: string } {
   return { guildId: config.discordGuildId, botToken: config.discordBotToken };
 }
 
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function retryAfterMilliseconds(response: Response): Promise<number | null> {
+  try {
+    const payload = await response.clone().json() as { retry_after?: unknown };
+    if (typeof payload.retry_after === "number" && Number.isFinite(payload.retry_after) && payload.retry_after >= 0) {
+      return Math.ceil(payload.retry_after * 1000);
+    }
+  } catch {
+    // Fall through to response headers when Discord did not return the expected JSON body.
+  }
+
+  const retryAfter = response.headers.get("retry-after");
+  if (retryAfter !== null) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds) && seconds >= 0) return Math.ceil(seconds * 1000);
+  }
+
+  const resetAfter = response.headers.get("x-ratelimit-reset-after");
+  if (resetAfter !== null) {
+    const seconds = Number(resetAfter);
+    if (Number.isFinite(seconds) && seconds >= 0) return Math.ceil(seconds * 1000);
+  }
+
+  return null;
+}
+
 async function discordRequest(path: string, init: RequestInit = {}): Promise<Response> {
   const { botToken } = integrationConfig();
-  return fetch(`${DISCORD_API_BASE}${path}`, {
-    ...init,
-    headers: {
-      authorization: `Bot ${botToken}`,
-      ...init.headers,
-    },
-  });
+
+  for (let attempt = 0; attempt <= DISCORD_RATE_LIMIT_RETRIES; attempt += 1) {
+    const response = await fetch(`${DISCORD_API_BASE}${path}`, {
+      ...init,
+      headers: {
+        authorization: `Bot ${botToken}`,
+        ...init.headers,
+      },
+    });
+
+    if (response.status !== 429 || attempt === DISCORD_RATE_LIMIT_RETRIES) return response;
+
+    const retryAfter = await retryAfterMilliseconds(response);
+    if (retryAfter === null) return response;
+    await wait(retryAfter);
+  }
+
+  throw new Error("Discord request retry loop exhausted unexpectedly");
 }
 
 export function discordGuildIntegrationConfigured(): boolean {
