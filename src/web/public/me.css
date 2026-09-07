@@ -39,6 +39,31 @@
   padding: 0.6rem;
 }
 
+.me-administration-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.55rem;
+  color: #e8c986;
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.me-administration-link:hover,
+.me-administration-link:focus-visible {
+  background: rgba(232, 201, 134, 0.08);
+  color: #f7dfaa;
+}
+
+.me-administration-link [aria-hidden="true"] {
+  color: #8f8b82;
+  font-size: 1rem;
+}
+
 .me-session-section {
   padding-bottom: 0.6rem;
 }
