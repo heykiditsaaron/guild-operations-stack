@@ -3,7 +3,12 @@ import { acquireGuildAuthority, type BlizzardGuildProfile, type BlizzardGuildRos
 import { config, type Region } from "./config.js";
 import { pool, withTransaction } from "./db.js";
 import { publishEvent, type PublishedEvent } from "./events/publisher.js";
-import { GUILD_REFRESH_CAPABILITY, OPERATIONS_INSPECT_CAPABILITY } from "./guild-permissions.js";
+import {
+  GUILD_DISCORD_MANAGE_CAPABILITY,
+  GUILD_REFRESH_CAPABILITY,
+  OPERATIONS_INSPECT_CAPABILITY,
+} from "./guild-permissions.js";
+import { reconcileGuildiesBestEffort } from "./guildie-discord/roles.js";
 import {
   enrichGuildCharacters,
   guildCharactersNeedingEnrichment,
@@ -204,7 +209,11 @@ async function ensureObservedRankDefinition(client: PoolClient, guildId: string,
   );
 
   if (rankIndex === 0 || rankIndex === 1 || rankIndex === 2) {
-    for (const capability of [GUILD_REFRESH_CAPABILITY, OPERATIONS_INSPECT_CAPABILITY]) {
+    for (const capability of [
+      GUILD_REFRESH_CAPABILITY,
+      OPERATIONS_INSPECT_CAPABILITY,
+      GUILD_DISCORD_MANAGE_CAPABILITY,
+    ]) {
       await client.query(
         `INSERT INTO guild_rank_capabilities (guild_id, rank_index, capability)
          VALUES ($1, $2, $3)
@@ -292,6 +301,12 @@ export async function refreshGuildAuthority(): Promise<{
   });
 
   for (const publication of persisted.publications) await publishEvent(publication);
+  await reconcileGuildiesBestEffort(
+    persisted.publications.flatMap((publication) =>
+      "guildieId" in publication ? [publication.guildieId] : [],
+    ),
+    { trigger: "guild-refresh" },
+  );
 
   const targets = await guildCharactersNeedingEnrichment(persisted.guildId, persisted.roster.changedPresentationCoordinates);
   const enrichment = await enrichGuildCharacters({ guildId: persisted.guildId, targets });
