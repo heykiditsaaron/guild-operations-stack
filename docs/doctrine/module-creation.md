@@ -47,14 +47,16 @@ destination
     → module-owned landing route below /admin
 
 permission scope
-    → Guild Operations capability required before the destination is offered
+    → stable module-owned coordinate describing the authority required for the destination
 ```
+
+The module also supplies the authorization evaluation for that permission scope against current Guild Operations authority. A module-specific permission does not need to become globally persisted capability state merely so the shell can decide whether to show navigation.
 
 A module publishes its administrative presence; it does not publish its administrative interface into the global page. The module continues to own its routes, procedure, authorization enforcement, and presentation after navigation reaches its destination.
 
 The global shell owns the administration selector. Once a module destination is registered, pages at that destination and its descendants can participate in the shared selector without reproducing selector markup or styling.
 
-Do not register a destination merely because a module exists. Registration is appropriate only when the module has a real administrative surface. Do not add navigation metadata beyond the three established fields until actual module administration creates the need.
+Do not register a destination merely because a module exists. Registration is appropriate only when the module has a real administrative surface. Do not add navigation metadata beyond the established administrative identity and authorization seam until actual module administration creates the need.
 
 The current shell contract is documented in [`../infrastructure/web-rendering.md`](../infrastructure/web-rendering.md).
 
