@@ -8,6 +8,11 @@ const required = (name: string): string => {
   return value;
 };
 
+const optional = (name: string): string | null => {
+  const value = process.env[name]?.trim();
+  return value ? value : null;
+};
+
 const port = Number(process.env.PORT ?? "3100");
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error("PORT must be a valid TCP port");
@@ -49,6 +54,8 @@ export const config = {
   discordClientId: required("DISCORD_CLIENT_ID"),
   discordClientSecret: required("DISCORD_CLIENT_SECRET"),
   discordRedirectUri: new URL("/auth/discord/callback", appOrigin).toString(),
+  discordGuildId: optional("DISCORD_GUILD_ID"),
+  discordBotToken: optional("DISCORD_BOT_TOKEN"),
   sessionCookieSecure: (process.env.SESSION_COOKIE_SECURE ?? "false") === "true",
   authAttemptTtlMinutes: 10,
   sessionTtlDays: 30,
