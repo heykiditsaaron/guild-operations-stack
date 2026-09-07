@@ -1,8 +1,7 @@
 import { config } from "../../config.js";
-import { discordAssociationForGuildie } from "../../discord.js";
 import { pool } from "../../db.js";
-import { mainCharacterForGuildie } from "../../main-character.js";
 import type { RaffleClaimResolution } from "./domain.js";
+import { raffleGuildieAttribution } from "./guildie-attribution.js";
 
 export type RaffleMemberClaim = {
   claimId: string;
@@ -17,15 +16,6 @@ export type RaffleMemberClaim = {
   resolutionActorLabel: string | null;
   denialReason: string | null;
 };
-
-async function guildieAttribution(guildieId: string): Promise<string> {
-  const [mainCharacter, discordAssociation] = await Promise.all([
-    mainCharacterForGuildie(guildieId),
-    discordAssociationForGuildie(guildieId),
-  ]);
-
-  return mainCharacter?.name ?? discordAssociation?.username ?? "Guild officer";
-}
 
 export async function raffleClaimsForMember(guildieId: string, roundId: string): Promise<RaffleMemberClaim[]> {
   const result = await pool.query(
@@ -71,7 +61,7 @@ export async function raffleClaimsForMember(guildieId: string, roundId: string):
   const attributionEntries = await Promise.all(
     [...actorGuildieIds].map(async (actorGuildieId) => [
       actorGuildieId,
-      await guildieAttribution(actorGuildieId),
+      await raffleGuildieAttribution(actorGuildieId),
     ] as const),
   );
   const attributionByGuildieId = new Map(attributionEntries);
