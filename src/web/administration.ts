@@ -5,6 +5,10 @@ import {
   effectiveGuildAuthority,
 } from "../guild-permissions.js";
 import { raffleAuthorityCanAdminister } from "../modules/raffle/authorization.js";
+import {
+  authorizedModuleAdministrationDestinations,
+  type AdministrationNavigationDestination,
+} from "./admin-navigation.js";
 
 export type AdministrationAvailability = {
   available: boolean;
@@ -12,6 +16,7 @@ export type AdministrationAvailability = {
   canInspectOperations: boolean;
   canAdministerDiscord: boolean;
   canAdministerRaffle: boolean;
+  navigationDestinations: AdministrationNavigationDestination[];
 };
 
 const unavailableAdministration: AdministrationAvailability = {
@@ -20,6 +25,7 @@ const unavailableAdministration: AdministrationAvailability = {
   canInspectOperations: false,
   canAdministerDiscord: false,
   canAdministerRaffle: false,
+  navigationDestinations: [],
 };
 
 export async function administrationAvailabilityForGuildie(
@@ -32,12 +38,21 @@ export async function administrationAvailabilityForGuildie(
   const canInspectOperations = authority.capabilities.includes(OPERATIONS_INSPECT_CAPABILITY);
   const canAdministerDiscord = authority.capabilities.includes(GUILD_DISCORD_MANAGE_CAPABILITY);
   const canAdministerRaffle = raffleAuthorityCanAdminister(authority);
+  const moduleDestinations = authorizedModuleAdministrationDestinations(authority.capabilities);
+  const available = canRefreshGuild
+    || canInspectOperations
+    || canAdministerDiscord
+    || canAdministerRaffle
+    || moduleDestinations.length > 0;
 
   return {
-    available: canRefreshGuild || canInspectOperations || canAdministerDiscord || canAdministerRaffle,
+    available,
     canRefreshGuild,
     canInspectOperations,
     canAdministerDiscord,
     canAdministerRaffle,
+    navigationDestinations: available
+      ? [{ label: "Guild Operations", href: "/admin" }, ...moduleDestinations]
+      : [],
   };
 }
