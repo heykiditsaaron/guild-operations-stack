@@ -1,5 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
+import { config } from "../../config.js";
+import { pool } from "../../db.js";
 import { guildRefreshStatus } from "../../guild-admin.js";
 import {
   GUILD_REFRESH_MINIMUM_INTERVAL_SECONDS,
@@ -7,14 +9,34 @@ import {
   type GuildRefreshSchedule,
 } from "../../guild-refresh-schedule.js";
 import {
+  GUILD_DISCORD_MANAGE_CAPABILITY,
   GUILD_REFRESH_CAPABILITY,
   OPERATIONS_INSPECT_CAPABILITY,
   guildieHasGuildCapability,
 } from "../../guild-permissions.js";
+import {
+  discordGuildIntegrationConfigured,
+  getDiscordGuildRoles,
+  type DiscordGuildRole,
+} from "../../guildie-discord/client.js";
+import {
+  guildDiscordProjectionSettings,
+  replaceGuildDiscordProjectionSettings,
+} from "../../guildie-discord/policy.js";
+import { reconcileAllGuildieDiscordRoles } from "../../guildie-discord/roles.js";
 import { raffleGuildieCanAdminister } from "../../modules/raffle/authorization.js";
 import type { AssetRegistry } from "../assets.js";
 import { renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
+
+function htmlText(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
 
 function destination(title: string, description: string, href: string): string {
   return `<a class="admin-destination" href="${href}">
@@ -105,6 +127,91 @@ function renderGuildRefresh(
   </div>`;
 }
 
+function roleOptions(roles: DiscordGuildRole[], selectedRoleId: string | null): string {
+  return [
+    `<option value="">Not configured</option>`,
+    ...roles
+      .filter((role) => !role.managed)
+      .map((role) => `<option value="${htmlText(role.id)}"${role.id === selectedRoleId ? " selected" : ""}>${htmlText(role.name)}</option>`),
+  ].join("");
+}
+
+async function renderDiscordAdministration(): Promise<string> {
+  const settings = await guildDiscordProjectionSettings();
+
+  if (!discordGuildIntegrationConfigured()) {
+    return `<div class="discord-admin discord-admin-unavailable">
+      <h3>Discord roles</h3>
+      <p>Direct Discord guild integration is not configured. No Discord observation or role mutation can run.</p>
+      <span>Stored projection is ${settings.enabled ? "enabled" : "disabled"}.</span>
+    </div>`;
+  }
+
+  let roles: DiscordGuildRole[];
+  try {
+    roles = await getDiscordGuildRoles();
+  } catch {
+    return `<div class="discord-admin discord-admin-unavailable">
+      <h3>Discord roles</h3>
+      <p>Discord roles could not be read. Projection is currently ${settings.enabled ? "enabled" : "disabled"}.</p>
+      <a href="/admin/discord-state">Inspect Discord state →</a>
+    </div>`;
+  }
+
+  const ranksResult = await pool.query<{ rank_index: number; display_name: string | null }>(
+    `SELECT rank_index, display_name
+       FROM guild_rank_definitions
+      WHERE guild_id = $1
+        AND active = true
+      ORDER BY rank_index`,
+    [config.guild.id],
+  );
+  const rankMapping = new Map(settings.rankRoles.map((mapping) => [mapping.rankIndex, mapping.discordRoleId]));
+
+  return `<div class="discord-admin" data-discord-admin>
+    <div class="discord-admin-heading">
+      <div>
+        <h3>Discord roles</h3>
+        <p>Project Guild Operations-managed Linked and guild-rank roles into Discord.</p>
+      </div>
+      <a class="discord-state-link" href="/admin/discord-state">Inspect state →</a>
+    </div>
+
+    <form class="discord-projection-form" data-discord-projection-form>
+      <div class="discord-projection-heading">
+        <div>
+          <h4>Role projection</h4>
+          <p>Observation remains available while projection is disabled.</p>
+        </div>
+        <label class="switch discord-projection-toggle">
+          <input type="checkbox" name="enabled" data-discord-projection-enabled${settings.enabled ? " checked" : ""}>
+          <span class="switch-control" aria-hidden="true"></span>
+          <span data-discord-switch-label>${settings.enabled ? "On" : "Off"}</span>
+        </label>
+      </div>
+
+      <div class="discord-role-fields">
+        <label>
+          <span>Linked Guildie role</span>
+          <select name="linkedRoleId" data-discord-role-select>${roleOptions(roles, settings.linkedRoleId)}</select>
+        </label>
+        ${ranksResult.rows.map((rank) => `<label>
+          <span>${htmlText(rank.display_name ?? `Rank ${rank.rank_index}`)}</span>
+          <select data-discord-rank-index="${rank.rank_index}" data-discord-role-select>
+            ${roleOptions(roles, rankMapping.get(rank.rank_index) ?? null)}
+          </select>
+        </label>`).join("")}
+      </div>
+
+      <div class="discord-projection-actions">
+        <button type="button" data-discord-refresh-roles>Refresh roles</button>
+        <button type="submit" class="button-primary" data-discord-projection-save>Save</button>
+      </div>
+      <p class="discord-projection-feedback" data-discord-projection-feedback role="status" aria-live="polite"></p>
+    </form>
+  </div>`;
+}
+
 export async function registerAdminPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/admin", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
@@ -112,17 +219,19 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       viewerForRequest(sessionToken),
       authenticatedGuildie(sessionToken),
     ]);
-    const [canRefreshGuild, canInspectOperations, canAdministerRaffle] = guildie
+    const [canRefreshGuild, canInspectOperations, canAdministerDiscord, canAdministerRaffle] = guildie
       ? await Promise.all([
           guildieHasGuildCapability(guildie.guildieId, GUILD_REFRESH_CAPABILITY),
           guildieHasGuildCapability(guildie.guildieId, OPERATIONS_INSPECT_CAPABILITY),
+          guildieHasGuildCapability(guildie.guildieId, GUILD_DISCORD_MANAGE_CAPABILITY),
           raffleGuildieCanAdminister(guildie.guildieId),
         ])
-      : [false, false, false];
+      : [false, false, false, false];
 
-    const [refreshStatus, refreshSchedule] = await Promise.all([
+    const [refreshStatus, refreshSchedule, discordAdministration] = await Promise.all([
       canRefreshGuild ? guildRefreshStatus() : Promise.resolve(null),
       canRefreshGuild ? guildRefreshSchedule() : Promise.resolve(null),
+      canAdministerDiscord ? renderDiscordAdministration() : Promise.resolve(""),
     ]);
 
     const availableAdministration: string[] = [];
@@ -135,13 +244,24 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       ));
     }
 
-    const hasAdministration = canRefreshGuild || canInspectOperations || availableAdministration.length > 0;
+    const hasAdministration = canRefreshGuild
+      || canInspectOperations
+      || canAdministerDiscord
+      || availableAdministration.length > 0;
     const guildSettings = canRefreshGuild && refreshSchedule
       ? administrationSection(
           "guild-settings",
           "guild-settings-heading",
           "Guild settings",
           renderGuildRefresh(refreshStatus, refreshSchedule),
+        )
+      : "";
+    const discordSettings = canAdministerDiscord
+      ? administrationSection(
+          "discord-settings",
+          "discord-settings-heading",
+          "Discord",
+          discordAdministration,
         )
       : "";
     const modules = availableAdministration.length
@@ -156,6 +276,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     const body = hasAdministration
       ? `<div class="admin-sections">
           ${guildSettings}
+          ${discordSettings}
           ${modules}
         </div>`
       : `<section class="admin-unavailable" aria-labelledby="admin-unavailable-heading">
@@ -196,5 +317,83 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       .header("Cache-Control", "no-cache")
       .type("text/html; charset=utf-8")
       .send(html);
+  });
+
+  app.post("/admin", async (request, reply) => {
+    const sessionToken = request.cookies[SESSION_COOKIE_NAME];
+    const guildie = await authenticatedGuildie(sessionToken);
+    if (!guildie) return reply.code(401).send({ error: "not_authenticated" });
+    if (!await guildieHasGuildCapability(guildie.guildieId, GUILD_DISCORD_MANAGE_CAPABILITY)) {
+      return reply.code(403).send({ error: "not_authorized" });
+    }
+
+    const body = request.body as {
+      action?: unknown;
+      enabled?: unknown;
+      linkedRoleId?: unknown;
+      rankRoles?: unknown;
+    };
+
+    if (body.action === "discord_roles.refresh") {
+      if (!discordGuildIntegrationConfigured()) {
+        return reply.code(503).send({ error: "discord_not_configured" });
+      }
+      const roles = await getDiscordGuildRoles();
+      return reply.send({
+        roles: roles
+          .filter((role) => !role.managed)
+          .map((role) => ({ id: role.id, name: role.name })),
+      });
+    }
+
+    if (body.action !== "discord_projection.update" || typeof body.enabled !== "boolean") {
+      return reply.code(400).send({ error: "invalid_admin_request" });
+    }
+    if (!discordGuildIntegrationConfigured()) {
+      return reply.code(503).send({ error: "discord_not_configured" });
+    }
+    if (body.linkedRoleId !== null && typeof body.linkedRoleId !== "string") {
+      return reply.code(400).send({ error: "invalid_linked_role" });
+    }
+    if (!Array.isArray(body.rankRoles)) return reply.code(400).send({ error: "invalid_rank_roles" });
+
+    const rankRoles = body.rankRoles.map((mapping) => {
+      if (!mapping || typeof mapping !== "object") return null;
+      const typed = mapping as { rankIndex?: unknown; discordRoleId?: unknown };
+      if (!Number.isInteger(typed.rankIndex) || (typed.rankIndex as number) < 0 || typeof typed.discordRoleId !== "string") return null;
+      return { rankIndex: typed.rankIndex as number, discordRoleId: typed.discordRoleId };
+    });
+    if (rankRoles.some((mapping) => mapping === null)) {
+      return reply.code(400).send({ error: "invalid_rank_roles" });
+    }
+
+    const availableRoles = await getDiscordGuildRoles();
+    const availableRoleIds = new Set(availableRoles.filter((role) => !role.managed).map((role) => role.id));
+    const linkedRoleId = typeof body.linkedRoleId === "string" && body.linkedRoleId.trim()
+      ? body.linkedRoleId.trim()
+      : null;
+    if (linkedRoleId && !availableRoleIds.has(linkedRoleId)) {
+      return reply.code(400).send({ error: "unknown_linked_role" });
+    }
+    if (rankRoles.some((mapping) => mapping && !availableRoleIds.has(mapping.discordRoleId))) {
+      return reply.code(400).send({ error: "unknown_rank_role" });
+    }
+
+    const settings = await replaceGuildDiscordProjectionSettings({
+      enabled: body.enabled,
+      linkedRoleId,
+      rankRoles: rankRoles.filter((mapping): mapping is NonNullable<typeof mapping> => mapping !== null),
+    });
+
+    if (settings.enabled) {
+      try {
+        await reconcileAllGuildieDiscordRoles({ trigger: "admin-configuration" });
+      } catch (error) {
+        request.log.error({ err: error }, "Discord projection reconciliation failed");
+        return reply.code(502).send({ error: "discord_reconciliation_failed", settings });
+      }
+    }
+
+    return reply.send({ settings });
   });
 }
