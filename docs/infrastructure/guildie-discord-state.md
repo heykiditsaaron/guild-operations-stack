@@ -58,29 +58,31 @@ observedAt
 
 The initial integration uses direct Discord REST acquisition for known associated users. It does not list the whole server membership and does not use a Gateway connection.
 
+Guild Operations-owned membership state is evaluated before Discord projection can become desired state. A Guildie who is no longer a current Blizzard-backed guild member has no desired managed Discord roles; any managed roles still observed for that association are removal candidates.
+
 ## Managed projections
 
 Guild Operations manages exactly two role families.
 
 ### Linked Guildie role
 
-The Linked role is authored by Guild Operations from the existing Guildie↔Discord association.
+The Linked role is authored by Guild Operations from current guild membership plus the existing Guildie↔Discord association.
 
 Desired state is:
 
 ```text
-association exists
+current guild membership
+AND association exists
 AND associated Discord user is currently in the server
 → Linked role present
 
-association absent
-OR Discord user absent from the server
+otherwise
 → Linked role absent
 ```
 
 Possessing the role never creates or proves the association. The role is a projection marker only.
 
-The Linked role should be corrected as promptly as practical. Association and disassociation trigger reconciliation, and broader reconciliation may serve as a backstop.
+The Linked role should be corrected as promptly as practical. Association and disassociation trigger reconciliation, and guild refresh provides the broader reconciliation cadence.
 
 ### Rank roles
 
@@ -121,9 +123,11 @@ The procedure is:
 ```text
 authoritative change commits
     ↓
-evaluate desired managed-role state
+confirm current guild membership context
     ↓
-read current Discord-authoritative state
+resolve existing Discord association
+    ↓
+read current Discord-authoritative state when associated
     ↓
 calculate planned additions/removals
     ↓
@@ -150,6 +154,16 @@ removedRoleIds
 
 The projection enablement setting gates only mutation. It does not gate observation or evaluation.
 
+## Bulk convergence
+
+Large role changes use the same evaluator and the same individual Discord role add/remove operations as single-Guildie reconciliation. Guild Operations does not replace the member's entire Discord role set because it owns only the configured managed roles.
+
+Bulk reconciliation first evaluates the candidate Guildies, discards no-op evaluations, and then executes only the planned role mutations. Discord reads and mutations use a bounded worker pool with a concurrency ceiling of five. This prevents a first rollout or large rank remap from becoming an unbounded `Promise.all` burst.
+
+The Discord request boundary recognizes HTTP 429 rate limiting, waits for Discord's supplied retry interval, and retries a bounded number of times. Other provider failures remain explicit failures.
+
+Bulk execution keeps additions before removals within each Guildie's mutation sequence. That minimizes the temporary false-refusal window during mapping transitions while preserving the rule that Discord roles cannot authorize Guild Operations actions.
+
 ## Projection gate
 
 Role mutation is controlled by persisted guild-level settings in:
@@ -171,32 +185,41 @@ When disabled:
 
 When enabled, reconciliation may mutate only the configured Linked and rank roles. Unrelated human-managed Discord roles are untouched.
 
-Saving projection configuration always evaluates all associated Guildies after the configuration commit. If projection is disabled, evaluation stops before mutation. If projection is enabled, the same evaluation may proceed to role mutation.
+Saving projection configuration always evaluates all associated Guildies after the configuration commit. If projection is disabled, evaluation stops before mutation. If projection is enabled, the same evaluation may proceed through bounded bulk mutation.
 
 ## Reconciliation triggers
+
+Discord owns no independent scheduler. Its cadence comes from existing Guildie and guild-refresh machinery.
 
 Current triggers are:
 
 - Discord association establishment;
 - Discord disassociation;
-- Guildie join/leave/rank transitions discovered by guild refresh;
+- guild refresh, including immediate Guildie join/leave/rank transitions and a broader associated-Guildie convergence pass;
 - every saved projection configuration change, including while projection remains disabled;
 - enabling projection.
 
-The integration intentionally does not run a Discord Gateway listener yet. If real use demonstrates that Discord-originated drift must be corrected faster than REST/backstop reconciliation can provide, that pressure may earn a Gateway seam later.
+Guild refresh is therefore the recurring heartbeat for Discord projection. Authority changes discovered by refresh require reconciliation, while the broader pass also catches Discord-side drift without introducing a second polling schedule.
+
+The integration intentionally does not run a Discord Gateway listener. If real use demonstrates that Discord-originated drift must be corrected faster than the guild-refresh cadence can provide, that pressure may earn a Gateway seam later.
 
 ## Operational inspection
 
-Enabled reconciliation publishes administrator-useful evidence through global operational inspection.
-
-Current producer coordinates are:
+Enabled single-Guildie reconciliation publishes administrator-useful evidence through global operational inspection under:
 
 ```text
 source: discord
 operation: roles.reconcile
 ```
 
-Successful records include the Guildie/Discord coordinates, trigger, observation time, desired/current managed roles, planned work, and role IDs actually added or removed. Failed mutations publish an operational exception with planned and completed role work plus a safe error message.
+Large reconciliation runs publish one run-level result under:
+
+```text
+source: discord
+operation: roles.reconcile.bulk
+```
+
+The bulk result records the trigger, Guildies considered/evaluated/associated/current, no-op and changed counts, planned additions/removals, completed additions/removals, and safe per-Guildie failure coordinates when a run is partial or failed. Successful no-op bulk passes are not written merely to prove that nothing changed.
 
 Disabled evaluations do not create operational-history noise merely for calculating a plan. Pending actions are the inspection surface for that state.
 
