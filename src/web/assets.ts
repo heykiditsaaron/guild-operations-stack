@@ -10,6 +10,7 @@ export type AssetName =
   | "app.js"
   | "navigation-shelves.css"
   | "navigation-shelves.js"
+  | "home.css"
   | "home-raffle.css"
   | "events.css"
   | "admin.css"
@@ -36,6 +37,7 @@ const assetDefinitions: Array<{ name: AssetName; contentType: string }> = [
   { name: "app.css", contentType: "text/css; charset=utf-8" },
   { name: "me.css", contentType: "text/css; charset=utf-8" },
   { name: "navigation-shelves.css", contentType: "text/css; charset=utf-8" },
+  { name: "home.css", contentType: "text/css; charset=utf-8" },
   { name: "home-raffle.css", contentType: "text/css; charset=utf-8" },
   { name: "events.css", contentType: "text/css; charset=utf-8" },
   { name: "admin.css", contentType: "text/css; charset=utf-8" },
