@@ -117,24 +117,31 @@ function outcome(round: RafflePublicRound): string {
   </section>`;
 }
 
+function claimResolution(claim: RafflePublicClaim): string {
+  const attribution = (claim.resolutionKind === "approved" || claim.resolutionKind === "denied")
+    && claim.resolutionActorLabel
+    ? ` by ${htmlText(claim.resolutionActorLabel)}`
+    : "";
+  const resolutionTime = claim.resolvedAtUnix === null
+    ? ""
+    : `<div class="raffle-ledger-resolution-time">${localTime(claim.resolvedAtUnix)}</div>`;
+  const reason = claim.resolutionKind === "denied" && claim.denialReason
+    ? `<div class="raffle-ledger-note">${htmlText(claim.denialReason)}</div>`
+    : "";
+
+  return `<span class="raffle-ledger-status">${htmlText(claimStatus(claim))}${attribution}</span>${resolutionTime}${reason}`;
+}
+
 function claimLedger(round: RafflePublicRound): string {
   if (round.status === "listed") return "";
 
-  const rows = round.claims.map((claim) => {
-    const resolutionTime = claim.resolvedAtUnix === null ? "—" : localTime(claim.resolvedAtUnix);
-    const reason = claim.resolutionKind === "denied" && claim.denialReason
-      ? `<div class="raffle-ledger-note">${htmlText(claim.denialReason)}</div>`
-      : "";
-
-    return `<tr>
-      <td><strong>${htmlText(claim.characterName)}</strong></td>
-      <td>${claim.requestedTicketCount.toLocaleString("en-US")}</td>
-      <td>${formatGold(claim.promisedGoldValue)} gold</td>
-      <td>${localTime(claim.createdAtUnix)}</td>
-      <td><span class="raffle-ledger-status">${htmlText(claimStatus(claim))}</span>${reason}</td>
-      <td>${resolutionTime}</td>
-    </tr>`;
-  }).join("\n");
+  const rows = round.claims.map((claim) => `<tr>
+      <td data-label="Character"><strong>${htmlText(claim.characterName)}</strong></td>
+      <td data-label="Requested">${claim.requestedTicketCount.toLocaleString("en-US")}</td>
+      <td data-label="Promised">${formatGold(claim.promisedGoldValue)} gold</td>
+      <td data-label="Claimed">${localTime(claim.createdAtUnix)}</td>
+      <td data-label="Resolution">${claimResolution(claim)}</td>
+    </tr>`).join("\n");
 
   return `<section class="raffle-round-section" aria-labelledby="raffle-round-ledger-title">
     <div class="raffle-round-section-heading">
@@ -144,7 +151,7 @@ function claimLedger(round: RafflePublicRound): string {
     ${round.claims.length === 0
       ? '<p class="raffle-status-copy">No claims were recorded for this round.</p>'
       : `<div class="raffle-ledger-wrap"><table class="raffle-ledger">
-          <thead><tr><th scope="col">Character</th><th scope="col">Requested</th><th scope="col">Promised</th><th scope="col">Claimed</th><th scope="col">Status</th><th scope="col">Resolved</th></tr></thead>
+          <thead><tr><th scope="col">Character</th><th scope="col">Requested</th><th scope="col">Promised</th><th scope="col">Claimed</th><th scope="col">Resolution</th></tr></thead>
           <tbody>${rows}</tbody>
         </table></div>`}
   </section>`;
