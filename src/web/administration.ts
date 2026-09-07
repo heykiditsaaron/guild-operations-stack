@@ -38,7 +38,7 @@ export async function administrationAvailabilityForGuildie(
   const canInspectOperations = authority.capabilities.includes(OPERATIONS_INSPECT_CAPABILITY);
   const canAdministerDiscord = authority.capabilities.includes(GUILD_DISCORD_MANAGE_CAPABILITY);
   const canAdministerRaffle = raffleAuthorityCanAdminister(authority);
-  const moduleDestinations = authorizedModuleAdministrationDestinations(authority.capabilities);
+  const moduleDestinations = authorizedModuleAdministrationDestinations(authority);
   const available = canRefreshGuild
     || canInspectOperations
     || canAdministerDiscord
