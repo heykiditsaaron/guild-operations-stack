@@ -20,11 +20,12 @@ function destination(title: string, description: string, href: string): string {
 }
 
 function administrationSection(
+  sectionId: string,
   headingId: string,
   heading: string,
   content: string,
 ): string {
-  return `<section class="admin-section" aria-labelledby="${headingId}">
+  return `<section id="${sectionId}" class="admin-section" aria-labelledby="${headingId}">
     <h2 id="${headingId}">${heading}</h2>
     ${content}
   </section>`;
@@ -91,6 +92,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     const hasAdministration = canRefreshGuild || canInspectOperations || availableAdministration.length > 0;
     const guildSettings = canRefreshGuild
       ? administrationSection(
+          "guild-settings",
           "guild-settings-heading",
           "Guild settings",
           renderGuildRefresh(refreshStatus),
@@ -98,6 +100,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       : "";
     const modules = availableAdministration.length
       ? administrationSection(
+          "available-administration",
           "available-administration-heading",
           "Available administration",
           `<div class="admin-destinations">${availableAdministration.join("\n")}</div>`,
