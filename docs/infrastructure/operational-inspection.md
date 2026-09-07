@@ -21,6 +21,8 @@ Result classifications are:
 
 Operational exceptions are not automatic copies of language-level exceptions. Stack traces, framework failures, retries, database diagnostics, and similar implementation detail remain runtime logging unless the owning procedure deliberately publishes an administratively meaningful exception.
 
+The producer owns the semantic meaning of its `source`, `operation`, result classification, summary, and structured details. Operational inspection owns only the shared publication envelope, validation, persistence, inspection, and presentation behavior.
+
 ## Publication envelope
 
 A producer supplies:
@@ -97,29 +99,11 @@ The initial view is bounded to the 100 newest matching records and presents view
 
 Initial filtering is limited to source and record kind.
 
-## Initial proving producers
+## Producer documentation
 
-### Guild refresh
+Each producer documents the operation coordinates and result semantics it publishes. Operational inspection does not maintain a registry or catalog of producers.
 
-Publishes:
-
-```text
-source: guild
-operation: refresh
-```
-
-Completed refreshes publish `success` or `partial`; incomplete admitted refreshes publish an exception when possible. Manual execution records the initiating Guildie actor; scheduled/CLI execution does not.
-
-### Guildie self refresh
-
-Publishes:
-
-```text
-source: guildie
-operation: self_refresh
-```
-
-Pre-admission OAuth/session/principal failures do not publish operational records. After admission, reconciliation failure publishes an exception. Successful reconciliation followed by presentation work publishes `success` or `partial` according to the presentation outcome.
+This keeps producer-owned meaning with the operation that establishes it while preserving one shared envelope for inspection.
 
 ## Detail safety
 
