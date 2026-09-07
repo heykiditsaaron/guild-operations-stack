@@ -28,21 +28,63 @@ Guild refresh may change the roster side of that intersection. Self account refr
 
 ## Trigger model
 
-The same `refreshGuildAuthority()` procedure owns reconciliation regardless of invocation surface.
+The same authoritative refresh procedure is used regardless of invocation surface.
 
 Current invocation surfaces are:
 
-- `npm run guild:sync`, a one-shot operator/system CLI;
-- a protected manual HTTP refresh endpoint requiring the `guild.refresh` capability;
-- the `guild-refresh` Compose worker, which currently runs the one-shot CLI and then waits 24 hours before running it again.
+- `npm run guild:sync`, a one-shot operator/debug CLI;
+- the protected manual `POST /guild/refresh` endpoint requiring the `guild.refresh` capability;
+- the application-owned automatic guild refresh scheduler.
 
-The temporary public-home refresh control has been removed. The protected manual endpoint remains intentional operational machinery and can support a future administrative surface or scheduler.
+The automatic scheduler is internal Guild Operations machinery. It is not configured through environment variables and is not implemented as a Docker Compose worker.
 
-The Compose worker is deliberately a minimal scheduling mechanism, not a generalized scheduler abstraction. It runs immediately when the worker starts and then repeats after each 24-hour wait. Container restarts can therefore cause an additional refresh. If operational pressure later requires calendar-aware scheduling, richer retry policy, backoff, or other orchestration, that should be introduced around the same authoritative refresh procedure rather than duplicating guild reconciliation semantics.
+The concrete persisted schedule belongs to guild refresh and records:
 
-Manual web execution requires the `guild.refresh` capability. `guild.refresh` is granted to Blizzard guild rank indexes 0, 1, and 2.
+- whether automatic refresh is enabled;
+- the refresh interval in seconds;
+- the next due Unix instant.
+
+The interval must be an integer of at least 300 seconds.
+
+Manual refresh and automatic refresh are deliberately independent triggers. A manual refresh does not move the automatic cadence.
+
+Scheduling semantics are:
+
+- enabling automatic refresh schedules the first automatic run one configured interval from the time the setting is saved;
+- changing the interval restarts the automatic cadence from the time the setting is saved;
+- disabling automatic refresh clears the next due instant;
+- re-enabling starts a fresh cadence;
+- after an automatic occurrence is claimed, the next due instant advances by the configured interval from that claim time;
+- a failed refresh does not disable automatic scheduling or stop later occurrences.
+
+The scheduler checks persisted due state inside the running application. Claiming a due occurrence is an atomic database update so two application processes cannot claim the same persisted occurrence casually. Within one application process, an automatic refresh is not overlapped with another scheduler-triggered refresh.
+
+Manual web execution and schedule configuration both require the `guild.refresh` capability. `guild.refresh` is granted to Blizzard guild rank indexes 0, 1, and 2.
 
 Blizzard rank authority is inverse to the numeric index for this guild: rank 0 is the highest authority. Authorization consumers do not encode that ordering themselves; they ask for the capability.
+
+## Administrative presentation
+
+The global `/admin` surface presents guild refresh inside the `Guild settings` section.
+
+The current refresh status exposes two separate pieces of truth:
+
+- current member count from persisted current roster membership;
+- `Last reconciled`, derived from the most recent successful persistence of Blizzard guild authority.
+
+Automatic refresh presentation exposes the persisted enabled state, interval in seconds, and next due instant. Browser presentation converts Unix instants to the viewer's local time.
+
+`Refresh now` invokes the existing protected manual refresh endpoint. It does not duplicate guild reconciliation logic.
+
+## Operational inspection
+
+Guild refresh publishes operational evidence through the global operational inspection capability.
+
+Completed refreshes publish a `guild / refresh` result with `success` or `partial` classification and structured reconciliation details. A refresh that does not complete publishes an exception before the original failure is rethrown when possible.
+
+Manual refreshes include the initiating Guildie's id as actor. Automatic and CLI refreshes have no human actor.
+
+Operational publication is best effort relative to authoritative guild reconciliation. Failure to publish inspection evidence does not roll back or reinterpret guild truth.
 
 ## Reconciliation
 
@@ -61,7 +103,7 @@ Characters absent from the latest roster are marked `currently_present = false`.
 
 The follow-up presentation capability is defined in [`character-presentation-acquisition.md`](character-presentation-acquisition.md). Guild refresh selects the roster-derived targets; presentation acquisition does not decide why those Characters are relevant.
 
-The one-shot CLI reports the observed roster count plus Character presentation reconciliation counts and failures. The automatic worker uses that same CLI, so its container logs provide the same operational evidence for each scheduled run.
+The one-shot CLI reports the observed roster count plus Character presentation reconciliation counts and failures to runtime output. Scheduled execution uses the same application operation boundary and publishes the same operational result shape used by manual execution.
 
 ## Presentation availability
 
@@ -89,7 +131,7 @@ OAuth token exchange/client-credential token acquisition are authentication oper
 
 ## Separation of concerns
 
-Authorization answers whether a caller may request a refresh.
+Authorization answers whether a caller may request a refresh or change its automatic schedule.
 
 The Blizzard request boundary answers when an external request may actually be made.
 
