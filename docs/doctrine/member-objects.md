@@ -183,11 +183,11 @@ It does not establish Guildie continuity, Character control, current Guildie org
 
 A stored selection may remain recorded after that Character becomes ineligible. Current presentation should simply treat the selection as unavailable until an eligible main is selected again.
 
-## Discord association
+## Discord association and server state
 
 A Discord identity is an optional association to an existing Guildie.
 
-Discord never creates the canonical Guildie and grants no authority by itself.
+Discord never creates the canonical Guildie and grants no guild authority by itself.
 
 ```text
 Blizzard account authority ──► Guildie ◄── optional Discord association
@@ -196,6 +196,34 @@ Blizzard account authority ──► Guildie ◄── optional Discord associat
 ```
 
 Association remains distinct from Discord server membership, roles, and channels.
+
+For an associated Guildie, Guild Operations may directly ask Discord what Discord currently says about that user inside the configured guild server. That server-local observation is a **Discord authority sidecar** to the Guildie, not a second Guildie or alternate membership system.
+
+The authority direction is:
+
+```text
+WoW / Blizzard
+    ↓
+Guildie / Guild Operations
+    ↓
+Discord association
+    ↓
+Discord guild-member observation
+    ↓
+Discord projections / participation convenience
+```
+
+Discord is authoritative for its own mundane current state, such as whether the associated user is presently in the Discord server and which Discord roles that member currently has. Those observations are trustworthy evidence at observation time, but they do not become authority over Blizzard-owned guild membership/rank or Guild Operations-owned capabilities.
+
+Guild Operations may project managed roles into Discord from higher-owned truth. A linked-Guildie role is authored from the Guildie↔Discord association. Rank roles are authored from Blizzard rank as interpreted by Guild Operations. Possessing either role never creates the underlying truth.
+
+This creates a useful authorization asymmetry:
+
+> Projected Discord state may refuse early. It may not approve.
+
+A missing managed role may produce a false refusal when projection is stale. That inconvenience is acceptable. A present managed role may only justify asking Guild Operations to perform the authoritative capability check; backend authorization remains decisive.
+
+Current implementation and reconciliation details live in [`../infrastructure/guildie-discord-state.md`](../infrastructure/guildie-discord-state.md).
 
 ## Session
 
@@ -222,6 +250,7 @@ Guildie
 ├── controlled Character(s)
 ├── selected main
 ├── optional Discord association
+│   └── Discord server-local observation / projection sidecar
 ├── participation history
 └── current derived capabilities
 
@@ -256,6 +285,8 @@ Use the controlled-Character ∩ current-roster intersection when deciding which
 Use selected main for presentation, not identity or authorization.
 
 Use Discord identity to resolve or project an existing Guildie through Discord, not as an alternate owner of guild truth.
+
+Use Discord server-local observation for facts Discord owns about that associated user at observation time, not for Guild Operations authorization.
 
 Use capabilities at operation boundaries when a real operation needs authorization.
 
