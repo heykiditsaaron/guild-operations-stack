@@ -1,43 +1,25 @@
-# Character presentation acquisition
+# Character Presentation Acquisition
 
-Character presentation acquisition observes richer Blizzard profile and media state for specifically identified Characters. It is a reusable acquisition capability, not an authority source for Character control or guild membership.
+Character presentation acquisition is reusable infrastructure for observing richer Blizzard profile and media state for explicitly selected Characters.
 
-## Canonical coordinate
+It does not decide Character control, roster membership, or eligibility. Those meanings are defined outside this facility.
 
-A Character remains identified by:
+## Character coordinate
+
+A Character is addressed by:
 
 ```text
 region + realm_id + character_id
 ```
 
-Names, realm presentation, level, class, race, specialization, and media URLs are observed presentation state and may change without changing Character continuity.
+Name, realm presentation, level, class, race, specialization, and media URLs are mutable observations.
 
-## Responsibility boundary
+## Shared primitive
 
-Three questions remain separate:
-
-```text
-Guildie account/control reconciliation
-    = which Characters this Guildie currently controls
-
-Guild roster reconciliation
-    = which Characters are currently members of the guild
-
-Character presentation acquisition
-    = what richer Blizzard profile/media state can be observed
-      for Characters already selected by another procedure
-```
-
-Presentation acquisition does not inspect account control or determine guild membership. It cannot make a Character eligible for Guild Operations and it does not widen the target set supplied by its caller.
-
-The caller owns why a Character is relevant and which presentation resources need acquisition.
-
-## Shared acquisition primitive
-
-`acquireCharacterPresentation()` accepts explicit Character targets containing:
+`acquireCharacterPresentation()` accepts explicit targets containing:
 
 - canonical Character coordinate;
-- Character name and realm slug needed to address Blizzard's Character APIs;
+- Character name and realm slug required by Blizzard Character APIs;
 - whether profile acquisition is required;
 - whether media acquisition is required.
 
@@ -45,53 +27,39 @@ For those targets it owns:
 
 - Blizzard application-token acquisition;
 - bounded concurrency;
-- shared Blizzard request pacing and retry/backoff behavior;
-- Character Profile and Character Media requests;
-- corroboration that returned Blizzard coordinates match the requested Character;
-- persistence of successful profile and media observations;
+- shared request pacing and retry/backoff;
+- Character Profile and Character Media GETs;
+- corroboration that returned coordinates match the requested Character;
+- persistence of successful observations;
 - independent acquisition-attempt recording;
-- structured success and failure reporting.
+- structured profile/media success and failure reporting.
 
-Profile and media observations are independent. A media failure does not discard a successful profile observation, and a presentation failure does not alter account-control or guild-roster authority.
+Profile and media are independent resources. A media failure does not discard a successful profile observation.
 
-The complete Blizzard profile and media payloads are retained as observations alongside normalized fields needed by Guild Operations projections.
-
-Guild Operations stores Blizzard media URLs; it does not ingest or own Blizzard media assets.
+Guild Operations stores Blizzard media URLs, not the Blizzard media assets themselves.
 
 ## Guild-roster wrapper
 
-`enrichGuildCharacters()` remains the guild-specific wrapper around the shared acquisition primitive.
+`enrichGuildCharacters()` selects from the persisted current guild roster, optionally intersects explicit Character coordinates with that roster, derives Blizzard API locators, and delegates to the shared primitive.
 
-It selects from the persisted current guild roster, intersects any explicitly supplied Character coordinates with that roster, derives the Blizzard API locator from the roster observation, and delegates the resulting targets to `acquireCharacterPresentation()`.
+With no explicit targets it can operate across the current roster. `npm run guild:enrich` remains the operator CLI for that behavior.
 
-With no explicit targets, the wrapper can operate across the current roster. The `npm run guild:enrich` CLI remains an operator invocation surface for that behavior.
+Ordinary [`guild-refresh.md`](guild-refresh.md) selects only Characters requiring follow-up rather than blindly sweeping the roster.
 
-Ordinary [`guild-refresh.md`](guild-refresh.md) reconciliation does not perform a blind full-roster enrichment sweep. After roster reconciliation it determines which current roster Characters actually need profile or media work and invokes the guild-specific wrapper only for those targets.
+## Self refresh
 
-## Self account refresh
+[`self-account-refresh.md`](self-account-refresh.md) calls the shared primitive directly after it has independently selected Characters satisfying current control ∩ current roster.
 
-[`self-account-refresh.md`](self-account-refresh.md) reuses the shared acquisition primitive directly rather than invoking guild refresh or the guild-roster enrichment wrapper.
-
-After account/control reconciliation it selects Characters that satisfy:
-
-```text
-currently controlled by the Guildie
-        ∩
-currently present in the persisted guild roster
-```
-
-It uses the fresh account observation for the Character name and realm slug, then explicitly requests both profile and media acquisition for each eligible Character.
-
-This reuse does not transfer eligibility decisions into presentation acquisition. Self refresh establishes the target set before calling the acquisition primitive.
+It requests both profile and media for each eligible Character.
 
 ## Request behavior
 
-Default acquisition concurrency is 8 workers, with a maximum accepted concurrency of 20.
+Default concurrency is 8 workers; maximum accepted concurrency is 20.
 
-All Blizzard authority GET requests pass through the shared request gate, which currently limits requests to 10 per second. The request boundary retries HTTP 429 and 5xx responses, honors `Retry-After` when supplied, and otherwise applies exponential backoff.
+All Blizzard authority GETs pass through the shared gate currently limited to 10 requests per second. HTTP 429 and 5xx responses are retried; `Retry-After` is honored when supplied and exponential backoff is used otherwise.
 
-Structured results report profile and media success/failure independently and count actual Blizzard requests, including retries.
+Structured results report profile and media success/failure independently and count actual Blizzard requests including retries.
 
-## Authority invariant
+## Safety boundary
 
-Failure to acquire presentation never removes a Character from the guild roster, never changes a Guildie's established Character-control observation, and never grants or revokes Guild Operations Character eligibility.
+Presentation failure never removes a Character from the guild roster, changes a Guildie's established Character-control observation, or grants/revokes Guild Operations eligibility.

@@ -1,146 +1,97 @@
-# Guild refresh
+# Guild Refresh
 
-Guild refresh is the authoritative reconciliation procedure for Blizzard-owned guild state.
+Guild refresh is the shared reconciliation procedure for Blizzard-owned guild roster state. The doctrine describing how roster truth contributes to Guildie authority lives in [`../doctrine/guild-authority.md`](../doctrine/guild-authority.md).
 
-It is not a full-roster enrichment sweep. A refresh first acquires the current Blizzard guild profile and roster, persists that observation, and then determines what Character presentation work is actually required.
+## What it owns
 
-## Responsibility boundary
-
-Guild refresh owns this question:
+Guild refresh answers:
 
 > Which Characters are currently members of OH CRIT I Pulled!, and what Blizzard-owned numeric guild rank does each currently hold?
 
-It does not establish which Characters a Guildie controls. That comes from Blizzard account authority through Guildie account/control reconciliation.
+It does not establish Character control and does not make Character presentation authoritative for membership.
 
-It also does not make Character presentation authoritative for membership. Profile/media acquisition enriches an already identified Character but cannot add a Character to the guild roster or make it eligible for Guild Operations.
+## Invocation surfaces
 
-Current Guildie-facing Character eligibility remains the intersection:
+The same reconciliation procedure is used by:
 
-```text
-Guildie's currently controlled Characters
-                ∩
-current Blizzard guild Character roster
-                ↓
-eligible Guild Operations Characters
-```
-
-Guild refresh may change the roster side of that intersection. Self account refresh may change the control side. Neither side can substitute for the other.
-
-## Trigger model
-
-The same authoritative refresh procedure is used regardless of invocation surface.
-
-Current invocation surfaces are:
-
-- `npm run guild:sync`, a one-shot operator/debug CLI;
-- the protected manual `POST /guild/refresh` endpoint requiring the `guild.refresh` capability;
+- `npm run guild:sync` — one-shot operator/debug CLI;
+- protected `POST /guild/refresh` — manual web/API refresh requiring `guild.refresh`;
 - the application-owned automatic guild refresh scheduler.
 
-The automatic scheduler is internal Guild Operations machinery. It is not configured through environment variables and is not implemented as a Docker Compose worker.
+The scheduler is internal application machinery, not an environment-variable or Docker worker configuration.
 
-The concrete persisted schedule belongs to guild refresh and records:
+## Automatic schedule
 
-- whether automatic refresh is enabled;
-- the refresh interval in seconds;
-- the next due Unix instant.
+Persisted schedule state records:
+
+- enabled state;
+- refresh interval in seconds;
+- next due Unix instant.
 
 The interval must be an integer of at least 300 seconds.
 
-Manual refresh and automatic refresh are deliberately independent triggers. A manual refresh does not move the automatic cadence.
+Schedule behavior:
 
-Scheduling semantics are:
-
-- enabling automatic refresh schedules the first automatic run one configured interval from the time the setting is saved;
-- changing the interval restarts the automatic cadence from the time the setting is saved;
-- disabling automatic refresh clears the next due instant;
+- enabling schedules the first run one interval from save time;
+- changing the interval restarts cadence from save time;
+- disabling clears the next due instant;
 - re-enabling starts a fresh cadence;
-- after an automatic occurrence is claimed, the next due instant advances by the configured interval from that claim time;
-- a failed refresh does not disable automatic scheduling or stop later occurrences.
+- claiming an automatic occurrence advances next due by the configured interval from claim time;
+- failure does not disable later automatic occurrences;
+- manual refresh does not move the automatic cadence.
 
-The scheduler checks persisted due state inside the running application. Claiming a due occurrence is an atomic database update so two application processes cannot claim the same persisted occurrence casually. Within one application process, an automatic refresh is not overlapped with another scheduler-triggered refresh.
+Claiming a due occurrence uses an atomic database update so multiple application processes do not casually claim the same occurrence. Scheduler-triggered refreshes do not overlap within one process.
 
-Manual web execution and schedule configuration both require the `guild.refresh` capability. `guild.refresh` is granted to Blizzard guild rank indexes 0, 1, and 2.
+Manual execution and schedule configuration both require `guild.refresh`. The current policy grants it to Blizzard guild rank indexes 0, 1, and 2 through the shared capability machinery.
 
-Blizzard rank authority is inverse to the numeric index for this guild: rank 0 is the highest authority. Authorization consumers do not encode that ordering themselves; they ask for the capability.
+## Administrative surface
 
-## Administrative presentation
+Guild refresh appears under `/admin` in Guild settings.
 
-The global `/admin` surface presents guild refresh inside the `Guild settings` section.
-
-The current refresh status exposes two separate pieces of truth:
+The surface exposes:
 
 - current member count from persisted current roster membership;
-- `Last reconciled`, derived from the most recent successful persistence of Blizzard guild authority.
+- `Last reconciled` from the most recent successful persistence of Blizzard guild authority;
+- automatic enabled state;
+- interval in seconds;
+- next due instant rendered in viewer-local time;
+- `Refresh now`, which invokes the existing protected endpoint.
 
-Automatic refresh presentation exposes the persisted enabled state, interval in seconds, and next due instant. Browser presentation converts Unix instants to the viewer's local time.
+## Reconciliation behavior
 
-`Refresh now` invokes the existing protected manual refresh endpoint. It does not duplicate guild reconciliation logic.
+After guild profile and roster persistence, current roster Characters are selected for presentation acquisition when:
 
-## Operational inspection
-
-Guild refresh publishes operational evidence through the global operational inspection capability.
-
-Completed refreshes publish a `guild / refresh` result with `success` or `partial` classification and structured reconciliation details. A refresh that does not complete publishes an exception before the original failure is rethrown when possible.
-
-Manual refreshes include the initiating Guildie's id as actor. Automatic and CLI refreshes have no human actor.
-
-Operational publication is best effort relative to authoritative guild reconciliation. Failure to publish inspection evidence does not roll back or reinterpret guild truth.
-
-## Reconciliation
-
-After the guild profile and roster are persisted, current roster Characters are checked for targeted follow-up acquisition.
-
-Character profile/media acquisition is requested when:
-
-- a current roster Character is newly observed or returns after being absent;
-- presentation coordinates observed in the roster change;
-- a current roster Character is missing persisted profile data and is not in a known-unavailable cooldown;
-- a current roster Character is missing persisted media data and is not in a known-unavailable cooldown.
+- newly observed or returning after absence;
+- roster-observed presentation coordinates changed;
+- profile data is missing and not in a known-unavailable cooldown;
+- media data is missing and not in a known-unavailable cooldown.
 
 An unchanged current Character with complete profile and media data causes no Character API work.
 
-Characters absent from the latest roster are marked `currently_present = false`. Historical observations are not deleted.
+Characters absent from the latest roster are marked `currently_present = false`; historical observations are preserved.
 
-The follow-up presentation capability is defined in [`character-presentation-acquisition.md`](character-presentation-acquisition.md). Guild refresh selects the roster-derived targets; presentation acquisition does not decide why those Characters are relevant.
-
-The one-shot CLI reports the observed roster count plus Character presentation reconciliation counts and failures to runtime output. Scheduled execution uses the same application operation boundary and publishes the same operational result shape used by manual execution.
+Follow-up presentation acquisition is documented in [`character-presentation-acquisition.md`](character-presentation-acquisition.md).
 
 ## Presentation availability
 
-Roster membership and Character presentation availability are separate Blizzard observations.
+Roster membership and Character presentation availability are independent observations.
 
-A Character may be authoritatively present in the guild roster while Blizzard's Character profile or media endpoint returns HTTP 404. A 404 therefore does not negate roster membership and does not cause the Character to be deleted or treated as nonexistent.
+HTTP 404 from Character profile/media does not negate roster membership. Profile and media attempts record failure independently. A 404 suppresses another request for that same missing resource for seven days.
 
-Profile and media acquisition attempts record their last attempt and HTTP failure status independently. A 404 marks that presentation resource as currently unavailable. Ordinary guild refreshes suppress another request for that same missing resource for seven days.
-
-The suppression is not permanent. The resource becomes eligible for another acquisition after the cooldown. A newly observed, returning, or presentation-changed roster Character bypasses the cooldown immediately because the changed Blizzard observation is reason to reconsider availability.
-
-Successful acquisition clears the corresponding failure status.
-
-Other failures are recorded but are not given the 404 cooldown; subsequent reconciliation may retry them normally.
+Newly observed, returning, or presentation-changed Characters bypass that cooldown. Successful acquisition clears the corresponding failure status. Other failures remain retryable normally.
 
 ## Blizzard request boundary
 
-All Blizzard authority GET requests share one request gate. The gate currently limits requests to 10 per second and is applied inside the Blizzard acquisition boundary, not by individual triggers.
+All Blizzard authority GET requests use the shared request gate, currently limited to 10 requests per second.
 
-The same boundary retries HTTP 429 and 5xx responses, honors `Retry-After` when supplied, and otherwise applies exponential backoff.
+The boundary retries HTTP 429 and 5xx responses, honors `Retry-After`, and otherwise uses exponential backoff.
 
-A manual trigger, automatic trigger, authentication acquisition, guild acquisition, or Character presentation acquisition cannot opt out of the shared request gate.
+Manual, automatic, authentication, guild, and Character-presentation callers cannot bypass the shared GET gate. OAuth token exchange and application-token acquisition remain outside that gate.
 
-OAuth token exchange/client-credential token acquisition are authentication operations and remain outside the Blizzard authority GET request gate.
+## Operational inspection
 
-## Separation of concerns
+Completed refreshes publish `guild / refresh` evidence to [`operational-inspection.md`](operational-inspection.md) as `success` or `partial`. A refresh that does not complete publishes an exception when possible before rethrowing the original failure.
 
-Authorization answers whether a caller may request a refresh or change its automatic schedule.
+Manual refreshes record the initiating Guildie actor. Scheduled and CLI refreshes do not have a human actor.
 
-The Blizzard request boundary answers when an external request may actually be made.
-
-Guild refresh answers what current guild-roster truth changed and which follow-up Character presentation acquisitions are required.
-
-Guildie account/control reconciliation answers which Characters a Guildie currently controls.
-
-Character presentation acquisition answers what richer Blizzard profile/media state can currently be observed for a Character that another authority procedure has already identified as relevant.
-
-Scheduling answers when the guild refresh procedure should be invoked. It does not own guild reconciliation semantics.
-
-These responsibilities remain separate even when one procedure triggers follow-up work in another.
+Inspection publication is best effort and never rolls back authoritative roster reconciliation.
