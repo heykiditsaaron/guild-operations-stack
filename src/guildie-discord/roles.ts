@@ -22,6 +22,7 @@ export type DiscordRoleReconciliation = {
 
 type ReconciliationContext = {
   trigger?: string;
+  additionalManagedRoleIds?: string[];
 };
 
 type DisassociationContext = ReconciliationContext & {
@@ -71,6 +72,7 @@ export async function reconcileGuildieDiscordRoles(
   const managedRoleIds = new Set<string>([
     ...(settings.linkedRoleId ? [settings.linkedRoleId] : []),
     ...settings.rankRoles.map((mapping) => mapping.discordRoleId),
+    ...(context.additionalManagedRoleIds ?? []),
   ]);
   const currentManagedRoleIds = state.roleIds.filter((roleId) => managedRoleIds.has(roleId));
   const plannedAddRoleIds = [...desiredRoleIds].filter((roleId) => !state.roleIds.includes(roleId));
@@ -114,6 +116,7 @@ export async function reconcileGuildieDiscordRoles(
         trigger: context.trigger ?? null,
         present_in_guild: state.presentInGuild,
         desired_role_ids: [...desiredRoleIds],
+        managed_role_ids: [...managedRoleIds],
         planned_add_role_ids: plannedAddRoleIds,
         planned_remove_role_ids: plannedRemoveRoleIds,
         completed_add_role_ids: addedRoleIds,
@@ -138,6 +141,7 @@ export async function reconcileGuildieDiscordRoles(
       trigger: context.trigger ?? null,
       present_in_guild: state.presentInGuild,
       desired_role_ids: [...desiredRoleIds],
+      managed_role_ids: [...managedRoleIds],
       added_role_ids: addedRoleIds,
       removed_role_ids: removedRoleIds,
     },
@@ -183,6 +187,7 @@ export async function removeManagedDiscordRolesForUser(
   const managedRoleIds = new Set<string>([
     ...(settings.linkedRoleId ? [settings.linkedRoleId] : []),
     ...settings.rankRoles.map((mapping) => mapping.discordRoleId),
+    ...(context.additionalManagedRoleIds ?? []),
   ]);
   const plannedRemoveRoleIds = member.roleIds.filter((roleId) => managedRoleIds.has(roleId));
   const removedRoleIds: string[] = [];
@@ -203,6 +208,7 @@ export async function removeManagedDiscordRolesForUser(
         discord_user_id: discordUserId,
         trigger: context.trigger ?? null,
         present_in_guild: true,
+        managed_role_ids: [...managedRoleIds],
         planned_remove_role_ids: plannedRemoveRoleIds,
         completed_remove_role_ids: removedRoleIds,
         error: error instanceof Error ? error.message : String(error),
@@ -224,6 +230,7 @@ export async function removeManagedDiscordRolesForUser(
       discord_user_id: discordUserId,
       trigger: context.trigger ?? null,
       present_in_guild: true,
+      managed_role_ids: [...managedRoleIds],
       removed_role_ids: removedRoleIds,
     },
   });
