@@ -4,6 +4,10 @@ import { authenticatedGuildie, SESSION_COOKIE_NAME } from "./auth.js";
 import { config } from "./config.js";
 import { pool } from "./db.js";
 import { publishEvent } from "./events/publisher.js";
+import {
+  reconcileGuildieDiscordRoles,
+  removeManagedDiscordRolesForUser,
+} from "./guildie-discord/roles.js";
 
 const DISCORD_AUTHORIZE_URL = "https://discord.com/oauth2/authorize";
 const DISCORD_TOKEN_URL = "https://discord.com/api/oauth2/token";
@@ -169,6 +173,25 @@ async function establishAssociation(guildieId: string, user: DiscordUser): Promi
   }
 }
 
+async function reconcileAssociationBestEffort(guildieId: string): Promise<void> {
+  try {
+    await reconcileGuildieDiscordRoles(guildieId, { trigger: "discord-association" });
+  } catch (error) {
+    console.error("Discord association role reconciliation failed", { guildieId, error });
+  }
+}
+
+async function removeAssociationRolesBestEffort(guildieId: string, discordUserId: string): Promise<void> {
+  try {
+    await removeManagedDiscordRolesForUser(discordUserId, {
+      guildieId,
+      trigger: "discord-disassociation",
+    });
+  } catch (error) {
+    console.error("Discord disassociation role reconciliation failed", { guildieId, discordUserId, error });
+  }
+}
+
 export async function discordAssociationForGuildie(guildieId: string): Promise<DiscordAssociation | null> {
   const result = await pool.query<{
     discord_user_id: string;
@@ -216,6 +239,7 @@ export async function registerDiscordRoutes(app: FastifyInstance): Promise<void>
         guildieId: guildie.guildieId,
         discordUserId,
       });
+      await removeAssociationRolesBestEffort(guildie.guildieId, discordUserId);
     }
     return reply.redirect(returnTo);
   });
@@ -249,6 +273,7 @@ export async function registerDiscordRoutes(app: FastifyInstance): Promise<void>
           discordUserId: user.id,
         });
       }
+      await reconcileAssociationBestEffort(guildie.guildieId);
       return reply.redirect(withDiscordResult(returnTo, "connected"));
     } catch (error) {
       request.log.error({ err: error }, "Discord association ceremony failed");
