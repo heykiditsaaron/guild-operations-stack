@@ -56,6 +56,7 @@ export const config = {
   discordRedirectUri: new URL("/auth/discord/callback", appOrigin).toString(),
   discordGuildId: optional("DISCORD_GUILD_ID"),
   discordBotToken: optional("DISCORD_BOT_TOKEN"),
+  discordInviteUrl: optional("DISCORD_INVITE_URL"),
   sessionCookieSecure: (process.env.SESSION_COOKIE_SECURE ?? "false") === "true",
   authAttemptTtlMinutes: 10,
   sessionTtlDays: 30,
