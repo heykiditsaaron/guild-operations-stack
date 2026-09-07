@@ -80,16 +80,14 @@ When future expression is likely but the feature itself has not been earned, pre
 
 ## Documentation
 
-The architecture and domain documents describe the durable contracts behind the application:
+Documentation is organized by reader intent. Start with [`docs/README.md`](docs/README.md) for the distinction between doctrine, infrastructure, feature, and reference material.
 
-- [`docs/architecture.md`](docs/architecture.md) — system-level architectural laws and ownership boundaries.
-- [`docs/member-objects.md`](docs/member-objects.md) — Guildie, Character, roster, selected-main, session, Discord, and capability meanings.
-- [`docs/guild-permissioning.md`](docs/guild-permissioning.md) — global authority and permission boundaries.
-- [`docs/global-persistence.md`](docs/global-persistence.md) — semantic ownership of persisted truth.
-- [`docs/web-rendering.md`](docs/web-rendering.md) — web projection and rendering ownership.
-- [`docs/guild-event-calendar.md`](docs/guild-event-calendar.md) — shared temporal discovery for concrete guild occurrences.
-- [`docs/guild-event-offerings.md`](docs/guild-event-offerings.md) — enduring Events discovery for participation capabilities.
-- [`docs/module-creation.md`](docs/module-creation.md) — guidance for introducing concrete participation modules.
-- [`docs/raffle.md`](docs/raffle.md) — the Raffle domain and procedure.
+Core doctrine currently lives in:
 
-Detailed authority ceremonies and feature-specific contracts live in their corresponding documents under `docs/`.
+- [`docs/doctrine/architecture.md`](docs/doctrine/architecture.md) — system purpose, architectural laws, and ownership boundaries.
+- [`docs/doctrine/member-objects.md`](docs/doctrine/member-objects.md) — Guildie, Character, roster, selected-main, session, Discord, and capability meanings.
+- [`docs/doctrine/guild-authority.md`](docs/doctrine/guild-authority.md) — derivation of current Guildie participation and effective rank.
+- [`docs/doctrine/global-persistence.md`](docs/doctrine/global-persistence.md) — semantic ownership of persisted and derived truth.
+- [`docs/doctrine/module-creation.md`](docs/doctrine/module-creation.md) — design guidance for concrete participation modules.
+
+Shared implementation guidance lives under [`docs/infrastructure/`](docs/infrastructure/). Concrete globally owned capabilities live under [`docs/features/`](docs/features/), empirical evidence under [`docs/reference/`](docs/reference/), endpoint reference under [`docs/endpoints/`](docs/endpoints/), and module-owned documentation remains with its owning module documentation.
