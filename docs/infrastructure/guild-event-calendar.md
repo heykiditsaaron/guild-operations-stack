@@ -2,28 +2,25 @@
 
 The Guild Event Calendar is shared infrastructure for temporal Guild Event discovery.
 
-Participation modules own their procedures and the truth those procedures establish. When a concrete module-owned occurrence should appear on the guild calendar, the module translates the temporal truth it owns into a Guild Event Calendar Listing. Calendar consumers read that listing rather than learning the module that produced it.
+Use it when a module-owned concrete occurrence should be discoverable by consumers that understand a common calendar contract rather than the producing module.
 
-The relationship is:
+## Data flow
 
 ```text
-Module
-    owns participation truth and procedure
-        ↓ translates temporal occurrence truth into
+Module-owned occurrence truth
+        ↓
 Guild Event Calendar Listing
-    conforms to the Calendar Listing Contract
-        ↓ established in
+        ↓
 Guild Event Calendar Registry
-        ↓ read by
-Calendar Consumer
-    understands listings, not modules
+        ↓
+Calendar consumer
 ```
 
-The calendar is infrastructure, not the owner of Guild Events generally. A Guild Event may have informational, administrative, historical, or participatory surfaces that do not belong to the calendar at all.
+The module remains authoritative for its occurrence truth. The Calendar stores and exposes the listing contract.
 
-## Calendar Listing Contract
+## Listing contract
 
-Every Guild Event Calendar Listing requires:
+Every listing requires:
 
 ```text
 guild_event_id
@@ -31,13 +28,11 @@ guild_event_kind
 guild_event_occurs_at
 ```
 
-These are the irreducible calendar coordinates of a listing:
+- `guild_event_id` — globally unique identifier for the concrete Guild Event occurrence.
+- `guild_event_kind` — concrete ceremony/event kind represented by the occurrence.
+- `guild_event_occurs_at` — current best temporal truth supplied by the producer.
 
-- `guild_event_id` identifies the concrete Guild Event occurrence and must be globally unique among Guild Events in Guild Operations.
-- `guild_event_kind` names the concrete ceremony type represented by the calendar occurrence. It does not necessarily name the module that owns the procedure.
-- `guild_event_occurs_at` expresses when the owning module says the concrete Guild Event occurs.
-
-`guild_event_occurs_at` follows the repository-wide Unix time persistence rule:
+Time uses Unix values:
 
 ```text
 [unix]
@@ -47,37 +42,13 @@ These are the irreducible calendar coordinates of a listing:
     → range from start to end
 ```
 
-The owning module determines the truthful temporal shape for each concrete occurrence. The calendar does not derive temporal meaning from module state.
+The producing module determines whether an occurrence is an instant or range and may re-establish the same listing when better temporal truth becomes available.
 
-### Best-known temporal truth
+For example, an estimated future instant may later become an observed instant or range. Calendar persistence represents the producer's best current temporal truth; ceremony-specific history remains with the producer.
 
-`guild_event_occurs_at` is mutable operational truth, not an immutable copy of the first schedule ever established.
+## Optional fields
 
-Guild-operated ceremonies may depend on human scheduling and best-attempt adherence rather than deterministic automation. A scheduled or estimated boundary is therefore authoritative while it is the best truth the owning module has established. When the module later establishes an observed boundary, it may re-establish the same Calendar Listing with the more accurate Unix value.
-
-Conceptually:
-
-```text
-future or not-yet-observed boundary
-    → scheduled / estimated Unix
-
-observed boundary becomes available
-    → actual Unix supersedes the estimate
-```
-
-This is not historical rewriting. A Calendar Listing is a projection of the module's best currently established temporal truth. Ceremony-specific history remains owned by the module, while the calendar exposes the current temporal truth its consumers should use.
-
-The same Guild Event kind may therefore legitimately change temporal shape or values over its lifecycle. For example, a raffle round may be listed initially as an expected drawing instant, become a live range from actual opening time through expected drawing time, and after conclusion expose the actual live-to-conclusion range.
-
-A valid listing may contain only the required coordinates. Such a listing may be less expressive to a particular calendar consumer, but it remains a complete Guild Event Calendar Listing.
-
-## Optional contract fields
-
-Additional listing fields may be optional, but optional does not mean informal or module-defined.
-
-> Every field in a Guild Event Calendar Listing, required or optional, has semantics defined by the Calendar Listing Contract.
-
-The current optional fields are:
+Current optional fields are:
 
 ```text
 guild_event_title
@@ -85,68 +56,44 @@ guild_event_destination
 guild_event_category
 ```
 
-`guild_event_title` supplies a human-facing title for the concrete calendar occurrence. A consumer may use the supplied title when present. When it is absent, a consumer may still express `guild_event_kind` according to its own presentation conventions; doing so presents an existing listing coordinate rather than reconstructing a missing title fact.
+- `guild_event_title` — human-facing title for the concrete occurrence.
+- `guild_event_destination` — semantic destination associated with the occurrence. Consumers decide how or whether to express it.
+- `guild_event_category` — broader organizational classification for consumers.
 
-`guild_event_destination` supplies the destination associated with the concrete Guild Event occurrence. It is not an HTML `href` or a required presentation mechanism. A web calendar consumer may make a listing clickable, a Discord calendar consumer may express the destination differently, and another consumer may ignore it.
+A listing remains valid when optional fields are absent.
 
-A listing without `guild_event_destination` remains valid and is simply informative to a consumer that would otherwise use the destination. The consumer must not reconstruct a destination from the event kind or from knowledge of the owning module.
+Consumers must not reconstruct omitted fields using module-specific knowledge. There is no arbitrary metadata bag.
 
-`guild_event_category` supplies a broader organizational classification for calendar consumers. It does not establish that the Guild Event exists and is not required merely because a particular projection can display or organize by category.
+## Producer use
 
-The absence of any optional field is meaningful and complete:
+A module may establish, re-establish, or withdraw a listing as its owned truth changes.
 
-> Calendar consumers may use optional listing fields when present and ignore them when absent. They must not recover missing listing fields through module-specific knowledge.
+The producer decides:
 
-There is no arbitrary metadata bag. A new optional field belongs in the calendar contract only after real module or calendar-consumer pressure demonstrates a shared temporal-discovery meaning that consumers can understand without knowing which module produced the listing.
+- whether the occurrence belongs on the Calendar;
+- the truthful required and optional fields it can supply;
+- when updated timing or other listing data should replace earlier values;
+- when the listing should be withdrawn from discovery.
 
-## Module boundary
+Withdrawal means the producer no longer wants the occurrence discoverable through the Calendar. It is not the mechanism for merely becoming past.
 
-Modules own participation truth and procedure. They decide whether one of their concrete occurrences belongs on the Guild Event Calendar and establish the listing coordinates they can truthfully provide.
+## Registry behavior
 
-A module may establish, re-establish, or withdraw a Guild Event Calendar Listing as its owned truth changes. The calendar registry does not interrogate the module to derive those changes.
+The registry stores listings conforming to the shared contract. It does not need to understand module storage, module status models, route hierarchy, participation rules, or consumer presentation.
 
-Re-establishing a listing with more accurate occurrence time is expected behavior when a module replaces scheduled or estimated boundaries with observed ones. The module remains responsible for deciding when that newer temporal truth exists.
+Persistence may retain listings after their immediate temporal relevance without turning the registry into a generic domain-history system.
 
-Contributing to the Guild Event Calendar does not transfer ownership of the module's procedure, participation truth, ceremony-specific historical meaning, informational surfaces, or administrative surfaces to calendar infrastructure.
+## Consumer use
 
-Modules translate their temporal truth into calendar listings; calendar consumers do not translate module truth themselves.
+Calendar consumers read listing fields and choose presentation appropriate to their medium.
 
-## Registry boundary
+Consumers may specialize visual treatment based on contract data such as `guild_event_kind`, but they must not infer omitted destination, category, timing, eligibility, participation state, or other facts from module knowledge.
 
-The Guild Event Calendar Registry is the common container of Calendar Listings established by modules.
-
-It understands the Calendar Listing Contract. It does not need to understand:
-
-- raffle or another concrete module;
-- module storage or status models;
-- member-facing route hierarchy;
-- consumer presentation;
-- how a module derived the listing it established;
-- non-calendar Guild Event knowledge or capabilities.
-
-The registry exists so calendar consumers can read one common collection of temporal Guild Event listings instead of interrogating modules independently.
-
-Persistence may preserve listings after their immediate calendar relevance has passed, but that does not make the registry a generic history system or require it to understand ceremony-specific history.
-
-Withdrawal means that a module says the occurrence should no longer be discoverable through the calendar. It is not the mechanism by which an occurrence merely becomes past. Temporal relevance remains consumer-owned.
-
-## Calendar consumer boundary
-
-> Calendar consumers understand Guild Event Calendar Listings, not modules.
-
-A calendar consumer reads contract-defined listing fields and decides which listings are relevant to its purpose and how to express them in its medium.
-
-Consumers may specialize presentation based on listing information, including `guild_event_kind`, but they must not use kind as a backdoor for reconstructing absent facts. A consumer may choose a visual treatment for a known kind; it may not infer an omitted destination, category, timing, participation state, eligibility rule, or other listing coordinate from module-specific knowledge.
-
-The listing establishes shared calendar facts. The consumer chooses presentation.
-
-This permits multiple output presentations over the same calendar infrastructure. A web page, Discord integration, future WoW surface, or another calendar consumer may organize and render the same established temporal truth differently without becoming an owner of it.
-
-The current `/events` calendar projection is one consumer. Its current purpose is prospective participation discovery: it uses listing time to determine which occurrences are happening or upcoming and may use other supplied coordinates to enrich their presentation. The broader `/events` page is not itself the calendar; it may also host non-calendar Guild Event orientation and promotion supplied through other infrastructure.
+The current `/events` projection is one Calendar consumer.
 
 ### Temporal relevance
 
-Calendar consumers determine temporal relevance from the listing's occurrence time:
+Consumers determine relevance from `guild_event_occurs_at`:
 
 ```text
 instant [T]
@@ -159,20 +106,16 @@ range [start, end]
     past once end < now
 ```
 
-The registry does not withdraw a listing merely because time has passed. A consumer chooses whether past listings are relevant to its surface.
+The registry does not remove a listing merely because time passed.
 
-## Contract growth
+## Extending the contract
 
-The calendar contract should grow from concrete projection and module pressure rather than from an imagined generic event schema.
+Add a field only when real producer or consumer pressure demonstrates shared temporal-discovery meaning.
 
-When a calendar consumer needs information that the current listing cannot provide, ask:
+Before adding one, verify:
 
-1. Is this information actually about temporal discovery of the concrete occurrence?
-2. Can any calendar consumer understand the proposed field correctly without knowing which module produced the listing?
-3. Does the field need to be present for every valid Calendar Listing, or can its absence simply reduce what consumers can express?
+1. the information is actually about temporal discovery of the concrete occurrence;
+2. a Calendar consumer can understand it without knowing the producing module;
+3. whether it must be required or can remain optional.
 
-Only shared calendar meaning belongs in the Calendar Listing Contract. Required fields should remain the smallest set necessary for a coherent temporal listing; additional expressive capability should be earned as contract-defined optional fields.
-
-In short:
-
-> Modules translate temporal Guild Event truth into Guild Event Calendar Listings. The Calendar Listing Contract defines their shared temporal language. The Guild Event Calendar Registry contains those listings. Calendar consumers understand listings, not modules.
+The smallest coherent contract is preferred.

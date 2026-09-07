@@ -1,28 +1,14 @@
 # Guild Event Offerings
 
-## Purpose
+Guild Event Offerings are shared infrastructure for advertising enduring participation capabilities through the Events shell even when no concrete occurrence is scheduled.
 
-The Guild Events shell needs to answer a different question from the Guild Event Calendar.
-
-The Calendar answers:
-
-> What is happening, and when?
-
-The Events shell also needs to answer:
+Use an Offering when the Events shell should be able to answer:
 
 > What kinds of guild participation are offered here?
 
-A **Guild Event Offering** is the small semantic contribution a module makes so the shared Events shell can promote that enduring participation offering even when no concrete occurrence is currently live or scheduled.
-
-The governing responsibility is:
-
-> **The Events shell promotes participation offerings. The module explains them.**
-
-An Offering is therefore not a substitute for the module's informational surface, procedure, rules, administration, history, eligibility logic, or Calendar Listings.
+This is separate from Calendar infrastructure, which answers what concrete occurrence happens when.
 
 ## Contract
-
-The current contract is deliberately small:
 
 ```ts
 type GuildEventOfferingArtwork =
@@ -40,65 +26,41 @@ type GuildEventOffering = {
 
 ### `offeringId`
 
-`offeringId` is the stable identifier for the offering contribution inside the Guild Events shell.
-
-It identifies the enduring participation offering, not a concrete scheduled occurrence. For example, a raffle module may expose one `raffle` offering while individual raffle rounds remain separate concrete occurrences on the Guild Event Calendar.
-
-Offering identifiers must be unique among registered Guild Event Offerings.
+Stable identifier for the enduring offering contribution. It is not an occurrence identifier and must be unique among registered Offerings.
 
 ### `title`
 
-`title` is the member-facing name the shell uses to identify the offering.
-
-It should identify the activity, not explain its procedure.
+Member-facing activity name used by the shell.
 
 ### `tagline`
 
-`tagline` is short promotional copy intended to make the offering understandable and inviting at a glance.
-
-It is intentionally not a summary of rules or participation procedure. The Events shell should promote the activity; the module's own destination should explain it.
+Short promotional copy suitable for discovery. It should not attempt to encode the activity's rules or procedure.
 
 ### `destination`
 
-`destination` is the member-facing location where the module explains the offering and provides the appropriate participation surface.
-
-The shell uses the destination to move a member from discovery into the module-owned experience. Route hierarchy does not transfer implementation or domain ownership to the shell.
+Member-facing destination where the owning capability explains and operates participation.
 
 ### `artwork`
 
-`artwork` is optional recognition and promotional artwork for consumers that can make useful visual use of it.
+Optional recognition artwork. `kind: "asset"` identifies an application asset; `kind: "url"` identifies an external image URL.
 
-It is an either/or coordinate. A module may identify a bundled application asset with `kind: "asset"`, or supply an external image location with `kind: "url"`. Supplying artwork does not instruct the shell how to size, position, crop, decorate, or otherwise lay it out.
-
-Consumers remain responsible for resolving and presenting artwork appropriately for their medium. Consumers must also remain useful when an Offering supplies no artwork.
+Artwork does not carry layout instructions. Consumers own sizing, cropping, positioning, fallback, and other presentation behavior.
 
 ## Registration
 
-Offerings are registered through the shared contract under:
+Offerings are registered under:
 
 ```text
 src/guild-events/offerings/
 ```
 
-Registration is application composition, not persisted guild truth. The registry exists so shared shell consumers can discover module contributions without hardcoding module inventories into the Events page itself.
+Registration is application composition rather than persisted guild truth.
 
-A module owns the semantic values it contributes. The shell owns how registered Offerings are arranged and presented.
+The producer owns the semantic values it registers. The Events shell owns arrangement and presentation. Registration order is not presentation policy.
 
-Registration order is not presentation policy. Consumers may organize Offerings according to their own presentation needs.
+Modules must not register HTML, CSS, arbitrary metadata, or shell layout instructions through the Offering contract.
 
-## Presentation ownership
-
-The Offering contract describes semantic promotional material, not card markup or visual layout.
-
-Modules must not register HTML, CSS, arbitrary presentation metadata, or shell layout instructions through this contract.
-
-The Events shell owns the promotional treatment. This allows the shell to render Offerings as contextual, eye-catching participation promotions while keeping a coherent shared page grammar.
-
-Artwork is optional. It is a recognition resource rather than a layout requirement: an Offering without artwork remains a complete Offering, and the shell owns its artwork-free treatment.
-
-## Relationship to the Guild Event Calendar
-
-Guild Event Offerings and Guild Event Calendar Listings answer independent questions:
+## Relationship to Calendar
 
 ```text
 Guild Event Offering
@@ -108,90 +70,27 @@ Guild Event Calendar Listing
     → What concrete occurrence happens when?
 ```
 
-An Offering may exist with zero Calendar Listings.
+An Offering may exist with zero Calendar Listings. A Calendar Listing may represent an occurrence related to an Offering, but neither contract establishes the other's truth.
 
-A Calendar Listing may describe a concrete occurrence of an Offering, but the Calendar does not establish that the enduring Offering exists and the Offering does not establish that any occurrence is scheduled.
+Calendar usage is documented in [`guild-event-calendar.md`](guild-event-calendar.md).
 
-For example:
+## What belongs in the module
 
-```text
-Raffle Offering
-    → Raffle is something the guild does.
+Offering infrastructure does not own:
 
-September Raffle Calendar Listing
-    → A particular raffle round occurs at a particular time.
-```
-
-Neither contract should infer the other's truth.
-
-## Ownership boundary
-
-The shared Events shell owns:
-
-- the participation-offering discovery surface;
-- promotional card or equivalent presentation grammar;
-- arrangement and ordering of Offering contributions; and
-- movement from discovery into a module-owned destination.
-
-The module owns:
-
-- whether it exposes an Offering contribution;
-- the Offering's title, tagline, destination, and optional artwork coordinate;
-- the participation capability itself;
-- explanation and rules;
-- participation procedure;
-- module-specific eligibility and authority;
-- administration; and
-- historical results.
-
-The Guild Event Calendar separately owns shared temporal-discovery infrastructure for concrete occurrences.
-
-## Negative boundary
-
-The Offering contract is not a generic module capability registry.
-
-Do not use it to register every action or internal capability a module supports. Operations such as approving a raffle claim, drawing a winner, editing a future round, or cancelling a round remain module procedure rather than Guild Event Offerings.
-
-The contract also does not currently include:
-
-- rules;
+- participation rules;
 - eligibility;
-- status;
+- administration;
+- history;
+- module procedure;
 - scheduling;
-- historical results;
-- administrative destinations;
-- notification policy;
-- arbitrary metadata;
-- artwork layout instructions; or
-- presentation markup.
+- concrete occurrence status;
+- notification policy.
 
-Add another coordinate only when real shell presentation or another concrete consumer demonstrates that it is required.
+Those remain with the owning capability.
 
-## Current shape
+## When not to use an Offering
 
-Conceptually:
+Do not use Offerings as a generic module capability registry. Internal operations, administrative actions, and procedure-specific commands are not enduring participation offerings merely because they exist in a module.
 
-```text
-Module
-├── owns a guild participation capability
-├── explains and operates that capability
-└── registers an enduring participation offering
-        ↓
-Guild Event Offering Registry
-        ↓
-Events shell consumer
-├── promotes the offering
-└── routes the member into the module-owned destination
-```
-
-Alongside it:
-
-```text
-Module occurrence truth
-        ↓
-Guild Event Calendar Listing
-        ↓
-Guild Event Calendar consumer
-```
-
-These are complementary shared surfaces, not layers of one generalized Event framework.
+Add another Offering coordinate only when real shell or consumer pressure requires shared discovery meaning.
