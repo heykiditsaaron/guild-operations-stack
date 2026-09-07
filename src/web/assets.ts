@@ -6,6 +6,7 @@ import { config } from "../config.js";
 
 export type AssetName =
   | "app.css"
+  | "footer.css"
   | "me.css"
   | "app.js"
   | "navigation-shelves.css"
@@ -35,6 +36,7 @@ type WebAsset = {
 
 const assetDefinitions: Array<{ name: AssetName; contentType: string }> = [
   { name: "app.css", contentType: "text/css; charset=utf-8" },
+  { name: "footer.css", contentType: "text/css; charset=utf-8" },
   { name: "me.css", contentType: "text/css; charset=utf-8" },
   { name: "navigation-shelves.css", contentType: "text/css; charset=utf-8" },
   { name: "home.css", contentType: "text/css; charset=utf-8" },
