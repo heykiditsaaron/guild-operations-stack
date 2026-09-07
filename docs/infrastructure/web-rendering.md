@@ -52,10 +52,12 @@ destination
     → module-owned administrative landing route below /admin
 
 permission scope
-    → capability required for that destination to be offered to the current Guildie
+    → stable module-owned coordinate describing the authority required for that destination
 ```
 
-The shared shell owns the selector presentation, current-area treatment, responsive behavior, and navigation interaction. The module owns the destination label, route, permission scope, and all presentation after navigation reaches that module.
+The module also supplies the authorization evaluation for that permission scope against current Guild Operations authority. This preserves module-owned permission policy without forcing module permissions into globally persisted capability state merely to support navigation.
+
+The shared shell owns the selector presentation, current-area treatment, responsive behavior, and navigation interaction. The module owns the destination label, route, permission scope, authorization policy, and all presentation after navigation reaches that module.
 
 Published destinations are filtered against backend authority before they reach rendering. The selector is therefore a projection of authorized administrative destinations, not an authorization boundary of its own. Module routes must continue to enforce their own administration permission.
 
