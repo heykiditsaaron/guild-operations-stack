@@ -6,6 +6,7 @@ import { registerAuthRoutes } from "./auth.js";
 import { registerDiscordRoutes } from "./discord.js";
 import { registerGuildRoutes } from "./guild-routes.js";
 import { startGuildRefreshScheduler } from "./guild-refresh-scheduler.js";
+import { registerRaffleAdministrationDestination } from "./modules/raffle/administration.js";
 import { reconcileRaffleCalendarListingDestinations } from "./modules/raffle/calendar-listing.js";
 import { registerRaffleGuildEventOffering } from "./modules/raffle/offering.js";
 import { registerRaffleQueryRoutes } from "./modules/raffle/query-routes.js";
@@ -34,6 +35,7 @@ const app = Fastify({
   disableRequestLogging: true,
 });
 await app.register(cookie);
+registerRaffleAdministrationDestination();
 registerRaffleGuildEventOffering();
 await reconcileRaffleCalendarListingDestinations();
 
