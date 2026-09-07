@@ -2,6 +2,11 @@ import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
 import { guildRefreshStatus } from "../../guild-admin.js";
 import {
+  GUILD_REFRESH_MINIMUM_INTERVAL_SECONDS,
+  guildRefreshSchedule,
+  type GuildRefreshSchedule,
+} from "../../guild-refresh-schedule.js";
+import {
   GUILD_REFRESH_CAPABILITY,
   OPERATIONS_INSPECT_CAPABILITY,
   guildieHasGuildCapability,
@@ -31,13 +36,19 @@ function administrationSection(
   </section>`;
 }
 
-function renderGuildRefresh(status: Awaited<ReturnType<typeof guildRefreshStatus>>): string {
+function renderGuildRefresh(
+  status: Awaited<ReturnType<typeof guildRefreshStatus>>,
+  schedule: GuildRefreshSchedule,
+): string {
   const memberCount = status
     ? `<strong>${status.currentMemberCount.toLocaleString("en-US")}</strong><span>current members</span>`
     : `<strong>—</strong><span>current members</span>`;
   const lastReconciled = status
     ? `<time data-unix-time="${status.lastReconciledAtUnix}">${status.lastReconciledAtUnix}</time>`
     : "Not yet observed";
+  const nextAutomaticRefresh = schedule.nextDueAtUnix === null
+    ? "Disabled"
+    : `<time data-unix-time="${schedule.nextDueAtUnix}">${schedule.nextDueAtUnix}</time>`;
 
   return `<div class="guild-refresh-admin" data-guild-refresh-admin>
     <div class="guild-refresh-admin-heading">
@@ -57,6 +68,39 @@ function renderGuildRefresh(status: Awaited<ReturnType<typeof guildRefreshStatus
       </div>
     </div>
     <p class="guild-refresh-feedback" data-guild-refresh-feedback role="status" aria-live="polite"></p>
+
+    <form class="guild-refresh-schedule" data-guild-refresh-schedule-form>
+      <div class="guild-refresh-schedule-heading">
+        <div>
+          <h4>Automatic refresh</h4>
+          <p>Run guild refresh from Guild Operations on a repeating cadence.</p>
+        </div>
+        <label class="guild-refresh-toggle">
+          <input type="checkbox" data-guild-refresh-schedule-enabled${schedule.enabled ? " checked" : ""}>
+          <span>${schedule.enabled ? "On" : "Off"}</span>
+        </label>
+      </div>
+      <div class="guild-refresh-schedule-controls">
+        <label>
+          <span>Every</span>
+          <input
+            type="number"
+            min="${GUILD_REFRESH_MINIMUM_INTERVAL_SECONDS}"
+            step="1"
+            value="${schedule.intervalSeconds}"
+            inputmode="numeric"
+            data-guild-refresh-schedule-interval
+          >
+          <span>seconds</span>
+        </label>
+        <button type="submit" data-guild-refresh-schedule-save>Save</button>
+      </div>
+      <div class="guild-refresh-schedule-next">
+        <span>Next automatic refresh</span>
+        <strong data-guild-refresh-schedule-next>${nextAutomaticRefresh}</strong>
+      </div>
+      <p class="guild-refresh-schedule-feedback" data-guild-refresh-schedule-feedback role="status" aria-live="polite"></p>
+    </form>
   </div>`;
 }
 
@@ -75,8 +119,9 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
         ])
       : [false, false, false];
 
-    const [refreshStatus] = await Promise.all([
+    const [refreshStatus, refreshSchedule] = await Promise.all([
       canRefreshGuild ? guildRefreshStatus() : Promise.resolve(null),
+      canRefreshGuild ? guildRefreshSchedule() : Promise.resolve(null),
     ]);
 
     const availableAdministration: string[] = [];
@@ -90,12 +135,12 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     }
 
     const hasAdministration = canRefreshGuild || canInspectOperations || availableAdministration.length > 0;
-    const guildSettings = canRefreshGuild
+    const guildSettings = canRefreshGuild && refreshSchedule
       ? administrationSection(
           "guild-settings",
           "guild-settings-heading",
           "Guild settings",
-          renderGuildRefresh(refreshStatus),
+          renderGuildRefresh(refreshStatus, refreshSchedule),
         )
       : "";
     const modules = availableAdministration.length
