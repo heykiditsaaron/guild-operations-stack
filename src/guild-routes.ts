@@ -2,6 +2,10 @@ import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "./auth.js";
 import { performGuildRefresh } from "./guild-refresh-operation.js";
 import {
+  configureGuildRefreshSchedule,
+  GUILD_REFRESH_MINIMUM_INTERVAL_SECONDS,
+} from "./guild-refresh-schedule.js";
+import {
   GUILD_REFRESH_CAPABILITY,
   GuildCapabilityDeniedError,
   requireGuildCapability,
@@ -42,5 +46,42 @@ export async function registerGuildRoutes(app: FastifyInstance): Promise<void> {
       }
       throw error;
     }
+  });
+
+  app.put<{ Body: { enabled?: unknown; interval_seconds?: unknown } }>("/guild/refresh/schedule", async (request, reply) => {
+    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
+    if (!guildie) return reply.code(401).send({ error: "not_authenticated" });
+
+    try {
+      await requireGuildCapability(guildie.guildieId, GUILD_REFRESH_CAPABILITY);
+    } catch (error) {
+      if (error instanceof GuildCapabilityDeniedError) {
+        return reply.code(403).send({ error: "guild_capability_required", capability: error.capability });
+      }
+      throw error;
+    }
+
+    const enabled = request.body?.enabled;
+    const intervalSeconds = request.body?.interval_seconds;
+    if (typeof enabled !== "boolean") {
+      return reply.code(400).send({ error: "enabled_must_be_boolean" });
+    }
+    if (!Number.isInteger(intervalSeconds) || (intervalSeconds as number) < GUILD_REFRESH_MINIMUM_INTERVAL_SECONDS) {
+      return reply.code(400).send({
+        error: "invalid_interval_seconds",
+        minimum_interval_seconds: GUILD_REFRESH_MINIMUM_INTERVAL_SECONDS,
+      });
+    }
+
+    const schedule = await configureGuildRefreshSchedule({
+      enabled,
+      intervalSeconds: intervalSeconds as number,
+    });
+
+    return reply.send({
+      enabled: schedule.enabled,
+      interval_seconds: schedule.intervalSeconds,
+      next_due_at_unix: schedule.nextDueAtUnix,
+    });
   });
 }
