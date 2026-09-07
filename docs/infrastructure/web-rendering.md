@@ -29,6 +29,12 @@ Presentation precedence is:
 
 Checkbox semantics remain distinct from switch semantics. A boolean enabled/disabled state may use switch presentation while retaining a native checkbox input; ordinary checkbox choices should not become switches merely because they share the input type.
 
+## Authorization boundary
+
+Rendering may express the result of an authorization decision by showing, hiding, disabling, or labeling an interaction appropriately. It does not make or enforce that decision.
+
+A missing or disabled control is presentation, not access control. Routes and procedures must still enforce required capabilities against backend authority through [`guild-permissioning.md`](guild-permissioning.md) or the appropriate module-owned authorization policy.
+
 ## Secondary navigation
 
 Pages declare navigation intent; the shared renderer owns presentation.
