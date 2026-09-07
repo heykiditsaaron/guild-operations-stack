@@ -26,7 +26,8 @@
 
 .admin-sections,
 .admin-unavailable,
-.operations-inspection {
+.operations-inspection,
+.discord-state-inspection {
   max-width: 54rem;
 }
 
@@ -42,7 +43,8 @@
   color: #c9c5ba;
 }
 
-.guild-refresh-admin {
+.guild-refresh-admin,
+.discord-admin {
   padding: 1rem 1.1rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 0.8rem;
@@ -50,7 +52,10 @@
 }
 
 .guild-refresh-admin-heading,
-.guild-refresh-schedule-heading {
+.guild-refresh-schedule-heading,
+.discord-admin-heading,
+.discord-projection-heading,
+.discord-state-heading {
   display: flex;
   justify-content: space-between;
   gap: 1.5rem;
@@ -58,13 +63,20 @@
 }
 
 .guild-refresh-admin-heading h3,
-.guild-refresh-schedule-heading h4 {
+.guild-refresh-schedule-heading h4,
+.discord-admin-heading h3,
+.discord-projection-heading h4,
+.discord-state-heading h2 {
   margin: 0;
   font-size: 1rem;
 }
 
 .guild-refresh-admin-heading p,
-.guild-refresh-schedule-heading p {
+.guild-refresh-schedule-heading p,
+.discord-admin-heading p,
+.discord-projection-heading p,
+.discord-state-heading p,
+.discord-admin-unavailable p {
   margin: 0.35rem 0 0;
   color: #aaa69c;
   font-size: 0.9rem;
@@ -75,7 +87,8 @@
 }
 
 .guild-refresh-button:disabled,
-.guild-refresh-schedule button:disabled {
+.guild-refresh-schedule button:disabled,
+.discord-projection-form button:disabled {
   cursor: wait;
 }
 
@@ -105,7 +118,8 @@
 }
 
 .guild-refresh-feedback,
-.guild-refresh-schedule-feedback {
+.guild-refresh-schedule-feedback,
+.discord-projection-feedback {
   min-height: 1.15rem;
   margin: 0.75rem 0 0;
   color: #aaa69c;
@@ -116,17 +130,20 @@
   color: #e3aaa3;
 }
 
-.guild-refresh-schedule {
+.guild-refresh-schedule,
+.discord-projection-form {
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
 
-.guild-refresh-toggle {
+.guild-refresh-toggle,
+.discord-projection-toggle {
   flex: none;
 }
 
-.guild-refresh-schedule-controls {
+.guild-refresh-schedule-controls,
+.discord-projection-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
@@ -150,6 +167,92 @@
   display: grid;
   gap: 0.2rem;
   margin-top: 1rem;
+}
+
+.discord-state-link {
+  flex: none;
+  color: #aaa69c;
+  font-size: 0.88rem;
+  text-decoration: none;
+}
+
+.discord-state-link:hover,
+.discord-state-link:focus-visible {
+  color: #e8c986;
+  text-decoration: underline;
+}
+
+.discord-role-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.9rem 1rem;
+  margin-top: 1rem;
+}
+
+.discord-role-fields label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.discord-role-fields label span {
+  color: #aaa69c;
+  font-size: 0.82rem;
+}
+
+.discord-role-fields select {
+  width: 100%;
+}
+
+.discord-admin-unavailable span,
+.discord-projection-state {
+  display: inline-block;
+  margin-top: 0.75rem;
+  color: #aaa69c;
+  font-size: 0.82rem;
+}
+
+.discord-state-inspection {
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.discord-projection-state {
+  flex: none;
+  margin-top: 0;
+}
+
+.discord-state-table-wrap {
+  overflow-x: auto;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.discord-state-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.discord-state-table th,
+.discord-state-table td {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.discord-state-table th {
+  color: #aaa69c;
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.discord-state-table small {
+  color: #817d75;
 }
 
 .admin-destination {
@@ -306,12 +409,18 @@
 @media (max-width: 42rem) {
   .admin-page-header-row,
   .guild-refresh-admin-heading,
-  .guild-refresh-schedule-heading {
+  .guild-refresh-schedule-heading,
+  .discord-admin-heading,
+  .discord-projection-heading,
+  .discord-state-heading {
     align-items: baseline;
   }
 
   .guild-refresh-admin-heading,
-  .guild-refresh-schedule-heading {
+  .guild-refresh-schedule-heading,
+  .discord-admin-heading,
+  .discord-projection-heading,
+  .discord-state-heading {
     flex-direction: column;
   }
 }
