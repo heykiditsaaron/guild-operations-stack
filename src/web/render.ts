@@ -77,6 +77,15 @@ function userGlyph(): string {
   </svg>`;
 }
 
+function discordGlyph(): string {
+  return `<svg class="footer-discord-icon" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M7.5 7.2c3-1.4 6-1.4 9 0 1.8 2.4 2.7 5.2 2.5 8.1-1.6 1.2-3.1 1.9-4.6 2.3l-1.1-1.5"></path>
+    <path d="M16.5 7.2c-3-1.4-6-1.4-9 0-1.8 2.4-2.7 5.2-2.5 8.1 1.6 1.2 3.1 1.9 4.6 2.3l1.1-1.5"></path>
+    <circle cx="9.4" cy="12.5" r="0.8" fill="currentColor" stroke="none"></circle>
+    <circle cx="14.6" cy="12.5" r="0.8" fill="currentColor" stroke="none"></circle>
+  </svg>`;
+}
+
 function renderDiscordAssociation(viewer: Extract<WebViewer, { authenticated: true }>, pathname: string): string {
   if (!viewer.discordAssociation) {
     return `<a class="discord-connect" href="/me/discord/connect?return_to=${encodeURIComponent(pathname)}">Connect Discord</a>`;
@@ -273,6 +282,41 @@ function renderSecondaryNavigation(navigation: SecondaryNavigation | undefined):
   return `<nav class="secondary-navigation secondary-navigation-breadcrumb" aria-label="Breadcrumb">${items}</nav>`;
 }
 
+function externalFooterLink(url: string | null, label: string, className = ""): string {
+  if (!url) return "";
+  return `<a class="footer-link${className ? ` ${className}` : ""}" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`;
+}
+
+function renderFooter(): string {
+  const discord = config.discordInviteUrl
+    ? `<a class="footer-link footer-link-discord" href="${escapeHtml(config.discordInviteUrl)}" target="_blank" rel="noopener noreferrer">${discordGlyph()}<span>Discord</span></a>`
+    : "";
+  const wowLinks = [
+    externalFooterLink(config.wowArmoryUrl, "WoW Armory"),
+    externalFooterLink(config.raiderIoUrl, "Raider.IO"),
+    externalFooterLink(config.warcraftLogsUrl, "Warcraft Logs"),
+  ].filter(Boolean).join("");
+
+  return `<footer class="app-footer">
+    <div class="app-footer-inner">
+      <div class="footer-brand">
+        <span class="footer-guild-name">OH CRIT I Pulled!</span>
+        <span class="footer-guild-context">Gurubashi · US</span>
+      </div>
+      <div class="footer-destinations">
+        ${discord ? `<section class="footer-group" aria-label="Guild community">
+          <p class="footer-group-title">Join us</p>
+          <div class="footer-links">${discord}</div>
+        </section>` : ""}
+        ${wowLinks ? `<section class="footer-group" aria-label="Guild links">
+          <p class="footer-group-title">Find us in Azeroth</p>
+          <div class="footer-links">${wowLinks}</div>
+        </section>` : ""}
+      </div>
+    </div>
+  </footer>`;
+}
+
 export function renderPage(assets: AssetRegistry, input: RenderPageInput): string {
   const title = escapeHtml(input.title);
   const description = escapeHtml(input.description ?? "OH CRIT I Pulled!");
@@ -293,6 +337,7 @@ export function renderPage(assets: AssetRegistry, input: RenderPageInput): strin
   <meta name="description" content="${description}">
   <link rel="canonical" href="${canonicalUrl}">
   <link rel="stylesheet" href="${assetUrl(assets, "app.css")}">
+  <link rel="stylesheet" href="${assetUrl(assets, "footer.css")}">
   <link rel="stylesheet" href="${assetUrl(assets, "me.css")}">
   <link rel="stylesheet" href="${assetUrl(assets, "navigation-shelves.css")}">
 ${stylesheets ? `${stylesheets}\n` : ""}  <title>${title}</title>
@@ -303,7 +348,7 @@ ${stylesheets ? `${stylesheets}\n` : ""}  <title>${title}</title>
     ${secondaryNavigation ? `<div class="secondary-navigation-zone">${secondaryNavigation}</div>` : ""}
     <header class="page-header${secondaryNavigation ? " page-header-after-secondary-navigation" : ""}">${input.header}</header>
     <main class="app-main">${input.body}</main>
-    <footer class="app-footer">OH CRIT I Pulled!</footer>
+    ${renderFooter()}
   </div>
   ${renderMainPicker(input.viewer)}
   <script src="${assetUrl(assets, "app.js")}" defer></script>
