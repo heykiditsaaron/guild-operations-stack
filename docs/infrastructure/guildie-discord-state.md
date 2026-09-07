@@ -110,6 +110,46 @@ The safe asymmetry is:
 
 A missing role may produce a false refusal if projection is stale; that inconvenience is acceptable. A present role may only justify asking Guild Operations to perform the authoritative capability check. Backend authorization remains decisive.
 
+## Evaluation and mutation procedure
+
+Evaluation and mutation are separate concerns.
+
+A meaningful trigger first commits the Guild Operations- or Blizzard-backed truth that caused the trigger. Discord is then read for the state it owns, and the managed-role evaluator calculates the difference between current and desired projection state.
+
+The procedure is:
+
+```text
+authoritative change commits
+    ↓
+evaluate desired managed-role state
+    ↓
+read current Discord-authoritative state
+    ↓
+calculate planned additions/removals
+    ↓
+projection disabled → stop with plan only
+projection enabled  → execute the calculated mutations
+```
+
+The evaluation result keeps planned work explicit even when projection is disabled:
+
+```text
+desiredRoleIds
+currentManagedRoleIds
+plannedAddRoleIds
+plannedRemoveRoleIds
+observedAt
+```
+
+Mutation results are separate:
+
+```text
+addedRoleIds
+removedRoleIds
+```
+
+The projection enablement setting gates only mutation. It does not gate observation or evaluation.
+
 ## Projection gate
 
 Role mutation is controlled by persisted guild-level settings in:
@@ -125,12 +165,13 @@ When disabled:
 
 - direct observation may still run;
 - role mappings may be configured;
-- desired state may be calculated;
+- desired state is calculated when a reconciliation trigger runs;
+- pending additions/removals remain inspectable;
 - no role add/remove request is sent to Discord.
 
 When enabled, reconciliation may mutate only the configured Linked and rank roles. Unrelated human-managed Discord roles are untouched.
 
-Saving configuration while projection is enabled performs a full reconciliation so mapping changes do not wait for another unrelated trigger.
+Saving projection configuration always evaluates all associated Guildies after the configuration commit. If projection is disabled, evaluation stops before mutation. If projection is enabled, the same evaluation may proceed to role mutation.
 
 ## Reconciliation triggers
 
@@ -139,7 +180,8 @@ Current triggers are:
 - Discord association establishment;
 - Discord disassociation;
 - Guildie join/leave/rank transitions discovered by guild refresh;
-- enabling or saving projection configuration while enabled.
+- every saved projection configuration change, including while projection remains disabled;
+- enabling projection.
 
 The integration intentionally does not run a Discord Gateway listener yet. If real use demonstrates that Discord-originated drift must be corrected faster than REST/backstop reconciliation can provide, that pressure may earn a Gateway seam later.
 
@@ -154,7 +196,9 @@ source: discord
 operation: roles.reconcile
 ```
 
-Successful records include the Guildie/Discord coordinates, trigger, desired role IDs, and role IDs actually added or removed. Failed mutations publish an operational exception with planned and completed role work plus a safe error message.
+Successful records include the Guildie/Discord coordinates, trigger, observation time, desired/current managed roles, planned work, and role IDs actually added or removed. Failed mutations publish an operational exception with planned and completed role work plus a safe error message.
+
+Disabled evaluations do not create operational-history noise merely for calculating a plan. Pending actions are the inspection surface for that state.
 
 Inspection publication remains best effort and never becomes authority over the association, rank, or Discord mutation itself.
 
@@ -176,7 +220,9 @@ Read-only reconciliation preview is intentionally a distinct inspection surface:
 /admin/discord-state
 ```
 
-That page shows what Discord currently says, what Guild Operations currently wants for the Linked role, whether those states differ, the projected action, and when Discord was observed. It performs no mutation.
+Its user-facing name is **Pending actions**. The route remains stable while the presentation describes what the surface actually answers.
+
+Pending actions uses the same evaluator as reconciliation. It shows current managed roles, desired managed roles, planned additions/removals, Discord server presence, and observation time. It performs no mutation.
 
 Completed reconciliation outcomes are inspected through the global operational record surface:
 
