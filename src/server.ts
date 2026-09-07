@@ -24,6 +24,7 @@ import { registerRafflePage } from "./web/pages/events/raffle/index.js";
 import { registerRaffleRoundPage } from "./web/pages/events/raffle/round.js";
 import { registerRaffleRulesPage } from "./web/pages/events/raffle/rules.js";
 import { registerHomePage } from "./web/pages/home.js";
+import { registerSiteInformationPages } from "./web/pages/site-information.js";
 
 const app = Fastify({
   logger: true,
@@ -44,6 +45,7 @@ app.get("/health", async () => {
 const webAssets = await loadAssetRegistry();
 await registerAssetRoutes(app, webAssets);
 await registerHomePage(app, webAssets);
+await registerSiteInformationPages(app, webAssets);
 await registerEventsPage(app, webAssets);
 await registerAdminPage(app, webAssets);
 await registerAdminDiscordStatePage(app, webAssets);
