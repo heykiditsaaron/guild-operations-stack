@@ -27,6 +27,7 @@ export type WebViewer =
   | { authenticated: false }
   | {
       authenticated: true;
+      administrationAvailable: boolean;
       mainCharacter: {
         characterId: string;
         realmId: string;
@@ -117,11 +118,15 @@ function renderMeControl(viewer: WebViewer, pathname: string): string {
   }
   const label = viewer.mainCharacter?.name ?? "Me";
   const portrait = viewer.mainCharacter?.avatarUrl ? `<img src="${escapeHtml(viewer.mainCharacter.avatarUrl)}" alt="" loading="eager" referrerpolicy="no-referrer">` : userGlyph();
+  const administration = viewer.administrationAvailable
+    ? '<section class="me-menu-section me-administration-section"><a class="me-administration-link" href="/admin"><span>Administration</span><span aria-hidden="true">→</span></a></section>'
+    : "";
   return `<details class="me-menu menu-surface">
     <summary class="me-control"><span data-me-label>${escapeHtml(label)}</span><span class="account-visual${viewer.mainCharacter?.avatarUrl ? " account-visual-portrait" : " account-visual-generic"}" data-me-visual>${portrait}</span></summary>
     <div class="menu-panel menu-panel-right me-menu-panel">
       <section class="me-menu-section me-character-section">${renderCurrentCharacter(viewer)}</section>
       <section class="me-menu-section me-discord-section">${renderDiscordAssociation(viewer, pathname)}</section>
+      ${administration}
       <section class="me-menu-section me-session-section"><button type="button" class="session-sign-out-action" data-logout>Sign out</button></section>
     </div>
   </details>`;

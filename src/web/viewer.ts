@@ -2,16 +2,18 @@ import { authenticatedGuildie } from "../auth.js";
 import { discordAssociationForGuildie } from "../discord.js";
 import { guildCharactersForGuildie } from "../guild.js";
 import { mainCharacterForGuildie } from "../main-character.js";
+import { administrationAvailabilityForGuildie } from "./administration.js";
 import type { WebViewer } from "./render.js";
 
 export async function viewerForRequest(sessionToken: string | undefined): Promise<WebViewer> {
   const guildie = await authenticatedGuildie(sessionToken);
   if (!guildie) return { authenticated: false };
 
-  const [mainCharacter, characters, discordAssociation] = await Promise.all([
+  const [mainCharacter, characters, discordAssociation, administration] = await Promise.all([
     mainCharacterForGuildie(guildie.guildieId),
     guildCharactersForGuildie(guildie.guildieId),
     discordAssociationForGuildie(guildie.guildieId),
+    administrationAvailabilityForGuildie(guildie.guildieId),
   ]);
 
   const selectedCharacter = mainCharacter
@@ -23,6 +25,7 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
 
   return {
     authenticated: true,
+    administrationAvailable: administration.available,
     mainCharacter: mainCharacter
       ? {
           characterId: mainCharacter.characterId,
