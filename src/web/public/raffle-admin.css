@@ -18,8 +18,7 @@
   letter-spacing: -0.02em;
 }
 
-.raffle-start-button,
-.raffle-action {
+a.raffle-action {
   min-height: 2.65rem;
   display: inline-flex;
   align-items: center;
@@ -56,11 +55,6 @@
 
 .raffle-action-secondary {
   color: #c9c5ba;
-}
-
-.raffle-action:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
 }
 
 .raffle-setup {
@@ -189,10 +183,6 @@
 .raffle-claim-denial-field input {
   min-height: 3rem;
   padding: 0.65rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 0.65rem;
-  background: #17181d;
-  color: inherit;
 }
 
 .raffle-edit-field small,
@@ -256,17 +246,15 @@
 .raffle-live-facts dt { color: #8e8a81; }
 
 .raffle-action-success {
-  border: 1px solid rgba(124, 198, 141, 0.35);
+  border-color: rgba(124, 198, 141, 0.35);
   background: rgba(124, 198, 141, 0.07);
   color: #b9dfc1;
-  font-weight: 700;
 }
 
 .raffle-action-cancel {
-  border: 1px solid rgba(198, 105, 105, 0.34);
+  border-color: rgba(198, 105, 105, 0.34);
   background: rgba(198, 105, 105, 0.07);
   color: #e0aaaa;
-  font-weight: 700;
 }
 
 .raffle-operational-summary { margin-bottom: 2.5rem; padding: 1.15rem 1.25rem; border-radius: 0.8rem; }
