@@ -7,6 +7,7 @@ Guild Operations' web layer owns presentation composition and delivery. Routes a
 The shared shell owns application-level presentation including:
 
 - primary navigation;
+- optional administration navigation;
 - optional secondary navigation;
 - shared action surfaces;
 - responsive shell behavior;
@@ -34,6 +35,33 @@ Checkbox semantics remain distinct from switch semantics. A boolean enabled/disa
 Rendering may express the result of an authorization decision by showing, hiding, disabling, or labeling an interaction appropriately. It does not make or enforce that decision.
 
 A missing or disabled control is presentation, not access control. Routes and procedures must still enforce required capabilities against backend authority through [`guild-permissioning.md`](guild-permissioning.md) or the appropriate module-owned authorization policy.
+
+## Administration navigation
+
+Administration navigation is shared shell infrastructure for moving between independently owned administrative areas.
+
+`/admin` is the Guild Operations administrative area. It owns application-wide operational configuration and does not need to embed module administration merely to make module tooling discoverable.
+
+A module may publish an administration destination consisting of:
+
+```text
+label
+    → human-facing administrative area name
+
+destination
+    → module-owned administrative landing route below /admin
+
+permission scope
+    → capability required for that destination to be offered to the current Guildie
+```
+
+The shared shell owns the selector presentation, current-area treatment, responsive behavior, and navigation interaction. The module owns the destination label, route, permission scope, and all presentation after navigation reaches that module.
+
+Published destinations are filtered against backend authority before they reach rendering. The selector is therefore a projection of authorized administrative destinations, not an authorization boundary of its own. Module routes must continue to enforce their own administration permission.
+
+The shell recognizes a module administrative area from its published destination and descendants. A module should not duplicate the selector in its own pages merely to participate in administration navigation.
+
+The registration contract is deliberately small. Do not extend it with icons, categories, descriptions, badges, nested navigation, ordering frameworks, or page factories until real administrative surfaces require those distinctions.
 
 ## Secondary navigation
 
