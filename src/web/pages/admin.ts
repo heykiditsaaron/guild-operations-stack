@@ -379,6 +379,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       return reply.code(400).send({ error: "unknown_rank_role" });
     }
 
+    const previous = await guildDiscordProjectionSettings();
     const settings = await replaceGuildDiscordProjectionSettings({
       enabled: body.enabled,
       linkedRoleId,
@@ -386,8 +387,15 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     });
 
     if (settings.enabled) {
+      const previousManagedRoleIds = [
+        ...(previous.linkedRoleId ? [previous.linkedRoleId] : []),
+        ...previous.rankRoles.map((mapping) => mapping.discordRoleId),
+      ];
       try {
-        await reconcileAllGuildieDiscordRoles({ trigger: "admin-configuration" });
+        await reconcileAllGuildieDiscordRoles({
+          trigger: "admin-configuration",
+          additionalManagedRoleIds: previousManagedRoleIds,
+        });
       } catch (error) {
         request.log.error({ err: error }, "Discord projection reconciliation failed");
         return reply.code(502).send({ error: "discord_reconciliation_failed", settings });
