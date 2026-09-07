@@ -15,86 +15,31 @@
   gap: 1.3rem;
 }
 
-.footer-brand {
-  display: grid;
-  gap: 0.28rem;
-}
+.footer-brand { display: grid; gap: 0.28rem; }
+.footer-guild-name { color: #f7f4ea; font-family: Georgia, "Times New Roman", serif; font-size: 1.05rem; font-weight: 700; letter-spacing: -0.01em; }
+.footer-guild-context { color: #77736b; font-size: 0.76rem; }
+.footer-destinations { display: grid; gap: 1rem; }
+.footer-group { display: grid; gap: 0.55rem; }
+.footer-group-title { margin: 0; color: #77736b; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+.footer-links { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; }
+.footer-link { display: inline-flex; align-items: center; gap: 0.4rem; color: #c9c5ba; font-size: 0.84rem; font-weight: 650; text-decoration: none; transition: color 140ms ease; }
+.footer-link:hover, .footer-link:focus-visible { color: #f7f4ea; }
+.footer-link:focus-visible, .footer-site-information a:focus-visible { outline: 2px solid #e8c986; outline-offset: 3px; border-radius: 0.2rem; }
+.footer-link-discord { color: #e8c986; }
+.footer-discord-icon { width: 1rem; height: 1rem; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 
-.footer-guild-name {
-  color: #f7f4ea;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-
-.footer-guild-context {
-  color: #77736b;
-  font-size: 0.76rem;
-}
-
-.footer-destinations {
-  display: grid;
-  gap: 1rem;
-}
-
-.footer-group {
-  display: grid;
-  gap: 0.55rem;
-}
-
-.footer-group-title {
-  margin: 0;
-  color: #77736b;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.footer-links {
+.footer-site-information {
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem 1rem;
+  gap: 0.5rem;
+  color: #77736b;
+  font-size: 0.74rem;
 }
 
-.footer-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: #c9c5ba;
-  font-size: 0.84rem;
-  font-weight: 650;
-  text-decoration: none;
-  transition: color 140ms ease;
-}
-
-.footer-link:hover,
-.footer-link:focus-visible {
-  color: #f7f4ea;
-}
-
-.footer-link:focus-visible {
-  outline: 2px solid #e8c986;
-  outline-offset: 3px;
-  border-radius: 0.2rem;
-}
-
-.footer-link-discord {
-  color: #e8c986;
-}
-
-.footer-discord-icon {
-  width: 1rem;
-  height: 1rem;
-  flex: 0 0 auto;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.7;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
+.footer-site-information a { color: inherit; text-decoration: none; transition: color 140ms ease; }
+.footer-site-information a:hover, .footer-site-information a:focus-visible { color: #c9c5ba; }
 
 @media (min-width: 46rem) {
   .app-footer-inner {
@@ -105,9 +50,6 @@
     padding-bottom: 2rem;
   }
 
-  .footer-destinations {
-    grid-template-columns: auto 1fr;
-    justify-content: end;
-    gap: 2.5rem;
-  }
+  .footer-destinations { grid-template-columns: auto 1fr; justify-content: end; gap: 2.5rem; }
+  .footer-site-information { grid-column: 1 / -1; justify-content: flex-end; }
 }
