@@ -38,6 +38,12 @@ global authorization decision
 
 Capability sets are explicit. The resolver does not assume implicit capability inheritance from numeric rank ordering.
 
+## Authorization and presentation
+
+This infrastructure owns the authorization decision. Presentation infrastructure may hide, disable, label, or otherwise express an action according to the current authorized state, but presentation is never the enforcement boundary.
+
+Routes and procedures that require a capability must enforce that requirement against backend authority regardless of whether the corresponding control is visible in the current interface. Shared presentation behavior is documented in [`web-rendering.md`](web-rendering.md).
+
 ## Module use
 
 Modules may consume current global facts directly, require an existing global capability, or introduce module-specific permission state when a concrete procedure proves that additional state is necessary.
