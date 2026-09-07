@@ -72,14 +72,11 @@
 
 .guild-refresh-button {
   flex: none;
-  min-height: 2.45rem;
-  padding: 0.55rem 0.8rem;
 }
 
 .guild-refresh-button:disabled,
 .guild-refresh-schedule button:disabled {
   cursor: wait;
-  opacity: 0.65;
 }
 
 .guild-refresh-status {
@@ -126,16 +123,7 @@
 }
 
 .guild-refresh-toggle {
-  display: inline-flex;
-  gap: 0.5rem;
-  align-items: center;
-  color: #c9c5ba;
-  font-size: 0.9rem;
-}
-
-.guild-refresh-toggle input {
-  width: 1rem;
-  height: 1rem;
+  flex: none;
 }
 
 .guild-refresh-schedule-controls {
@@ -156,13 +144,6 @@
 
 .guild-refresh-schedule-controls input {
   width: 8rem;
-  min-height: 2.4rem;
-  padding: 0.5rem 0.65rem;
-}
-
-.guild-refresh-schedule-controls button {
-  min-height: 2.4rem;
-  padding: 0.5rem 0.75rem;
 }
 
 .guild-refresh-schedule-next {
@@ -227,13 +208,6 @@
 .operations-filters label span {
   color: #aaa69c;
   font-size: 0.82rem;
-}
-
-.operations-filters input,
-.operations-filters select,
-.operations-filters button {
-  min-height: 2.5rem;
-  padding: 0.55rem 0.7rem;
 }
 
 .operations-filters a {
