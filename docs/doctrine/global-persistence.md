@@ -1,216 +1,73 @@
-# Global Persistence
+# Persistence Ownership
 
 ## Purpose
 
-Define which durable state belongs to Guild Operations globally so shared machinery and concrete modules can orient against one operational truth without duplicating it.
-
-This document owns persistence **semantics and ownership**. It is not a table-by-table schema catalog, migration inventory, or generic persistence framework.
+This document defines how Guild Operations decides **where durable state belongs**. It is doctrine, not a table catalog, migration inventory, or database-access manual.
 
 > Persistence ownership follows semantic ownership.
 
 A fact is not globally owned merely because it is stored in the same database, referenced by many consumers, or projected through a shared interface.
 
-## Globally owned persisted state
+## Global state
 
-Guild Operations globally persists durable application objects and shared operational facts whose meaning belongs to the application as a whole.
+Guild Operations globally owns durable application objects and shared operational facts whose meaning belongs to the application as a whole, including Guildie continuity, Guild Operations-owned preferences and associations, global permission policy, and persistence required by genuinely shared infrastructure.
 
-Current examples include:
+Blizzard observations needed globally may also be persisted globally without transferring authority away from Blizzard.
 
-```text
-Guildie continuity
-Blizzard principal bindings
-WoW account observations
-Character control observations
-Guild identity and Blizzard roster observations
-Blizzard numeric rank observations
-Guild Operations rank definitions and global capabilities
-selected-main preference
-Discord association
-authentication/session state
-Character presentation acquisition state
-```
+Concrete modules reference globally owned objects and observations rather than recreating them locally.
 
-These facts are not recreated inside concrete participation modules.
+## Derived state
 
-Modules may reference globally owned coordinates while persisting procedure-specific meaning. Referencing a Guildie, Character, guild, rank, or other global coordinate does not transfer ownership of that object or authority fact to the module.
+Not every globally meaningful fact should be independently persisted.
 
-## Derived global state
+Current Guildie organizational participation and effective rank are derived from account-control and roster observations according to [`guild-authority.md`](guild-authority.md). They must not become a second stored source of membership authority.
 
-Not every globally meaningful state is independently persisted.
-
-Current Guildie organizational participation is derived from shared Blizzard observations:
-
-```text
-Guildie's currently controlled Characters
-                ∩
-current Blizzard guild Character roster
-                ↓
-current Guildie participation surface
-        +
-effective guild rank
-```
-
-The persisted inputs are global observations. The resulting Guildie participation surface and effective rank are derived current truth, not a second stored membership authority.
-
-The derivation itself is defined in [`guild-authority.md`](guild-authority.md).
-
-## Membership references
-
-Current Character membership comes from the persisted Blizzard roster observation. Current Guildie organizational participation is derived from control + roster truth.
-
-Therefore:
-
-```text
-current Character membership
-    → reference the global Blizzard roster observation
-
-current Guildie organizational participation
-    → derive from global control + roster observations
-
-procedure-specific participation
-    → persist only the historical/procedural relationship actually established
-```
-
-A module or shared consumer must not copy current membership into local state and later treat that copy as authoritative.
-
-A historical statement such as "this Character participated while eligible" may be persisted by the procedure that owns that fact. Historical participation does not become a mutable source of current guild membership or rank.
-
-## Shared authority state
-
-Guild Operations persists or derives the shared facts from which authorization is evaluated.
-
-Current authority inputs include:
-
-- authenticated Guildie continuity;
-- Blizzard-demonstrated Character control;
-- current Blizzard guild roster membership;
-- current Blizzard numeric guild rank;
-- Guild Operations-owned global capability policy.
-
-The translation from effective guild authority into globally owned application permission is documented in [`guild-permissioning.md`](guild-permissioning.md).
-
-Consumers should reference these shared facts rather than duplicating them merely to make a local authorization decision.
-
-## Operational and security persistence
-
-Some globally owned persistence operates shared ceremonies rather than representing a member or participation fact.
-
-Examples include:
-
-```text
-authentication attempts
-application sessions
-Discord association attempts
-Character presentation acquisition attempts/state
-```
-
-These records are application machinery. They are not additional member objects or participation history.
+Historical procedure facts may be persisted by the procedure that established them without becoming mutable sources of current membership, rank, or identity truth.
 
 ## Module-owned persistence
 
-A concrete module owns the durable facts created by its own guild procedure.
-
-The rule is:
+A concrete module owns durable facts created by its own guild procedure.
 
 > A module owns the persistence of the participation or operation truth it establishes. It does not duplicate persistence owned globally by Guild Operations.
 
-Module persistence may reference global objects and current authority facts. It must not become a competing owner of those facts.
+Referencing a Guildie, Character, guild, rank, capability, or other global coordinate does not transfer ownership of that object or authority fact to the module.
 
 ## Shared-contract persistence
 
-Some persistence belongs to shared infrastructure even when the truth represented there originates in another owner.
+Shared infrastructure may own storage and enforcement of a shared contract even when another owner remains authoritative for the truth contributed through it.
 
-The Guild Event Calendar is the current earned example:
+For example, a module may own the occurrence truth that it translates into a Guild Event Calendar Listing while Calendar infrastructure owns storage and enforcement of the listing contract.
 
-```text
-module
-    owns occurrence truth
-        ↓ establishes
-Guild Event Calendar Listing
-        ↓ stored/enforced by
-Guild Event Calendar Registry
-        ↓ read by
-calendar consumers
-```
+Shared storage and semantic truth ownership are separate concepts.
 
-The shared infrastructure owns storage and enforcement of its contract. The producing module remains authoritative for the concrete occurrence facts it contributes.
+## External authority
 
-Shared storage and truth origin are intentionally separate concepts.
+Persisting an observation does not transfer authority from the system that established it.
 
-## External authority versus persistence ownership
+Blizzard remains authoritative for authenticated account control, WoW account structure, Character identity and observations, current WoW guild roster membership, and numeric guild rank.
 
-Persisting an observation does not transfer authority from the external system that established it.
-
-Blizzard remains authoritative for facts such as:
-
-- authenticated Blizzard account control;
-- WoW account structure;
-- Character identity and Blizzard-owned Character observations;
-- current WoW guild roster membership;
-- numeric guild rank.
-
-Guild Operations persists those observations because they are needed to operate the guild outside WoW. It remains authoritative only for the meanings and procedures it establishes itself, including Guildie continuity, selected-main preference, Discord association, application permission policy, shared-contract state, and concrete Guild Operations procedure outcomes.
+Guild Operations is authoritative for meanings and procedures it establishes itself.
 
 ## Persist actual objects and relationships
 
-Persistence must name the actual object and relationship involved.
+Persistence must name the actual object and relationship involved. `Subject` is contextual language, not a persisted object category or universal coordinate.
 
-Examples include:
+## Time law
 
-```text
-guildie_id
-character_record_id
-guild_id
-guild_event_id
-```
+Persisted values representing instants in time use Unix time. Human-readable formatting belongs to presentation. Server or container timezone is not application policy, and local user input must be converted before persistence.
 
-Role-specific relationships should be equally explicit.
+Legacy timestamp columns predating this rule are conformity debt; they do not weaken the rule for new persistence and should not trigger unrelated wholesale migrations.
 
-`Subject` is contextual language, not a persisted object category or universal coordinate.
-
-## Persistence laws
-
-Global, module-owned, and shared-contract persistence are all subject to application-wide persistence conventions.
-
-### Time
-
-Persisted values representing instants in time must use Unix time. Human-readable date and time formatting belongs to presentation.
-
-Server or container timezone is not application policy. Local user input must be converted to canonical Unix representation before persistence.
-
-The current schema predates this rule in several places and still contains legacy `timestamptz` columns. Those columns are conformity debt; their existence does not weaken the rule for new persistence.
-
-Do not broaden unrelated feature work into a wholesale timestamp migration merely to remove that debt. Correct it deliberately when a concrete migration scope is earned.
-
-## Ownership test for new persistence
+## Ownership test
 
 When adding durable state, ask:
 
 1. What concrete fact or relationship is being persisted?
 2. Which layer owns the meaning of that fact?
-3. Is the fact locally authoritative or an observation of external authority?
+3. Is it locally authoritative or an observation of external authority?
 4. Does globally owned state already exist that should be referenced rather than duplicated?
-5. Has shared storage actually been earned by multiple producers or consumers?
+5. Has shared storage actually been earned by real producers or consumers?
 
-The answer should place state with its semantic owner rather than with whichever code path happens to write it first.
+Place state with its semantic owner rather than whichever code path happens to write it first.
 
-## Current boundary summary
-
-```text
-Guild Operations global state
-├── persisted durable objects and external-authority observations
-│   ├── Guildie / Blizzard account-control observations
-│   ├── Character / guild roster / numeric-rank observations
-│   ├── selected main and Discord association
-│   ├── global permission policy
-│   └── shared operational/security acquisition state
-├── derived current state
-│   └── Guildie participation surface + effective rank
-└── shared-contract persisted state
-    └── common infrastructure contracts whose truth may originate elsewhere
-
-Module-owned persistence
-└── concrete procedure-specific truth and history
-```
-
-The database may physically contain records from all of these ownership classes. Their semantic ownership remains distinct.
+Current transactional and operational persistence mechanics belong under [`../infrastructure/`](../infrastructure/).
