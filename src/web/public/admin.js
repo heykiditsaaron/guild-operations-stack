@@ -60,7 +60,7 @@ if (
   && scheduleSave instanceof HTMLButtonElement
   && scheduleFeedback instanceof HTMLElement
 ) {
-  const toggleLabel = scheduleEnabled.parentElement?.querySelector("span");
+  const toggleLabel = scheduleEnabled.parentElement?.querySelector("[data-switch-label]");
   scheduleEnabled.addEventListener("change", () => {
     if (toggleLabel) toggleLabel.textContent = scheduleEnabled.checked ? "On" : "Off";
   });
