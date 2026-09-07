@@ -154,7 +154,7 @@ async function renderDiscordAdministration(): Promise<string> {
     return `<div class="discord-admin discord-admin-unavailable">
       <h3>Discord roles</h3>
       <p>Discord roles could not be read. Projection is currently ${settings.enabled ? "enabled" : "disabled"}.</p>
-      <a href="/admin/discord-state">Inspect Discord state →</a>
+      <a href="/admin/discord-state">Pending actions →</a>
     </div>`;
   }
 
@@ -174,7 +174,7 @@ async function renderDiscordAdministration(): Promise<string> {
         <h3>Discord roles</h3>
         <p>Project Guild Operations-managed Linked and guild-rank roles into Discord.</p>
       </div>
-      <a class="discord-state-link" href="/admin/discord-state">Inspect state →</a>
+      <a class="discord-state-link" href="/admin/discord-state">Pending actions →</a>
     </div>
 
     <form class="discord-projection-form" data-discord-projection-form>
@@ -385,21 +385,19 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       linkedRoleId,
       rankRoles: rankRoles.filter((mapping): mapping is NonNullable<typeof mapping> => mapping !== null),
     });
+    const previousManagedRoleIds = [
+      ...(previous.linkedRoleId ? [previous.linkedRoleId] : []),
+      ...previous.rankRoles.map((mapping) => mapping.discordRoleId),
+    ];
 
-    if (settings.enabled) {
-      const previousManagedRoleIds = [
-        ...(previous.linkedRoleId ? [previous.linkedRoleId] : []),
-        ...previous.rankRoles.map((mapping) => mapping.discordRoleId),
-      ];
-      try {
-        await reconcileAllGuildieDiscordRoles({
-          trigger: "admin-configuration",
-          additionalManagedRoleIds: previousManagedRoleIds,
-        });
-      } catch (error) {
-        request.log.error({ err: error }, "Discord projection reconciliation failed");
-        return reply.code(502).send({ error: "discord_reconciliation_failed", settings });
-      }
+    try {
+      await reconcileAllGuildieDiscordRoles({
+        trigger: "admin-configuration",
+        additionalManagedRoleIds: previousManagedRoleIds,
+      });
+    } catch (error) {
+      request.log.error({ err: error }, "Discord projection reconciliation failed");
+      return reply.code(502).send({ error: "discord_reconciliation_failed", settings });
     }
 
     return reply.send({ settings });
