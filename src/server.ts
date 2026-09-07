@@ -5,6 +5,7 @@ import { pool } from "./db.js";
 import { registerAuthRoutes } from "./auth.js";
 import { registerDiscordRoutes } from "./discord.js";
 import { registerGuildRoutes } from "./guild-routes.js";
+import { startGuildRefreshScheduler } from "./guild-refresh-scheduler.js";
 import { reconcileRaffleCalendarListingDestinations } from "./modules/raffle/calendar-listing.js";
 import { registerRaffleGuildEventOffering } from "./modules/raffle/offering.js";
 import { registerRaffleQueryRoutes } from "./modules/raffle/query-routes.js";
@@ -60,7 +61,10 @@ await registerRaffleRoutes(app);
 await registerRaffleQueryRoutes(app);
 await registerQueryRoutes(app);
 
+let stopGuildRefreshScheduler: (() => void) | null = null;
+
 const shutdown = async (): Promise<void> => {
+  stopGuildRefreshScheduler?.();
   await app.close();
   await pool.end();
 };
@@ -69,3 +73,4 @@ process.on("SIGINT", () => void shutdown());
 process.on("SIGTERM", () => void shutdown());
 
 await app.listen({ host: "0.0.0.0", port: config.port });
+stopGuildRefreshScheduler = startGuildRefreshScheduler(app.log);
