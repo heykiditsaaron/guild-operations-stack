@@ -13,6 +13,16 @@ const optional = (name: string): string | null => {
   return value ? value : null;
 };
 
+const optionalHttpUrl = (name: string): string | null => {
+  const value = optional(name);
+  if (!value) return null;
+  const url = new URL(value);
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error(`${name} must use http or https`);
+  }
+  return url.toString();
+};
+
 const port = Number(process.env.PORT ?? "3100");
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error("PORT must be a valid TCP port");
@@ -56,7 +66,7 @@ export const config = {
   discordRedirectUri: new URL("/auth/discord/callback", appOrigin).toString(),
   discordGuildId: optional("DISCORD_GUILD_ID"),
   discordBotToken: optional("DISCORD_BOT_TOKEN"),
-  discordInviteUrl: optional("DISCORD_INVITE_URL"),
+  discordInviteUrl: optionalHttpUrl("DISCORD_INVITE_URL"),
   sessionCookieSecure: (process.env.SESSION_COOKIE_SECURE ?? "false") === "true",
   authAttemptTtlMinutes: 10,
   sessionTtlDays: 30,
