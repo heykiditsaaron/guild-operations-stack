@@ -173,6 +173,39 @@ The response reports the refreshed guild, roster size, requesting Guildie and ef
 
 Missing session authority returns `401`. A current Guildie without the required capability receives `403` with `guild_capability_required` and the required capability coordinate.
 
+### PUT `/guild/refresh/schedule`
+
+Requires an application session plus the `guild.refresh` capability.
+
+Configures the application-owned automatic guild refresh cadence.
+
+Request body:
+
+```json
+{
+  "enabled": true,
+  "interval_seconds": 86400
+}
+```
+
+`interval_seconds` must be an integer of at least `300` seconds.
+
+Saving enabled automatic refresh starts a fresh cadence from the time the setting is saved. Saving disabled automatic refresh clears the next due instant. Manual refresh does not alter this cadence.
+
+The response returns the persisted schedule:
+
+```json
+{
+  "enabled": true,
+  "interval_seconds": 86400,
+  "next_due_at_unix": 1788825600
+}
+```
+
+`next_due_at_unix` is `null` when automatic refresh is disabled.
+
+Invalid input returns `400`. Missing session authority returns `401`. A current Guildie without `guild.refresh` receives `403`.
+
 ## Machine queries
 
 These endpoints require `EVENT_QUERY_API_KEY`. The credential may be supplied either directly as the `Authorization` header value or as a Bearer token.
