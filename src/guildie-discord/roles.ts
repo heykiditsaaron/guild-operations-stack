@@ -10,12 +10,19 @@ import {
 import { guildDiscordProjectionSettings } from "./policy.js";
 import { discordStateForGuildie } from "./state.js";
 
-export type DiscordRoleReconciliation = {
+export type DiscordRoleEvaluation = {
   guildieId: string;
   discordUserId: string | null;
   enabled: boolean;
   presentInGuild: boolean;
+  observedAt: number;
   desiredRoleIds: string[];
+  currentManagedRoleIds: string[];
+  plannedAddRoleIds: string[];
+  plannedRemoveRoleIds: string[];
+};
+
+export type DiscordRoleReconciliation = DiscordRoleEvaluation & {
   addedRoleIds: string[];
   removedRoleIds: string[];
 };
@@ -49,10 +56,10 @@ function desiredRankRoleIds(
     .map((mapping) => mapping.discordRoleId);
 }
 
-export async function reconcileGuildieDiscordRoles(
+export async function evaluateGuildieDiscordRoles(
   guildieId: string,
   context: ReconciliationContext = {},
-): Promise<DiscordRoleReconciliation> {
+): Promise<DiscordRoleEvaluation> {
   const [settings, state, authority] = await Promise.all([
     guildDiscordProjectionSettings(),
     discordStateForGuildie(guildieId),
@@ -78,13 +85,28 @@ export async function reconcileGuildieDiscordRoles(
   const plannedAddRoleIds = [...desiredRoleIds].filter((roleId) => !state.roleIds.includes(roleId));
   const plannedRemoveRoleIds = currentManagedRoleIds.filter((roleId) => !desiredRoleIds.has(roleId));
 
-  if (!settings.enabled) {
+  return {
+    guildieId,
+    discordUserId: state.discordUserId,
+    enabled: settings.enabled,
+    presentInGuild: state.presentInGuild,
+    observedAt: state.observedAt,
+    desiredRoleIds: [...desiredRoleIds],
+    currentManagedRoleIds,
+    plannedAddRoleIds,
+    plannedRemoveRoleIds,
+  };
+}
+
+export async function reconcileGuildieDiscordRoles(
+  guildieId: string,
+  context: ReconciliationContext = {},
+): Promise<DiscordRoleReconciliation> {
+  const evaluation = await evaluateGuildieDiscordRoles(guildieId, context);
+
+  if (!evaluation.enabled) {
     return {
-      guildieId,
-      discordUserId: state.discordUserId,
-      enabled: false,
-      presentInGuild: state.presentInGuild,
-      desiredRoleIds: [...desiredRoleIds],
+      ...evaluation,
       addedRoleIds: [],
       removedRoleIds: [],
     };
@@ -94,13 +116,13 @@ export async function reconcileGuildieDiscordRoles(
   const removedRoleIds: string[] = [];
 
   try {
-    if (state.discordUserId && state.presentInGuild) {
-      for (const roleId of plannedAddRoleIds) {
-        await addDiscordGuildMemberRole(state.discordUserId, roleId);
+    if (evaluation.discordUserId && evaluation.presentInGuild) {
+      for (const roleId of evaluation.plannedAddRoleIds) {
+        await addDiscordGuildMemberRole(evaluation.discordUserId, roleId);
         addedRoleIds.push(roleId);
       }
-      for (const roleId of plannedRemoveRoleIds) {
-        await removeDiscordGuildMemberRole(state.discordUserId, roleId);
+      for (const roleId of evaluation.plannedRemoveRoleIds) {
+        await removeDiscordGuildMemberRole(evaluation.discordUserId, roleId);
         removedRoleIds.push(roleId);
       }
     }
@@ -112,13 +134,14 @@ export async function reconcileGuildieDiscordRoles(
       summary: "Discord role reconciliation did not complete.",
       details: {
         guildie_id: guildieId,
-        discord_user_id: state.discordUserId,
+        discord_user_id: evaluation.discordUserId,
         trigger: context.trigger ?? null,
-        present_in_guild: state.presentInGuild,
-        desired_role_ids: [...desiredRoleIds],
-        managed_role_ids: [...managedRoleIds],
-        planned_add_role_ids: plannedAddRoleIds,
-        planned_remove_role_ids: plannedRemoveRoleIds,
+        present_in_guild: evaluation.presentInGuild,
+        observed_at: evaluation.observedAt,
+        desired_role_ids: evaluation.desiredRoleIds,
+        current_managed_role_ids: evaluation.currentManagedRoleIds,
+        planned_add_role_ids: evaluation.plannedAddRoleIds,
+        planned_remove_role_ids: evaluation.plannedRemoveRoleIds,
         completed_add_role_ids: addedRoleIds,
         completed_remove_role_ids: removedRoleIds,
         error: error instanceof Error ? error.message : String(error),
@@ -137,22 +160,21 @@ export async function reconcileGuildieDiscordRoles(
       : `Discord roles already matched desired state for Guildie ${guildieId}.`,
     details: {
       guildie_id: guildieId,
-      discord_user_id: state.discordUserId,
+      discord_user_id: evaluation.discordUserId,
       trigger: context.trigger ?? null,
-      present_in_guild: state.presentInGuild,
-      desired_role_ids: [...desiredRoleIds],
-      managed_role_ids: [...managedRoleIds],
+      present_in_guild: evaluation.presentInGuild,
+      observed_at: evaluation.observedAt,
+      desired_role_ids: evaluation.desiredRoleIds,
+      current_managed_role_ids: evaluation.currentManagedRoleIds,
+      planned_add_role_ids: evaluation.plannedAddRoleIds,
+      planned_remove_role_ids: evaluation.plannedRemoveRoleIds,
       added_role_ids: addedRoleIds,
       removed_role_ids: removedRoleIds,
     },
   });
 
   return {
-    guildieId,
-    discordUserId: state.discordUserId,
-    enabled: true,
-    presentInGuild: state.presentInGuild,
-    desiredRoleIds: [...desiredRoleIds],
+    ...evaluation,
     addedRoleIds,
     removedRoleIds,
   };
