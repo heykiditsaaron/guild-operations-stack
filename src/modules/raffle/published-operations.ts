@@ -10,6 +10,7 @@ import {
   type RaffleRound,
 } from "./domain.js";
 import { establishRaffleCalendarListing } from "./calendar-listing.js";
+import { publishRaffleOperationalException } from "./operational-exceptions.js";
 import { publishRaffleEvent } from "./publisher.js";
 
 async function publishClaimEvent(
@@ -93,6 +94,15 @@ export async function drawRaffleRound(actorGuildieId: string, roundId: string): 
   if (round.conclusion === "drawn") {
     if (!round.winningClaimId) {
       console.error(`[raffle-publisher] drawn raffle round ${round.roundId} has no winning claim to publish`);
+      await publishRaffleOperationalException({
+        operation: "round.draw",
+        actorGuildieId,
+        summary: "Drawn raffle round is missing its winning claim.",
+        details: {
+          round_id: round.roundId,
+          conclusion: round.conclusion,
+        },
+      });
       return round;
     }
     await publishRaffleEvent({
