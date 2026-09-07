@@ -1,4 +1,5 @@
 import { config } from "../config.js";
+import type { AdministrationNavigationDestination } from "./admin-navigation.js";
 import { assetUrl, type AssetName, type AssetRegistry } from "./assets.js";
 
 function escapeHtml(value: string): string {
@@ -28,6 +29,7 @@ export type WebViewer =
   | {
       authenticated: true;
       administrationAvailable: boolean;
+      administrationDestinations: AdministrationNavigationDestination[];
       mainCharacter: {
         characterId: string;
         realmId: string;
@@ -171,6 +173,31 @@ function renderActionBar(viewer: WebViewer, pathname: string): string {
   </div></nav>`;
 }
 
+function administrationDestinationMatches(pathname: string, href: string): boolean {
+  if (href === "/admin") return pathname === href;
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function renderAdministrationNavigation(viewer: WebViewer, pathname: string): string {
+  if (!viewer.authenticated || viewer.administrationDestinations.length === 0) return "";
+
+  const current = viewer.administrationDestinations
+    .filter((destination) => administrationDestinationMatches(pathname, destination.href))
+    .sort((left, right) => right.href.length - left.href.length)[0];
+  if (!current) return "";
+
+  const options = viewer.administrationDestinations
+    .map((destination) => `<option value="${escapeHtml(destination.href)}"${destination.href === current.href ? " selected" : ""}>${escapeHtml(destination.label)}</option>`)
+    .join("");
+
+  return `<nav class="administration-navigation" aria-label="Administration navigation">
+    <label class="administration-navigation-control">
+      <span>Admin area</span>
+      <select data-administration-navigation>${options}</select>
+    </label>
+  </nav>`;
+}
+
 function renderSecondaryNavigation(navigation: SecondaryNavigation | undefined): string {
   if (!navigation) return "";
   if (navigation.kind === "back") return `<nav class="secondary-navigation secondary-navigation-back" aria-label="Secondary navigation"><a href="${escapeHtml(navigation.href)}">← ${escapeHtml(navigation.label)}</a></nav>`;
@@ -208,6 +235,7 @@ export function renderPage(assets: AssetRegistry, input: RenderPageInput): strin
   const canonicalUrl = new URL(input.pathname, config.appOrigin).toString();
   const stylesheets = (input.stylesheets ?? []).map((name) => `  <link rel="stylesheet" href="${assetUrl(assets, name)}">`).join("\n");
   const scripts = (input.scripts ?? []).map((name) => `  <script src="${assetUrl(assets, name)}" defer></script>`).join("\n");
+  const administrationNavigation = renderAdministrationNavigation(input.viewer, input.pathname);
   const secondaryNavigation = renderSecondaryNavigation(input.secondaryNavigation);
   return `<!doctype html>
 <html lang="en">
@@ -225,6 +253,7 @@ ${stylesheets ? `${stylesheets}\n` : ""}  <title>${title}</title>
 <body>
   <div class="app-shell">
     ${renderActionBar(input.viewer, input.pathname)}
+    ${administrationNavigation ? `<div class="administration-navigation-zone">${administrationNavigation}</div>` : ""}
     ${secondaryNavigation ? `<div class="secondary-navigation-zone">${secondaryNavigation}</div>` : ""}
     <header class="page-header${secondaryNavigation ? " page-header-after-secondary-navigation" : ""}">${input.header}</header>
     <main class="app-main">${input.body}</main>
