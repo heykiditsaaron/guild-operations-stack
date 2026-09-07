@@ -27,7 +27,6 @@ For those targets it owns:
 
 - Blizzard application-token acquisition;
 - bounded concurrency;
-- shared request pacing and retry/backoff;
 - Character Profile and Character Media GETs;
 - corroboration that returned coordinates match the requested Character;
 - persistence of successful observations;
@@ -46,19 +45,17 @@ With no explicit targets it can operate across the current roster. `npm run guil
 
 Ordinary [`guild-refresh.md`](guild-refresh.md) selects only Characters requiring follow-up rather than blindly sweeping the roster.
 
-## Self refresh
+## Account self refresh
 
-[`self-account-refresh.md`](self-account-refresh.md) calls the shared primitive directly after it has independently selected Characters satisfying current control ∩ current roster.
+[`blizzard-account-authority.md`](blizzard-account-authority.md) calls the shared primitive after self refresh has independently selected Characters satisfying current control ∩ current roster.
 
-It requests both profile and media for each eligible Character.
+Self refresh requests both profile and media for each eligible Character.
 
 ## Request behavior
 
 Default concurrency is 8 workers; maximum accepted concurrency is 20.
 
-All Blizzard authority GETs pass through the shared gate currently limited to 10 requests per second. HTTP 429 and 5xx responses are retried; `Retry-After` is honored when supplied and exponential backoff is used otherwise.
-
-Structured results report profile and media success/failure independently and count actual Blizzard requests including retries.
+Character Profile and Character Media authority GETs use the shared [`blizzard-request-boundary.md`](blizzard-request-boundary.md). Structured results report profile and media success/failure independently and count actual Blizzard requests including retries.
 
 ## Safety boundary
 
