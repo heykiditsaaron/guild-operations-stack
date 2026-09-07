@@ -6,6 +6,7 @@ import {
   GUILD_DISCORD_MANAGE_CAPABILITY,
   guildieHasGuildCapability,
 } from "../../guild-permissions.js";
+import { discordGuildIntegrationConfigured } from "../../guildie-discord/client.js";
 import { guildDiscordProjectionSettings } from "../../guildie-discord/policy.js";
 import { discordStateForGuildie } from "../../guildie-discord/state.js";
 import type { AssetRegistry } from "../assets.js";
@@ -29,6 +30,8 @@ type AssociatedGuildie = {
   main_realm_name: string | null;
 };
 
+type UnavailableStatusCode = 401 | 403 | 503;
+
 const discordStateNavigation: SecondaryNavigation = {
   kind: "back",
   label: "Administration",
@@ -38,9 +41,9 @@ const discordStateNavigation: SecondaryNavigation = {
 function renderUnavailable(
   assets: AssetRegistry,
   viewer: Awaited<ReturnType<typeof viewerForRequest>>,
-  statusCode: 401 | 403,
+  statusCode: UnavailableStatusCode,
   message: string,
-): { statusCode: 401 | 403; html: string } {
+): { statusCode: UnavailableStatusCode; html: string } {
   return {
     statusCode,
     html: renderPage(assets, {
@@ -80,6 +83,20 @@ export async function registerAdminDiscordStatePage(app: FastifyInstance, assets
         viewer,
         403,
         "Discord administration is not available for this account.",
+      );
+      return reply
+        .code(unavailable.statusCode)
+        .header("Cache-Control", "no-cache")
+        .type("text/html; charset=utf-8")
+        .send(unavailable.html);
+    }
+
+    if (!discordGuildIntegrationConfigured()) {
+      const unavailable = renderUnavailable(
+        assets,
+        viewer,
+        503,
+        "Direct Discord guild integration is not configured.",
       );
       return reply
         .code(unavailable.statusCode)
