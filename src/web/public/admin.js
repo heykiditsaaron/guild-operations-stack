@@ -106,3 +106,127 @@ if (
     }
   });
 }
+
+const discordForm = document.querySelector("[data-discord-projection-form]");
+const discordEnabled = document.querySelector("[data-discord-projection-enabled]");
+const discordRefreshRoles = document.querySelector("[data-discord-refresh-roles]");
+const discordSave = document.querySelector("[data-discord-projection-save]");
+const discordFeedback = document.querySelector("[data-discord-projection-feedback]");
+
+if (
+  discordForm instanceof HTMLFormElement
+  && discordEnabled instanceof HTMLInputElement
+  && discordRefreshRoles instanceof HTMLButtonElement
+  && discordSave instanceof HTMLButtonElement
+  && discordFeedback instanceof HTMLElement
+) {
+  const toggleLabel = discordEnabled.parentElement?.querySelector("[data-discord-switch-label]");
+  discordEnabled.addEventListener("change", () => {
+    if (toggleLabel) toggleLabel.textContent = discordEnabled.checked ? "On" : "Off";
+  });
+
+  discordRefreshRoles.addEventListener("click", async () => {
+    if (discordRefreshRoles.disabled) return;
+
+    discordRefreshRoles.disabled = true;
+    discordFeedback.textContent = "Refreshing Discord roles…";
+
+    try {
+      const response = await fetch("/admin", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: "discord_roles.refresh" }),
+      });
+      if (!response.ok) throw new Error(`Discord role refresh returned ${response.status}`);
+
+      const payload = await response.json();
+      const roles = Array.isArray(payload.roles) ? payload.roles : [];
+      for (const element of discordForm.querySelectorAll("[data-discord-role-select]")) {
+        if (!(element instanceof HTMLSelectElement)) continue;
+        const selected = element.value;
+        element.replaceChildren();
+
+        const empty = document.createElement("option");
+        empty.value = "";
+        empty.textContent = "Not configured";
+        element.append(empty);
+
+        for (const role of roles) {
+          if (!role || typeof role.id !== "string" || typeof role.name !== "string") continue;
+          const option = document.createElement("option");
+          option.value = role.id;
+          option.textContent = role.name;
+          option.selected = role.id === selected;
+          element.append(option);
+        }
+
+        if (!roles.some((role) => role?.id === selected)) element.value = "";
+      }
+
+      discordFeedback.textContent = "Discord roles refreshed. Unsaved selections were preserved where possible.";
+    } catch (error) {
+      console.error("Discord role refresh failed", error);
+      discordFeedback.textContent = "Discord roles could not be refreshed.";
+    } finally {
+      discordRefreshRoles.disabled = false;
+    }
+  });
+
+  discordForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (discordSave.disabled) return;
+
+    const linkedRole = discordForm.querySelector('select[name="linkedRoleId"]');
+    if (!(linkedRole instanceof HTMLSelectElement)) return;
+
+    const rankRoles = Array.from(discordForm.querySelectorAll("[data-discord-rank-index]"))
+      .filter((element) => element instanceof HTMLSelectElement && element.value)
+      .map((element) => ({
+        rankIndex: Number(element.dataset.discordRankIndex),
+        discordRoleId: element.value,
+      }));
+
+    discordSave.disabled = true;
+    discordSave.textContent = "Saving…";
+    discordFeedback.textContent = discordEnabled.checked
+      ? "Saving Discord settings and reconciling roles…"
+      : "Saving Discord settings…";
+
+    try {
+      const response = await fetch("/admin", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "discord_projection.update",
+          enabled: discordEnabled.checked,
+          linkedRoleId: linkedRole.value || null,
+          rankRoles,
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 502) {
+          discordFeedback.textContent = "Settings were saved, but Discord reconciliation failed. View logs for details.";
+          discordSave.disabled = false;
+          discordSave.textContent = "Save";
+          return;
+        }
+        throw new Error(`Discord projection update returned ${response.status}`);
+      }
+
+      discordFeedback.textContent = "Discord settings saved. Updating status…";
+      window.location.reload();
+    } catch (error) {
+      console.error("Discord projection update failed", error);
+      discordSave.disabled = false;
+      discordSave.textContent = "Save";
+      discordFeedback.textContent = "Discord settings could not be saved.";
+    }
+  });
+}
