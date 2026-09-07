@@ -6,6 +6,7 @@ import type {
   RaffleRoundConclusion,
   RaffleRoundStatus,
 } from "./domain.js";
+import { raffleGuildieAttribution } from "./guildie-attribution.js";
 
 export type RafflePublicClaim = {
   claimId: string;
@@ -14,6 +15,7 @@ export type RafflePublicClaim = {
   promisedGoldValue: string;
   createdAtUnix: number;
   resolutionKind: RaffleClaimResolution;
+  resolutionActorLabel: string | null;
   resolvedAtUnix: number | null;
   denialReason: string | null;
 };
@@ -52,6 +54,12 @@ function resolvedAtUnix(row: Record<string, unknown>): number | null {
   return null;
 }
 
+function resolutionActorGuildieId(row: Record<string, unknown>): string | null {
+  if (row.resolution_kind === "approved") return nullableString(row.approved_by_guildie_id);
+  if (row.resolution_kind === "denied") return nullableString(row.denied_by_guildie_id);
+  return null;
+}
+
 export async function rafflePublicRound(roundId: string): Promise<RafflePublicRound | null> {
   const roundResult = await pool.query(
     `SELECT rr.*,
@@ -76,7 +84,9 @@ export async function rafflePublicRound(roundId: string): Promise<RafflePublicRo
        rc.promised_gold_value,
        rc.created_at_unix,
        rc.resolution_kind,
+       rc.approved_by_guildie_id,
        rc.approved_at_unix,
+       rc.denied_by_guildie_id,
        rc.denied_at_unix,
        rc.denial_reason,
        rc.cancelled_at_unix,
@@ -96,9 +106,24 @@ export async function rafflePublicRound(roundId: string): Promise<RafflePublicRo
     [roundId, config.guild.id],
   );
 
+  const actorGuildieIds = new Set<string>();
+  for (const claimRow of claimResult.rows) {
+    const actorGuildieId = resolutionActorGuildieId(claimRow as Record<string, unknown>);
+    if (actorGuildieId !== null) actorGuildieIds.add(actorGuildieId);
+  }
+
+  const attributionEntries = await Promise.all(
+    [...actorGuildieIds].map(async (actorGuildieId) => [
+      actorGuildieId,
+      await raffleGuildieAttribution(actorGuildieId),
+    ] as const),
+  );
+  const attributionByGuildieId = new Map(attributionEntries);
+
   const row = roundResult.rows[0] as Record<string, unknown>;
   const claims = claimResult.rows.map((claimRow) => {
     const claim = claimRow as Record<string, unknown>;
+    const actorGuildieId = resolutionActorGuildieId(claim);
     return {
       claimId: String(claim.claim_id),
       characterName: String(claim.character_name),
@@ -106,6 +131,9 @@ export async function rafflePublicRound(roundId: string): Promise<RafflePublicRo
       promisedGoldValue: String(claim.promised_gold_value),
       createdAtUnix: Number(claim.created_at_unix),
       resolutionKind: claim.resolution_kind as RaffleClaimResolution,
+      resolutionActorLabel: actorGuildieId === null
+        ? null
+        : attributionByGuildieId.get(actorGuildieId) ?? "Guild officer",
       resolvedAtUnix: resolvedAtUnix(claim),
       denialReason: nullableString(claim.denial_reason),
     } satisfies RafflePublicClaim;
