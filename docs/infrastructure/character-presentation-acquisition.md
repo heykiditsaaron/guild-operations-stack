@@ -26,7 +26,7 @@ Name, realm presentation, level, class, race, specialization, and media URLs are
 For those targets it owns:
 
 - Blizzard application-token acquisition;
-- bounded concurrency;
+- bounded acquisition concurrency;
 - Character Profile and Character Media GETs;
 - corroboration that returned coordinates match the requested Character;
 - persistence of successful observations;
@@ -36,6 +36,14 @@ For those targets it owns:
 Profile and media are independent resources. A media failure does not discard a successful profile observation.
 
 Guild Operations stores Blizzard media URLs, not the Blizzard media assets themselves.
+
+## Caller boundary
+
+Callers own **which Characters should be acquired and why**. This facility owns **how explicitly selected Character profile/media observations are acquired and reported**.
+
+For guild reconciliation, [`guild-refresh.md`](guild-refresh.md) owns post-reconciliation target selection. For account self refresh, [`blizzard-account-authority.md`](blizzard-account-authority.md) owns the current control ∩ current roster eligibility decision.
+
+Neither caller transfers membership, control, or eligibility authority into this facility by requesting acquisition.
 
 ## Guild-roster wrapper
 
@@ -53,9 +61,11 @@ Self refresh requests both profile and media for each eligible Character.
 
 ## Request behavior
 
-Default concurrency is 8 workers; maximum accepted concurrency is 20.
+Default acquisition concurrency is 8 workers; maximum accepted concurrency is 20.
 
-Character Profile and Character Media authority GETs use the shared [`blizzard-request-boundary.md`](blizzard-request-boundary.md). Structured results report profile and media success/failure independently and count actual Blizzard requests including retries.
+Concurrency controls how many Character acquisition tasks may be in flight. It is separate from Blizzard request-rate pacing. Character Profile and Character Media authority GETs still pass through the shared [`blizzard-request-boundary.md`](blizzard-request-boundary.md), which owns request-rate limiting and retry behavior.
+
+Structured results report profile and media success/failure independently and count actual Blizzard requests including retries.
 
 ## Safety boundary
 
