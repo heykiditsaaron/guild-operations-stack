@@ -1,104 +1,78 @@
-# Web Rendering Boundary
+# Web Rendering Infrastructure
 
-Guild Operations' web layer owns presentation composition and delivery. It does not redefine operational truth supplied by the backend.
-
-The renderer should grow from real application needs rather than predicted information architecture.
-
-## Projection contract
-
-Routes acquire or assemble view data, then hand presentation-ready values to the renderer. Rendering code must not perform database queries, make authority decisions, or manufacture backend state.
-
-Presentation-owned content may follow different authority rules when such systems are introduced. That does not permit the web layer to counteract authoritative backend state.
+Guild Operations' web layer owns presentation composition and delivery. Routes assemble presentation-ready values; rendering code does not query the database, make authority decisions, or manufacture backend truth.
 
 ## Application shell
 
-The shared shell owns application-level presentation such as:
+The shared shell owns application-level presentation including:
 
 - primary navigation;
 - optional secondary navigation;
 - shared action surfaces;
 - responsive shell behavior;
-- common page composition; and
+- common page composition;
 - persistent member context.
 
-The renderer may change presentation across breakpoints without changing the meaning of the interaction or navigation it represents.
+Authenticated member context is projected from the current Guildie. Selected-main or Character imagery may improve recognition but does not determine continuity or authorization.
 
-The authenticated member context is projected from the current Guildie. A selected main or Character portrait may improve recognition, but those presentation choices do not determine Guildie continuity or authorization.
+## Shared controls
 
-`Subject` is not a rendering identity object. If a page has a grammatical or domain subject, that role belongs to the concrete object the page is about.
+Standard interactive controls use the global presentation fallback unless a narrower semantic owner has a real reason to differ.
 
-## Shared interaction presentation
+Current shared fallback covers ordinary buttons/button-like actions, text and number inputs, text areas, selects, focus/disabled states, and switch presentation for boolean enabled/disabled controls.
 
-Standard interactive controls are global presentation infrastructure. Feature surfaces consume the shared fallback language rather than redefining ordinary controls by default.
-
-The shared fallback currently covers ordinary buttons and button-like actions, text/number inputs, text areas, selects, focus and disabled states, and switch presentation for boolean enabled/disabled controls.
-
-This is not a requirement for every interaction to look identical. A producer may define scoped CSS when its domain genuinely requires a different treatment, and rare exceptional surfaces may override presentation inline when neither the global nor producer scope is the correct owner. The precedence is therefore:
+Presentation precedence is:
 
 1. global shell fallback;
-2. producer-scoped refinement or override; and
+2. producer-scoped refinement or override;
 3. rare inline exception.
 
-Checkbox semantics remain distinct from switch semantics. A boolean control whose meaning is an enabled/disabled state may use the shared switch presentation while retaining a native checkbox input for semantics and accessibility. Ordinary checkbox choices should not become switches merely because they use the same HTML input type.
-
-Shared presentation should be promoted only after real application pressure demonstrates a common interaction. The purpose is fallback uniformity, not a speculative component or design-system framework.
+Checkbox semantics remain distinct from switch semantics. A boolean enabled/disabled state may use switch presentation while retaining a native checkbox input; ordinary checkbox choices should not become switches merely because they share the input type.
 
 ## Secondary navigation
 
-The shared renderer owns the optional navigation zone immediately below primary navigation. Modules and pages declare navigation intent; they do not reproduce shared breadcrumb or back-link presentation locally.
+Pages declare navigation intent; the shared renderer owns presentation.
 
-Secondary navigation currently expresses two distinct relationships:
+Two relationships are supported:
 
 ```text
 breadcrumb
-    → where is this durable location in the application?
+    → durable application location
 
 back
-    → where should this focused interaction return?
+    → return destination from a focused interaction
 ```
 
-A breadcrumb is appropriate for a durable location within an application realm. Items are declared in semantic hierarchy order. Navigable ancestors may supply destinations; the terminal item represents the current location. The renderer owns separators, current-location semantics, styling, placement, accessibility, and constrained-space behavior.
+For breadcrumbs, pages supply semantic hierarchy and navigable destinations where applicable. The renderer owns separators, current-location treatment, styling, placement, accessibility, and constrained-space behavior.
 
-A breadcrumb root may remain inert when a higher navigation layer already owns movement to that realm. It may be navigable when no higher layer owns that movement and a real parent surface exists. This is an ownership distinction, not a route-specific rule.
+For back navigation, pages supply destination and label. The renderer owns visual and accessibility treatment.
 
-Back navigation is appropriate when a surface is better understood as a focused interaction branching from one owning surface than as another durable location. The page supplies the semantic destination and label; the renderer owns the visual and accessibility treatment.
-
-The useful distinction is **location versus return from an interaction**, not a mechanical classification derived from URL structure.
-
-Secondary navigation remains separate from page identity. Breadcrumbs or back navigation communicate application relationship; eyebrows, titles, states, and other identity cues remain owned by the page or module.
+Use the semantic distinction **location versus return from an interaction**, not URL shape alone.
 
 ## Rendering ownership
 
-Rendering ownership follows semantic ownership:
+Use the broadest owner already earned:
 
-1. **Global rendering** for presentation that belongs to the shared application language.
-2. **Module rendering** for reusable presentation that belongs specifically to a module.
-3. **Inline rendering** for genuinely exceptional surfaces with no demonstrated reusable owner.
+1. global rendering for shared application language;
+2. module rendering for reusable module-specific presentation;
+3. inline rendering for genuinely exceptional one-off surfaces.
 
-Do not promote one-off presentation merely to create reuse, and do not duplicate shared shell or navigation behavior inside modules.
+Navigation belongs to the shell. Page and module identity—titles, section labels, event states, and domain status treatments—belongs to the page/module.
 
 ## Application origin
 
-`APP_ORIGIN` is the canonical externally visible application origin. Public application URLs are derived from it rather than hardcoded deployment addresses.
+`APP_ORIGIN` is the canonical externally visible application origin. Public URLs and OAuth callbacks derive from it rather than hardcoded deployment addresses.
 
-The local process listen port remains independent of the externally visible origin.
-
-OAuth callback URLs should be derived from the canonical application origin rather than introducing competing deployment coordinates.
+The local process listen port is independent of the externally visible origin.
 
 ## Asset delivery
 
-Shared web assets should use content-derived addressing so changed content receives a new URL while unchanged assets remain safely cacheable.
+Shared web assets use content-derived addressing so changed content receives a new URL and unchanged content remains safely cacheable.
 
-Rendered HTML should remain revalidatable so interface state is not made stale by long-lived document caching.
+Rendered HTML remains revalidatable so current interface state is not made stale by long-lived document caching.
 
-The implementation may evolve, but cache behavior must preserve the distinction between immutable versioned assets and current rendered application state.
+Implementation may evolve, but cache behavior must preserve the distinction between immutable versioned assets and current rendered application state.
 
-## Page and module identity
+## Growth rule
 
-Navigation presentation is global shell behavior. Page and module identity presentation is local.
-
-The shell owns navigation hierarchy, active/current treatment, responsive behavior, spacing, casing, separators, and shared accessibility semantics.
-
-Modules own identity cues whose meaning belongs to their domain, including page titles, section labels, event states, and status treatments.
-
-Do not use module-specific identity styling to recreate navigation behavior, and do not push module identity into the shared navigation renderer.
+Promote shared rendering only after real application pressure demonstrates common interaction or presentation behavior. The goal is fallback uniformity, not a speculative component or design-system framework.
