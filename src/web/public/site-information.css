@@ -1,0 +1,51 @@
+.site-document-header {
+  width: min(100%, 46rem);
+}
+
+.site-document {
+  width: min(100%, 46rem);
+  color: #c9c5ba;
+  font-size: 0.96rem;
+  line-height: 1.68;
+}
+
+.site-document-effective {
+  margin: 0 0 2rem;
+  color: #77736b;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.site-document section {
+  padding: 1.5rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.site-document section:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.site-document h2 {
+  margin: 0 0 0.65rem;
+  color: #f7f4ea;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.25rem, 3vw, 1.55rem);
+  line-height: 1.2;
+}
+
+.site-document p {
+  margin: 0.65rem 0 0;
+}
+
+.site-document h2 + p {
+  margin-top: 0;
+}
+
+.site-document code {
+  padding: 0.08rem 0.28rem;
+  border-radius: 0.3rem;
+  background: rgba(255, 255, 255, 0.055);
+  color: #e8c986;
+  font-size: 0.88em;
+}
