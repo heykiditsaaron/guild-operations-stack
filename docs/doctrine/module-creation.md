@@ -33,6 +33,31 @@ Current usage contracts live in [`../infrastructure/guild-event-offerings.md`](.
 
 Do not put rules, eligibility, administration, history, or module procedure into shared discovery projections merely because a shared interface consumes them.
 
+## Administration publication
+
+A module with its own administration surface may publish that surface into the shared administration navigation.
+
+The publication is intentionally small:
+
+```text
+label
+    → name shown in administration navigation
+
+destination
+    → module-owned landing route below /admin
+
+permission scope
+    → Guild Operations capability required before the destination is offered
+```
+
+A module publishes its administrative presence; it does not publish its administrative interface into the global page. The module continues to own its routes, procedure, authorization enforcement, and presentation after navigation reaches its destination.
+
+The global shell owns the administration selector. Once a module destination is registered, pages at that destination and its descendants can participate in the shared selector without reproducing selector markup or styling.
+
+Do not register a destination merely because a module exists. Registration is appropriate only when the module has a real administrative surface. Do not add navigation metadata beyond the three established fields until actual module administration creates the need.
+
+The current shell contract is documented in [`../infrastructure/web-rendering.md`](../infrastructure/web-rendering.md).
+
 ## Persistence
 
 A module owns persistence for the participation or operation truth it establishes. It must not duplicate globally owned Guild Operations truth.
