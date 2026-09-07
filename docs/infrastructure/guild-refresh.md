@@ -80,13 +80,11 @@ HTTP 404 from Character profile/media does not negate roster membership. Profile
 
 Newly observed, returning, or presentation-changed Characters bypass that cooldown. Successful acquisition clears the corresponding failure status. Other failures remain retryable normally.
 
-## Blizzard request boundary
+## Blizzard request behavior
 
-All Blizzard authority GET requests use the shared request gate, currently limited to 10 requests per second.
+Guild profile, roster, and follow-up Character authority GETs use the shared [`blizzard-request-boundary.md`](blizzard-request-boundary.md).
 
-The boundary retries HTTP 429 and 5xx responses, honors `Retry-After`, and otherwise uses exponential backoff.
-
-Manual, automatic, authentication, guild, and Character-presentation callers cannot bypass the shared GET gate. OAuth token exchange and application-token acquisition remain outside that gate.
+Guild refresh owns target selection and reconciliation semantics; the shared request boundary owns pacing and retry behavior.
 
 ## Operational inspection
 
