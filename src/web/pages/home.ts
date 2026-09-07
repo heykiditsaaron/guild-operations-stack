@@ -3,7 +3,7 @@ import { SESSION_COOKIE_NAME } from "../../auth.js";
 import { config } from "../../config.js";
 import { activeRaffleRound } from "../../modules/raffle/live-round.js";
 import { assetUrl, type AssetName, type AssetRegistry } from "../assets.js";
-import { escapeHtml, renderPage } from "../render.js";
+import { renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
 
 function liveRafflePromotion(assets: AssetRegistry): string {
@@ -43,7 +43,7 @@ function discordInvitation(): string {
     return "";
   }
 
-  return `<p class="home-orientation-action"><a class="button button-secondary" href="${escapeHtml(config.discordInviteUrl)}">Join us on Discord</a></p>`;
+  return `<p class="home-orientation-action"><a class="button button-secondary" href="${config.discordInviteUrl}">Join us on Discord</a></p>`;
 }
 
 export async function registerHomePage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
