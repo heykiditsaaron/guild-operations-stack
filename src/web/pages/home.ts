@@ -1,8 +1,9 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../auth.js";
+import { config } from "../../config.js";
 import { activeRaffleRound } from "../../modules/raffle/live-round.js";
 import { assetUrl, type AssetName, type AssetRegistry } from "../assets.js";
-import { renderPage } from "../render.js";
+import { escapeHtml, renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
 
 function liveRafflePromotion(assets: AssetRegistry): string {
@@ -35,6 +36,14 @@ function participationPromotions(assets: AssetRegistry, liveRaffle: boolean): st
         ${liveRafflePromotion(assets)}
       </div>
     </section>`;
+}
+
+function discordInvitation(): string {
+  if (!config.discordInviteUrl) {
+    return "";
+  }
+
+  return `<p class="home-orientation-action"><a class="button button-secondary" href="${escapeHtml(config.discordInviteUrl)}">Join us on Discord</a></p>`;
 }
 
 export async function registerHomePage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
@@ -108,6 +117,7 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
               <article class="home-orientation-item">
                 <h3>In Discord</h3>
                 <p>Follow the channels and activity notifications you care about. Keep the rest quiet. Participation should fit you, not demand your attention.</p>
+                ${discordInvitation()}
               </article>
             </div>
           </section>
