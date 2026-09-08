@@ -1,5 +1,6 @@
 import cookie from "@fastify/cookie";
 import Fastify from "fastify";
+import { registerApiV1Routes } from "./api-v1-routes.js";
 import { config } from "./config.js";
 import { pool } from "./db.js";
 import { registerAuthRoutes } from "./auth.js";
@@ -11,7 +12,6 @@ import { reconcileRaffleCalendarListingDestinations } from "./modules/raffle/cal
 import { registerRaffleGuildEventOffering } from "./modules/raffle/offering.js";
 import { registerRaffleQueryRoutes } from "./modules/raffle/query-routes.js";
 import { registerRaffleRoutes } from "./modules/raffle/routes.js";
-import { registerQueryRoutes } from "./query-routes.js";
 import { loadAssetRegistry, registerAssetRoutes } from "./web/assets.js";
 import { registerAdminDiscordStatePage } from "./web/pages/admin-discord-state.js";
 import { registerAdminPage } from "./web/pages/admin.js";
@@ -65,7 +65,7 @@ await registerDiscordRoutes(app);
 await registerGuildRoutes(app);
 await registerRaffleRoutes(app);
 await registerRaffleQueryRoutes(app);
-await registerQueryRoutes(app);
+await registerApiV1Routes(app);
 
 let stopGuildRefreshScheduler: (() => void) | null = null;
 
