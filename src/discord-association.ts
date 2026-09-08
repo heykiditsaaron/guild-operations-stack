@@ -32,6 +32,13 @@ export async function discordAssociationForGuildie(guildieId: string): Promise<D
   };
 }
 
+export async function discordAssociatedGuildieIds(): Promise<string[]> {
+  const result = await pool.query<{ guildie_id: string }>(
+    "SELECT guildie_id FROM discord_associations ORDER BY guildie_id",
+  );
+  return result.rows.map((row) => row.guildie_id);
+}
+
 export async function establishDiscordAssociation(
   guildieId: string,
   input: DiscordAssociationInput,
