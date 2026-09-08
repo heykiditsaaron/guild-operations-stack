@@ -1,5 +1,3 @@
-import { config } from "../../config.js";
-import { pool } from "../../db.js";
 import type {
   RaffleClaimResolution,
   RafflePrizeKind,
@@ -7,6 +5,7 @@ import type {
   RaffleRoundStatus,
 } from "./domain.js";
 import { raffleGuildieAttribution } from "./guildie-attribution.js";
+import { raffleClaimFactsForRound, raffleRoundFacts } from "./queries.js";
 
 export type RafflePublicClaim = {
   claimId: string;
@@ -39,122 +38,51 @@ export type RafflePublicRound = {
   claims: RafflePublicClaim[];
 };
 
-function nullableNumber(value: unknown): number | null {
-  return value === null || value === undefined ? null : Number(value);
-}
-
-function nullableString(value: unknown): string | null {
-  return value === null || value === undefined ? null : String(value);
-}
-
-function resolvedAtUnix(row: Record<string, unknown>): number | null {
-  if (row.resolution_kind === "approved") return nullableNumber(row.approved_at_unix);
-  if (row.resolution_kind === "denied") return nullableNumber(row.denied_at_unix);
-  if (row.resolution_kind === "cancelled") return nullableNumber(row.cancelled_at_unix);
-  return null;
-}
-
-function resolutionActorGuildieId(row: Record<string, unknown>): string | null {
-  if (row.resolution_kind === "approved") return nullableString(row.approved_by_guildie_id);
-  if (row.resolution_kind === "denied") return nullableString(row.denied_by_guildie_id);
-  return null;
-}
-
 export async function rafflePublicRound(roundId: string): Promise<RafflePublicRound | null> {
-  const roundResult = await pool.query(
-    `SELECT rr.*,
-            COALESCE(SUM(rc.requested_ticket_count) FILTER (WHERE rc.resolution_kind = 'approved'), 0)::int AS approved_entry_count,
-            MAX(winner_character.name) AS winner_character_name
-       FROM raffle_rounds rr
-       LEFT JOIN raffle_claims rc ON rc.round_id = rr.round_id
-       LEFT JOIN raffle_claims winner ON winner.claim_id = rr.winning_claim_id
-       LEFT JOIN characters winner_character ON winner_character.character_record_id = winner.character_record_id
-      WHERE rr.round_id = $1
-        AND rr.guild_id = $2
-      GROUP BY rr.round_id`,
-    [roundId, config.guild.id],
+  const [facts, claims] = await Promise.all([
+    raffleRoundFacts(roundId),
+    raffleClaimFactsForRound(roundId),
+  ]);
+  if (!facts) return null;
+
+  const actorGuildieIds = new Set(
+    claims
+      .map((claim) => claim.resolutionActorGuildieId)
+      .filter((guildieId): guildieId is string => guildieId !== null),
   );
-
-  if (!roundResult.rowCount) return null;
-
-  const claimResult = await pool.query(
-    `SELECT
-       rc.claim_id,
-       rc.requested_ticket_count,
-       rc.promised_gold_value,
-       rc.created_at_unix,
-       rc.resolution_kind,
-       rc.approved_by_guildie_id,
-       rc.approved_at_unix,
-       rc.denied_by_guildie_id,
-       rc.denied_at_unix,
-       rc.denial_reason,
-       rc.cancelled_at_unix,
-       COALESCE(grm.character_name, c.name) AS character_name
-     FROM raffle_claims rc
-     JOIN raffle_rounds rr
-       ON rr.round_id = rc.round_id
-      AND rr.guild_id = $2
-     JOIN characters c ON c.character_record_id = rc.character_record_id
-     LEFT JOIN guild_roster_memberships grm
-       ON grm.guild_id = rr.guild_id
-      AND grm.region = c.region
-      AND grm.realm_id = c.realm_id
-      AND grm.character_id = c.character_id
-    WHERE rc.round_id = $1
-    ORDER BY rc.created_at_unix ASC, rc.claim_id ASC`,
-    [roundId, config.guild.id],
-  );
-
-  const actorGuildieIds = new Set<string>();
-  for (const claimRow of claimResult.rows) {
-    const actorGuildieId = resolutionActorGuildieId(claimRow as Record<string, unknown>);
-    if (actorGuildieId !== null) actorGuildieIds.add(actorGuildieId);
-  }
-
   const attributionEntries = await Promise.all(
-    [...actorGuildieIds].map(async (actorGuildieId) => [
-      actorGuildieId,
-      await raffleGuildieAttribution(actorGuildieId),
-    ] as const),
+    [...actorGuildieIds].map(async (guildieId) => [guildieId, await raffleGuildieAttribution(guildieId)] as const),
   );
   const attributionByGuildieId = new Map(attributionEntries);
 
-  const row = roundResult.rows[0] as Record<string, unknown>;
-  const claims = claimResult.rows.map((claimRow) => {
-    const claim = claimRow as Record<string, unknown>;
-    const actorGuildieId = resolutionActorGuildieId(claim);
-    return {
-      claimId: String(claim.claim_id),
-      characterName: String(claim.character_name),
-      requestedTicketCount: Number(claim.requested_ticket_count),
-      promisedGoldValue: String(claim.promised_gold_value),
-      createdAtUnix: Number(claim.created_at_unix),
-      resolutionKind: claim.resolution_kind as RaffleClaimResolution,
-      resolutionActorLabel: actorGuildieId === null
-        ? null
-        : attributionByGuildieId.get(actorGuildieId) ?? "Guild officer",
-      resolvedAtUnix: resolvedAtUnix(claim),
-      denialReason: nullableString(claim.denial_reason),
-    } satisfies RafflePublicClaim;
-  });
-
   return {
-    roundId: String(row.round_id),
-    status: row.status as RaffleRoundStatus,
-    conclusion: row.conclusion as RaffleRoundConclusion,
-    roundTitle: nullableString(row.round_title),
-    drawingAtUnix: Number(row.drawing_at_unix),
-    ticketPriceGold: String(row.ticket_price_gold),
-    prizeKind: row.prize_kind as RafflePrizeKind,
-    winnerPercentage: nullableNumber(row.winner_percentage),
-    prizeDescription: nullableString(row.prize_description),
-    createdAtUnix: Number(row.created_at_unix),
-    liveAtUnix: nullableNumber(row.live_at_unix),
-    concludedAtUnix: nullableNumber(row.concluded_at_unix),
-    totalEntries: nullableNumber(row.total_entries),
-    approvedEntryCount: Number(row.approved_entry_count),
-    winnerCharacterName: nullableString(row.winner_character_name),
-    claims,
+    roundId: facts.round.roundId,
+    status: facts.round.status,
+    conclusion: facts.round.conclusion,
+    roundTitle: facts.round.roundTitle,
+    drawingAtUnix: facts.round.drawingAtUnix,
+    ticketPriceGold: facts.round.ticketPriceGold,
+    prizeKind: facts.round.prizeKind,
+    winnerPercentage: facts.round.winnerPercentage,
+    prizeDescription: facts.round.prizeDescription,
+    createdAtUnix: facts.round.createdAtUnix,
+    liveAtUnix: facts.round.liveAtUnix,
+    concludedAtUnix: facts.round.concludedAtUnix,
+    totalEntries: facts.round.totalEntries,
+    approvedEntryCount: facts.metrics.approvedEntryCount,
+    winnerCharacterName: facts.winner?.character.name ?? null,
+    claims: claims.map((claim) => ({
+      claimId: claim.claimId,
+      characterName: claim.character.name,
+      requestedTicketCount: claim.requestedTicketCount,
+      promisedGoldValue: claim.promisedGoldValue,
+      createdAtUnix: claim.createdAtUnix,
+      resolutionKind: claim.resolutionKind,
+      resolutionActorLabel: claim.resolutionActorGuildieId === null
+        ? null
+        : attributionByGuildieId.get(claim.resolutionActorGuildieId) ?? "Guild officer",
+      resolvedAtUnix: claim.resolutionAtUnix,
+      denialReason: claim.denialReason,
+    })),
   };
 }
