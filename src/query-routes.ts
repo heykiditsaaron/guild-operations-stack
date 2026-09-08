@@ -1,9 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
+import { characterMembership, guildieState } from "./application-state.js";
 import { config, parseRegion } from "./config.js";
-import { pool } from "./db.js";
-import { discordAssociationForGuildie } from "./discord.js";
-import { effectiveGuildAuthority } from "./guild-permissions.js";
-import { mainCharacterForGuildie } from "./main-character.js";
 
 function authorized(request: FastifyRequest): boolean {
   const configured = process.env.EVENT_QUERY_API_KEY;
@@ -21,45 +18,36 @@ export async function registerQueryRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(400).send({ error: "invalid_guildie_coordinate" });
     }
 
-    const guildie = await pool.query<{ guildie_id: string }>(
-      "SELECT guildie_id FROM guildies WHERE guildie_id = $1",
-      [params.guildieId],
-    );
-    if (!guildie.rowCount) return reply.code(404).send({ error: "guildie_not_found" });
-
-    const [discord, main, membership] = await Promise.all([
-      discordAssociationForGuildie(params.guildieId),
-      mainCharacterForGuildie(params.guildieId),
-      effectiveGuildAuthority(params.guildieId),
-    ]);
+    const state = await guildieState(params.guildieId);
+    if (!state) return reply.code(404).send({ error: "guildie_not_found" });
 
     return reply.send({
-      guildie_id: params.guildieId,
-      discord: discord
+      guildie_id: state.guildieId,
+      discord: state.discordAssociation
         ? {
-            discord_user_id: discord.discordUserId,
-            username: discord.username,
-            connected_at: discord.connectedAt,
+            discord_user_id: state.discordAssociation.discordUserId,
+            username: state.discordAssociation.username,
+            connected_at: state.discordAssociation.connectedAt,
           }
         : null,
       guild: {
-        membership: membership
+        membership: state.guildAuthority
           ? {
-              guild_id: membership.guildId,
-              rank: membership.rankIndex,
-              rank_name: membership.rankDisplayName,
+              guild_id: state.guildAuthority.guildId,
+              rank: state.guildAuthority.rankIndex,
+              rank_name: state.guildAuthority.rankDisplayName,
             }
           : null,
-        main_character: main
+        main_character: state.selectedMain
           ? {
-              guild_id: main.guildId,
-              character_id: main.characterId,
-              realm_id: main.realmId,
-              name: main.name,
-              realm_name: main.realmName,
-              rank: main.rankIndex,
-              currently_eligible: main.currentlyEligible,
-              avatar_url: main.avatarUrl,
+              guild_id: state.selectedMain.guildId,
+              character_id: state.selectedMain.characterId,
+              realm_id: state.selectedMain.realmId,
+              name: state.selectedMain.name,
+              realm_name: state.selectedMain.realmName,
+              rank: state.selectedMain.rankIndex,
+              currently_eligible: state.selectedMain.currentlyEligible,
+              avatar_url: state.selectedMain.avatarUrl,
             }
           : null,
       },
@@ -86,22 +74,12 @@ export async function registerQueryRoutes(app: FastifyInstance): Promise<void> {
     if (!region) return reply.code(400).send({ error: "invalid_character_membership_coordinate" });
     if (params.guildId !== config.guild.id) return reply.code(404).send({ error: "guild_not_found" });
 
-    const result = await pool.query<{
-      rank_index: number;
-      character_name: string;
-      realm_name: string | null;
-      realm_slug: string | null;
-    }>(
-      `SELECT rank_index, character_name, realm_name, realm_slug
-         FROM guild_roster_memberships
-        WHERE guild_id = $1
-          AND region = $2
-          AND realm_id = $3
-          AND character_id = $4
-          AND currently_present = true`,
-      [params.guildId, region, params.realmId, params.characterId],
-    );
-    const membership = result.rows[0];
+    const membership = await characterMembership({
+      guildId: params.guildId,
+      region,
+      realmId: params.realmId,
+      characterId: params.characterId,
+    });
 
     return reply.send({
       guild_id: params.guildId,
@@ -110,11 +88,11 @@ export async function registerQueryRoutes(app: FastifyInstance): Promise<void> {
       character_id: params.characterId,
       membership: membership
         ? {
-            currently_present: true,
-            rank: membership.rank_index,
-            character_name: membership.character_name,
-            realm_name: membership.realm_name,
-            realm_slug: membership.realm_slug,
+            currently_present: membership.currentlyPresent,
+            rank: membership.rankIndex,
+            character_name: membership.characterName,
+            realm_name: membership.realmName,
+            realm_slug: membership.realmSlug,
           }
         : null,
     });
