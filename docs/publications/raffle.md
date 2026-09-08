@@ -14,6 +14,8 @@ Raffle system events are published only after the authoritative raffle operation
 
 Subscribers use those coordinates to query Guild Operations for current authoritative raffle reality. The publication creates attention; the query establishes what is true now.
 
+The preferred follow-up surface is the module-owned versioned REST interface under `/api/v1/raffle`. The legacy `/raffle/query/*` routes remain temporarily available only for compatibility during migration.
+
 A failed attempt to mutate raffle state publishes nothing. Publication delivery failure does not undo a successful raffle operation.
 
 The current publication surface is provisional because subscriber architecture has not yet been accepted. Publication names therefore must not be interpreted as raffle lifecycle states.
@@ -28,16 +30,16 @@ Coordinates:
 
 - `roundId`
 
-Follow-up query:
+Authoritative follow-up:
 
 ```http
-GET /raffle/query/rounds/:roundId
+GET /api/v1/raffle/rounds/:roundId
 ```
 
 A subscriber interested only in the currently live round may instead use:
 
 ```http
-GET /raffle/query/live
+GET /api/v1/raffle/rounds/live
 ```
 
 ### `raffle.round.drawn`
@@ -49,14 +51,14 @@ Coordinates:
 - `roundId`
 - `winningClaimId`
 
-Follow-up queries:
+Authoritative follow-up:
 
 ```http
-GET /raffle/query/rounds/:roundId
-GET /raffle/query/claims/:winningClaimId
+GET /api/v1/raffle/rounds/:roundId
+GET /api/v1/raffle/claims/:winningClaimId
 ```
 
-The claim query is optional when the round projection provides everything the subscriber needs.
+The claim resource is optional when the round representation provides everything the subscriber needs.
 
 ### `raffle.round.cancelled`
 
@@ -66,15 +68,15 @@ Coordinates:
 
 - `roundId`
 
-Follow-up query:
+Authoritative follow-up:
 
 ```http
-GET /raffle/query/rounds/:roundId
+GET /api/v1/raffle/rounds/:roundId
 ```
 
 ### `raffle.round.no-entry-cancelled`
 
-Legacy provisional publication name emitted when a live round is drawn with no approved ticket population and the authoritative raffle conclusion is `no_participation`.
+Legacy provisional publication name emitted when a live round is drawn with no approved entry population and the authoritative raffle conclusion is `no_participation`.
 
 The publication name does not create a `no_entry_cancelled` raffle state. Raffle truth remains `status = concluded` and `conclusion = no_participation`. The name may be reconciled later when publication architecture is intentionally revisited.
 
@@ -82,10 +84,10 @@ Coordinates:
 
 - `roundId`
 
-Follow-up query:
+Authoritative follow-up:
 
 ```http
-GET /raffle/query/rounds/:roundId
+GET /api/v1/raffle/rounds/:roundId
 ```
 
 ## Claim publications
@@ -99,10 +101,10 @@ Coordinates:
 - `roundId`
 - `claimId`
 
-Follow-up query:
+Authoritative follow-up:
 
 ```http
-GET /raffle/query/claims/:claimId
+GET /api/v1/raffle/claims/:claimId
 ```
 
 A rejected submission establishes no claim and therefore publishes nothing.
@@ -116,10 +118,10 @@ Coordinates:
 - `roundId`
 - `claimId`
 
-Follow-up query:
+Authoritative follow-up:
 
 ```http
-GET /raffle/query/claims/:claimId
+GET /api/v1/raffle/claims/:claimId
 ```
 
 ### `raffle.claim.denied`
@@ -131,10 +133,10 @@ Coordinates:
 - `roundId`
 - `claimId`
 
-Follow-up query:
+Authoritative follow-up:
 
 ```http
-GET /raffle/query/claims/:claimId
+GET /api/v1/raffle/claims/:claimId
 ```
 
 A denial is a system event because the claim's authoritative resolution changed successfully. It is not a failed claim-submission attempt.
@@ -148,24 +150,24 @@ Coordinates:
 - `roundId`
 - `claimId`
 
-Follow-up query:
+Authoritative follow-up:
 
 ```http
-GET /raffle/query/claims/:claimId
+GET /api/v1/raffle/claims/:claimId
 ```
 
 ## Current publication catalog
 
 | Publication | Coordinates | Authoritative follow-up |
 | --- | --- | --- |
-| `raffle.round.live` | `roundId` | `GET /raffle/query/rounds/:roundId` or `GET /raffle/query/live` |
-| `raffle.claim.submitted` | `roundId`, `claimId` | `GET /raffle/query/claims/:claimId` |
-| `raffle.claim.approved` | `roundId`, `claimId` | `GET /raffle/query/claims/:claimId` |
-| `raffle.claim.denied` | `roundId`, `claimId` | `GET /raffle/query/claims/:claimId` |
-| `raffle.claim.cancelled` | `roundId`, `claimId` | `GET /raffle/query/claims/:claimId` |
-| `raffle.round.drawn` | `roundId`, `winningClaimId` | `GET /raffle/query/rounds/:roundId`, optionally claim query |
-| `raffle.round.cancelled` | `roundId` | `GET /raffle/query/rounds/:roundId` |
-| `raffle.round.no-entry-cancelled` | `roundId` | `GET /raffle/query/rounds/:roundId` |
+| `raffle.round.live` | `roundId` | `GET /api/v1/raffle/rounds/:roundId` or `GET /api/v1/raffle/rounds/live` |
+| `raffle.claim.submitted` | `roundId`, `claimId` | `GET /api/v1/raffle/claims/:claimId` |
+| `raffle.claim.approved` | `roundId`, `claimId` | `GET /api/v1/raffle/claims/:claimId` |
+| `raffle.claim.denied` | `roundId`, `claimId` | `GET /api/v1/raffle/claims/:claimId` |
+| `raffle.claim.cancelled` | `roundId`, `claimId` | `GET /api/v1/raffle/claims/:claimId` |
+| `raffle.round.drawn` | `roundId`, `winningClaimId` | `GET /api/v1/raffle/rounds/:roundId`, optionally claim resource |
+| `raffle.round.cancelled` | `roundId` | `GET /api/v1/raffle/rounds/:roundId` |
+| `raffle.round.no-entry-cancelled` | `roundId` | `GET /api/v1/raffle/rounds/:roundId` |
 
 ## Non-publications
 
