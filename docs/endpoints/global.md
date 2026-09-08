@@ -150,13 +150,15 @@ A `null` membership means the Guildie currently has no effective current guild p
 
 Effective rank derives from currently controlled Characters on the Blizzard roster. Selected main remains presentation preference, not identity or authorization.
 
-### GET `/api/v1/guilds/:guildId/character-memberships/:region/:realmId/:characterId`
+### GET `/api/v1/guilds/:guildId/characters/:region/:realmId/:characterId`
 
-Returns the current Blizzard-roster membership observation for exactly one Character coordinate.
+Returns the configured guild's current roster observation for exactly one Character coordinate.
 
 When the Character is not currently on the roster, the coordinate remains a valid request and `membership` is `null`.
 
-A guild coordinate other than the configured guild returns `404`. Invalid Character membership coordinates return `400`.
+A guild coordinate other than the configured guild returns `404`. Invalid Character coordinates return `400`.
+
+The route addresses the Character directly. It does not introduce a second `character-member` or `character-membership` domain object; `membership` is the current Blizzard-roster relationship projected for that Character.
 
 ## Legacy machine-query surface
 
