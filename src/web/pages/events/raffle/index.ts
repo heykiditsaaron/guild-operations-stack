@@ -1,15 +1,32 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../../../auth.js";
-import { raffleClaimCutoffUnix, raffleClaimsAreOpen } from "../../../../modules/raffle/domain.js";
+import {
+  raffleClaimCutoffUnix,
+  raffleClaimsAreOpen,
+  type RaffleRound,
+} from "../../../../modules/raffle/domain.js";
 import { latestDrawnRaffleWinner, type RaffleHistoryRound } from "../../../../modules/raffle/history-view.js";
 import {
-  activeRaffleRoundOverview,
-  nextListedRaffleRoundOverview,
-  type ActiveRaffleRoundOverview,
-} from "../../../../modules/raffle/live-round.js";
+  liveRaffleRoundFacts,
+  nextListedRaffleRoundFacts,
+  type RaffleRoundFacts,
+} from "../../../../modules/raffle/queries.js";
 import { assetUrl, type AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
+
+type RaffleOverview = RaffleRound & {
+  approvedEntryCount: number;
+};
+
+function overviewFromFacts(facts: RaffleRoundFacts | null): RaffleOverview | null {
+  return facts
+    ? {
+        ...facts.round,
+        approvedEntryCount: facts.metrics.approvedEntryCount,
+      }
+    : null;
+}
 
 function localTime(unixSeconds: number): string {
   const instant = new Date(unixSeconds * 1000).toISOString();
@@ -20,15 +37,15 @@ function formatGold(value: bigint | string): string {
   return BigInt(value).toLocaleString("en-US");
 }
 
-function goldPrize(round: ActiveRaffleRoundOverview): bigint | null {
+function goldPrize(round: RaffleOverview): bigint | null {
   if (round.prizeKind !== "gold" || round.winnerPercentage === null) return null;
-  const pot = BigInt(round.ticketPriceGold) * BigInt(round.approvedTicketCount);
+  const pot = BigInt(round.ticketPriceGold) * BigInt(round.approvedEntryCount);
   return (pot * BigInt(round.winnerPercentage)) / 100n;
 }
 
 function historicalPrize(round: RaffleHistoryRound): string | null {
   if (round.prizeKind === "gold" && round.winnerPercentage !== null) {
-    const entries = round.totalEntries ?? round.approvedTicketCount;
+    const entries = round.totalEntries ?? round.approvedEntryCount;
     const pot = BigInt(round.ticketPriceGold) * BigInt(entries);
     return `${formatGold((pot * BigInt(round.winnerPercentage)) / 100n)} gold`;
   }
@@ -69,7 +86,7 @@ function recentWinnerBody(round: RaffleHistoryRound | null): string {
   </section>`;
 }
 
-function activeRaffleBody(round: ActiveRaffleRoundOverview, assets: AssetRegistry, recentWinner: RaffleHistoryRound | null): string {
+function activeRaffleBody(round: RaffleOverview, assets: AssetRegistry, recentWinner: RaffleHistoryRound | null): string {
   const cutoffUnix = raffleClaimCutoffUnix(round.drawingAtUnix);
   const claimsOpen = raffleClaimsAreOpen(round.drawingAtUnix);
   const prize = goldPrize(round);
@@ -93,7 +110,7 @@ function activeRaffleBody(round: ActiveRaffleRoundOverview, assets: AssetRegistr
             <div class="raffle-stats">
               <div class="raffle-stat">
                 <span class="raffle-plaque-label">Entries</span>
-                <strong class="raffle-stat-value">${round.approvedTicketCount.toLocaleString("en-US")}</strong>
+                <strong class="raffle-stat-value">${round.approvedEntryCount.toLocaleString("en-US")}</strong>
               </div>
               <div class="raffle-stat">
                 <span class="raffle-plaque-label">Current prize</span>
@@ -120,7 +137,7 @@ function activeRaffleBody(round: ActiveRaffleRoundOverview, assets: AssetRegistr
     </div>`;
 }
 
-function standingRaffleBody(listedRound: ActiveRaffleRoundOverview | null, recentWinner: RaffleHistoryRound | null): string {
+function standingRaffleBody(listedRound: RaffleOverview | null, recentWinner: RaffleHistoryRound | null): string {
   const upcoming = listedRound
     ? `<a class="raffle-reference-link raffle-upcoming-record" href="/events/raffle/${encodeURIComponent(listedRound.roundId)}">
         <span>
@@ -146,12 +163,14 @@ function standingRaffleBody(listedRound: ActiveRaffleRoundOverview | null, recen
 export async function registerRafflePage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/events/raffle", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, liveRaffle, listedRaffle, recentWinner] = await Promise.all([
+    const [viewer, liveFacts, listedFacts, recentWinner] = await Promise.all([
       viewerForRequest(sessionToken),
-      activeRaffleRoundOverview(),
-      nextListedRaffleRoundOverview(),
+      liveRaffleRoundFacts(),
+      nextListedRaffleRoundFacts(),
       latestDrawnRaffleWinner(),
     ]);
+    const liveRaffle = overviewFromFacts(liveFacts);
+    const listedRaffle = overviewFromFacts(listedFacts);
 
     const body = liveRaffle
       ? activeRaffleBody(liveRaffle, assets, recentWinner)
