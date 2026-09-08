@@ -4,8 +4,6 @@ This document is the canonical HTTP endpoint reference for the Guild Operations 
 
 Raffle owns its domain, application operations, query contracts, browser/application routes, and module-owned REST resources. The promoted REST namespace is `/api/v1`; REST serializes established Raffle application/query contracts rather than defining a second model.
 
-Raffle system-event publications are cataloged in `docs/publications/raffle.md`.
-
 ## Authority classes
 
 ### Member session
@@ -29,8 +27,6 @@ Raffle REST reads use the global read credential:
 ```http
 Authorization: Bearer <API_READ_KEY>
 ```
-
-During migration from the legacy Raffle machine-query surface, `RAFFLE_QUERY_API_KEY` is accepted as a fallback only when `API_READ_KEY` is not configured. New integrations should use `API_READ_KEY`.
 
 REST read authority grants no raffle mutation or human operation authority.
 
@@ -296,24 +292,6 @@ Records a human attendant denial of an unresolved claim.
 ```
 
 Returns `204`.
-
-## Legacy machine-query surface
-
-The following routes remain temporarily available as compatibility interfaces while existing Raffle consumers migrate to `/api/v1`:
-
-```http
-GET /raffle/query/live
-GET /raffle/query/rounds/:roundId
-GET /raffle/query/claims/:claimId
-```
-
-They continue to use `RAFFLE_QUERY_API_KEY` and preserve their historical camel-case response shape.
-
-They are no longer the preferred integration contract and should not receive new behavior. Once concrete consumers have migrated, the compatibility routes, query transport view, and dedicated Raffle query key are candidates for the planned cleanup pass.
-
-## Publication relationship
-
-Successful Raffle operations may publish only after authoritative state changes. Publication is an attention signal, not authoritative Raffle state. Subscribers should follow published domain coordinates with `/api/v1/raffle/...` reads to establish current truth.
 
 ## Time values
 
