@@ -1,96 +1,41 @@
 # BotGhost Integration Cheat Sheet
 
-This document is the practical operator reference for what Guild Operations currently sends to BotGhost.
+This document is the practical operator reference for the BotGhost integration.
 
-It is not the authoritative definition of publication meaning or current Guild Operations state. Publication catalogs live under `docs/publications/`; authoritative HTTP contracts live under `docs/endpoints/`; cross-cutting publication behavior lives in `docs/publication-model.md`.
+## Current scope
 
-BotGhost receives attention signals and concrete object coordinates. When current truth matters, BotGhost should query Guild Operations rather than treating webhook variables as durable state.
+Global Guildie and Character publication transport is currently removed. Guild Operations does not presently send those global publication classes to BotGhost.
 
-## BotGhost environment
+Raffle owns its own BotGhost integration and remains separate from the global REST work described here.
 
-BotGhost has its own runtime environment file:
+If a global subscriber is introduced again, it should read current Guild Operations state through `/api/v1` rather than revive the former `/query/*` interface.
 
-```text
-botghost.env
-```
+## Global REST follow-up surface
 
-The tracked `botghost.env.example` documents the required variables:
+Read-only global REST requests use:
 
 ```text
-BOTGHOST_API_KEY=
-BOTGHOST_GUILDIE_WEBHOOK_URL=
-BOTGHOST_CHARACTER_WEBHOOK_URL=
-BOTGHOST_RAFFLE_WEBHOOK_URL=
-```
-
-`BOTGHOST_API_KEY` belongs to the BotGhost integration as a whole. The webhook URLs identify the concrete BotGhost publication targets currently used by Guild Operations.
-
-## Shared transport shape
-
-Guild Operations currently sends BotGhost webhook payloads in this shape:
-
-```json
-{
-  "variables": [
-    {
-      "name": "event_kind",
-      "variable": "{event_kind}",
-      "value": "..."
-    }
-  ]
-}
-```
-
-Every current publication includes `{event_kind}`.
-
-## Guildie publications
-
-Transport target:
-
-```text
-BOTGHOST_GUILDIE_WEBHOOK_URL
-```
-
-| Publication | Variables available in BotGhost | Query afterward |
-| --- | --- | --- |
-| `guildie.discord.linked` | `{event_kind}`, `{guildie_id}`, `{discord_user_id}` | `GET /query/guildies/{guildie_id}` |
-| `guildie.discord.unlinked` | `{event_kind}`, `{guildie_id}`, `{discord_user_id}` | `GET /query/guildies/{guildie_id}` |
-| `guildie.main.changed` | `{event_kind}`, `{guildie_id}`, `{guild_id}` | `GET /query/guildies/{guildie_id}` |
-| `guildie.joined` | `{event_kind}`, `{guildie_id}`, `{guild_id}` | `GET /query/guildies/{guildie_id}` |
-| `guildie.left` | `{event_kind}`, `{guildie_id}`, `{guild_id}` | `GET /query/guildies/{guildie_id}` |
-| `guildie.rank.changed` | `{event_kind}`, `{guildie_id}`, `{guild_id}` | `GET /query/guildies/{guildie_id}` |
-
-`guildie_id` identifies the affected Guildie directly. There is no generic Subject transport coordinate.
-
-For `guildie.discord.unlinked`, `{discord_user_id}` identifies the association that disappeared. The follow-up query should return no Discord association; the old Discord coordinate remains useful for removing a stale Discord-side projection.
-
-## Character publications
-
-Transport target:
-
-```text
-BOTGHOST_CHARACTER_WEBHOOK_URL
-```
-
-| Publication | Variables available in BotGhost | Query afterward |
-| --- | --- | --- |
-| `character.joined` | `{event_kind}`, `{guild_id}`, `{region}`, `{realm_id}`, `{character_id}` | `GET /query/guilds/{guild_id}/character-members/{region}/{realm_id}/{character_id}` |
-| `character.left` | `{event_kind}`, `{guild_id}`, `{region}`, `{realm_id}`, `{character_id}` | `GET /query/guilds/{guild_id}/character-members/{region}/{realm_id}/{character_id}` |
-| `character.rank.changed` | `{event_kind}`, `{guild_id}`, `{region}`, `{realm_id}`, `{character_id}` | `GET /query/guilds/{guild_id}/character-members/{region}/{realm_id}/{character_id}` |
-
-Machine-query credential used for Guildie and Character follow-up requests:
-
-```text
-EVENT_QUERY_API_KEY=<secret>
+API_READ_KEY=<secret>
 ```
 
 Preferred request header:
 
 ```http
-Authorization: Bearer <EVENT_QUERY_API_KEY>
+Authorization: Bearer <API_READ_KEY>
 ```
 
+Established global read resources currently include:
+
+```http
+GET /api/v1/guildies/{guildie_id}
+GET /api/v1/guilds/{guild_id}/character-memberships/{region}/{realm_id}/{character_id}
+```
+
+These endpoints return current application state. They are not publication payloads and do not transfer authority to BotGhost.
+
 ## Raffle publications
+
+Raffle remains module-owned and is intentionally not migrated by the global REST work.
 
 Transport target:
 
@@ -109,26 +54,12 @@ BOTGHOST_RAFFLE_WEBHOOK_URL
 | `raffle.round.cancelled` | `{event_kind}`, `{round_id}` | `GET /raffle/query/rounds/{round_id}` |
 | `raffle.round.no-entry-cancelled` | `{event_kind}`, `{round_id}` | `GET /raffle/query/rounds/{round_id}` |
 
-Machine-query credential used for raffle follow-up requests:
+Raffle machine-query authority remains:
 
 ```text
 RAFFLE_QUERY_API_KEY=<secret>
 ```
 
-## BotGhost operating rule
+## Operating rule
 
-Use webhook variables to decide what changed and where to look. Use the matching Guild Operations endpoint to determine what is true now.
-
-```text
-BotGhost receives publication
-        ↓
-inspect {event_kind} and concrete coordinates
-        ↓
-query Guild Operations
-        ↓
-read current authoritative projection
-        ↓
-apply or remove BotGhost / Discord projection
-```
-
-This keeps BotGhost useful as the current subscriber surface without making BotGhost the owner of Guild Operations truth.
+Where an integration receives an attention signal, the signal should identify concrete domain coordinates. The integration should then read the owning Guild Operations contract to determine current truth rather than treating the signal itself as durable state.
