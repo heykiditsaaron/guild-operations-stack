@@ -46,7 +46,7 @@ external authority / persistence
 
 A consumer should not need to know how global state is persisted in order to use it correctly. Direct persistence access is appropriate inside the machinery that owns and establishes a global contract; it is not an alternate contract for downstream consumers.
 
-REST preparedness is a consequence of this coherence rather than a separate architecture. A future HTTP API should serialize and authorize existing application contracts rather than introduce a second interpretation of Guild Operations state.
+REST preparedness is a consequence of this coherence rather than a separate architecture. The promoted global REST namespace is `/api/v1`; it serializes and authorizes established application contracts rather than introducing a second interpretation of Guild Operations state. Resources and operations are added beneath that namespace only when a concrete consumer need earns them.
 
 Concrete shared infrastructure may also accept projections from an owning procedure. Guild Event Calendar Listings and Operational Records are examples: their contracts define the shared meaning accepted by the infrastructure without transferring ownership of the underlying producer truth.
 
