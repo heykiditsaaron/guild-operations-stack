@@ -1,16 +1,16 @@
 # Guild Event Discovery
 
-Guild Event discovery is shared infrastructure through which concrete capabilities contribute two different kinds of discovery information:
+Guild Event discovery is shared infrastructure with two independent contracts:
 
 ```text
 Guild Event Offering
     → What participation does the guild offer?
 
-Guild Event Calendar Listing
-    → What concrete occurrence happens when?
+Guild Calendar Event
+    → What concrete guild occurrence happens when?
 ```
 
-These are independent contracts. A capability may expose an enduring Offering without a scheduled occurrence, and may establish Calendar Listings only for concrete occurrences with temporal meaning.
+A capability may expose an enduring Offering without any scheduled occurrence. A guild occurrence may also be placed on the Calendar without belonging to an internal module.
 
 ## Guild Event Offerings
 
@@ -56,37 +56,45 @@ Modules must not register HTML, CSS, arbitrary metadata, shell layout instructio
 
 Do not use Offerings as a generic module capability registry. Internal operations and administrative actions are not enduring participation offerings merely because they exist.
 
-## Guild Event Calendar Listings
+## Guild Calendar Events
 
-Use a Calendar Listing when a module-owned concrete occurrence should be discoverable by consumers that understand a common temporal contract rather than the producing module.
+The Guild Calendar is the authoritative shared registry of guild occurrences that have intentionally been placed on the calendar. It owns temporal registration and the current shared calendar representation. It is not a generic event-management system.
+
+A module-owned occurrence may exist without a Calendar event. For example, a raffle round may be created before raffle decides that the round should be projected into shared temporal discovery. Until the module establishes a Calendar event, the Calendar has no representation of that round.
+
+An authorized external application operation may also create a Calendar event directly. Such an event does not need a fake module or producer identity.
 
 ### Data flow
 
 ```text
-Module-owned occurrence truth
-        ↓
-Guild Event Calendar Listing
-        ↓
-Guild Event Calendar Registry
-        ↓
-Calendar consumer
+Module-owned occurrence truth ──┐
+                               ├──→ Guild Calendar Event ──→ Calendar consumers
+External calendar operation ───┘
 ```
 
-The producer remains authoritative for the occurrence truth. The Calendar stores and exposes the listing contract.
+When a module contributes an occurrence, the module remains authoritative for its procedure and lifecycle. The Calendar stores only the shared temporal representation the module has intentionally established.
 
-### Listing contract
+### Contract
 
-Every listing requires:
+```ts
+type GuildCalendarOccursAt =
+  | readonly [number]
+  | readonly [number, number];
 
-```text
-guild_event_id
-guild_event_kind
-guild_event_occurs_at
+type GuildCalendarEvent = {
+  eventId: string;
+  title: string;
+  occursAt: GuildCalendarOccursAt;
+  category: string | null;
+  destination: string | null;
+};
 ```
 
-- `guild_event_id` — globally unique identifier for the concrete Guild Event occurrence.
-- `guild_event_kind` — concrete ceremony/event kind represented by the occurrence.
-- `guild_event_occurs_at` — current best temporal truth supplied by the producer.
+- `eventId` — globally unique coordinate for the Calendar event.
+- `title` — required human-facing name of the occurrence.
+- `occursAt` — current best temporal truth for the occurrence.
+- `category` — optional broad classification meaningful to Calendar consumers without knowledge of the producing capability.
+- `destination` — optional semantic destination associated with the occurrence; consumers choose how or whether to express it.
 
 Time uses Unix values:
 
@@ -98,50 +106,34 @@ Time uses Unix values:
     → range from start to end
 ```
 
-The producing capability determines whether the occurrence is an instant or range and may re-establish the same listing when better temporal truth becomes available. Calendar persistence represents the producer's best current temporal truth; ceremony-specific history remains with the producer.
+There is no arbitrary metadata bag. Module identity, producer identity, procedure status, eligibility, participation rules, and module-specific lifecycle do not belong in the shared Calendar contract merely because a producer knows them.
 
-Current optional fields are:
+`kind` is intentionally not part of the contract. Concrete module/event type is not currently needed to understand or operate shared temporal discovery. `category` remains optional because a broad member-facing classification may be useful across producers.
+
+### Registration and withdrawal
+
+Presence in the Calendar is the act of registration.
 
 ```text
-guild_event_title
-guild_event_destination
-guild_event_category
+occurrence exists elsewhere
+    → not necessarily on Calendar
+
+establish Calendar event
+    → registered and discoverable
+
+withdraw Calendar event
+    → no longer discoverable
 ```
 
-- `guild_event_title` — human-facing title for the concrete occurrence.
-- `guild_event_destination` — semantic destination associated with the occurrence; consumers choose how or whether to express it.
-- `guild_event_category` — broader organizational classification for consumers.
+Persistence may retain a withdrawn row as operational state, but `discoverable` is not a producer-facing contract field. Consumers see currently registered Calendar events rather than a second visible state meaning “registered but not registered.”
 
-A listing remains valid when optional fields are absent. Consumers must not reconstruct omitted fields using module-specific knowledge. There is no arbitrary metadata bag.
+Establishing the same `eventId` again replaces its current Calendar representation. This supports module projections whose best temporal truth can change without making the Calendar responsible for ceremony-specific history.
 
-### Producer operations
+Withdrawal means the event should no longer be represented through the Calendar. Withdrawal is not the mechanism for merely becoming past.
 
-A producer may establish, re-establish, or withdraw a listing as its owned truth changes.
+### Temporal state
 
-The producer decides:
-
-- whether the occurrence belongs on the Calendar;
-- which truthful required and optional fields it can supply;
-- when updated timing or other listing data replaces earlier values;
-- when the listing should be withdrawn from discovery.
-
-Withdrawal means the producer no longer wants the occurrence discoverable through the Calendar. It is not the mechanism for merely becoming past.
-
-### Registry behavior
-
-The registry stores listings conforming to the shared contract. It does not need to understand module storage, status models, route hierarchy, participation rules, or consumer presentation.
-
-Persistence may retain listings after their immediate temporal relevance without turning the registry into a generic domain-history system.
-
-### Consumer behavior
-
-Calendar consumers read listing fields and choose presentation appropriate to their medium.
-
-Consumers may specialize visual treatment based on contract data such as `guild_event_kind`, but they must not infer omitted destination, category, timing, eligibility, participation state, or other facts from module knowledge.
-
-The current `/events` projection is one Calendar consumer.
-
-Temporal relevance is derived from `guild_event_occurs_at`:
+Consumers derive temporal relevance from `occursAt`:
 
 ```text
 instant [T]
@@ -154,13 +146,25 @@ range [start, end]
     past once end < now
 ```
 
-The registry does not remove a listing merely because time passed.
+The Calendar does not require producers to publish lifecycle statuses such as upcoming, live, concluded, or cancelled. Those meanings belong to event owners when they exist.
+
+The Calendar does not remove an event merely because time passed. A past registered occurrence and a withdrawn occurrence are distinct states.
+
+### History
+
+The Calendar is not a generic history ledger. It stores the current shared representation of a registered occurrence. Module-specific scheduling history remains with the owning module. Application operations may be recorded through global operational inspection where appropriate.
+
+### Consumers
+
+Calendar consumers read the same shared contract and choose presentation appropriate to their medium. They must not reconstruct omitted category, destination, participation state, eligibility, or other facts from module-specific knowledge.
+
+The current `/events` projection is one Calendar consumer. Versioned REST is another adapter over the same application contract.
 
 ## Relationship between the contracts
 
-An Offering may exist with zero Calendar Listings. A Calendar Listing may describe an occurrence related to an Offering, but neither contract establishes the other's truth.
+An Offering may exist with zero Calendar events. A Calendar event may describe an occurrence related to an Offering, but neither contract establishes the other's truth.
 
-The Events shell may consume both contracts because it presents both enduring discovery and temporal discovery. That shared consumer does not collapse the contracts into one event model.
+The Events shell may consume both because it presents both enduring participation discovery and temporal discovery. That shared consumer does not collapse the contracts into one event model.
 
 ## Extending discovery infrastructure
 
