@@ -19,10 +19,12 @@ import {
   type DiscordGuildRole,
 } from "../../guildie-discord/client.js";
 import {
-  guildDiscordProjectionSettings,
-  replaceGuildDiscordProjectionSettings,
-} from "../../guildie-discord/policy.js";
-import { reconcileAllGuildieDiscordRoles } from "../../guildie-discord/roles.js";
+  configureGuildDiscordProjection,
+  DiscordProjectionNotConfiguredError,
+  DiscordProjectionReconciliationError,
+  UnknownDiscordProjectionRoleError,
+} from "../../guildie-discord/configuration.js";
+import { guildDiscordProjectionSettings } from "../../guildie-discord/policy.js";
 import { raffleGuildieCanAdminister } from "../../modules/raffle/authorization.js";
 import type { AssetRegistry } from "../assets.js";
 import { renderPage } from "../render.js";
@@ -341,9 +343,6 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     if (body.action !== "discord_projection.update" || typeof body.enabled !== "boolean") {
       return reply.code(400).send({ error: "invalid_admin_request" });
     }
-    if (!discordGuildIntegrationConfigured()) {
-      return reply.code(503).send({ error: "discord_not_configured" });
-    }
     if (body.linkedRoleId !== null && typeof body.linkedRoleId !== "string") {
       return reply.code(400).send({ error: "invalid_linked_role" });
     }
@@ -359,39 +358,30 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       return reply.code(400).send({ error: "invalid_rank_roles" });
     }
 
-    const availableRoles = await getDiscordGuildRoles();
-    const availableRoleIds = new Set(availableRoles.filter((role) => !role.managed).map((role) => role.id));
-    const linkedRoleId = typeof body.linkedRoleId === "string" && body.linkedRoleId.trim()
-      ? body.linkedRoleId.trim()
-      : null;
-    if (linkedRoleId && !availableRoleIds.has(linkedRoleId)) {
-      return reply.code(400).send({ error: "unknown_linked_role" });
-    }
-    if (rankRoles.some((mapping) => mapping && !availableRoleIds.has(mapping.discordRoleId))) {
-      return reply.code(400).send({ error: "unknown_rank_role" });
-    }
-
-    const previous = await guildDiscordProjectionSettings();
-    const settings = await replaceGuildDiscordProjectionSettings({
-      enabled: body.enabled,
-      linkedRoleId,
-      rankRoles: rankRoles.filter((mapping): mapping is NonNullable<typeof mapping> => mapping !== null),
-    });
-    const previousManagedRoleIds = [
-      ...(previous.linkedRoleId ? [previous.linkedRoleId] : []),
-      ...previous.rankRoles.map((mapping) => mapping.discordRoleId),
-    ];
-
     try {
-      await reconcileAllGuildieDiscordRoles({
-        trigger: "admin-configuration",
-        additionalManagedRoleIds: previousManagedRoleIds,
+      const settings = await configureGuildDiscordProjection({
+        enabled: body.enabled,
+        linkedRoleId: typeof body.linkedRoleId === "string" ? body.linkedRoleId : null,
+        rankRoles: rankRoles.filter((mapping): mapping is NonNullable<typeof mapping> => mapping !== null),
       });
+      return reply.send({ settings });
     } catch (error) {
-      request.log.error({ err: error }, "Discord projection reconciliation failed");
-      return reply.code(502).send({ error: "discord_reconciliation_failed", settings });
+      if (error instanceof DiscordProjectionNotConfiguredError) {
+        return reply.code(503).send({ error: "discord_not_configured" });
+      }
+      if (error instanceof UnknownDiscordProjectionRoleError) {
+        return reply.code(400).send({
+          error: error.roleKind === "linked" ? "unknown_linked_role" : "unknown_rank_role",
+        });
+      }
+      if (error instanceof DiscordProjectionReconciliationError) {
+        request.log.error({ err: error.cause }, "Discord projection reconciliation failed");
+        return reply.code(502).send({
+          error: "discord_reconciliation_failed",
+          settings: error.settings,
+        });
+      }
+      throw error;
     }
-
-    return reply.send({ settings });
   });
 }
