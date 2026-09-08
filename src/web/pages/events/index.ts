@@ -1,7 +1,6 @@
 import type { FastifyInstance } from "fastify";
+import { guildState } from "../../../application-state.js";
 import { SESSION_COOKIE_NAME } from "../../../auth.js";
-import { config } from "../../../config.js";
-import { pool } from "../../../db.js";
 import {
   discoverableGuildEventCalendarListings,
   type GuildEventCalendarListing,
@@ -59,16 +58,6 @@ function isHappeningNow(listing: GuildEventCalendarListing, nowUnix: number): bo
   const [start, end] = listing.guildEventOccursAt;
   if (end === undefined) return start === nowUnix;
   return start <= nowUnix && nowUnix <= end;
-}
-
-async function guildNameFromStorage(): Promise<string | null> {
-  const result = await pool.query<{ name: string }>(
-    `SELECT name
-       FROM guilds
-      WHERE guild_id = $1`,
-    [config.guild.id],
-  );
-  return result.rows[0]?.name ?? null;
 }
 
 function offeringArtworkUrl(offering: GuildEventOffering, assets: AssetRegistry): string | null {
@@ -183,17 +172,17 @@ function renderCalendar(
 export async function registerEventsPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/events", async (request, reply) => {
     const nowUnix = Math.floor(Date.now() / 1000);
-    const [viewer, listings, guildName] = await Promise.all([
+    const [viewer, listings, guild] = await Promise.all([
       viewerForRequest(request.cookies[SESSION_COOKIE_NAME]),
       discoverableGuildEventCalendarListings(),
-      guildNameFromStorage(),
+      guildState(),
     ]);
     const offerings = guildEventOfferings();
 
     const relevant = listings.filter((listing) => occursThrough(listing) >= nowUnix);
     const happeningNow = relevant.filter((listing) => isHappeningNow(listing, nowUnix));
     const upcoming = relevant.filter((listing) => !isHappeningNow(listing, nowUnix));
-    const guildCommunity = guildName ? `${htmlText(guildName)}&apos;s community` : "the guild&apos;s community";
+    const guildCommunity = guild ? `${htmlText(guild.name)}&apos;s community` : "the guild&apos;s community";
 
     const body = `
       <div class="events-shell">
