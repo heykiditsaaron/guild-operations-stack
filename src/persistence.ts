@@ -2,7 +2,6 @@ import type { PoolClient } from "pg";
 import type { BlizzardWowProfile } from "./blizzard.js";
 import { config, type Region } from "./config.js";
 import { withTransaction } from "./db.js";
-import { publishEvent, type PublishedEvent } from "./events/publisher.js";
 
 function factionValue(value: unknown): string | null {
   if (typeof value === "string") return value;
@@ -55,43 +54,6 @@ async function resolveOrCreateGuildie(
   return guildieId;
 }
 
-async function effectiveGuildieRank(
-  client: PoolClient,
-  guildieId: string,
-): Promise<number | null> {
-  const result = await client.query<{ rank_index: number | null }>(
-    `SELECT MIN(grm.rank_index)::integer AS rank_index
-       FROM characters c
-       JOIN guild_roster_memberships grm
-         ON grm.region = c.region
-        AND grm.realm_id = c.realm_id
-        AND grm.character_id = c.character_id
-        AND grm.currently_present = true
-      WHERE c.guildie_id = $1
-        AND c.currently_controlled = true
-        AND grm.guild_id = $2`,
-    [guildieId, config.guild.id],
-  );
-  return result.rows[0]?.rank_index ?? null;
-}
-
-function guildiePublication(
-  guildieId: string,
-  beforeRank: number | null,
-  afterRank: number | null,
-): PublishedEvent | null {
-  if (beforeRank === null && afterRank !== null) {
-    return { kind: "guildie.joined", guildieId, guildId: config.guild.id };
-  }
-  if (beforeRank !== null && afterRank === null) {
-    return { kind: "guildie.left", guildieId, guildId: config.guild.id };
-  }
-  if (beforeRank !== null && afterRank !== null && beforeRank !== afterRank) {
-    return { kind: "guildie.rank.changed", guildieId, guildId: config.guild.id };
-  }
-  return null;
-}
-
 async function reconcileGuildieBlizzardObservation(
   client: PoolClient,
   input: {
@@ -99,9 +61,7 @@ async function reconcileGuildieBlizzardObservation(
     region: Region;
     profile: BlizzardWowProfile;
   },
-): Promise<PublishedEvent | null> {
-  const beforeGuildieRank = await effectiveGuildieRank(client, input.guildieId);
-
+): Promise<void> {
   // Preserve every previously observed character, but make the latest successful
   // Blizzard profile observation authoritative for current control.
   await client.query(
@@ -161,10 +121,7 @@ async function reconcileGuildieBlizzardObservation(
     }
   }
 
-  const afterGuildieRank = await effectiveGuildieRank(client, input.guildieId);
-  const publication = guildiePublication(input.guildieId, beforeGuildieRank, afterGuildieRank);
   await client.query("UPDATE guildies SET updated_at = now() WHERE guildie_id = $1", [input.guildieId]);
-  return publication;
 }
 
 export async function reconcileExistingGuildieBlizzardObservation(input: {
@@ -173,7 +130,7 @@ export async function reconcileExistingGuildieBlizzardObservation(input: {
   principalId: string;
   profile: BlizzardWowProfile;
 }): Promise<void> {
-  const reconciled = await withTransaction(async (client) => {
+  await withTransaction(async (client) => {
     const principal = await client.query(
       `UPDATE blizzard_principals
           SET last_seen_at = now()
@@ -187,14 +144,12 @@ export async function reconcileExistingGuildieBlizzardObservation(input: {
       throw new Error("Blizzard principal is not bound to the existing Guildie");
     }
 
-    return reconcileGuildieBlizzardObservation(client, {
+    await reconcileGuildieBlizzardObservation(client, {
       guildieId: input.guildieId,
       region: input.region,
       profile: input.profile,
     });
   });
-
-  if (reconciled) await publishEvent(reconciled);
 }
 
 export async function establishOrResolveGuildie(input: {
@@ -202,16 +157,13 @@ export async function establishOrResolveGuildie(input: {
   principalId: string;
   profile: BlizzardWowProfile;
 }): Promise<string> {
-  const established = await withTransaction(async (client) => {
+  return withTransaction(async (client) => {
     const guildieId = await resolveOrCreateGuildie(client, input.region, input.principalId);
-    const publication = await reconcileGuildieBlizzardObservation(client, {
+    await reconcileGuildieBlizzardObservation(client, {
       guildieId,
       region: input.region,
       profile: input.profile,
     });
-    return { guildieId, publication };
+    return guildieId;
   });
-
-  if (established.publication) await publishEvent(established.publication);
-  return established.guildieId;
 }
