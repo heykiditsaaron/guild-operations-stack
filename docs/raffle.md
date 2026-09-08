@@ -2,7 +2,7 @@
 
 Raffle is a concrete Guild Operations participation module for operating the guild raffle. The module registers an enduring Guild Event Offering so the shared Events shell can promote Raffle even when no round is currently live or scheduled. Individual raffle rounds may separately contribute temporal occurrences to the shared Guild Event Calendar; the raffle module itself is not contained by Guild Events, the Offering registry, or the calendar.
 
-It is deliberately modeled as a raffle-specific domain rather than as an instance of a generic event, workflow, participation, notification, or audit framework. Raffle may publish system events after authoritative raffle truth changes; those system events are a supporting integration boundary, not the Guild Event product category itself.
+It is deliberately modeled as a raffle-specific domain rather than as an instance of a generic event, workflow, participation, notification, or audit framework.
 
 ## Purpose
 
@@ -347,23 +347,4 @@ The administration root intentionally excludes concluded raffles because termina
 
 Raffle is not permanently promoted in primary navigation. A live raffle may additionally be promoted from the home surface; that home promotion is lifecycle-sensitive and separate from the enduring Guild Event Offering.
 
-Discord and other subscribers remain interaction surfaces over the same backend truth. They do not become independent owners of raffle state.
-
-## System-event publication
-
-Raffle publishes system events when meaningful authoritative raffle reality successfully changes. A publication creates attention rather than truth: it carries the occurrence kind and small authority-oriented coordinates so a subscriber can query Guild Operations for current state.
-
-The publication vocabulary should follow raffle truth rather than create competing raffle state. A successful manual draw may publish a draw conclusion event with the winning claim coordinate. A normal draw resolution with no drawing population may publish a no-participation occurrence. Operator cancellation may publish its own conclusion occurrence when an external interaction surface needs attention.
-
-The current publication surface remains provisional because no subscriber architecture has been accepted yet. Exact system-event names are therefore not raffle lifecycle doctrine and should not be used to infer new lifecycle states.
-
-Failed attempts, authorization failures, database failures, transport failures, and other machinery errors are not raffle system events. Publication failure does not undo an authoritative raffle operation that already succeeded.
-
-The concrete references are separated by purpose:
-
-- `docs/publications/raffle.md` — the raffle system events currently published and their coordinates;
-- `docs/endpoints/raffle.md` — authoritative raffle HTTP query and operation contracts;
-- `docs/publication-model.md` — cross-cutting publication doctrine;
-- `docs/integrations/botghost.md` — current BotGhost transport variables and operator reference.
-
-This separation lets Raffle remain the owner of raffle truth while publication and external interaction remain projections over that truth.
+Discord and other integrations remain interaction surfaces over the same backend truth. They do not become independent owners of raffle state.
