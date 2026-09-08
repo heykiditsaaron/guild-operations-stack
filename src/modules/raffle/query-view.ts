@@ -28,7 +28,7 @@ export type RaffleQueryRound = {
     approved: number;
     denied: number;
     cancelled: number;
-    approvedEntries: number;
+    approvedTickets: number;
   };
   gold: {
     pot: string;
@@ -93,7 +93,7 @@ function projectRound(facts: NonNullable<Awaited<ReturnType<typeof raffleRoundFa
       approved: metrics.approvedClaimCount,
       denied: metrics.deniedClaimCount,
       cancelled: metrics.cancelledClaimCount,
-      approvedEntries: metrics.approvedEntryCount,
+      approvedTickets: metrics.approvedEntryCount,
     },
     gold: round.prizeKind === "gold"
       ? {
