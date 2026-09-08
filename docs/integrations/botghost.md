@@ -28,7 +28,7 @@ Established global read resources currently include:
 
 ```http
 GET /api/v1/guildies/{guildie_id}
-GET /api/v1/guilds/{guild_id}/character-memberships/{region}/{realm_id}/{character_id}
+GET /api/v1/guilds/{guild_id}/characters/{region}/{realm_id}/{character_id}
 ```
 
 These endpoints return current application state. They are not publication payloads and do not transfer authority to BotGhost.
