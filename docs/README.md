@@ -36,10 +36,6 @@ Concrete modules may also own documentation outside this directory where their e
 
 API endpoint reference remains under [`endpoints/`](endpoints/).
 
-## Publication material
-
-The existing event-publication documentation remains intentionally outside this realignment. That subsystem is under separate product consideration and should not drive the documentation architecture while its future is unresolved.
-
 ## Working rule
 
 Use this test when adding or revising documentation:
