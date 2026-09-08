@@ -150,6 +150,20 @@ export async function liveRaffleRoundFacts(): Promise<RaffleRoundFacts | null> {
   return round ? raffleRoundFacts(round.roundId) : null;
 }
 
+export async function nextListedRaffleRoundFacts(): Promise<RaffleRoundFacts | null> {
+  const result = await pool.query<{ round_id: string }>(
+    `SELECT round_id
+       FROM raffle_rounds
+      WHERE guild_id = $1
+        AND status = 'listed'
+      ORDER BY drawing_at_unix ASC, created_at_unix ASC, round_id ASC
+      LIMIT 1`,
+    [config.guild.id],
+  );
+  const roundId = result.rows[0]?.round_id;
+  return roundId ? raffleRoundFacts(String(roundId)) : null;
+}
+
 export async function raffleClaimFacts(claimId: string): Promise<RaffleClaimFacts | null> {
   const result = await pool.query<{
     claim_id: string;
