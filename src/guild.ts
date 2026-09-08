@@ -2,7 +2,6 @@ import type { PoolClient } from "pg";
 import { acquireGuildAuthority, type BlizzardGuildProfile, type BlizzardGuildRoster } from "./blizzard.js";
 import { config, type Region } from "./config.js";
 import { pool, withTransaction } from "./db.js";
-import { publishEvent, type PublishedEvent } from "./events/publisher.js";
 import {
   GUILD_DISCORD_MANAGE_CAPABILITY,
   GUILD_REFRESH_CAPABILITY,
@@ -40,48 +39,10 @@ function coordinateKey(character: GuildCharacterCoordinate): string {
   return `${character.region}:${character.realmId}:${character.characterId}`;
 }
 
-type CharacterRosterState = GuildCharacterCoordinate & {
-  rankIndex: number;
-  characterName: string;
-  realmName: string | null;
-  realmSlug: string | null;
-};
-
 type GuildieRosterState = {
   guildieId: string;
   rankIndex: number;
 };
-
-async function characterRosterState(client: PoolClient, guildId: string): Promise<Map<string, CharacterRosterState>> {
-  const result = await client.query<{
-    region: Region;
-    realm_id: string;
-    character_id: string;
-    rank_index: number;
-    character_name: string;
-    realm_name: string | null;
-    realm_slug: string | null;
-  }>(
-    `SELECT region, realm_id, character_id, rank_index, character_name, realm_name, realm_slug
-       FROM guild_roster_memberships
-      WHERE guild_id = $1
-        AND currently_present = true`,
-    [guildId],
-  );
-
-  return new Map(result.rows.map((row) => {
-    const state: CharacterRosterState = {
-      region: row.region,
-      realmId: row.realm_id,
-      characterId: row.character_id,
-      rankIndex: row.rank_index,
-      characterName: row.character_name,
-      realmName: row.realm_name,
-      realmSlug: row.realm_slug,
-    };
-    return [coordinateKey(state), state];
-  }));
-}
 
 async function guildieRosterState(client: PoolClient, guildId: string): Promise<Map<string, GuildieRosterState>> {
   const result = await client.query<{ guildie_id: string; rank_index: number }>(
@@ -104,67 +65,22 @@ async function guildieRosterState(client: PoolClient, guildId: string): Promise<
   }]));
 }
 
-function reconciliationPublications(
-  guildId: string,
-  beforeCharacters: Map<string, CharacterRosterState>,
-  afterCharacters: Map<string, CharacterRosterState>,
-  beforeGuildies: Map<string, GuildieRosterState>,
-  afterGuildies: Map<string, GuildieRosterState>,
-): PublishedEvent[] {
-  const publications: PublishedEvent[] = [];
+function changedGuildieIds(
+  before: Map<string, GuildieRosterState>,
+  after: Map<string, GuildieRosterState>,
+): string[] {
+  const changed = new Set<string>();
 
-  for (const [key, after] of afterCharacters) {
-    const before = beforeCharacters.get(key);
-    if (!before) {
-      publications.push({
-        kind: "character.joined",
-        guildId,
-        region: after.region,
-        realmId: after.realmId,
-        characterId: after.characterId,
-      });
-      continue;
-    }
-
-    if (before.rankIndex !== after.rankIndex) {
-      publications.push({
-        kind: "character.rank.changed",
-        guildId,
-        region: after.region,
-        realmId: after.realmId,
-        characterId: after.characterId,
-      });
-    }
+  for (const [guildieId, afterState] of after) {
+    const beforeState = before.get(guildieId);
+    if (!beforeState || beforeState.rankIndex !== afterState.rankIndex) changed.add(guildieId);
   }
 
-  for (const [key, before] of beforeCharacters) {
-    if (!afterCharacters.has(key)) {
-      publications.push({
-        kind: "character.left",
-        guildId,
-        region: before.region,
-        realmId: before.realmId,
-        characterId: before.characterId,
-      });
-    }
+  for (const guildieId of before.keys()) {
+    if (!after.has(guildieId)) changed.add(guildieId);
   }
 
-  for (const [guildieId, after] of afterGuildies) {
-    const before = beforeGuildies.get(guildieId);
-    if (!before) {
-      publications.push({ kind: "guildie.joined", guildieId, guildId });
-    } else if (before.rankIndex !== after.rankIndex) {
-      publications.push({ kind: "guildie.rank.changed", guildieId, guildId });
-    }
-  }
-
-  for (const guildieId of beforeGuildies.keys()) {
-    if (!afterGuildies.has(guildieId)) {
-      publications.push({ kind: "guildie.left", guildieId, guildId });
-    }
-  }
-
-  return publications;
+  return [...changed];
 }
 
 async function persistGuild(
@@ -276,37 +192,44 @@ async function persistRoster(client: PoolClient, guildId: string, region: Region
   return { observed, changedPresentationCoordinates };
 }
 
-export async function refreshGuildAuthority(): Promise<{
+export type GuildRefreshResult = {
   guildId: string;
   rosterCount: number;
   reconciliation: {
-    charactersTargeted: number; profilesUpdated: number; mediaUpdated: number;
-    failedProfiles: number; failedMedia: number; apiCalls: number;
-    failures: Array<{ characterId: string; realmId: string; name: string; stage: "profile" | "media"; error: string }>;
+    charactersTargeted: number;
+    profilesUpdated: number;
+    mediaUpdated: number;
+    failedProfiles: number;
+    failedMedia: number;
+    apiCalls: number;
+    failures: Array<{
+      characterId: string;
+      realmId: string;
+      name: string;
+      stage: "profile" | "media";
+      error: string;
+    }>;
   };
-}> {
+};
+
+export async function refreshGuildAuthority(): Promise<GuildRefreshResult> {
   const authority = await acquireGuildAuthority(config.guild);
   if (String(authority.profile.id) !== config.guild.id) throw new Error(`Configured guild locator resolved unexpected Blizzard guild id ${String(authority.profile.id)}`);
   if (String(authority.roster.guild.id) !== config.guild.id) throw new Error("Blizzard guild roster does not corroborate the configured guild id");
 
   const persisted = await withTransaction(async (client) => {
     const guildId = await persistGuild(client, config.guild.region, authority.profile);
-    const beforeCharacters = await characterRosterState(client, guildId);
     const beforeGuildies = await guildieRosterState(client, guildId);
     const roster = await persistRoster(client, guildId, config.guild.region, authority.roster);
-    const afterCharacters = await characterRosterState(client, guildId);
     const afterGuildies = await guildieRosterState(client, guildId);
-    const publications = reconciliationPublications(guildId, beforeCharacters, afterCharacters, beforeGuildies, afterGuildies);
-    return { guildId, roster, publications };
+    return {
+      guildId,
+      roster,
+      changedGuildieIds: changedGuildieIds(beforeGuildies, afterGuildies),
+    };
   });
 
-  for (const publication of persisted.publications) await publishEvent(publication);
-  await reconcileGuildiesBestEffort(
-    persisted.publications.flatMap((publication) =>
-      "guildieId" in publication ? [publication.guildieId] : [],
-    ),
-    { trigger: "guild-refresh" },
-  );
+  await reconcileGuildiesBestEffort(persisted.changedGuildieIds, { trigger: "guild-refresh" });
 
   const targets = await guildCharactersNeedingEnrichment(persisted.guildId, persisted.roster.changedPresentationCoordinates);
   const enrichment = await enrichGuildCharacters({ guildId: persisted.guildId, targets });
@@ -326,11 +249,23 @@ export async function refreshGuildAuthority(): Promise<{
   };
 }
 
-export async function guildCharactersForGuildie(guildieId: string): Promise<Array<{
-  guildId: string; characterId: string; realmId: string; name: string; realmName: string | null;
-  rankIndex: number; level: number | null; className: string | null; raceName: string | null;
-  activeSpecName: string | null; avatarUrl: string | null; insetUrl: string | null; mainUrl: string | null;
-}>> {
+export type GuildCharacter = {
+  guildId: string;
+  characterId: string;
+  realmId: string;
+  name: string;
+  realmName: string | null;
+  rankIndex: number;
+  level: number | null;
+  className: string | null;
+  raceName: string | null;
+  activeSpecName: string | null;
+  avatarUrl: string | null;
+  insetUrl: string | null;
+  mainUrl: string | null;
+};
+
+export async function guildCharactersForGuildie(guildieId: string): Promise<GuildCharacter[]> {
   const result = await pool.query<{
     guild_id: string; character_id: string; realm_id: string; character_name: string; realm_name: string | null;
     rank_index: number; level: number | null; class_name: string | null; race_name: string | null;
