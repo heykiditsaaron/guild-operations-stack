@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
-import { activeRaffleRoundOverview } from "../../../../modules/raffle/live-round.js";
 import { raffleClaimsForMember, type RaffleMemberClaim } from "../../../../modules/raffle/member-view.js";
+import { liveRaffleRoundFacts } from "../../../../modules/raffle/queries.js";
 import type { AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
@@ -44,11 +44,12 @@ function claimsList(claims: RaffleMemberClaim[]): string {
 export async function registerRaffleClaimsPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/events/raffle/claims", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, guildie, liveRaffle] = await Promise.all([
+    const [viewer, guildie, liveFacts] = await Promise.all([
       viewerForRequest(sessionToken),
       authenticatedGuildie(sessionToken),
-      activeRaffleRoundOverview(),
+      liveRaffleRoundFacts(),
     ]);
+    const liveRaffle = liveFacts?.round ?? null;
 
     let body: string;
     if (!liveRaffle) {
