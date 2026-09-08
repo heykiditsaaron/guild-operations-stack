@@ -1,7 +1,6 @@
 import type { FastifyInstance } from "fastify";
+import { guildRankDefinitions } from "../../application-state.js";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
-import { config } from "../../config.js";
-import { pool } from "../../db.js";
 import { guildRefreshStatus } from "../../guild-admin.js";
 import {
   GUILD_REFRESH_MINIMUM_INTERVAL_SECONDS,
@@ -158,14 +157,7 @@ async function renderDiscordAdministration(): Promise<string> {
     </div>`;
   }
 
-  const ranksResult = await pool.query<{ rank_index: number; display_name: string | null }>(
-    `SELECT rank_index, display_name
-       FROM guild_rank_definitions
-      WHERE guild_id = $1
-        AND active = true
-      ORDER BY rank_index`,
-    [config.guild.id],
-  );
+  const ranks = await guildRankDefinitions();
   const rankMapping = new Map(settings.rankRoles.map((mapping) => [mapping.rankIndex, mapping.discordRoleId]));
 
   return `<div class="discord-admin" data-discord-admin>
@@ -195,10 +187,10 @@ async function renderDiscordAdministration(): Promise<string> {
           <span>Linked Guildie role</span>
           <select name="linkedRoleId" data-discord-role-select>${roleOptions(roles, settings.linkedRoleId)}</select>
         </label>
-        ${ranksResult.rows.map((rank) => `<label>
-          <span>${htmlText(rank.display_name ?? `Rank ${rank.rank_index}`)}</span>
-          <select data-discord-rank-index="${rank.rank_index}" data-discord-role-select>
-            ${roleOptions(roles, rankMapping.get(rank.rank_index) ?? null)}
+        ${ranks.map((rank) => `<label>
+          <span>${htmlText(rank.displayName)}</span>
+          <select data-discord-rank-index="${rank.rankIndex}" data-discord-role-select>
+            ${roleOptions(roles, rankMapping.get(rank.rankIndex) ?? null)}
           </select>
         </label>`).join("")}
       </div>
