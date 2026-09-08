@@ -55,7 +55,7 @@ export async function registerApiV1Routes(app: FastifyInstance): Promise<void> {
   });
 
   app.get(
-    "/api/v1/guilds/:guildId/character-memberships/:region/:realmId/:characterId",
+    "/api/v1/guilds/:guildId/characters/:region/:realmId/:characterId",
     async (request, reply) => {
       if (!readAuthorized(request)) return reply.code(401).send({ error: "invalid_machine_authority" });
 
@@ -70,10 +70,10 @@ export async function registerApiV1Routes(app: FastifyInstance): Promise<void> {
         typeof params.realmId !== "string" || !params.realmId ||
         typeof params.characterId !== "string" || !params.characterId
       ) {
-        return reply.code(400).send({ error: "invalid_character_membership_coordinate" });
+        return reply.code(400).send({ error: "invalid_character_coordinate" });
       }
       const region = parseRegion(params.region);
-      if (!region) return reply.code(400).send({ error: "invalid_character_membership_coordinate" });
+      if (!region) return reply.code(400).send({ error: "invalid_character_coordinate" });
       if (params.guildId !== config.guild.id) return reply.code(404).send({ error: "guild_not_found" });
 
       const membership = await characterMembership({
