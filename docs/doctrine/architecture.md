@@ -28,6 +28,30 @@ Authority remains with whoever can legitimately establish the fact:
 
 Guild Operations should automate procedure, enforcement, recording, resolution, and presentation where useful. It should not manufacture authority merely because software could make a decision.
 
+## Application contracts
+
+Global machinery is the canonical application substrate for state and relationships that belong to Guild Operations as a whole.
+
+Authoritative persistence and external observations are translated into named application contracts before consumers interpret them. Internal consumers and external consumers must depend on the same application meanings. Web presentation, Discord integrations, schedulers, administrative tooling, future modules, and REST interfaces may express or invoke those contracts differently, but they must not independently reconstruct alternate versions of the same global truth.
+
+The dependency direction is:
+
+```text
+external authority / persistence
+            ↓
+    global application contracts
+            ↓
+        consumers
+```
+
+A consumer should not need to know how global state is persisted in order to use it correctly. Direct persistence access is appropriate inside the machinery that owns and establishes a global contract; it is not an alternate contract for downstream consumers.
+
+REST preparedness is a consequence of this coherence rather than a separate architecture. A future HTTP API should serialize and authorize existing application contracts rather than introduce a second interpretation of Guild Operations state.
+
+Concrete shared infrastructure may also accept projections from an owning procedure. Guild Event Calendar Listings and Operational Records are examples: their contracts define the shared meaning accepted by the infrastructure without transferring ownership of the underlying producer truth.
+
+Do not introduce a generic application framework, universal object model, or speculative contract registry to enforce this rule. Establish concrete contracts for actual global state and relationships as they are needed.
+
 ## Member and authority model
 
 Guild Operations deliberately distinguishes durable Guildie continuity from Blizzard account authority, WoW accounts, Characters, current roster observations, selected-main presentation, optional Discord association, and derived capabilities.
