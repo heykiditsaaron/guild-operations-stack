@@ -2,10 +2,10 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { characterMembership, guildieState } from "./application-state.js";
 import { config, parseRegion } from "./config.js";
 import {
-  createGuildCalendarEvent,
+  createExternallyManagedGuildCalendarEvent,
   GuildCalendarEventNotFoundError,
-  updateGuildCalendarEvent,
-  withdrawGuildCalendarEventOperation,
+  updateExternallyManagedGuildCalendarEvent,
+  withdrawExternallyManagedGuildCalendarEventOperation,
 } from "./guild-events/calendar/operations.js";
 import {
   discoverableGuildCalendarEvents,
@@ -185,7 +185,7 @@ export async function registerApiV1Routes(app: FastifyInstance): Promise<void> {
     if (!title || !occursAt) return reply.code(400).send({ error: "invalid_calendar_event" });
 
     try {
-      const event = await createGuildCalendarEvent({
+      const event = await createExternallyManagedGuildCalendarEvent({
         title,
         occursAt,
         category: optionalText(body.category),
@@ -222,7 +222,7 @@ export async function registerApiV1Routes(app: FastifyInstance): Promise<void> {
     }
 
     try {
-      const event = await updateGuildCalendarEvent(eventId, {
+      const event = await updateExternallyManagedGuildCalendarEvent(eventId, {
         title: title === null ? undefined : title,
         occursAt: occursAt === null ? undefined : occursAt,
         category: hasCategory ? optionalText(body.category) : undefined,
@@ -246,7 +246,7 @@ export async function registerApiV1Routes(app: FastifyInstance): Promise<void> {
     if (!eventId) return reply.code(400).send({ error: "invalid_calendar_event_coordinate" });
 
     try {
-      await withdrawGuildCalendarEventOperation(eventId);
+      await withdrawExternallyManagedGuildCalendarEventOperation(eventId);
       return reply.code(204).send();
     } catch (error) {
       if (error instanceof GuildCalendarEventNotFoundError) {
