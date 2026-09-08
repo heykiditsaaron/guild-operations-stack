@@ -14,13 +14,6 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
 
   if (!state) return { authenticated: false };
 
-  const selectedCharacter = state.selectedMain
-    ? state.characters.find((character) =>
-        character.realmId === state.selectedMain?.realmId &&
-        character.characterId === state.selectedMain?.characterId,
-      ) ?? null
-    : null;
-
   return {
     authenticated: true,
     administrationAvailable: administration.available,
@@ -30,11 +23,11 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
           characterId: state.selectedMain.characterId,
           realmId: state.selectedMain.realmId,
           name: state.selectedMain.name,
-          realmName: selectedCharacter?.realmName ?? state.selectedMain.realmName,
-          rankIndex: selectedCharacter?.rankIndex ?? state.selectedMain.rankIndex,
-          level: selectedCharacter?.level ?? null,
-          className: selectedCharacter?.className ?? null,
-          activeSpecName: selectedCharacter?.activeSpecName ?? null,
+          realmName: state.selectedMain.realmName,
+          rankIndex: state.selectedMain.rankIndex,
+          level: state.selectedMain.character?.level ?? null,
+          className: state.selectedMain.character?.className ?? null,
+          activeSpecName: state.selectedMain.character?.activeSpecName ?? null,
           avatarUrl: state.selectedMain.avatarUrl,
         }
       : null,
