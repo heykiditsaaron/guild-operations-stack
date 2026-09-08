@@ -171,6 +171,8 @@ The route addresses the Character directly. It does not introduce a second `char
 
 The Guild Calendar is the shared registry of concrete guild occurrences intentionally placed on the calendar. It is not a generic event-management API. Internal modules may project their own occurrence truth into the same application contract, while authorized external callers may establish calendar-native events directly.
 
+Calendar persistence distinguishes application-managed events from externally managed events solely to protect mutation authority. That distinction is not part of the shared event representation. REST reads may observe either class, but REST write authority may update or withdraw only externally managed events; it cannot mutate module-managed occurrences such as raffle projections.
+
 A Calendar event representation is:
 
 ```json
@@ -205,7 +207,7 @@ Requires REST read authority. Returns one currently registered Calendar event. W
 
 ### POST `/api/v1/calendar/events`
 
-Requires REST write authority. Creates a Calendar-native event and assigns its `event_id`.
+Requires REST write authority. Creates an externally managed Calendar-native event and assigns its `event_id`.
 
 ```json
 {
@@ -220,7 +222,7 @@ Returns `201` with the established Calendar event.
 
 ### PATCH `/api/v1/calendar/events/:eventId`
 
-Requires REST write authority. Updates one or more current Calendar fields. Omitted fields remain unchanged. `category` and `destination` may be set to `null` to clear them.
+Requires REST write authority. Updates one or more current fields of an externally managed Calendar event. Omitted fields remain unchanged. `category` and `destination` may be set to `null` to clear them.
 
 ```json
 {
@@ -228,13 +230,13 @@ Requires REST write authority. Updates one or more current Calendar fields. Omit
 }
 ```
 
-Returns the updated Calendar event. Unknown or withdrawn events return `404`.
+Returns the updated Calendar event. Unknown, withdrawn, or application-managed events return `404` through this mutation surface.
 
 ### DELETE `/api/v1/calendar/events/:eventId`
 
-Requires REST write authority. Withdraws the event from Calendar discovery and returns `204`.
+Requires REST write authority. Withdraws an externally managed event from Calendar discovery and returns `204`.
 
-Withdrawal is not physical deletion and is not how an event merely becomes past. Unknown or already-withdrawn events return `404`.
+Withdrawal is not physical deletion and is not how an event merely becomes past. Unknown, already-withdrawn, or application-managed events return `404` through this mutation surface.
 
 External Calendar create, update, and withdrawal operations are recorded best-effort through global operational inspection with source `calendar`.
 
