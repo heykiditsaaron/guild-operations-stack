@@ -1,6 +1,5 @@
 import { config } from "./config.js";
 import { pool } from "./db.js";
-import { publishEvent } from "./events/publisher.js";
 
 export type SelectedMainCharacter = {
   guildId: string;
@@ -78,12 +77,6 @@ export async function selectMainCharacter(
          selected_at = now()`,
       [guildieId, config.guild.id, config.guild.region, realmId, characterId],
     );
-
-    await publishEvent({
-      kind: "guildie.main.changed",
-      guildieId,
-      guildId: config.guild.id,
-    });
   }
 
   return {
