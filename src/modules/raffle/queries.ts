@@ -242,3 +242,72 @@ export async function raffleClaimFacts(claimId: string): Promise<RaffleClaimFact
     resolutionActorGuildieId: resolutionActorGuildieId(claim),
   };
 }
+
+async function claimFactsForIds(claimIds: string[]): Promise<RaffleClaimFacts[]> {
+  const claims = await Promise.all(claimIds.map((claimId) => raffleClaimFacts(claimId)));
+  return claims.filter((claim): claim is RaffleClaimFacts => claim !== null);
+}
+
+export async function raffleClaimFactsForRound(roundId: string): Promise<RaffleClaimFacts[]> {
+  const result = await pool.query<{ claim_id: string }>(
+    `SELECT rc.claim_id
+       FROM raffle_claims rc
+       JOIN raffle_rounds rr
+         ON rr.round_id = rc.round_id
+        AND rr.guild_id = $2
+      WHERE rc.round_id = $1
+      ORDER BY rc.created_at_unix ASC, rc.claim_id ASC`,
+    [roundId, config.guild.id],
+  );
+  return claimFactsForIds(result.rows.map((row) => String(row.claim_id)));
+}
+
+export async function raffleClaimFactsForMember(
+  guildieId: string,
+  roundId: string,
+): Promise<RaffleClaimFacts[]> {
+  const result = await pool.query<{ claim_id: string }>(
+    `SELECT rc.claim_id
+       FROM raffle_claims rc
+       JOIN raffle_rounds rr
+         ON rr.round_id = rc.round_id
+        AND rr.guild_id = $3
+      WHERE rc.round_id = $1
+        AND rc.claimant_guildie_id = $2
+      ORDER BY rc.created_at_unix DESC, rc.claim_id DESC`,
+    [roundId, guildieId, config.guild.id],
+  );
+  return claimFactsForIds(result.rows.map((row) => String(row.claim_id)));
+}
+
+async function roundFactsForIds(roundIds: string[]): Promise<RaffleRoundFacts[]> {
+  const rounds = await Promise.all(roundIds.map((roundId) => raffleRoundFacts(roundId)));
+  return rounds.filter((round): round is RaffleRoundFacts => round !== null);
+}
+
+export async function raffleRoundFactsForAdministration(): Promise<RaffleRoundFacts[]> {
+  const result = await pool.query<{ round_id: string }>(
+    `SELECT round_id
+       FROM raffle_rounds
+      WHERE guild_id = $1
+        AND status IN ('live', 'listed')
+      ORDER BY
+        CASE status WHEN 'live' THEN 0 ELSE 1 END,
+        drawing_at_unix ASC,
+        round_id ASC`,
+    [config.guild.id],
+  );
+  return roundFactsForIds(result.rows.map((row) => String(row.round_id)));
+}
+
+export async function concludedRaffleRoundFacts(): Promise<RaffleRoundFacts[]> {
+  const result = await pool.query<{ round_id: string }>(
+    `SELECT round_id
+       FROM raffle_rounds
+      WHERE guild_id = $1
+        AND status = 'concluded'
+      ORDER BY concluded_at_unix DESC NULLS LAST, round_id DESC`,
+    [config.guild.id],
+  );
+  return roundFactsForIds(result.rows.map((row) => String(row.round_id)));
+}
