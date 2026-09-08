@@ -18,8 +18,6 @@ Second, the development Compose project owns its own:
 - application origin and host ports; and
 - environment file.
 
-Development does not load `botghost.env`. A development run must not emit BotGhost publications using production integration configuration.
-
 Default host bindings are:
 
 - application: `3101` -> container `3100`;
