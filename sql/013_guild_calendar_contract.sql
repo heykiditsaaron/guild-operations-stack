@@ -8,4 +8,8 @@ ALTER TABLE guild_event_calendar_listings
   ALTER COLUMN guild_event_title SET NOT NULL;
 
 ALTER TABLE guild_event_calendar_listings
+  ADD COLUMN management_kind text NOT NULL DEFAULT 'application'
+    CHECK (management_kind IN ('application', 'external'));
+
+ALTER TABLE guild_event_calendar_listings
   DROP COLUMN guild_event_kind;
