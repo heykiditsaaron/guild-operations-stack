@@ -3,7 +3,7 @@ import { authenticatedGuildie, SESSION_COOKIE_NAME } from "./auth.js";
 import { performGuildRefresh } from "./guild-refresh-operation.js";
 import {
   configureGuildRefreshSchedule,
-  GUILD_REFRESH_MINIMUM_INTERVAL_SECONDS,
+  InvalidGuildRefreshIntervalError,
 } from "./guild-refresh-schedule.js";
 import {
   GUILD_REFRESH_CAPABILITY,
@@ -66,26 +66,29 @@ export async function registerGuildRoutes(app: FastifyInstance): Promise<void> {
     if (typeof enabled !== "boolean") {
       return reply.code(400).send({ error: "enabled_must_be_boolean" });
     }
-    if (
-      typeof intervalSeconds !== "number"
-      || !Number.isInteger(intervalSeconds)
-      || intervalSeconds < GUILD_REFRESH_MINIMUM_INTERVAL_SECONDS
-    ) {
-      return reply.code(400).send({
-        error: "invalid_interval_seconds",
-        minimum_interval_seconds: GUILD_REFRESH_MINIMUM_INTERVAL_SECONDS,
-      });
+    if (typeof intervalSeconds !== "number") {
+      return reply.code(400).send({ error: "invalid_interval_seconds" });
     }
 
-    const schedule = await configureGuildRefreshSchedule({
-      enabled,
-      intervalSeconds,
-    });
+    try {
+      const schedule = await configureGuildRefreshSchedule({
+        enabled,
+        intervalSeconds,
+      });
 
-    return reply.send({
-      enabled: schedule.enabled,
-      interval_seconds: schedule.intervalSeconds,
-      next_due_at_unix: schedule.nextDueAtUnix,
-    });
+      return reply.send({
+        enabled: schedule.enabled,
+        interval_seconds: schedule.intervalSeconds,
+        next_due_at_unix: schedule.nextDueAtUnix,
+      });
+    } catch (error) {
+      if (error instanceof InvalidGuildRefreshIntervalError) {
+        return reply.code(400).send({
+          error: "invalid_interval_seconds",
+          minimum_interval_seconds: error.minimumIntervalSeconds,
+        });
+      }
+      throw error;
+    }
   });
 }
