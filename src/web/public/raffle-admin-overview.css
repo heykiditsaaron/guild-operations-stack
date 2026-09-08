@@ -1,0 +1,97 @@
+.raffle-admin-overview {
+  width: min(100%, 54rem);
+}
+
+.raffle-admin-overview .raffle-setup {
+  margin: 0 0 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.raffle-admin-overview .raffle-setup-form {
+  margin-top: 0;
+}
+
+.raffle-admin-overview .raffle-overview-list {
+  gap: 0.75rem;
+}
+
+.raffle-admin-overview .raffle-overview-item {
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.raffle-admin-overview .raffle-overview-item-live {
+  border-color: rgba(124, 198, 141, 0.2);
+  background: rgba(124, 198, 141, 0.035);
+}
+
+.raffle-overview-card-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.raffle-admin-overview .raffle-overview-identity h2 {
+  font-size: 1rem;
+}
+
+.raffle-admin-overview .raffle-overview-identity p {
+  margin-top: 0.35rem;
+  color: #aaa69c;
+  font-size: 0.9rem;
+}
+
+.raffle-overview-live-state {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.55rem;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid rgba(124, 198, 141, 0.28);
+  border-radius: 999px;
+  color: #b9dfc1;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.raffle-admin-overview .raffle-overview-attribution {
+  margin-top: 0.5rem;
+}
+
+.raffle-admin-overview .raffle-overview-attention {
+  margin-top: 0.8rem;
+}
+
+.raffle-admin-overview .raffle-management-controls {
+  gap: 0.55rem;
+  margin-top: 1rem;
+}
+
+.raffle-admin-overview .raffle-action {
+  min-height: 2.35rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.88rem;
+}
+
+.raffle-admin-overview .raffle-overview-item-live .raffle-management-controls > a[href="/events/raffle"] {
+  margin-top: 0.15rem;
+}
+
+.raffle-admin-header-action {
+  flex: none;
+}
+
+@media (max-width: 42rem) {
+  .raffle-overview-card-heading {
+    align-items: baseline;
+  }
+}
