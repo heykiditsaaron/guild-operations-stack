@@ -2,8 +2,8 @@ import type { FastifyInstance } from "fastify";
 import { guildState } from "../../../application-state.js";
 import { SESSION_COOKIE_NAME } from "../../../auth.js";
 import {
-  discoverableGuildEventCalendarListings,
-  type GuildEventCalendarListing,
+  discoverableGuildCalendarEvents,
+  type GuildCalendarEvent,
 } from "../../../guild-events/calendar/registry.js";
 import {
   guildEventOfferings,
@@ -27,13 +27,11 @@ function humanize(value: string): string {
     .join(" ");
 }
 
-function presentationFor(listing: GuildEventCalendarListing): EventPresentation {
+function presentationFor(event: GuildCalendarEvent): EventPresentation {
   return {
-    title: listing.guildEventTitle ?? humanize(listing.guildEventKind),
-    category: listing.guildEventCategory
-      ? humanize(listing.guildEventCategory)
-      : "Guild Event",
-    destination: listing.guildEventDestination,
+    title: event.title,
+    category: event.category ? humanize(event.category) : "Guild Event",
+    destination: event.destination,
   };
 }
 
@@ -42,20 +40,18 @@ function localTime(unixSeconds: number): string {
   return `<time datetime="${instant}" data-local-time-unix="${unixSeconds}" data-local-time-date-style="full">${instant}</time>`;
 }
 
-function eventTime(listing: GuildEventCalendarListing): string {
-  const [start, end] = listing.guildEventOccursAt;
+function eventTime(event: GuildCalendarEvent): string {
+  const [start, end] = event.occursAt;
   if (end === undefined) return localTime(start);
   return `${localTime(start)}<span class="events-time-separator" aria-hidden="true">→</span>${localTime(end)}`;
 }
 
-function occursThrough(listing: GuildEventCalendarListing): number {
-  return listing.guildEventOccursAt.length === 2
-    ? listing.guildEventOccursAt[1]
-    : listing.guildEventOccursAt[0];
+function occursThrough(event: GuildCalendarEvent): number {
+  return event.occursAt.length === 2 ? event.occursAt[1] : event.occursAt[0];
 }
 
-function isHappeningNow(listing: GuildEventCalendarListing, nowUnix: number): boolean {
-  const [start, end] = listing.guildEventOccursAt;
+function isHappeningNow(event: GuildCalendarEvent, nowUnix: number): boolean {
+  const [start, end] = event.occursAt;
   if (end === undefined) return start === nowUnix;
   return start <= nowUnix && nowUnix <= end;
 }
@@ -104,8 +100,8 @@ function renderOfferings(offerings: readonly GuildEventOffering[], assets: Asset
     </section>`;
 }
 
-function renderEventItem(listing: GuildEventCalendarListing): string {
-  const presentation = presentationFor(listing);
+function renderEventItem(event: GuildCalendarEvent): string {
+  const presentation = presentationFor(event);
   const title = htmlText(presentation.title);
   const category = htmlText(presentation.category);
   const destination = presentation.destination ? htmlText(presentation.destination) : null;
@@ -113,7 +109,7 @@ function renderEventItem(listing: GuildEventCalendarListing): string {
       <div class="events-item-copy">
         <p class="events-item-category">${category}</p>
         <h3>${title}</h3>
-        <div class="events-item-time">${eventTime(listing)}</div>
+        <div class="events-item-time">${eventTime(event)}</div>
       </div>
       ${destination ? '<span class="events-item-action">View event <span aria-hidden="true">→</span></span>' : ""}`;
 
@@ -127,16 +123,16 @@ function renderEventItem(listing: GuildEventCalendarListing): string {
 function renderSection(
   id: string,
   title: string,
-  listings: GuildEventCalendarListing[],
+  events: GuildCalendarEvent[],
   state: "live" | "upcoming",
 ): string {
-  if (!listings.length) return "";
+  if (!events.length) return "";
 
   return `
     <section class="events-section" aria-labelledby="${id}">
       <h3 class="events-status-banner events-status-banner-${state}" id="${id}">${title}</h3>
       <div class="events-list">
-        ${listings.map(renderEventItem).join("\n")}
+        ${events.map(renderEventItem).join("\n")}
       </div>
     </section>`;
 }
@@ -151,8 +147,8 @@ function emptyCalendarState(): string {
 }
 
 function renderCalendar(
-  happeningNow: GuildEventCalendarListing[],
-  upcoming: GuildEventCalendarListing[],
+  happeningNow: GuildCalendarEvent[],
+  upcoming: GuildCalendarEvent[],
 ): string {
   const calendarBody = happeningNow.length || upcoming.length
     ? `
@@ -172,16 +168,16 @@ function renderCalendar(
 export async function registerEventsPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/events", async (request, reply) => {
     const nowUnix = Math.floor(Date.now() / 1000);
-    const [viewer, listings, guild] = await Promise.all([
+    const [viewer, events, guild] = await Promise.all([
       viewerForRequest(request.cookies[SESSION_COOKIE_NAME]),
-      discoverableGuildEventCalendarListings(),
+      discoverableGuildCalendarEvents(),
       guildState(),
     ]);
     const offerings = guildEventOfferings();
 
-    const relevant = listings.filter((listing) => occursThrough(listing) >= nowUnix);
-    const happeningNow = relevant.filter((listing) => isHappeningNow(listing, nowUnix));
-    const upcoming = relevant.filter((listing) => !isHappeningNow(listing, nowUnix));
+    const relevant = events.filter((event) => occursThrough(event) >= nowUnix);
+    const happeningNow = relevant.filter((event) => isHappeningNow(event, nowUnix));
+    const upcoming = relevant.filter((event) => !isHappeningNow(event, nowUnix));
     const guildCommunity = guild ? `${htmlText(guild.name)}&apos;s community` : "the guild&apos;s community";
 
     const body = `
