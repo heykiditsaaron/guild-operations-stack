@@ -36,7 +36,7 @@ function historyEntry(round: RaffleHistoryRound): string {
         </div>
         <div class="raffle-history-summary">
           ${winner}
-          <span>${round.approvedTicketCount.toLocaleString("en-US")} approved ${round.approvedTicketCount === 1 ? "entry" : "entries"}</span>
+          <span>${round.approvedEntryCount.toLocaleString("en-US")} approved ${round.approvedEntryCount === 1 ? "entry" : "entries"}</span>
           <span class="raffle-reference-arrow" aria-hidden="true">Inspect round →</span>
         </div>
       </a>
