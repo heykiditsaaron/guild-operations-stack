@@ -1,12 +1,11 @@
 import type { PoolClient } from "pg";
 import { pool } from "../../db.js";
 import {
-  establishGuildEventCalendarListing,
-  withdrawGuildEventCalendarListing,
+  establishGuildCalendarEvent,
+  withdrawGuildCalendarEvent,
 } from "../../guild-events/calendar/registry.js";
 import type { RaffleRound } from "./domain.js";
 
-export const RAFFLE_GUILD_EVENT_KIND = "raffle-round";
 export const RAFFLE_GUILD_EVENT_TITLE = "Guild Raffle";
 export const RAFFLE_GUILD_EVENT_CATEGORY = "raffle";
 
@@ -19,10 +18,10 @@ export async function reconcileRaffleCalendarListingDestinations(): Promise<void
     guild_event_id: string;
     guild_event_destination: string | null;
   }>(
-    `SELECT guild_event_id, guild_event_destination
-       FROM guild_event_calendar_listings
-      WHERE guild_event_kind = $1`,
-    [RAFFLE_GUILD_EVENT_KIND],
+    `SELECT listing.guild_event_id, listing.guild_event_destination
+       FROM guild_event_calendar_listings AS listing
+       JOIN raffle_rounds AS round
+         ON round.round_id::text = listing.guild_event_id`,
   );
 
   const staleListings = result.rows.filter(
@@ -34,13 +33,11 @@ export async function reconcileRaffleCalendarListingDestinations(): Promise<void
   await Promise.all(
     staleListings.map((row) => pool.query(
       `UPDATE guild_event_calendar_listings
-          SET guild_event_destination = $3,
-              updated_at_unix = $4
-        WHERE guild_event_id = $1
-          AND guild_event_kind = $2`,
+          SET guild_event_destination = $2,
+              updated_at_unix = $3
+        WHERE guild_event_id = $1`,
       [
         row.guild_event_id,
-        RAFFLE_GUILD_EVENT_KIND,
         raffleRoundDestination(row.guild_event_id),
         updatedAtUnix,
       ],
@@ -53,7 +50,7 @@ export async function establishRaffleCalendarListing(
   client: PoolClient | null = null,
 ): Promise<void> {
   if (round.status === "concluded" && round.conclusion === "operator_cancelled") {
-    await withdrawGuildEventCalendarListing(round.roundId, client);
+    await withdrawGuildCalendarEvent(round.roundId, client);
     return;
   }
 
@@ -61,12 +58,11 @@ export async function establishRaffleCalendarListing(
     ? ([round.liveAtUnix, round.concludedAtUnix ?? round.drawingAtUnix] as const)
     : ([round.drawingAtUnix] as const);
 
-  await establishGuildEventCalendarListing({
-    guildEventId: round.roundId,
-    guildEventKind: RAFFLE_GUILD_EVENT_KIND,
-    guildEventOccursAt: occursAt,
-    guildEventTitle: round.roundTitle ?? RAFFLE_GUILD_EVENT_TITLE,
-    guildEventDestination: raffleRoundDestination(round.roundId),
-    guildEventCategory: RAFFLE_GUILD_EVENT_CATEGORY,
+  await establishGuildCalendarEvent({
+    eventId: round.roundId,
+    occursAt,
+    title: round.roundTitle ?? RAFFLE_GUILD_EVENT_TITLE,
+    destination: raffleRoundDestination(round.roundId),
+    category: RAFFLE_GUILD_EVENT_CATEGORY,
   }, client);
 }
