@@ -3,7 +3,10 @@ import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "./auth.js";
 import { config } from "./config.js";
 import { pool } from "./db.js";
-import { publishEvent } from "./events/publisher.js";
+import {
+  establishDiscordAssociation,
+  removeDiscordAssociation,
+} from "./discord-association.js";
 import {
   reconcileGuildieDiscordRoles,
   removeManagedDiscordRolesForUser,
@@ -12,12 +15,6 @@ import {
 const DISCORD_AUTHORIZE_URL = "https://discord.com/oauth2/authorize";
 const DISCORD_TOKEN_URL = "https://discord.com/api/oauth2/token";
 const DISCORD_CURRENT_USER_URL = "https://discord.com/api/v10/users/@me";
-
-export type DiscordAssociation = {
-  discordUserId: string;
-  username: string;
-  connectedAt: Date;
-};
 
 type DiscordAttempt = {
   guildieId: string;
@@ -28,8 +25,6 @@ type DiscordUser = {
   id: string;
   username: string;
 };
-
-type AssociationResult = "established" | "already_associated" | "conflict";
 
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
@@ -120,59 +115,6 @@ async function acquireDiscordUser(accessToken: string): Promise<DiscordUser> {
   return { id: payload.id, username: payload.username };
 }
 
-async function establishAssociation(guildieId: string, user: DiscordUser): Promise<AssociationResult> {
-  const client = await pool.connect();
-  try {
-    await client.query("BEGIN");
-    const existing = await client.query<{ guildie_id: string; discord_user_id: string }>(
-      `SELECT guildie_id, discord_user_id
-         FROM discord_associations
-        WHERE guildie_id = $1 OR discord_user_id = $2
-        FOR UPDATE`,
-      [guildieId, user.id],
-    );
-
-    if (existing.rowCount) {
-      const same = existing.rows.find(
-        (row) => row.guildie_id === guildieId && row.discord_user_id === user.id,
-      );
-      if (!same || existing.rows.length !== 1) {
-        await client.query("ROLLBACK");
-        return "conflict";
-      }
-
-      await client.query(
-        "UPDATE discord_associations SET username = $1 WHERE guildie_id = $2",
-        [user.username, guildieId],
-      );
-      await client.query("COMMIT");
-      return "already_associated";
-    }
-
-    try {
-      await client.query(
-        `INSERT INTO discord_associations (guildie_id, discord_user_id, username)
-         VALUES ($1, $2, $3)`,
-        [guildieId, user.id, user.username],
-      );
-    } catch (error) {
-      if ((error as { code?: string }).code === "23505") {
-        await client.query("ROLLBACK");
-        return "conflict";
-      }
-      throw error;
-    }
-
-    await client.query("COMMIT");
-    return "established";
-  } catch (error) {
-    await client.query("ROLLBACK").catch(() => undefined);
-    throw error;
-  } finally {
-    client.release();
-  }
-}
-
 async function reconcileAssociationBestEffort(guildieId: string): Promise<void> {
   try {
     await reconcileGuildieDiscordRoles(guildieId, { trigger: "discord-association" });
@@ -192,25 +134,6 @@ async function removeAssociationRolesBestEffort(guildieId: string, discordUserId
   }
 }
 
-export async function discordAssociationForGuildie(guildieId: string): Promise<DiscordAssociation | null> {
-  const result = await pool.query<{
-    discord_user_id: string;
-    username: string;
-    connected_at: Date;
-  }>(
-    `SELECT discord_user_id, username, connected_at
-       FROM discord_associations
-      WHERE guildie_id = $1`,
-    [guildieId],
-  );
-  if (!result.rowCount) return null;
-  return {
-    discordUserId: result.rows[0].discord_user_id,
-    username: result.rows[0].username,
-    connectedAt: result.rows[0].connected_at,
-  };
-}
-
 export async function registerDiscordRoutes(app: FastifyInstance): Promise<void> {
   app.get("/me/discord/connect", async (request, reply) => {
     const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
@@ -228,17 +151,8 @@ export async function registerDiscordRoutes(app: FastifyInstance): Promise<void>
 
     const query = request.query as { return_to?: unknown };
     const returnTo = safeReturnTo(query.return_to) ?? "/";
-    const deleted = await pool.query<{ discord_user_id: string }>(
-      "DELETE FROM discord_associations WHERE guildie_id = $1 RETURNING discord_user_id",
-      [guildie.guildieId],
-    );
-    const discordUserId = deleted.rows[0]?.discord_user_id;
+    const discordUserId = await removeDiscordAssociation(guildie.guildieId);
     if (discordUserId) {
-      await publishEvent({
-        kind: "guildie.discord.unlinked",
-        guildieId: guildie.guildieId,
-        discordUserId,
-      });
       await removeAssociationRolesBestEffort(guildie.guildieId, discordUserId);
     }
     return reply.redirect(returnTo);
@@ -264,15 +178,11 @@ export async function registerDiscordRoutes(app: FastifyInstance): Promise<void>
     try {
       const accessToken = await exchangeAuthorizationCode(query.code);
       const user = await acquireDiscordUser(accessToken);
-      const result = await establishAssociation(guildie.guildieId, user);
+      const result = await establishDiscordAssociation(guildie.guildieId, {
+        discordUserId: user.id,
+        username: user.username,
+      });
       if (result === "conflict") return reply.redirect(withDiscordResult(returnTo, "conflict"));
-      if (result === "established") {
-        await publishEvent({
-          kind: "guildie.discord.linked",
-          guildieId: guildie.guildieId,
-          discordUserId: user.id,
-        });
-      }
       await reconcileAssociationBestEffort(guildie.guildieId);
       return reply.redirect(withDiscordResult(returnTo, "connected"));
     } catch (error) {
