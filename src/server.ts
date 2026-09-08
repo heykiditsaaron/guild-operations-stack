@@ -8,6 +8,7 @@ import { registerDiscordRoutes } from "./discord.js";
 import { registerGuildRoutes } from "./guild-routes.js";
 import { startGuildRefreshScheduler } from "./guild-refresh-scheduler.js";
 import { registerRaffleAdministrationDestination } from "./modules/raffle/administration.js";
+import { registerRaffleApiV1Routes } from "./modules/raffle/api-v1-routes.js";
 import { reconcileRaffleCalendarListingDestinations } from "./modules/raffle/calendar-listing.js";
 import { registerRaffleGuildEventOffering } from "./modules/raffle/offering.js";
 import { registerRaffleQueryRoutes } from "./modules/raffle/query-routes.js";
@@ -66,6 +67,7 @@ await registerGuildRoutes(app);
 await registerRaffleRoutes(app);
 await registerRaffleQueryRoutes(app);
 await registerApiV1Routes(app);
+await registerRaffleApiV1Routes(app);
 
 let stopGuildRefreshScheduler: (() => void) | null = null;
 
