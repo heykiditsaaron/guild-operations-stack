@@ -12,6 +12,8 @@ import {
   removeManagedDiscordRolesForUser,
 } from "./guildie-discord/roles.js";
 
+export { discordAssociationForGuildie } from "./discord-association.js";
+
 const DISCORD_AUTHORIZE_URL = "https://discord.com/oauth2/authorize";
 const DISCORD_TOKEN_URL = "https://discord.com/api/oauth2/token";
 const DISCORD_CURRENT_USER_URL = "https://discord.com/api/v10/users/@me";
