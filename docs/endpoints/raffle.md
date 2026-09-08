@@ -1,46 +1,40 @@
 # Raffle Endpoints
 
-This document is the canonical HTTP endpoint reference for the Guild Operations raffle feature.
+This document is the canonical HTTP endpoint reference for the Guild Operations raffle module.
 
-It describes raffle query and operation surfaces only. It does not define Discord behavior, BotGhost commands, raffle UI presentation, or generic application API conventions. Raffle system-event publications are cataloged separately in `docs/publications/raffle.md`; cross-cutting publication behavior lives in `docs/publication-model.md`.
+Raffle owns its domain, application operations, query contracts, browser/application routes, and module-owned REST resources. The promoted REST namespace is `/api/v1`; REST serializes established Raffle application/query contracts rather than defining a second model.
+
+Raffle system-event publications are cataloged in `docs/publications/raffle.md`.
 
 ## Authority classes
-
-Raffle endpoints use three distinct authority classes.
 
 ### Member session
 
 A signed-in Guildie authenticated by the normal application session cookie.
 
-Member session authority is used for member-owned raffle participation and for browser-facing authenticated reads.
+Member session authority is used for member-owned raffle participation and browser-facing authenticated reads.
 
 ### `raffle.admin`
 
-A signed-in Guildie whose current guild authority satisfies the Raffle module's `raffle.admin` policy.
+A signed-in Guildie whose current guild authority satisfies the Raffle module's administration policy.
 
-Raffle owns this policy. It currently derives administration authority from the Guildie's effective Blizzard guild rank: rank indexes `0`, `1`, and `2` may administer raffles. `raffle.admin` is not persisted as a global guild capability assignment.
+Raffle owns this policy. It currently derives administration authority from effective Blizzard guild rank indexes `0`, `1`, and `2`.
 
 This authority is required for raffle preparation, activation, adjudication, drawing, administrative cancellation, and claim-ledger inspection.
 
-### Raffle machine query authority
+### REST read authority
 
-A read-only machine credential configured as:
-
-```text
-RAFFLE_QUERY_API_KEY=<secret>
-```
-
-Machine query requests send:
+Raffle REST reads use the global read credential:
 
 ```http
-Authorization: Bearer <RAFFLE_QUERY_API_KEY>
+Authorization: Bearer <API_READ_KEY>
 ```
 
-This credential grants no raffle operation authority. It exists so external systems that receive authoritative raffle publication coordinates can ask Guild Operations for the current authoritative raffle projection without acquiring a human session or `raffle.admin` authority.
+During migration from the legacy Raffle machine-query surface, `RAFFLE_QUERY_API_KEY` is accepted as a fallback only when `API_READ_KEY` is not configured. New integrations should use `API_READ_KEY`.
 
-If the credential is not configured, machine query routes return `503 raffle_query_not_configured`. Missing or incorrect credentials return `401 raffle_query_authority_required`.
+REST read authority grants no raffle mutation or human operation authority.
 
-## Raffle lifecycle projection
+## Raffle lifecycle
 
 A raffle round exposes lifecycle and conclusion separately.
 
@@ -50,169 +44,154 @@ A raffle round exposes lifecycle and conclusion separately.
 - `live`
 - `concluded`
 
-`conclusion` is `null` until the round concludes. A concluded round has one of:
+`conclusion` is `null` until conclusion, then one of:
 
 - `drawn`
 - `operator_cancelled`
 - `no_participation`
 
-Creation is an operation that establishes a `listed` round; `created` is not a lifecycle state.
+Creation establishes a `listed` round; `created` is not a lifecycle state.
 
-## Machine query endpoints
+## Versioned REST API
 
-These endpoints are the preferred read surface for non-browser systems following raffle publication coordinates.
+The Raffle REST surface is currently intentionally read-only. Existing raffle mutations require human/member authority such as `raffle.admin` or claim ownership. `API_WRITE_KEY` does not create a Guildie session, claim ownership, or human judgment authority, so Raffle does not currently expose machine mutations merely because the underlying application operation exists.
 
-### GET `/raffle/query/live`
+A future external mutation surface must carry legitimate actor authority into the existing Raffle application operations rather than bypassing it.
 
-Returns the currently live raffle, or `null` when there is no live raffle.
+### Round representation
 
-Authority: raffle machine query authority.
-
-Response:
+Raffle REST round resources use snake-case transport naming while preserving established Raffle meanings:
 
 ```json
 {
-  "round": {
-    "roundId": "...",
-    "status": "live",
-    "conclusion": null,
-    "drawingAtUnix": 0,
-    "ticketPriceGold": "1000",
-    "prizeKind": "gold",
-    "winnerPercentage": 50,
-    "prizeDescription": null,
-    "createdAtUnix": 0,
-    "liveAtUnix": 0,
-    "concludedAtUnix": null,
-    "claims": {
-      "pending": 1,
-      "approved": 2,
-      "denied": 0,
-      "cancelled": 0,
-      "approvedTickets": 5
-    },
-    "gold": {
-      "pot": "5000",
-      "winnerPrize": "2500",
-      "guildShare": "2500"
-    },
-    "totalEntries": null,
-    "winningClaimId": null,
-    "winner": null
-  }
-}
-```
-
-For item and other prizes, `winnerPercentage` is `null`, `prizeDescription` contains the configured descriptive prize, and `gold` is `null`.
-
-No live raffle:
-
-```json
-{ "round": null }
-```
-
-Only approved claims contribute to `approvedTickets`, `gold.pot`, `gold.winnerPrize`, and `gold.guildShare`.
-
-### GET `/raffle/query/rounds/:roundId`
-
-Returns the authoritative projection of one raffle round identified by a published or otherwise known `roundId`.
-
-Authority: raffle machine query authority.
-
-Success:
-
-```json
-{ "round": { "...": "same round projection as /raffle/query/live, including status and conclusion" } }
-```
-
-Not found:
-
-```json
-{ "error": "round_not_found" }
-```
-
-A round concluded by drawing has `status: "concluded"` and `conclusion: "drawn"`, and may additionally contain:
-
-```json
-{
-  "winningClaimId": "...",
+  "round_id": "...",
+  "title": "September Raffle",
+  "status": "concluded",
+  "conclusion": "drawn",
+  "drawing_at_unix": 1788901200,
+  "ticket_price_gold": "1000",
+  "prize": {
+    "kind": "gold",
+    "winner_percentage": 50,
+    "description": null
+  },
+  "created_at_unix": 1788800000,
+  "live_at_unix": 1788810000,
+  "concluded_at_unix": 1788901300,
+  "claims": {
+    "pending": 0,
+    "approved": 2,
+    "denied": 1,
+    "cancelled": 0,
+    "approved_entries": 5
+  },
+  "gold": {
+    "pot": "5000",
+    "winner_prize": "2500",
+    "guild_share": "2500"
+  },
+  "total_entries": 5,
+  "winning_claim_id": "...",
   "winner": {
-    "claimId": "...",
-    "characterName": "Character",
-    "realmId": "...",
-    "realmName": "Realm",
-    "realmSlug": "realm"
-  }
-}
-```
-
-### GET `/raffle/query/claims/:claimId`
-
-Returns the authoritative projection of one raffle claim identified by a published or otherwise known `claimId`.
-
-Authority: raffle machine query authority.
-
-Response:
-
-```json
-{
-  "claim": {
-    "claimId": "...",
-    "roundId": "...",
-    "roundStatus": "live",
-    "roundConclusion": null,
+    "claim_id": "...",
     "character": {
-      "characterId": "...",
+      "character_id": "...",
       "name": "Character",
-      "realmId": "...",
-      "realmName": "Realm",
-      "realmSlug": "realm"
-    },
-    "requestedTicketCount": 5,
-    "promisedGoldValue": "5000",
-    "createdAtUnix": 0,
-    "resolution": {
-      "kind": "approved",
-      "atUnix": 0,
-      "denialReason": null
+      "realm_id": "...",
+      "realm_name": "Realm",
+      "realm_slug": "realm"
     }
   }
 }
 ```
 
-`resolution.kind` is one of `approved`, `denied`, `cancelled`, or `null` while unresolved.
+For item and other prizes, `winner_percentage` is `null`, `description` contains the descriptive prize, and `gold` is `null`.
 
-Not found:
+Only approved claims contribute to `approved_entries`, the gold pot, and draw population. Individual tickets are not persisted or exposed as independent records; approved entry count is derived from approved claims.
+
+### GET `/api/v1/raffle/rounds/live`
+
+Requires REST read authority.
+
+Returns the currently live raffle in a wrapper:
 
 ```json
-{ "error": "claim_not_found" }
+{
+  "round": { "...": "round representation" }
+}
 ```
 
-The machine claim projection intentionally omits canonical Guildie IDs and attendant Guildie IDs. External consumers receive the raffle fact and useful WoW recognition coordinates, not unrelated member authority.
+When there is no live raffle:
 
-## Authenticated raffle reads
+```json
+{ "round": null }
+```
 
-These routes primarily support Guild Operations browser/application interactions. They are not the preferred machine query surface.
+### GET `/api/v1/raffle/rounds/:roundId`
 
-### GET `/raffle/rounds/:roundId`
+Requires REST read authority.
 
-Returns the domain round object for an authenticated Guildie, including separate `status` and `conclusion` values.
-
-Authority: member session.
-
-Not found:
+Returns one authoritative Raffle round representation. Unknown coordinates return:
 
 ```json
 { "error": "round_not_found" }
 ```
 
+with HTTP `404`.
+
+### GET `/api/v1/raffle/claims/:claimId`
+
+Requires REST read authority.
+
+Returns one authoritative claim projection:
+
+```json
+{
+  "claim_id": "...",
+  "round_id": "...",
+  "round": {
+    "status": "live",
+    "conclusion": null
+  },
+  "character": {
+    "character_id": "...",
+    "name": "Character",
+    "realm_id": "...",
+    "realm_name": "Realm",
+    "realm_slug": "realm"
+  },
+  "requested_entry_count": 5,
+  "promised_gold_value": "5000",
+  "created_at_unix": 1788800000,
+  "resolution": {
+    "kind": "approved",
+    "at_unix": 1788800300,
+    "denial_reason": null
+  }
+}
+```
+
+`resolution.kind` is `approved`, `denied`, `cancelled`, or `null` while unresolved.
+
+The REST claim projection intentionally omits claimant Guildie IDs and resolution-actor Guildie IDs. External readers receive the Raffle fact and useful WoW recognition coordinates, not unrelated member authority.
+
+Unknown claim coordinates return `404 claim_not_found`.
+
+## Authenticated raffle reads
+
+These routes support Guild Operations browser/application interactions. They are not the preferred machine interface.
+
+### GET `/raffle/rounds/:roundId`
+
+Authority: member session.
+
+Returns the domain round object. Unknown rounds return `404 round_not_found`.
+
 ### GET `/raffle/rounds/:roundId/claims`
 
-Returns every claim for the specified round.
+Authority: member session plus `raffle.admin`.
 
-Authority: member session plus Raffle module `raffle.admin` authority.
-
-Response:
+Returns the full administrative claim ledger:
 
 ```json
 {
@@ -221,22 +200,20 @@ Response:
 }
 ```
 
-This is an administrative claim-ledger read. It must not be exposed merely because an external system knows a round ID.
-
 ## Round operations
+
+These are authenticated application operations and remain the mutation surface for current web/admin interactions.
 
 ### POST `/raffle/rounds`
 
-Creates a raffle round and establishes it immediately as `listed`. A listed round is an upcoming participatory occurrence: it may be discovered and its terms may still be edited, but claims are not accepted until it becomes live.
-
 Authority: `raffle.admin`.
 
-Gold-prize body:
+Creates a listed round.
 
 ```json
 {
   "round_title": "September Raffle",
-  "drawing_at_unix": 0,
+  "drawing_at_unix": 1788901200,
   "ticket_price_gold": 1000,
   "prize_kind": "gold",
   "winner_percentage": 50,
@@ -244,103 +221,45 @@ Gold-prize body:
 }
 ```
 
-`round_title` is optional; omitted, `null`, or blank input is normalized to no title. For item or other prizes, `winner_percentage` must be `null` and `prize_description` must be non-empty descriptive text:
+For item/other prizes, `winner_percentage` must be `null` and `prize_description` must be non-empty descriptive text.
 
-```json
-{
-  "round_title": null,
-  "drawing_at_unix": 0,
-  "ticket_price_gold": 1000,
-  "prize_kind": "item",
-  "winner_percentage": null,
-  "prize_description": "Reins of the Swift Spectral Tiger"
-}
-```
-
-Success: `201` with the listed round.
-
-The Raffle module establishes the corresponding Guild Event Calendar Listing in the same database transaction as the round. If calendar listing establishment fails, round creation fails rather than leaving the Calendar Registry out of sync.
+Returns `201` with the established round. Raffle and its Guild Calendar listing are established in the same transaction.
 
 ### PATCH `/raffle/rounds/:roundId`
 
-Updates terms of a listed round. Terms are locked once the round becomes live.
-
 Authority: `raffle.admin`.
 
-Body: same terms shape as round creation.
-
-The updated raffle truth and its updated Guild Event Calendar Listing commit together.
+Updates terms of a listed round. Terms are locked after activation. Calendar projection updates in the same transaction.
 
 ### POST `/raffle/rounds/:roundId/live`
 
-Transitions a listed raffle to `live`.
-
 Authority: `raffle.admin`.
 
-The guild may have at most one live raffle. A conflicting activation returns `409 active_round_exists`.
-
-The live transition and the corresponding Guild Event Calendar Listing update commit together. Publication, where configured, occurs only after that authoritative transaction succeeds.
+Transitions a listed raffle to `live`. The guild may have at most one live raffle; conflict returns `409 active_round_exists`.
 
 ### POST `/raffle/rounds/:roundId/cancel`
 
-Administratively concludes a listed or live round with:
-
-```json
-{
-  "status": "concluded",
-  "conclusion": "operator_cancelled"
-}
-```
-
 Authority: `raffle.admin`.
 
-Operator cancellation is a short-circuited conclusion. It revokes participation eligibility before intended resolution. Raffle therefore withdraws its Guild Event Calendar Listing in the same transaction that records the conclusion.
-
-Cancellation does not rewrite claims or other pre-conclusion raffle state. Unresolved claims may remain unresolved because the preserved round is an audit record, not a cleaned-up reconstruction.
+Concludes a listed or live round with `conclusion = operator_cancelled`. Existing claims and evidence remain preserved.
 
 ### POST `/raffle/rounds/:roundId/draw`
 
-Manually resolves a live raffle.
-
 Authority: `raffle.admin`.
 
-Drawing refuses to proceed while unresolved claims exist.
+Resolves a live raffle. Drawing is refused while unresolved claims exist.
 
-The authoritative drawing population is derived deterministically from approved claims. Claims themselves are not rewritten by drawing.
+The selection population is derived from approved claims. If non-empty, conclusion is `drawn`; if empty, conclusion is `no_participation`.
 
-If the derived ticket population is non-empty, the result is:
-
-```json
-{
-  "status": "concluded",
-  "conclusion": "drawn"
-}
-```
-
-The round records the total population, selected index, and winning claim as draw evidence.
-
-If the derived ticket population is empty, the result is:
-
-```json
-{
-  "status": "concluded",
-  "conclusion": "no_participation"
-}
-```
-
-`no_participation` is not cancellation. No draw-result fields are invented for the empty population; the zero population remains reconstructable from preserved claim truth.
-
-Both normal conclusions retain and update the raffle's Guild Event Calendar Listing to the best-known occurrence range. The raffle conclusion and calendar listing update commit together.
+Claims are durable participation records. Drawing entries are ephemeral selection weight derived from approved claims and are not persisted as independent ticket records.
 
 ## Claim operations
 
 ### POST `/raffle/rounds/:roundId/claims`
 
-Submits a Guildie-authored raffle claim for a currently controlled Character on the current guild roster.
-
 Authority: member session.
 
-Body:
+Submits a claim for a currently controlled Character on the current guild roster.
 
 ```json
 {
@@ -350,62 +269,52 @@ Body:
 }
 ```
 
-Success: `201` with the established claim.
+The historical application input name `ticket_count` represents requested draw-entry count. The durable object is the claim, not individual ticket records.
 
-The claim preserves two different relationships: the claimant Guildie and the participating Character. Those roles are not collapsed into a generic Subject coordinate.
-
-A claim is promissory. Approval establishes immutable ticket weight; the individual ticket units are derived from approved claim truth rather than persisted independently.
-
-A rejected submission does not create a claim, so no raffle system event is established and nothing is published.
+Returns `201` with the established claim.
 
 ### POST `/raffle/claims/:claimId/cancel`
 
-Cancels the caller's own unresolved claim while its round is live.
+Authority: member session; claim ownership is enforced by Raffle.
 
-Authority: member session; Guildie claim ownership is enforced by the domain.
-
-Success: `204`.
-
-An approved claim cannot be cancelled or withdrawn. Once approval establishes ticket weight, that weight remains part of the round's drawing basis.
+Cancels the caller's own unresolved claim. Returns `204`. Approved claims cannot be withdrawn.
 
 ### POST `/raffle/claims/:claimId/approve`
 
-Records an attendant judgment that the claim's promised guild-bank deposit was fulfilled.
-
 Authority: `raffle.admin`.
 
-Success: `204`.
-
-Approval is immutable.
+Records the human attendant judgment that the promised guild-bank deposit was fulfilled. Returns `204`.
 
 ### POST `/raffle/claims/:claimId/deny`
 
-Records an attendant judgment denying an unresolved claim.
-
 Authority: `raffle.admin`.
 
-Body:
+Records a human attendant denial of an unresolved claim.
 
 ```json
 { "reason": "Required reason" }
 ```
 
-Success: `204`.
+Returns `204`.
+
+## Legacy machine-query surface
+
+The following routes remain temporarily available as compatibility interfaces while existing Raffle consumers migrate to `/api/v1`:
+
+```http
+GET /raffle/query/live
+GET /raffle/query/rounds/:roundId
+GET /raffle/query/claims/:claimId
+```
+
+They continue to use `RAFFLE_QUERY_API_KEY` and preserve their historical camel-case response shape.
+
+They are no longer the preferred integration contract and should not receive new behavior. Once concrete consumers have migrated, the compatibility routes, query transport view, and dedicated Raffle query key are candidates for the planned cleanup pass.
 
 ## Publication relationship
 
-Successful operations may publish only after authoritative raffle state has changed. Publication is not authoritative raffle state and publication failure does not reverse a successful raffle operation.
-
-The ownership and transport architecture for raffle publications remains under evaluation. The existing publication surface is therefore provisional and must not be treated as a reason to duplicate raffle truth outside the module.
-
-The current catalog of published raffle system events and their coordinates lives in `docs/publications/raffle.md`.
+Successful Raffle operations may publish only after authoritative state changes. Publication is an attention signal, not authoritative Raffle state. Subscribers should follow published domain coordinates with `/api/v1/raffle/...` reads to establish current truth.
 
 ## Time values
 
-All HTTP and persisted raffle time values that represent operational instants use Unix seconds. Consumers decide how to express those instants to humans in the viewer's local timezone.
-
-`datetime-local` is a browser input concern only and is converted to a timezone-neutral instant before a raffle operation crosses the backend boundary.
-
-Server or container timezone is not raffle persistence or presentation policy.
-
-`Subject` is not an endpoint authority class or response identity. It remains contextual language only.
+All Raffle HTTP and persisted operational instants use Unix seconds. Human-readable time and timezone are presentation concerns.
