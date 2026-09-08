@@ -11,7 +11,6 @@ import { registerRaffleAdministrationDestination } from "./modules/raffle/admini
 import { registerRaffleApiV1Routes } from "./modules/raffle/api-v1-routes.js";
 import { reconcileRaffleCalendarListingDestinations } from "./modules/raffle/calendar-listing.js";
 import { registerRaffleGuildEventOffering } from "./modules/raffle/offering.js";
-import { registerRaffleQueryRoutes } from "./modules/raffle/query-routes.js";
 import { registerRaffleRoutes } from "./modules/raffle/routes.js";
 import { loadAssetRegistry, registerAssetRoutes } from "./web/assets.js";
 import { registerAdminDiscordStatePage } from "./web/pages/admin-discord-state.js";
@@ -65,7 +64,6 @@ await registerAuthRoutes(app);
 await registerDiscordRoutes(app);
 await registerGuildRoutes(app);
 await registerRaffleRoutes(app);
-await registerRaffleQueryRoutes(app);
 await registerApiV1Routes(app);
 await registerRaffleApiV1Routes(app);
 
