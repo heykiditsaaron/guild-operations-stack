@@ -230,20 +230,10 @@ function listedRoundEditor(round: RaffleRound, attributions: AttributionLookup):
       <span>Created by <strong>${actorName(round.createdByGuildieId, attributions)}</strong> · ${eventTime(round.createdAtUnix)}</span>
       ${round.updatedByGuildieId && round.updatedAtUnix !== null ? `<span>Last updated by <strong>${actorName(round.updatedByGuildieId, attributions)}</strong> · ${eventTime(round.updatedAtUnix)}</span>` : ""}
     </div>
-    <section class="raffle-edit-transition" aria-labelledby="raffle-open-heading">
-      <h2 id="raffle-open-heading">Open raffle</h2>
-      <p>Opening makes this the guild's live raffle. Only one raffle may be live at a time.</p>
-      <div class="raffle-management-controls">
-        <button class="raffle-action raffle-action-success" type="button" data-activate-raffle-round="${htmlText(round.roundId)}">Go live</button>
-      </div>
-    </section>
-    <section class="raffle-edit-cancel" aria-labelledby="raffle-cancel-heading">
-      <h2 id="raffle-cancel-heading">Cancel raffle</h2>
-      <p class="raffle-section-note">Cancellation revokes this raffle's participation eligibility and withdraws its Guild Event listing while preserving the raffle record.</p>
-      <div class="raffle-management-controls">
-        <button class="raffle-action raffle-action-cancel" type="button" data-cancel-raffle-round="${htmlText(round.roundId)}">Cancel raffle</button>
-      </div>
-    </section>
+    <div class="raffle-management-controls">
+      <button class="raffle-action raffle-action-success" type="button" data-activate-raffle-round="${htmlText(round.roundId)}">Go live</button>
+      <button class="raffle-action raffle-action-cancel" type="button" data-cancel-raffle-round="${htmlText(round.roundId)}">Cancel</button>
+    </div>
   </div>`;
 }
 
@@ -261,13 +251,13 @@ function roundList(rounds: RaffleAdministrationRound[], attributions: Attributio
            <p class="raffle-overview-participation">${round.approvedTicketCount} approved ${round.approvedTicketCount === 1 ? "entry" : "entries"}</p>`
         : "";
       const primaryAction = live
-        ? `<a class="raffle-action raffle-action-primary" href="/admin/raffle/${encodeURIComponent(round.roundId)}">Manage raffle</a>`
-        : `<a class="raffle-action" href="/admin/raffle/${encodeURIComponent(round.roundId)}">Edit raffle</a>
+        ? `<a class="raffle-action raffle-action-primary" href="/admin/raffle/${encodeURIComponent(round.roundId)}">Manage</a>`
+        : `<a class="raffle-action" href="/admin/raffle/${encodeURIComponent(round.roundId)}">Edit</a>
            <button class="raffle-action raffle-action-success" type="button" data-activate-raffle-round="${htmlText(round.roundId)}">Go live</button>`;
       const draw = live
         ? round.pendingClaimCount === 0
-          ? `<button class="raffle-action raffle-action-success" type="button" data-draw-raffle-round="${htmlText(round.roundId)}">Draw raffle</button>`
-          : `<button class="raffle-action raffle-action-success" type="button" disabled title="Resolve pending claims before drawing">Draw raffle</button>`
+          ? `<button class="raffle-action raffle-action-success" type="button" data-draw-raffle-round="${htmlText(round.roundId)}">Draw</button>`
+          : `<button class="raffle-action raffle-action-success" type="button" disabled title="Resolve pending claims before drawing">Draw</button>`
         : "";
       return `<article class="raffle-overview-item${live ? " raffle-overview-item-live" : ""}">
         <div class="raffle-overview-card-heading">
@@ -282,7 +272,7 @@ function roundList(rounds: RaffleAdministrationRound[], attributions: Attributio
         <div class="raffle-management-controls">
           ${primaryAction}
           ${draw}
-          <button class="raffle-action raffle-action-cancel" type="button" data-cancel-raffle-round="${htmlText(round.roundId)}">Cancel raffle</button>
+          <button class="raffle-action raffle-action-cancel" type="button" data-cancel-raffle-round="${htmlText(round.roundId)}">Cancel</button>
           ${live ? '<a class="raffle-action raffle-action-secondary" href="/events/raffle">View public raffle ↗</a>' : ""}
         </div>
       </article>`;
@@ -356,39 +346,23 @@ function liveClaims(claims: RaffleClaim[], attributions: AttributionLookup): str
 }
 
 function liveRoundManager(round: RaffleRound, claims: RaffleClaim[], metrics: ReturnType<typeof claimMetrics>, attributions: AttributionLookup): string {
-  const gold = round.prizeKind === "gold" ? goldMetrics(round.ticketPriceGold, round.winnerPercentage, metrics.approvedTicketCount) : null;
-  const openedBy = round.liveByGuildieId && round.liveAtUnix !== null
-    ? `<p class="raffle-live-attribution">Opened by <strong>${actorName(round.liveByGuildieId, attributions)}</strong> · ${eventTime(round.liveAtUnix)}</p>`
-    : "";
   const drawControl = metrics.pendingClaimCount === 0
-    ? `<button class="raffle-action raffle-action-success" type="button" data-draw-raffle-round="${htmlText(round.roundId)}">Draw raffle</button>`
-    : `<span class="raffle-control-note">Resolve all pending claims before drawing.</span>`;
+    ? `<button class="raffle-action raffle-action-success" type="button" data-draw-raffle-round="${htmlText(round.roundId)}">Draw</button>`
+    : `<button class="raffle-action raffle-action-success" type="button" disabled title="Resolve pending claims before drawing">Draw</button>`;
   const attention = metrics.pendingClaimCount > 0
     ? `<a class="raffle-claim-attention raffle-claim-attention-active" href="#claims-needing-review"><strong>${metrics.pendingClaimCount} ${metrics.pendingClaimCount === 1 ? "claim needs" : "claims need"} attention</strong><span>View pending claims ↓</span></a>`
     : `<div class="raffle-claim-attention raffle-claim-attention-clear"><strong>No claims need attention</strong></div>`;
 
   return `<div class="raffle-live-workspace">
-    <div class="raffle-status-banner raffle-status-banner-live"><span>Live</span></div>
-    <section class="raffle-live-section raffle-live-details" aria-labelledby="raffle-details-heading">
-      <h2 id="raffle-details-heading">${htmlText(round.roundTitle ?? "Current raffle")}</h2>
-      <dl class="raffle-live-facts">
-        <dt>Drawing</dt><dd>${localTime(round.drawingAtUnix)}</dd>
-        <dt>Claim cutoff</dt><dd>${localTime(raffleClaimCutoffUnix(round.drawingAtUnix))}</dd>
-        <dt>Ticket price</dt><dd>${htmlText(round.ticketPriceGold)} gold</dd>
-        <dt>Prize type</dt><dd>${htmlText(round.prizeKind)}</dd>
-        <dt>Prize</dt><dd>${htmlText(prizeLabel(round))}</dd>
-        <dt>Approved entries</dt><dd>${metrics.approvedTicketCount}</dd>
-        ${gold ? `<dt>Current pot</dt><dd>${gold.pot.toString()} gold</dd>` : ""}
-        ${gold?.prize !== null && gold?.prize !== undefined ? `<dt>Current prize</dt><dd>${gold.prize.toString()} gold</dd>` : ""}
-      </dl>
-      ${openedBy}
+    <div class="raffle-management-controls raffle-live-primary-actions">
+      ${drawControl}
+      <button class="raffle-action raffle-action-cancel" type="button" data-cancel-raffle-round="${htmlText(round.roundId)}">Cancel</button>
+    </div>
+    ${attention}
+    <section class="raffle-live-section raffle-live-claims" aria-labelledby="raffle-claims-heading">
+      <h2 id="raffle-claims-heading">Claims</h2>
+      ${liveClaims(claims, attributions)}
     </section>
-    <section class="raffle-live-section raffle-live-actions" aria-labelledby="raffle-actions-heading">
-      <h2 id="raffle-actions-heading">Raffle actions</h2><p>Drawing concludes this raffle. Cancellation revokes participation eligibility before intended resolution.</p>
-      <div class="raffle-management-controls">${drawControl}<button class="raffle-action raffle-action-cancel" type="button" data-cancel-raffle-round="${htmlText(round.roundId)}">Cancel raffle</button></div>
-      ${attention}
-    </section>
-    <section class="raffle-live-section raffle-live-claims" aria-labelledby="raffle-claims-heading"><h2 id="raffle-claims-heading">Claims</h2>${liveClaims(claims, attributions)}</section>
   </div>`;
 }
 
@@ -429,13 +403,33 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
     const attributions = await guildieAttributionsForGuildies([round.createdByGuildieId, round.updatedByGuildieId, round.liveByGuildieId, round.concludedByGuildieId, ...claims.flatMap((claim) => [claim.approvedByGuildieId, claim.deniedByGuildieId, claim.cancelledByGuildieId])]);
 
     if (round.status === "listed") {
-      const html = renderPage(assets, { pathname, title: "Edit Raffle · OH CRIT I Pulled! Guild Operations", description: "Configure an upcoming guild raffle before it opens.", viewer, secondaryNavigation: adminNavigation(round), stylesheets: ["raffle-admin.css"], scripts: ["raffle.js"], header: "", body: `<section aria-labelledby="page-title"><div class="raffle-overview-heading-row"><h1 class="raffle-overview-title" id="page-title">Edit raffle</h1></div>${listedRoundEditor(round, attributions)}</section>` });
+      const html = renderPage(assets, {
+        pathname,
+        title: "Edit Raffle · OH CRIT I Pulled! Guild Operations",
+        description: "Configure an upcoming guild raffle before it opens.",
+        viewer,
+        secondaryNavigation: adminNavigation(round),
+        stylesheets: ["admin.css", "raffle-admin.css"],
+        scripts: ["raffle.js"],
+        header: `<div class="admin-page-header"><h1 id="page-title">Edit raffle</h1><p class="lede">Prepare this raffle before opening it for participation.</p></div>`,
+        body: `<section aria-labelledby="page-title">${listedRoundEditor(round, attributions)}</section>`,
+      });
       return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
     }
 
     const metrics = claimMetrics(claims);
     if (round.status === "live") {
-      const html = renderPage(assets, { pathname, title: "Manage Raffle · OH CRIT I Pulled! Guild Operations", description: "Operate the currently live guild raffle.", viewer, secondaryNavigation: adminNavigation(round), stylesheets: ["raffle-admin.css"], scripts: ["raffle.js"], header: "", body: `<section class="raffle-live-page" aria-labelledby="page-title"><div class="raffle-overview-heading-row"><h1 class="raffle-overview-title" id="page-title">Manage raffle</h1><a class="raffle-action raffle-action-secondary" href="/events/raffle">View public raffle ↗</a></div>${liveRoundManager(round, claims, metrics, attributions)}</section>` });
+      const html = renderPage(assets, {
+        pathname,
+        title: "Manage Raffle · OH CRIT I Pulled! Guild Operations",
+        description: "Manage participation in the currently live guild raffle.",
+        viewer,
+        secondaryNavigation: adminNavigation(round),
+        stylesheets: ["admin.css", "raffle-admin.css"],
+        scripts: ["raffle.js"],
+        header: `<div class="admin-page-header-row"><div class="admin-page-header"><h1 id="page-title">Manage raffle</h1><p class="lede">Review claims and resolve the live raffle.</p></div><a class="raffle-action raffle-action-secondary" href="/events/raffle">View public raffle ↗</a></div>`,
+        body: `<section class="raffle-live-page" aria-labelledby="page-title">${liveRoundManager(round, claims, metrics, attributions)}</section>`,
+      });
       return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
     }
 
