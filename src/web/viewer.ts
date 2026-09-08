@@ -1,7 +1,5 @@
+import { guildieState } from "../application-state.js";
 import { authenticatedGuildie } from "../auth.js";
-import { discordAssociationForGuildie } from "../discord.js";
-import { guildCharactersForGuildie } from "../guild.js";
-import { mainCharacterForGuildie } from "../main-character.js";
 import { administrationAvailabilityForGuildie } from "./administration.js";
 import type { WebViewer } from "./render.js";
 
@@ -9,17 +7,17 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
   const guildie = await authenticatedGuildie(sessionToken);
   if (!guildie) return { authenticated: false };
 
-  const [mainCharacter, characters, discordAssociation, administration] = await Promise.all([
-    mainCharacterForGuildie(guildie.guildieId),
-    guildCharactersForGuildie(guildie.guildieId),
-    discordAssociationForGuildie(guildie.guildieId),
+  const [state, administration] = await Promise.all([
+    guildieState(guildie.guildieId),
     administrationAvailabilityForGuildie(guildie.guildieId),
   ]);
 
-  const selectedCharacter = mainCharacter
-    ? characters.find((character) =>
-        character.realmId === mainCharacter.realmId &&
-        character.characterId === mainCharacter.characterId,
+  if (!state) return { authenticated: false };
+
+  const selectedCharacter = state.selectedMain
+    ? state.characters.find((character) =>
+        character.realmId === state.selectedMain?.realmId &&
+        character.characterId === state.selectedMain?.characterId,
       ) ?? null
     : null;
 
@@ -27,20 +25,20 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
     authenticated: true,
     administrationAvailable: administration.available,
     administrationDestinations: administration.navigationDestinations,
-    mainCharacter: mainCharacter
+    mainCharacter: state.selectedMain
       ? {
-          characterId: mainCharacter.characterId,
-          realmId: mainCharacter.realmId,
-          name: mainCharacter.name,
-          realmName: selectedCharacter?.realmName ?? mainCharacter.realmName,
-          rankIndex: selectedCharacter?.rankIndex ?? mainCharacter.rankIndex,
+          characterId: state.selectedMain.characterId,
+          realmId: state.selectedMain.realmId,
+          name: state.selectedMain.name,
+          realmName: selectedCharacter?.realmName ?? state.selectedMain.realmName,
+          rankIndex: selectedCharacter?.rankIndex ?? state.selectedMain.rankIndex,
           level: selectedCharacter?.level ?? null,
           className: selectedCharacter?.className ?? null,
           activeSpecName: selectedCharacter?.activeSpecName ?? null,
-          avatarUrl: mainCharacter.avatarUrl,
+          avatarUrl: state.selectedMain.avatarUrl,
         }
       : null,
-    characters: characters.map((character) => ({
+    characters: state.characters.map((character) => ({
       characterId: character.characterId,
       realmId: character.realmId,
       name: character.name,
@@ -52,9 +50,9 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
       activeSpecName: character.activeSpecName,
       avatarUrl: character.avatarUrl,
     })),
-    discordAssociation: discordAssociation
+    discordAssociation: state.discordAssociation
       ? {
-          username: discordAssociation.username,
+          username: state.discordAssociation.username,
         }
       : null,
   };
