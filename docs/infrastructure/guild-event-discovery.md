@@ -62,7 +62,7 @@ The Guild Calendar is the authoritative shared registry of guild occurrences tha
 
 A module-owned occurrence may exist without a Calendar event. For example, a raffle round may be created before raffle decides that the round should be projected into shared temporal discovery. Until the module establishes a Calendar event, the Calendar has no representation of that round.
 
-An authorized external application operation may also create a Calendar event directly. Such an event does not need a fake module or producer identity.
+An authorized external application operation may also create a Calendar event directly. Such an event does not need a fake module or producer identity in the shared Calendar representation.
 
 ### Data flow
 
@@ -110,6 +110,19 @@ There is no arbitrary metadata bag. Module identity, producer identity, procedur
 
 `kind` is intentionally not part of the contract. Concrete module/event type is not currently needed to understand or operate shared temporal discovery. `category` remains optional because a broad member-facing classification may be useful across producers.
 
+### Management authority
+
+Calendar persistence keeps a small management distinction that is intentionally not part of the discovery contract:
+
+```text
+application-managed
+external-managed
+```
+
+This distinction exists only to protect mutation authority. Internal modules may update or withdraw the Calendar events they establish through application-owned projection machinery. REST write authority may create, update, and withdraw only externally managed Calendar events; it cannot mutate module-managed occurrences such as raffle projections.
+
+Consumers do not need this management classification to understand the event, so it is not exposed as event type, source, or producer metadata.
+
 ### Registration and withdrawal
 
 Presence in the Calendar is the act of registration.
@@ -127,7 +140,7 @@ withdraw Calendar event
 
 Persistence may retain a withdrawn row as operational state, but `discoverable` is not a producer-facing contract field. Consumers see currently registered Calendar events rather than a second visible state meaning “registered but not registered.”
 
-Establishing the same `eventId` again replaces its current Calendar representation. This supports module projections whose best temporal truth can change without making the Calendar responsible for ceremony-specific history.
+Establishing the same `eventId` again replaces its current Calendar representation when performed through the same management authority class. This supports module projections whose best temporal truth can change without allowing one authority class to take over another's Calendar event.
 
 Withdrawal means the event should no longer be represented through the Calendar. Withdrawal is not the mechanism for merely becoming past.
 
