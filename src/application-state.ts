@@ -1,6 +1,6 @@
 import { config, type Region } from "./config.js";
 import { pool } from "./db.js";
-import { discordAssociationForGuildie, type DiscordAssociation } from "./discord.js";
+import { discordAssociationForGuildie, type DiscordAssociation } from "./discord-association.js";
 import { effectiveGuildAuthority, type EffectiveGuildAuthority } from "./guild-permissions.js";
 import { guildCharactersForGuildie, type GuildCharacter } from "./guild.js";
 import { mainCharacterForGuildie, type SelectedMainCharacter } from "./main-character.js";
