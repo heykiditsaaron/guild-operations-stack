@@ -223,8 +223,8 @@ export async function registerApiV1Routes(app: FastifyInstance): Promise<void> {
 
     try {
       const event = await updateGuildCalendarEvent(eventId, {
-        title,
-        occursAt,
+        title: title === null ? undefined : title,
+        occursAt: occursAt === null ? undefined : occursAt,
         category: hasCategory ? optionalText(body.category) : undefined,
         destination: hasDestination ? optionalText(body.destination) : undefined,
       });
