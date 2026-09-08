@@ -15,6 +15,12 @@ export type GuildState = {
   faction: string | null;
 };
 
+export type GuildRankDefinition = {
+  guildId: string;
+  rankIndex: number;
+  displayName: string;
+};
+
 export type CharacterMembershipCoordinate = {
   guildId: string;
   region: Region;
@@ -70,6 +76,29 @@ export async function guildState(guildId: string = config.guild.id): Promise<Gui
     realmSlug: row.realm_slug,
     faction: row.faction,
   };
+}
+
+export async function guildRankDefinitions(
+  guildId: string = config.guild.id,
+): Promise<GuildRankDefinition[]> {
+  const result = await pool.query<{
+    guild_id: string;
+    rank_index: number;
+    display_name: string | null;
+  }>(
+    `SELECT guild_id, rank_index, display_name
+       FROM guild_rank_definitions
+      WHERE guild_id = $1
+        AND active = true
+      ORDER BY rank_index`,
+    [guildId],
+  );
+
+  return result.rows.map((row) => ({
+    guildId: row.guild_id,
+    rankIndex: row.rank_index,
+    displayName: row.display_name ?? `Rank ${row.rank_index}`,
+  }));
 }
 
 export async function characterMembership(
