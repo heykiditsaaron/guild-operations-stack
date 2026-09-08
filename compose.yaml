@@ -6,7 +6,6 @@ services:
     env_file:
       - .env
       - links.env
-      - botghost.env
     environment:
       DATABASE_URL: postgres://guild_operations:guild_operations@db:5432/guild_operations
     ports:
