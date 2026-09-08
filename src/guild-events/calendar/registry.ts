@@ -1,38 +1,33 @@
 import type { PoolClient } from "pg";
 import { pool } from "../../db.js";
 
-export type GuildEventOccursAt = readonly [number] | readonly [number, number];
+export type GuildCalendarOccursAt = readonly [number] | readonly [number, number];
 
-export type GuildEventCalendarListingInput = {
-  guildEventId: string;
-  guildEventKind: string;
-  guildEventOccursAt: GuildEventOccursAt;
-  guildEventTitle?: string | null;
-  guildEventDestination?: string | null;
-  guildEventCategory?: string | null;
+export type GuildCalendarEventInput = {
+  eventId: string;
+  title: string;
+  occursAt: GuildCalendarOccursAt;
+  destination?: string | null;
+  category?: string | null;
 };
 
-export type GuildEventCalendarListing = {
-  guildEventId: string;
-  guildEventKind: string;
-  guildEventOccursAt: GuildEventOccursAt;
-  guildEventTitle: string | null;
-  guildEventDestination: string | null;
-  guildEventCategory: string | null;
-  discoverable: boolean;
+export type GuildCalendarEvent = {
+  eventId: string;
+  title: string;
+  occursAt: GuildCalendarOccursAt;
+  destination: string | null;
+  category: string | null;
   registeredAtUnix: number;
   updatedAtUnix: number;
 };
 
-type GuildEventCalendarListingRow = {
+type GuildCalendarEventRow = {
   guild_event_id: string;
-  guild_event_kind: string;
   occurs_at_start_unix: string;
   occurs_at_end_unix: string | null;
-  guild_event_title: string | null;
+  guild_event_title: string;
   guild_event_destination: string | null;
   guild_event_category: string | null;
-  discoverable: boolean;
   registered_at_unix: string;
   updated_at_unix: string;
 };
@@ -43,126 +38,138 @@ function validateUnix(value: number, field: string): void {
   }
 }
 
-function optionalListingText(value: string | null | undefined): string | null {
+function requiredText(value: string, field: string): string {
+  const normalized = value.trim();
+  if (!normalized) throw new Error(`${field} is required`);
+  return normalized;
+}
+
+function optionalText(value: string | null | undefined): string | null {
   return value?.trim() || null;
 }
 
-function normalizeListing(input: GuildEventCalendarListingInput): GuildEventCalendarListingInput {
-  const guildEventId = input.guildEventId.trim();
-  if (!guildEventId) throw new Error("guildEventId is required");
+function normalizeEvent(input: GuildCalendarEventInput): GuildCalendarEventInput {
+  const eventId = requiredText(input.eventId, "eventId");
+  const title = requiredText(input.title, "title");
 
-  const guildEventKind = input.guildEventKind.trim();
-  if (!guildEventKind) throw new Error("guildEventKind is required");
-
-  if (input.guildEventOccursAt.length !== 1 && input.guildEventOccursAt.length !== 2) {
-    throw new Error("guildEventOccursAt must contain one Unix instant or a start/end Unix range");
+  if (input.occursAt.length !== 1 && input.occursAt.length !== 2) {
+    throw new Error("occursAt must contain one Unix instant or a start/end Unix range");
   }
 
-  const [start, end] = input.guildEventOccursAt;
-  validateUnix(start, "guildEventOccursAt[0]");
+  const [start, end] = input.occursAt;
+  validateUnix(start, "occursAt[0]");
   if (end !== undefined) {
-    validateUnix(end, "guildEventOccursAt[1]");
-    if (end < start) throw new Error("guildEventOccursAt end must not precede start");
+    validateUnix(end, "occursAt[1]");
+    if (end < start) throw new Error("occursAt end must not precede start");
   }
 
   return {
-    guildEventId,
-    guildEventKind,
-    guildEventOccursAt: end === undefined ? [start] : [start, end],
-    guildEventTitle: optionalListingText(input.guildEventTitle),
-    guildEventDestination: optionalListingText(input.guildEventDestination),
-    guildEventCategory: optionalListingText(input.guildEventCategory),
+    eventId,
+    title,
+    occursAt: end === undefined ? [start] : [start, end],
+    destination: optionalText(input.destination),
+    category: optionalText(input.category),
   };
 }
 
-function mapListing(row: GuildEventCalendarListingRow): GuildEventCalendarListing {
+function mapEvent(row: GuildCalendarEventRow): GuildCalendarEvent {
   const start = Number(row.occurs_at_start_unix);
   const end = row.occurs_at_end_unix === null ? null : Number(row.occurs_at_end_unix);
   return {
-    guildEventId: row.guild_event_id,
-    guildEventKind: row.guild_event_kind,
-    guildEventOccursAt: end === null ? [start] : [start, end],
-    guildEventTitle: row.guild_event_title,
-    guildEventDestination: row.guild_event_destination,
-    guildEventCategory: row.guild_event_category,
-    discoverable: row.discoverable,
+    eventId: row.guild_event_id,
+    title: row.guild_event_title,
+    occursAt: end === null ? [start] : [start, end],
+    destination: row.guild_event_destination,
+    category: row.guild_event_category,
     registeredAtUnix: Number(row.registered_at_unix),
     updatedAtUnix: Number(row.updated_at_unix),
   };
 }
 
-export async function establishGuildEventCalendarListing(
-  input: GuildEventCalendarListingInput,
+export async function establishGuildCalendarEvent(
+  input: GuildCalendarEventInput,
   client: PoolClient | null = null,
-): Promise<void> {
-  const listing = normalizeListing(input);
+): Promise<GuildCalendarEvent> {
+  const event = normalizeEvent(input);
   const nowUnix = Math.floor(Date.now() / 1000);
   const executor = client ?? pool;
-  const [start, end] = listing.guildEventOccursAt;
+  const [start, end] = event.occursAt;
 
-  await executor.query(
+  const result = await executor.query<GuildCalendarEventRow>(
     `INSERT INTO guild_event_calendar_listings (
-       guild_event_id, guild_event_kind,
+       guild_event_id,
        occurs_at_start_unix, occurs_at_end_unix,
        guild_event_title, guild_event_destination, guild_event_category,
        discoverable, registered_at_unix, updated_at_unix
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,true,$8,$8)
+     ) VALUES ($1,$2,$3,$4,$5,$6,true,$7,$7)
      ON CONFLICT (guild_event_id) DO UPDATE
-       SET guild_event_kind = EXCLUDED.guild_event_kind,
-           occurs_at_start_unix = EXCLUDED.occurs_at_start_unix,
+       SET occurs_at_start_unix = EXCLUDED.occurs_at_start_unix,
            occurs_at_end_unix = EXCLUDED.occurs_at_end_unix,
            guild_event_title = EXCLUDED.guild_event_title,
            guild_event_destination = EXCLUDED.guild_event_destination,
            guild_event_category = EXCLUDED.guild_event_category,
            discoverable = true,
-           updated_at_unix = EXCLUDED.updated_at_unix`,
+           updated_at_unix = EXCLUDED.updated_at_unix
+     RETURNING guild_event_id, occurs_at_start_unix, occurs_at_end_unix,
+               guild_event_title, guild_event_destination, guild_event_category,
+               registered_at_unix, updated_at_unix`,
     [
-      listing.guildEventId,
-      listing.guildEventKind,
+      event.eventId,
       start,
       end ?? null,
-      listing.guildEventTitle ?? null,
-      listing.guildEventDestination ?? null,
-      listing.guildEventCategory ?? null,
+      event.title,
+      event.destination ?? null,
+      event.category ?? null,
       nowUnix,
     ],
   );
+
+  return mapEvent(result.rows[0]);
 }
 
-export async function withdrawGuildEventCalendarListing(
-  guildEventId: string,
+export async function withdrawGuildCalendarEvent(
+  eventId: string,
   client: PoolClient | null = null,
-): Promise<void> {
+): Promise<boolean> {
+  const normalizedEventId = requiredText(eventId, "eventId");
   const nowUnix = Math.floor(Date.now() / 1000);
   const executor = client ?? pool;
-  await executor.query(
+  const result = await executor.query(
     `UPDATE guild_event_calendar_listings
         SET discoverable = false,
             updated_at_unix = $2
-      WHERE guild_event_id = $1`,
-    [guildEventId, nowUnix],
+      WHERE guild_event_id = $1
+        AND discoverable = true`,
+    [normalizedEventId, nowUnix],
   );
+  return (result.rowCount ?? 0) > 0;
 }
 
-export async function guildEventCalendarListing(
-  guildEventId: string,
-): Promise<GuildEventCalendarListing | null> {
-  const result = await pool.query<GuildEventCalendarListingRow>(
-    `SELECT *
+export async function guildCalendarEvent(
+  eventId: string,
+): Promise<GuildCalendarEvent | null> {
+  const normalizedEventId = requiredText(eventId, "eventId");
+  const result = await pool.query<GuildCalendarEventRow>(
+    `SELECT guild_event_id, occurs_at_start_unix, occurs_at_end_unix,
+            guild_event_title, guild_event_destination, guild_event_category,
+            registered_at_unix, updated_at_unix
        FROM guild_event_calendar_listings
-      WHERE guild_event_id = $1`,
-    [guildEventId],
+      WHERE guild_event_id = $1
+        AND discoverable = true`,
+    [normalizedEventId],
   );
   const row = result.rows[0];
-  return row ? mapListing(row) : null;
+  return row ? mapEvent(row) : null;
 }
 
-export async function discoverableGuildEventCalendarListings(): Promise<GuildEventCalendarListing[]> {
-  const result = await pool.query<GuildEventCalendarListingRow>(
-    `SELECT *
+export async function discoverableGuildCalendarEvents(): Promise<GuildCalendarEvent[]> {
+  const result = await pool.query<GuildCalendarEventRow>(
+    `SELECT guild_event_id, occurs_at_start_unix, occurs_at_end_unix,
+            guild_event_title, guild_event_destination, guild_event_category,
+            registered_at_unix, updated_at_unix
        FROM guild_event_calendar_listings
       WHERE discoverable = true
       ORDER BY occurs_at_start_unix ASC, guild_event_id ASC`,
   );
-  return result.rows.map(mapListing);
+  return result.rows.map(mapEvent);
 }
