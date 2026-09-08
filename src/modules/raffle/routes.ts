@@ -1,27 +1,23 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
 import { GuildCapabilityDeniedError } from "../../guild-permissions.js";
-import { requireRaffleAdmin } from "./authorization.js";
 import {
   RaffleRuleError,
-  raffleClaims,
-  raffleRound,
-  type RafflePrizeKind,
-  type RaffleRoundTerms,
-} from "./domain.js";
-import { activateSingleRaffleRound } from "./live-round.js";
-import {
+  activateRaffleRound,
   approveRaffleClaim,
   cancelOwnRaffleClaim,
   cancelRaffleRound,
+  createRaffleRound,
   denyRaffleClaim,
   drawRaffleRound,
+  getRaffleRound,
+  listRaffleRoundClaims,
   submitRaffleClaim,
-} from "./published-operations.js";
-import {
-  createRegisteredRaffleRound,
-  updateRegisteredRaffleRound,
-} from "./registered-operations.js";
+  updateRaffleRound,
+  type RafflePrizeKind,
+  type RaffleRoundTerms,
+} from "./application.js";
+import { requireRaffleAdmin } from "./authorization.js";
 
 async function requireGuildie(request: FastifyRequest, reply: FastifyReply): Promise<string | null> {
   const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
@@ -99,7 +95,7 @@ export async function registerRaffleRoutes(app: FastifyInstance): Promise<void> 
     const guildieId = await requireGuildie(request, reply);
     if (!guildieId) return;
     try {
-      const round = await createRegisteredRaffleRound(guildieId, roundTerms(bodyObject(request.body)));
+      const round = await createRaffleRound(guildieId, roundTerms(bodyObject(request.body)));
       return reply.code(201).send(round);
     } catch (error) {
       if (sendDomainError(error, reply)) return;
@@ -111,7 +107,7 @@ export async function registerRaffleRoutes(app: FastifyInstance): Promise<void> 
     const guildieId = await requireGuildie(request, reply);
     if (!guildieId) return;
     try {
-      return await updateRegisteredRaffleRound(guildieId, request.params.roundId, roundTerms(bodyObject(request.body)));
+      return await updateRaffleRound(guildieId, request.params.roundId, roundTerms(bodyObject(request.body)));
     } catch (error) {
       if (sendDomainError(error, reply)) return;
       throw error;
@@ -122,7 +118,7 @@ export async function registerRaffleRoutes(app: FastifyInstance): Promise<void> 
     const guildieId = await requireGuildie(request, reply);
     if (!guildieId) return;
     try {
-      return await activateSingleRaffleRound(guildieId, request.params.roundId);
+      return await activateRaffleRound(guildieId, request.params.roundId);
     } catch (error) {
       if (sendDomainError(error, reply)) return;
       throw error;
@@ -154,7 +150,7 @@ export async function registerRaffleRoutes(app: FastifyInstance): Promise<void> 
   app.get<{ Params: { roundId: string } }>("/raffle/rounds/:roundId", async (request, reply) => {
     const guildieId = await requireGuildie(request, reply);
     if (!guildieId) return;
-    const round = await raffleRound(request.params.roundId);
+    const round = await getRaffleRound(request.params.roundId);
     if (!round) return reply.code(404).send({ error: "round_not_found" });
     return round;
   });
@@ -164,9 +160,9 @@ export async function registerRaffleRoutes(app: FastifyInstance): Promise<void> 
     if (!guildieId) return;
     try {
       await requireRaffleAdmin(guildieId);
-      const round = await raffleRound(request.params.roundId);
+      const round = await getRaffleRound(request.params.roundId);
       if (!round) return reply.code(404).send({ error: "round_not_found" });
-      return { round_id: round.roundId, claims: await raffleClaims(round.roundId) };
+      return { round_id: round.roundId, claims: await listRaffleRoundClaims(round.roundId) };
     } catch (error) {
       if (sendDomainError(error, reply)) return;
       throw error;
