@@ -21,6 +21,8 @@ export type GuildCalendarEvent = {
   updatedAtUnix: number;
 };
 
+type GuildCalendarManagementKind = "application" | "external";
+
 type GuildCalendarEventRow = {
   guild_event_id: string;
   occurs_at_start_unix: string;
@@ -86,8 +88,9 @@ function mapEvent(row: GuildCalendarEventRow): GuildCalendarEvent {
   };
 }
 
-export async function establishGuildCalendarEvent(
+async function establishManagedGuildCalendarEvent(
   input: GuildCalendarEventInput,
+  managementKind: GuildCalendarManagementKind,
   client: PoolClient | null = null,
 ): Promise<GuildCalendarEvent> {
   const event = normalizeEvent(input);
@@ -100,8 +103,8 @@ export async function establishGuildCalendarEvent(
        guild_event_id,
        occurs_at_start_unix, occurs_at_end_unix,
        guild_event_title, guild_event_destination, guild_event_category,
-       discoverable, registered_at_unix, updated_at_unix
-     ) VALUES ($1,$2,$3,$4,$5,$6,true,$7,$7)
+       discoverable, registered_at_unix, updated_at_unix, management_kind
+     ) VALUES ($1,$2,$3,$4,$5,$6,true,$7,$7,$8)
      ON CONFLICT (guild_event_id) DO UPDATE
        SET occurs_at_start_unix = EXCLUDED.occurs_at_start_unix,
            occurs_at_end_unix = EXCLUDED.occurs_at_end_unix,
@@ -110,6 +113,7 @@ export async function establishGuildCalendarEvent(
            guild_event_category = EXCLUDED.guild_event_category,
            discoverable = true,
            updated_at_unix = EXCLUDED.updated_at_unix
+       WHERE guild_event_calendar_listings.management_kind = EXCLUDED.management_kind
      RETURNING guild_event_id, occurs_at_start_unix, occurs_at_end_unix,
                guild_event_title, guild_event_destination, guild_event_category,
                registered_at_unix, updated_at_unix`,
@@ -121,14 +125,31 @@ export async function establishGuildCalendarEvent(
       event.destination ?? null,
       event.category ?? null,
       nowUnix,
+      managementKind,
     ],
   );
 
-  return mapEvent(result.rows[0]);
+  const row = result.rows[0];
+  if (!row) throw new Error("calendar event is managed by a different authority class");
+  return mapEvent(row);
 }
 
-export async function withdrawGuildCalendarEvent(
+export async function establishGuildCalendarEvent(
+  input: GuildCalendarEventInput,
+  client: PoolClient | null = null,
+): Promise<GuildCalendarEvent> {
+  return establishManagedGuildCalendarEvent(input, "application", client);
+}
+
+export async function establishExternallyManagedGuildCalendarEvent(
+  input: GuildCalendarEventInput,
+): Promise<GuildCalendarEvent> {
+  return establishManagedGuildCalendarEvent(input, "external");
+}
+
+async function withdrawManagedGuildCalendarEvent(
   eventId: string,
+  managementKind: GuildCalendarManagementKind,
   client: PoolClient | null = null,
 ): Promise<boolean> {
   const normalizedEventId = requiredText(eventId, "eventId");
@@ -137,29 +158,57 @@ export async function withdrawGuildCalendarEvent(
   const result = await executor.query(
     `UPDATE guild_event_calendar_listings
         SET discoverable = false,
-            updated_at_unix = $2
+            updated_at_unix = $3
       WHERE guild_event_id = $1
+        AND management_kind = $2
         AND discoverable = true`,
-    [normalizedEventId, nowUnix],
+    [normalizedEventId, managementKind, nowUnix],
   );
   return (result.rowCount ?? 0) > 0;
 }
 
-export async function guildCalendarEvent(
+export async function withdrawGuildCalendarEvent(
   eventId: string,
+  client: PoolClient | null = null,
+): Promise<boolean> {
+  return withdrawManagedGuildCalendarEvent(eventId, "application", client);
+}
+
+export async function withdrawExternallyManagedGuildCalendarEvent(eventId: string): Promise<boolean> {
+  return withdrawManagedGuildCalendarEvent(eventId, "external");
+}
+
+async function guildCalendarEventWithManagement(
+  eventId: string,
+  managementKind?: GuildCalendarManagementKind,
 ): Promise<GuildCalendarEvent | null> {
   const normalizedEventId = requiredText(eventId, "eventId");
+  const values: unknown[] = [normalizedEventId];
+  const managementClause = managementKind
+    ? (values.push(managementKind), `AND management_kind = $${values.length}`)
+    : "";
   const result = await pool.query<GuildCalendarEventRow>(
     `SELECT guild_event_id, occurs_at_start_unix, occurs_at_end_unix,
             guild_event_title, guild_event_destination, guild_event_category,
             registered_at_unix, updated_at_unix
        FROM guild_event_calendar_listings
       WHERE guild_event_id = $1
-        AND discoverable = true`,
-    [normalizedEventId],
+        AND discoverable = true
+        ${managementClause}`,
+    values,
   );
   const row = result.rows[0];
   return row ? mapEvent(row) : null;
+}
+
+export async function guildCalendarEvent(eventId: string): Promise<GuildCalendarEvent | null> {
+  return guildCalendarEventWithManagement(eventId);
+}
+
+export async function externallyManagedGuildCalendarEvent(
+  eventId: string,
+): Promise<GuildCalendarEvent | null> {
+  return guildCalendarEventWithManagement(eventId, "external");
 }
 
 export async function discoverableGuildCalendarEvents(): Promise<GuildCalendarEvent[]> {
