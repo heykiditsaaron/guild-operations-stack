@@ -15,7 +15,7 @@ import {
 } from "./guild-events/calendar/registry.js";
 
 function readAuthorized(request: FastifyRequest): boolean {
-  const configured = process.env.API_READ_KEY ?? process.env.EVENT_QUERY_API_KEY;
+  const configured = process.env.API_READ_KEY || process.env.EVENT_QUERY_API_KEY;
   if (!configured) return false;
   const header = request.headers.authorization;
   return header === configured || header === `Bearer ${configured}`;
