@@ -1,7 +1,5 @@
-import { refreshGuildAuthority } from "./guild.js";
+import { refreshGuildAuthority, type GuildRefreshResult } from "./guild.js";
 import { publishOperationalRecord } from "./operational-inspection.js";
-
-type GuildRefreshResult = Awaited<ReturnType<typeof refreshGuildAuthority>>;
 
 type GuildRefreshOperationOptions = {
   actorGuildieId?: string | null;
