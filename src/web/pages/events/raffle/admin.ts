@@ -147,7 +147,7 @@ function managementFacts(
     <dt>Ticket price</dt><dd>${htmlText(round.ticketPriceGold)} gold</dd>
     <dt>Prize type</dt><dd>${htmlText(round.prizeKind)}</dd>
     <dt>Prize</dt><dd>${htmlText(prizeLabel(round))}</dd>
-    <dt>Approved tickets</dt><dd>${metrics.approvedTicketCount}</dd>
+    <dt>Approved entries</dt><dd>${metrics.approvedTicketCount}</dd>
     ${gold ? `<dt>Current pot</dt><dd>${gold.pot.toString()} gold</dd>` : ""}
     ${gold?.prize !== null && gold?.prize !== undefined ? `<dt>Current prize</dt><dd>${gold.prize.toString()} gold</dd>` : ""}
     ${attributionFact("Created", round.createdByGuildieId, round.createdAtUnix, attributions)}
@@ -203,7 +203,6 @@ function createRoundForm(): string {
 
 function listedRoundEditor(round: RaffleRound, attributions: AttributionLookup): string {
   return `<div class="raffle-edit" data-raffle-round-id="${htmlText(round.roundId)}">
-    <div class="raffle-status-banner raffle-status-banner-upcoming"><span>Upcoming</span></div>
     <form class="raffle-edit-form" data-raffle-admin-edit data-round-id="${htmlText(round.roundId)}" data-drawing-unix="${round.drawingAtUnix}">
       <label class="raffle-edit-field">
         <span>Raffle name <small>(optional)</small></span>
@@ -249,7 +248,7 @@ function listedRoundEditor(round: RaffleRound, attributions: AttributionLookup):
 }
 
 function roundList(rounds: RaffleAdministrationRound[], attributions: AttributionLookup): string {
-  if (rounds.length === 0) return `<p class="raffle-empty-note">No live or upcoming raffles.</p>`;
+  if (rounds.length === 0) return `<p class="raffle-empty-note">No raffles currently require administration.</p>`;
 
   return `<div class="raffle-overview-list">
     ${rounds.map((round) => {
@@ -259,7 +258,7 @@ function roundList(rounds: RaffleAdministrationRound[], attributions: Attributio
         : localTime(round.drawingAtUnix, "medium");
       const liveSignals = live
         ? `<p class="raffle-overview-attention"><strong>${round.pendingClaimCount === 0 ? "No claims need review" : `${round.pendingClaimCount} ${round.pendingClaimCount === 1 ? "claim needs" : "claims need"} review`}</strong></p>
-           <p class="raffle-overview-participation">${round.approvedTicketCount} approved ${round.approvedTicketCount === 1 ? "ticket" : "tickets"}</p>`
+           <p class="raffle-overview-participation">${round.approvedTicketCount} approved ${round.approvedTicketCount === 1 ? "entry" : "entries"}</p>`
         : "";
       const primaryAction = live
         ? `<a class="raffle-action raffle-action-primary" href="/admin/raffle/${encodeURIComponent(round.roundId)}">Manage raffle</a>`
@@ -271,10 +270,12 @@ function roundList(rounds: RaffleAdministrationRound[], attributions: Attributio
           : `<button class="raffle-action raffle-action-success" type="button" disabled title="Resolve pending claims before drawing">Draw raffle</button>`
         : "";
       return `<article class="raffle-overview-item${live ? " raffle-overview-item-live" : ""}">
-        <div class="raffle-status-banner raffle-status-banner-${live ? "live" : "upcoming"}"><span>${live ? "Live" : "Upcoming"}</span></div>
-        <div class="raffle-overview-identity">
-          <h2>${identity}</h2>
-          <p>Estimated drawing ${localTime(round.drawingAtUnix)}</p>
+        <div class="raffle-overview-card-heading">
+          <div class="raffle-overview-identity">
+            <h2>${identity}</h2>
+            <p>Estimated drawing ${localTime(round.drawingAtUnix)}</p>
+          </div>
+          ${live ? '<span class="raffle-overview-live-state">Live</span>' : ""}
         </div>
         ${roundOverviewAttribution(round, attributions)}
         ${liveSignals}
@@ -376,7 +377,7 @@ function liveRoundManager(round: RaffleRound, claims: RaffleClaim[], metrics: Re
         <dt>Ticket price</dt><dd>${htmlText(round.ticketPriceGold)} gold</dd>
         <dt>Prize type</dt><dd>${htmlText(round.prizeKind)}</dd>
         <dt>Prize</dt><dd>${htmlText(prizeLabel(round))}</dd>
-        <dt>Approved tickets</dt><dd>${metrics.approvedTicketCount}</dd>
+        <dt>Approved entries</dt><dd>${metrics.approvedTicketCount}</dd>
         ${gold ? `<dt>Current pot</dt><dd>${gold.pot.toString()} gold</dd>` : ""}
         ${gold?.prize !== null && gold?.prize !== undefined ? `<dt>Current prize</dt><dd>${gold.prize.toString()} gold</dd>` : ""}
       </dl>
@@ -411,8 +412,9 @@ export async function registerRaffleAdminPage(app: FastifyInstance, assets: Asse
     const attributions = await guildieAttributionsForGuildies(rounds.flatMap((round) => [round.createdByGuildieId, round.liveByGuildieId]));
     const html = renderPage(assets, {
       pathname: "/admin/raffle", title: "Raffle Administration · OH CRIT I Pulled! Guild Operations", description: "Operate the OH CRIT I Pulled! guild raffle.", viewer,
-      secondaryNavigation: adminNavigation(), stylesheets: ["raffle-admin.css"], scripts: ["raffle.js"], header: "",
-      body: `<section class="raffle-admin-overview" aria-labelledby="raffle-overview-heading"><div class="raffle-overview-heading-row"><h1 class="raffle-overview-title" id="raffle-overview-heading">Raffle Overview</h1><button class="raffle-start-button" type="button" data-toggle-raffle-setup>Start new raffle</button></div><div class="raffle-setup" data-raffle-setup hidden>${createRoundForm()}</div>${roundList(rounds, attributions)}</section>`,
+      secondaryNavigation: adminNavigation(), stylesheets: ["admin.css", "raffle-admin.css", "raffle-admin-overview.css"], scripts: ["raffle.js"],
+      header: `<div class="admin-page-header-row"><div class="admin-page-header"><h1 id="page-title">Raffle</h1><p class="lede">Create and operate guild raffles.</p></div><button class="button-primary raffle-start-button raffle-admin-header-action" type="button" data-toggle-raffle-setup>Start new raffle</button></div>`,
+      body: `<section class="raffle-admin-overview" aria-labelledby="page-title"><div class="raffle-setup" data-raffle-setup hidden>${createRoundForm()}</div>${roundList(rounds, attributions)}</section>`,
     });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
