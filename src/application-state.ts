@@ -30,10 +30,14 @@ export type CharacterMembership = CharacterMembershipCoordinate & {
   realmSlug: string | null;
 };
 
+export type GuildieSelectedMain = SelectedMainCharacter & {
+  character: GuildCharacter | null;
+};
+
 export type GuildieState = {
   guildieId: string;
   characters: GuildCharacter[];
-  selectedMain: SelectedMainCharacter | null;
+  selectedMain: GuildieSelectedMain | null;
   guildAuthority: EffectiveGuildAuthority | null;
   discordAssociation: DiscordAssociation | null;
 };
@@ -114,10 +118,28 @@ export async function guildieState(guildieId: string): Promise<GuildieState | nu
     discordAssociationForGuildie(guildieId),
   ]);
 
+  const selectedMainCharacter = selectedMain
+    ? characters.find((character) =>
+        character.realmId === selectedMain.realmId && character.characterId === selectedMain.characterId,
+      ) ?? null
+    : null;
+
+  const resolvedSelectedMain = selectedMain
+    ? {
+        ...selectedMain,
+        name: selectedMainCharacter?.name ?? selectedMain.name,
+        realmName: selectedMainCharacter?.realmName ?? selectedMain.realmName,
+        rankIndex: selectedMainCharacter?.rankIndex ?? selectedMain.rankIndex,
+        currentlyEligible: selectedMainCharacter !== null && selectedMain.currentlyEligible,
+        avatarUrl: selectedMainCharacter?.avatarUrl ?? selectedMain.avatarUrl,
+        character: selectedMainCharacter,
+      }
+    : null;
+
   return {
     guildieId,
     characters,
-    selectedMain,
+    selectedMain: resolvedSelectedMain,
     guildAuthority,
     discordAssociation,
   };
