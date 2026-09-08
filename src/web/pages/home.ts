@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../auth.js";
 import { config } from "../../config.js";
-import { activeRaffleRound } from "../../modules/raffle/live-round.js";
+import { getLiveRaffleRound } from "../../modules/raffle/application.js";
 import { assetUrl, type AssetName, type AssetRegistry } from "../assets.js";
 import { renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
@@ -50,7 +50,7 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
   app.get("/", async (request, reply) => {
     const [viewer, liveRaffle] = await Promise.all([
       viewerForRequest(request.cookies[SESSION_COOKIE_NAME]),
-      activeRaffleRound(),
+      getLiveRaffleRound(),
     ]);
 
     const stylesheets: AssetName[] = ["home.css"];
