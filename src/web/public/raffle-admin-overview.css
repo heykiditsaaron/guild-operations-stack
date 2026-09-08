@@ -90,6 +90,32 @@
   flex: none;
 }
 
+.raffle-admin-overview .raffle-management-controls > a[href^="/admin/raffle/"],
+.raffle-admin-overview .raffle-management-controls > button[data-draw-raffle-round],
+.raffle-admin-overview .raffle-management-controls > button[data-cancel-raffle-round] {
+  font-size: 0;
+}
+
+.raffle-admin-overview .raffle-overview-item-live .raffle-management-controls > a[href^="/admin/raffle/"]::after {
+  content: "Manage";
+  font-size: 0.88rem;
+}
+
+.raffle-admin-overview .raffle-overview-item:not(.raffle-overview-item-live) .raffle-management-controls > a[href^="/admin/raffle/"]::after {
+  content: "Edit";
+  font-size: 0.88rem;
+}
+
+.raffle-admin-overview .raffle-management-controls > button[data-draw-raffle-round]::after {
+  content: "Draw";
+  font-size: 0.88rem;
+}
+
+.raffle-admin-overview .raffle-management-controls > button[data-cancel-raffle-round]::after {
+  content: "Cancel";
+  font-size: 0.88rem;
+}
+
 @media (max-width: 42rem) {
   .raffle-overview-card-heading {
     align-items: baseline;
