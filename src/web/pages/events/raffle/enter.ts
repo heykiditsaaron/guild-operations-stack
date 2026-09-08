@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../../../auth.js";
 import { raffleClaimCutoffUnix, raffleClaimsAreOpen, type RaffleRound } from "../../../../modules/raffle/domain.js";
-import { activeRaffleRoundOverview } from "../../../../modules/raffle/live-round.js";
+import { liveRaffleRoundFacts } from "../../../../modules/raffle/queries.js";
 import type { AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage, type WebViewer } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
@@ -52,10 +52,11 @@ function entryForm(round: RaffleRound, viewer: WebViewer): string {
 export async function registerRaffleEntryPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/events/raffle/enter", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, liveRaffle] = await Promise.all([
+    const [viewer, liveFacts] = await Promise.all([
       viewerForRequest(sessionToken),
-      activeRaffleRoundOverview(),
+      liveRaffleRoundFacts(),
     ]);
+    const liveRaffle = liveFacts?.round ?? null;
 
     const body = liveRaffle
       ? `<section class="raffle-workspace" aria-labelledby="raffle-entry-title">
