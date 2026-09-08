@@ -17,16 +17,17 @@ The REST interface is an adapter over established application contracts. It does
 
 ## Authority classes
 
-Global endpoints currently use four authority contexts:
+Global endpoints currently use five authority contexts:
 
 - **Public** — no application authority is required.
 - **Application session** — requires a valid `guild_session` cookie resolving to a current Guildie.
 - **Application session plus capability** — requires a valid session and an explicit Guild Operations capability derived from current guild authority.
 - **REST read authority** — requires the read-only `API_READ_KEY` credential.
+- **REST write authority** — requires the mutation-capable `API_WRITE_KEY` credential.
 
-REST read authority grants no human operation authority. It exists so external consumers can read current Guild Operations application state without acquiring a human session.
+REST read authority grants no mutation or human operation authority. REST write authority permits only the explicit machine operations exposed under `/api/v1`; it does not create a human Guildie session or inherit human capabilities.
 
-During migration from the former `/query/*` surface, `EVENT_QUERY_API_KEY` is accepted as a compatibility fallback when `API_READ_KEY` is not configured. New deployments and integrations should use `API_READ_KEY`.
+During migration from the former `/query/*` surface, `EVENT_QUERY_API_KEY` is accepted as a read compatibility fallback when `API_READ_KEY` is not configured. New deployments and integrations should use `API_READ_KEY`.
 
 ## Service
 
@@ -119,12 +120,18 @@ Requires an application session plus the `guild.refresh` capability. Configures 
 
 ## Versioned REST API
 
-`/api/v1` is the promoted global REST namespace. Resources are added only when an established application contract has a concrete external-consumer need.
+`/api/v1` is the promoted global REST namespace. Resources and operations are added only when an established application contract has a concrete external-consumer need.
 
-All currently exposed REST resources are read-only and require:
+Read operations require:
 
 ```http
 Authorization: Bearer <API_READ_KEY>
+```
+
+Mutation operations require:
+
+```http
+Authorization: Bearer <API_WRITE_KEY>
 ```
 
 ### GET `/api/v1/guildies/:guildieId`
@@ -159,6 +166,77 @@ When the Character is not currently on the roster, the coordinate remains a vali
 A guild coordinate other than the configured guild returns `404`. Invalid Character coordinates return `400`.
 
 The route addresses the Character directly. It does not introduce a second `character-member` or `character-membership` domain object; `membership` is the current Blizzard-roster relationship projected for that Character.
+
+## Guild Calendar REST
+
+The Guild Calendar is the shared registry of concrete guild occurrences intentionally placed on the calendar. It is not a generic event-management API. Internal modules may project their own occurrence truth into the same application contract, while authorized external callers may establish calendar-native events directly.
+
+A Calendar event representation is:
+
+```json
+{
+  "event_id": "9d031fa6-1441-4e7f-b84c-858c8a8f392e",
+  "title": "Guild Meeting",
+  "occurs_at": [1788897600, 1788901200],
+  "category": "meeting",
+  "destination": null,
+  "registered_at_unix": 1788800000,
+  "updated_at_unix": 1788800000
+}
+```
+
+`occurs_at` contains either one Unix timestamp for an instant or two Unix timestamps for an inclusive start/end range. `title` is required. `category` and `destination` are optional and may be `null`.
+
+Calendar temporal state is derived from `occurs_at`; callers do not publish separate upcoming/live/past lifecycle values.
+
+### GET `/api/v1/calendar/events`
+
+Requires REST read authority. Returns all currently registered Calendar events ordered by occurrence start time. Past events remain valid registered events until withdrawn.
+
+```json
+{
+  "events": []
+}
+```
+
+### GET `/api/v1/calendar/events/:eventId`
+
+Requires REST read authority. Returns one currently registered Calendar event. Withdrawn or unknown events return `404`.
+
+### POST `/api/v1/calendar/events`
+
+Requires REST write authority. Creates a Calendar-native event and assigns its `event_id`.
+
+```json
+{
+  "title": "Guild Meeting",
+  "occurs_at": [1788897600, 1788901200],
+  "category": "meeting",
+  "destination": null
+}
+```
+
+Returns `201` with the established Calendar event.
+
+### PATCH `/api/v1/calendar/events/:eventId`
+
+Requires REST write authority. Updates one or more current Calendar fields. Omitted fields remain unchanged. `category` and `destination` may be set to `null` to clear them.
+
+```json
+{
+  "occurs_at": [1788984000]
+}
+```
+
+Returns the updated Calendar event. Unknown or withdrawn events return `404`.
+
+### DELETE `/api/v1/calendar/events/:eventId`
+
+Requires REST write authority. Withdraws the event from Calendar discovery and returns `204`.
+
+Withdrawal is not physical deletion and is not how an event merely becomes past. Unknown or already-withdrawn events return `404`.
+
+External Calendar create, update, and withdrawal operations are recorded best-effort through global operational inspection with source `calendar`.
 
 ## Legacy machine-query surface
 
