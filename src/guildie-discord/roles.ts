@@ -1,5 +1,5 @@
 import { config } from "../config.js";
-import { pool } from "../db.js";
+import { discordAssociatedGuildieIds } from "../discord-association.js";
 import { effectiveGuildAuthority } from "../guild-permissions.js";
 import { publishOperationalRecord } from "../operational-inspection.js";
 import {
@@ -112,13 +112,6 @@ async function mapWithConcurrency<T, R>(
   const workerCount = Math.min(Math.max(1, concurrency), values.length);
   await Promise.all(Array.from({ length: workerCount }, () => worker()));
   return results;
-}
-
-async function associatedGuildieIds(): Promise<string[]> {
-  const result = await pool.query<{ guildie_id: string }>(
-    "SELECT guildie_id FROM discord_associations ORDER BY guildie_id",
-  );
-  return result.rows.map((row) => row.guildie_id);
 }
 
 export async function evaluateGuildieDiscordRoles(
@@ -449,7 +442,7 @@ export async function removeManagedDiscordRolesForUser(
 export async function reconcileAllGuildieDiscordRoles(
   context: ReconciliationContext = {},
 ): Promise<DiscordRoleBulkReconciliation> {
-  const guildieIds = await associatedGuildieIds();
+  const guildieIds = await discordAssociatedGuildieIds();
   const result = await reconcileGuildieSet(guildieIds, context);
   if (result.failures.length > 0) {
     throw new Error(`Discord bulk reconciliation had ${result.failures.length} failure${result.failures.length === 1 ? "" : "s"}`);
@@ -461,7 +454,7 @@ export async function reconcileGuildiesBestEffort(
   guildieIds: Iterable<string>,
   context: ReconciliationContext = {},
 ): Promise<void> {
-  const associated = await associatedGuildieIds();
+  const associated = await discordAssociatedGuildieIds();
   const result = await reconcileGuildieSet([...guildieIds, ...associated], context);
   for (const failure of result.failures) {
     console.error("Discord role reconciliation failed", {
