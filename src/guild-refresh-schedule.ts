@@ -10,6 +10,13 @@ export type GuildRefreshSchedule = {
   nextDueAtUnix: number | null;
 };
 
+export class InvalidGuildRefreshIntervalError extends Error {
+  constructor(public readonly minimumIntervalSeconds = GUILD_REFRESH_MINIMUM_INTERVAL_SECONDS) {
+    super(`Guild refresh interval must be an integer of at least ${minimumIntervalSeconds} seconds`);
+    this.name = "InvalidGuildRefreshIntervalError";
+  }
+}
+
 export async function guildRefreshSchedule(): Promise<GuildRefreshSchedule> {
   const result = await pool.query<{
     enabled: boolean;
@@ -43,7 +50,7 @@ export async function configureGuildRefreshSchedule(input: {
   intervalSeconds: number;
 }): Promise<GuildRefreshSchedule> {
   if (!Number.isInteger(input.intervalSeconds) || input.intervalSeconds < GUILD_REFRESH_MINIMUM_INTERVAL_SECONDS) {
-    throw new Error(`Guild refresh interval must be an integer of at least ${GUILD_REFRESH_MINIMUM_INTERVAL_SECONDS} seconds`);
+    throw new InvalidGuildRefreshIntervalError();
   }
 
   const nowUnix = Math.floor(Date.now() / 1000);
