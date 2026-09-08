@@ -119,19 +119,6 @@ A later Discord interaction surface must still ask the backend whether the resol
 
 A Guildie may remain Discord-associated even when no controlled Character is currently on the Blizzard Character roster. Loss of the current participation surface does not destroy the Guildie or the Discord association.
 
-## Publications and projections
-
-Discord association changes are Guildie-domain occurrences:
-
-```text
-guildie.discord.linked
-guildie.discord.unlinked
-```
-
-The publications carry `guildie_id` as the durable coordinate identifying the affected Guildie. On unlink, the disappearing `discord_user_id` may also be included so a subscriber can remove stale Discord-side projection state.
-
-Publication does not make Discord authoritative. Subscribers such as BotGhost should use the publication as attention, query Guild Operations when current truth matters, and converge their own projection from the backend's current state.
-
 ## Boundaries
 
 Discord association is distinct from Discord server membership. The association ceremony should not acquire broader Discord scopes merely because server membership may matter later.
