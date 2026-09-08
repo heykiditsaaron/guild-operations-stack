@@ -3,7 +3,6 @@ import { concludedRaffleRoundFacts } from "./queries.js";
 
 export type RaffleHistoryRound = RaffleRound & {
   approvedEntryCount: number;
-  approvedTicketCount: number;
   winnerCharacterName: string | null;
   winnerAvatarUrl: string | null;
 };
@@ -13,7 +12,6 @@ export async function raffleHistory(): Promise<RaffleHistoryRound[]> {
   return rounds.map(({ round, metrics, winner }) => ({
     ...round,
     approvedEntryCount: metrics.approvedEntryCount,
-    approvedTicketCount: metrics.approvedEntryCount,
     winnerCharacterName: winner?.character.name ?? null,
     winnerAvatarUrl: winner?.avatarUrl ?? null,
   }));
