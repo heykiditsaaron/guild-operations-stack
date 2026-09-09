@@ -33,17 +33,17 @@ function entryForm(round: RaffleRound, viewer: WebViewer): string {
     return `<p class="raffle-status-copy">No currently eligible guild characters are available for a raffle claim.</p>`;
   }
 
-  return `<form class="raffle-form" data-raffle-claim-form data-round-id="${htmlText(round.roundId)}" data-ticket-price="${htmlText(round.ticketPriceGold)}" data-claim-cutoff-unix="${raffleClaimCutoffUnix(round.drawingAtUnix)}">
+  return `<form class="raffle-form" data-raffle-claim-form data-round-id="${htmlText(round.roundId)}" data-entry-price="${htmlText(round.entryPriceGold)}" data-claim-cutoff-unix="${raffleClaimCutoffUnix(round.drawingAtUnix)}">
     <label>
       <span>Character</span>
       <select data-raffle-character>${options}</select>
     </label>
     <label>
-      <span>Tickets requested</span>
-      <input data-raffle-ticket-count type="number" min="1" step="1" value="1" inputmode="numeric">
+      <span>Entries requested</span>
+      <input data-raffle-entry-count type="number" min="1" step="1" value="1" inputmode="numeric">
     </label>
     <p class="raffle-promise" data-raffle-promise></p>
-    <p class="raffle-workspace-note">Submitting records your promise to deposit the shown gold into the guild bank. Your requested tickets do not participate until an attendant confirms that deposit and approves the claim.</p>
+    <p class="raffle-workspace-note">Submitting records your promise to deposit the shown gold into the guild bank. Your requested entries do not participate until an attendant confirms that deposit and approves the claim.</p>
     <button type="submit">Submit claim</button>
     <p class="raffle-form-status" data-raffle-claim-status aria-live="polite"></p>
   </form>`;
@@ -61,7 +61,7 @@ export async function registerRaffleEntryPage(app: FastifyInstance, assets: Asse
     const body = liveRaffle
       ? `<section class="raffle-workspace" aria-labelledby="raffle-entry-title">
           <h2 id="raffle-entry-title">Enter to win</h2>
-          <p class="raffle-workspace-intro">Tickets are ${formatGold(liveRaffle.ticketPriceGold)} gold each.</p>
+          <p class="raffle-workspace-intro">Entries are ${formatGold(liveRaffle.entryPriceGold)} gold each.</p>
           ${entryForm(liveRaffle, viewer)}
         </section>`
       : `<section class="raffle-workspace" aria-labelledby="raffle-entry-title"><h2 id="raffle-entry-title">No active raffle.</h2></section>`;
