@@ -17,6 +17,7 @@ const migrationFiles = [
   "012_guildie_discord_projection.sql",
   "013_guild_calendar_contract.sql",
   "014_raffle_entry_vocabulary.sql",
+  "015_discord_module.sql",
 ];
 
 for (const migrationFile of migrationFiles) {
