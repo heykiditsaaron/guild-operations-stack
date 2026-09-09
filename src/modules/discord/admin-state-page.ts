@@ -160,7 +160,7 @@ export async function registerAdminDiscordStatePage(app: FastifyInstance, assets
           <h2 id="discord-state-heading">Discord role maps</h2>
           <p>This view evaluates current Discord state against desired mapped-role state. It never changes Discord.</p>
         </div>
-        <span class="discord-projection-state">Role maps ${settings.enabled ? "active" : "inactive"}</span>
+        <span class="discord-projection-state">Linked Role ${settings.linkedMappingEnabled ? "on" : "off"} · Rank Mapping ${settings.rankMappingEnabled ? "on" : "off"}</span>
       </div>
       <div class="discord-state-table-wrap">
         <table class="discord-state-table">
