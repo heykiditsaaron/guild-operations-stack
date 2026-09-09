@@ -194,19 +194,6 @@ document.addEventListener("click", (event) => {
     return;
   }
 
-  const disconnectDiscord = target.closest("[data-disconnect-discord]");
-  if (disconnectDiscord instanceof HTMLButtonElement) {
-    disconnectDiscord.disabled = true;
-    const returnTo = disconnectDiscord.dataset.returnTo || currentReturnTo();
-    void fetch(`/me/discord/disconnect?return_to=${encodeURIComponent(returnTo)}`, { method: "POST" })
-      .then((response) => {
-        if (response.ok) window.location.assign(returnTo);
-        else disconnectDiscord.disabled = false;
-      })
-      .catch(() => { disconnectDiscord.disabled = false; });
-    return;
-  }
-
   const logout = target.closest("[data-logout]");
   if (logout) {
     void fetch("/auth/logout", { method: "POST" }).then((response) => {
