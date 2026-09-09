@@ -1,10 +1,10 @@
 import type { FastifyInstance } from "fastify";
-import { registerDiscordRoutes } from "../../discord.js";
 import type { AssetRegistry } from "../../web/assets.js";
-import { registerAdminDiscordStatePage } from "../../web/pages/admin-discord-state.js";
 import { registerDiscordAdminPage } from "./admin-page.js";
+import { registerAdminDiscordStatePage } from "./admin-state-page.js";
 import { registerDiscordAdministrationDestination } from "./administration.js";
 import { registerDiscordGuildRefreshObserver } from "./guild-refresh.js";
+import { registerDiscordRoutes } from "./routes.js";
 
 export function registerDiscordModuleAdministration(): void {
   registerDiscordAdministrationDestination();
