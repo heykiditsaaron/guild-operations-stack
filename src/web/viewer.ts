@@ -1,44 +1,35 @@
 import { guildieState } from "../application-state.js";
 import { authenticatedGuildie } from "../auth.js";
-import { discordAssociationForGuildie } from "../modules/discord/association.js";
-import { discordModuleConfiguration } from "../modules/discord/module-configuration.js";
 import { administrationAvailabilityForGuildie } from "./administration.js";
+import { moduleWebPresentationForGuildie } from "./module-presentation.js";
 import type { WebViewer } from "./render.js";
 
 export async function viewerForRequest(sessionToken: string | undefined): Promise<WebViewer> {
-  const [guildie, discordConfiguration] = await Promise.all([
-    authenticatedGuildie(sessionToken),
-    discordModuleConfiguration(),
-  ]);
-  const discordEnabled = discordConfiguration.enabled;
-  const discordInviteUrl = discordEnabled ? discordConfiguration.inviteUrl : null;
+  const guildie = await authenticatedGuildie(sessionToken);
 
   if (!guildie) {
     return {
       authenticated: false,
-      discordEnabled,
-      discordInviteUrl,
+      modulePresentation: await moduleWebPresentationForGuildie(null),
     };
   }
 
-  const [state, administration, discordAssociation] = await Promise.all([
+  const [state, administration, modulePresentation] = await Promise.all([
     guildieState(guildie.guildieId),
     administrationAvailabilityForGuildie(guildie.guildieId),
-    discordEnabled ? discordAssociationForGuildie(guildie.guildieId) : Promise.resolve(null),
+    moduleWebPresentationForGuildie(guildie.guildieId),
   ]);
 
   if (!state) {
     return {
       authenticated: false,
-      discordEnabled,
-      discordInviteUrl,
+      modulePresentation: await moduleWebPresentationForGuildie(null),
     };
   }
 
   return {
     authenticated: true,
-    discordEnabled,
-    discordInviteUrl,
+    modulePresentation,
     administrationAvailable: administration.available,
     administrationDestinations: administration.navigationDestinations,
     mainCharacter: state.selectedMain
@@ -66,10 +57,5 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
       activeSpecName: character.activeSpecName,
       avatarUrl: character.avatarUrl,
     })),
-    discordAssociation: discordAssociation
-      ? {
-          username: discordAssociation.username,
-        }
-      : null,
   };
 }
