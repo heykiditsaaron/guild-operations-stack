@@ -1,5 +1,6 @@
 import { registerGuildRefreshObserver } from "../../guild-refresh-observers.js";
 import { ensureDiscordAdministrationCapabilities } from "./authorization.js";
+import { discordModuleConfiguration } from "./module-configuration.js";
 import { reconcileGuildiesBestEffort } from "./roles.js";
 
 async function observeGuildRefresh(observation: {
@@ -7,6 +8,8 @@ async function observeGuildRefresh(observation: {
   changedGuildieIds: readonly string[];
 }): Promise<void> {
   await ensureDiscordAdministrationCapabilities(observation.guildId);
+  const moduleConfiguration = await discordModuleConfiguration(observation.guildId);
+  if (!moduleConfiguration.enabled || observation.changedGuildieIds.length === 0) return;
   await reconcileGuildiesBestEffort([...observation.changedGuildieIds], { trigger: "guild-refresh" });
 }
 
