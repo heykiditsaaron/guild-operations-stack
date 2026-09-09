@@ -14,7 +14,7 @@ export type RaffleClaimResolution = "approved" | "denied" | "cancelled" | null;
 export type RaffleRoundTerms = {
   roundTitle?: string | null;
   drawingAtUnix: number;
-  ticketPriceGold: number;
+  entryPriceGold: number;
   prizeKind: RafflePrizeKind;
   winnerPercentage?: number | null;
   prizeDescription?: string | null;
@@ -27,7 +27,7 @@ export type RaffleRound = {
   conclusion: RaffleRoundConclusion;
   roundTitle: string | null;
   drawingAtUnix: number;
-  ticketPriceGold: string;
+  entryPriceGold: string;
   prizeKind: RafflePrizeKind;
   winnerPercentage: number | null;
   prizeDescription: string | null;
@@ -52,7 +52,7 @@ export type RaffleClaim = {
   characterId: string;
   realmId: string;
   characterName: string;
-  requestedTicketCount: number;
+  requestedEntryCount: number;
   promisedGoldValue: string;
   createdAtUnix: number;
   resolutionKind: RaffleClaimResolution;
@@ -99,7 +99,7 @@ export function raffleClaimsAreOpen(drawingAtUnix: number, nowUnix: number = uni
 function validateTerms(terms: RaffleRoundTerms): {
   roundTitle: string | null;
   drawingAtUnix: number;
-  ticketPriceGold: number;
+  entryPriceGold: number;
   prizeKind: RafflePrizeKind;
   winnerPercentage: number | null;
   prizeDescription: string | null;
@@ -107,8 +107,8 @@ function validateTerms(terms: RaffleRoundTerms): {
   if (!Number.isInteger(terms.drawingAtUnix) || terms.drawingAtUnix < 0) {
     throw new RaffleRuleError("invalid_drawing_time", "Drawing time must be a non-negative Unix timestamp", 400);
   }
-  if (!Number.isSafeInteger(terms.ticketPriceGold) || terms.ticketPriceGold <= 0) {
-    throw new RaffleRuleError("invalid_ticket_price", "Ticket price must be a positive integer amount of gold", 400);
+  if (!Number.isSafeInteger(terms.entryPriceGold) || terms.entryPriceGold <= 0) {
+    throw new RaffleRuleError("invalid_entry_price", "Entry price must be a positive integer amount of gold", 400);
   }
   if (terms.prizeKind !== "gold" && terms.prizeKind !== "item" && terms.prizeKind !== "other") {
     throw new RaffleRuleError("invalid_prize_kind", "Prize type must be gold, item, or other", 400);
@@ -157,7 +157,7 @@ function validateTerms(terms: RaffleRoundTerms): {
   return {
     roundTitle,
     drawingAtUnix: terms.drawingAtUnix,
-    ticketPriceGold: terms.ticketPriceGold,
+    entryPriceGold: terms.entryPriceGold,
     prizeKind: terms.prizeKind,
     winnerPercentage,
     prizeDescription,
@@ -180,7 +180,7 @@ function mapRound(row: Record<string, unknown>): RaffleRound {
     conclusion: row.conclusion as RaffleRoundConclusion,
     roundTitle: nullableString(row.round_title),
     drawingAtUnix: Number(row.drawing_at_unix),
-    ticketPriceGold: String(row.ticket_price_gold),
+    entryPriceGold: String(row.entry_price_gold),
     prizeKind: row.prize_kind as RafflePrizeKind,
     winnerPercentage: nullableNumber(row.winner_percentage),
     prizeDescription: nullableString(row.prize_description),
@@ -207,7 +207,7 @@ function mapClaim(row: Record<string, unknown>): RaffleClaim {
     characterId: String(row.character_id),
     realmId: String(row.realm_id),
     characterName: String(row.character_name),
-    requestedTicketCount: Number(row.requested_ticket_count),
+    requestedEntryCount: Number(row.requested_entry_count),
     promisedGoldValue: String(row.promised_gold_value),
     createdAtUnix: Number(row.created_at_unix),
     resolutionKind: row.resolution_kind as RaffleClaimResolution,
@@ -259,7 +259,7 @@ export async function createRaffleRound(
   const executor = client ?? pool;
   const result = await executor.query(
     `INSERT INTO raffle_rounds (
-       guild_id, round_title, drawing_at_unix, ticket_price_gold, prize_kind,
+       guild_id, round_title, drawing_at_unix, entry_price_gold, prize_kind,
        winner_percentage, prize_description, created_by_guildie_id, created_at_unix
      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
      RETURNING *`,
@@ -267,7 +267,7 @@ export async function createRaffleRound(
       config.guild.id,
       terms.roundTitle,
       terms.drawingAtUnix,
-      String(terms.ticketPriceGold),
+      String(terms.entryPriceGold),
       terms.prizeKind,
       terms.winnerPercentage,
       terms.prizeDescription,
@@ -296,7 +296,7 @@ export async function updateRaffleRound(
       `UPDATE raffle_rounds
           SET round_title = $2,
               drawing_at_unix = $3,
-              ticket_price_gold = $4,
+              entry_price_gold = $4,
               prize_kind = $5,
               winner_percentage = $6,
               prize_description = $7,
@@ -308,7 +308,7 @@ export async function updateRaffleRound(
         roundId,
         terms.roundTitle,
         terms.drawingAtUnix,
-        String(terms.ticketPriceGold),
+        String(terms.entryPriceGold),
         terms.prizeKind,
         terms.winnerPercentage,
         terms.prizeDescription,
@@ -374,10 +374,10 @@ export async function submitRaffleClaim(
   roundId: string,
   realmId: string,
   characterId: string,
-  requestedTicketCount: number,
+  requestedEntryCount: number,
 ): Promise<RaffleClaim> {
-  if (!Number.isInteger(requestedTicketCount) || requestedTicketCount <= 0) {
-    throw new RaffleRuleError("invalid_ticket_count", "Requested ticket count must be a positive integer", 400);
+  if (!Number.isInteger(requestedEntryCount) || requestedEntryCount <= 0) {
+    throw new RaffleRuleError("invalid_entry_count", "Requested entry count must be a positive integer", 400);
   }
 
   return withTransaction(async (client) => {
@@ -420,20 +420,20 @@ export async function submitRaffleClaim(
       );
     }
 
-    const promisedGoldValue = BigInt(String(round.ticket_price_gold)) * BigInt(requestedTicketCount);
+    const promisedGoldValue = BigInt(String(round.entry_price_gold)) * BigInt(requestedEntryCount);
     const character = characterResult.rows[0];
     const createdAtUnix = unixNow();
     const insert = await client.query(
       `INSERT INTO raffle_claims (
          round_id, claimant_guildie_id, character_record_id,
-         requested_ticket_count, promised_gold_value, created_at_unix
+         requested_entry_count, promised_gold_value, created_at_unix
        ) VALUES ($1,$2,$3,$4,$5,$6)
        RETURNING *`,
       [
         roundId,
         claimantGuildieId,
         character.character_record_id,
-        requestedTicketCount,
+        requestedEntryCount,
         promisedGoldValue.toString(),
         createdAtUnix,
       ],
@@ -552,8 +552,8 @@ export async function drawRaffleRound(
       );
     }
 
-    const approved = await transactionClient.query<{ claim_id: string; requested_ticket_count: number }>(
-      `SELECT claim_id, requested_ticket_count
+    const approved = await transactionClient.query<{ claim_id: string; requested_entry_count: number }>(
+      `SELECT claim_id, requested_entry_count
          FROM raffle_claims
         WHERE round_id = $1
           AND resolution_kind = 'approved'
@@ -563,7 +563,7 @@ export async function drawRaffleRound(
 
     const population: string[] = [];
     for (const claim of approved.rows) {
-      for (let index = 0; index < claim.requested_ticket_count; index += 1) {
+      for (let index = 0; index < claim.requested_entry_count; index += 1) {
         population.push(claim.claim_id);
       }
     }
