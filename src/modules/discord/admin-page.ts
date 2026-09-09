@@ -19,7 +19,6 @@ import {
   discordModuleConfiguration,
   updateDiscordModuleConfiguration,
 } from "./module-configuration.js";
-import { guildDiscordProjectionSettings } from "./policy.js";
 
 function htmlText(value: string): string {
   return value
@@ -28,12 +27,6 @@ function htmlText(value: string): string {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
-}
-
-function roleMapsState(settings: Awaited<ReturnType<typeof guildDiscordProjectionSettings>>): string {
-  const configuredMappings = settings.rankRoles.length + (settings.linkedRoleId ? 1 : 0);
-  const mappingLabel = configuredMappings === 1 ? "1 mapping configured" : `${configuredMappings} mappings configured`;
-  return `Linked Role ${settings.linkedMappingEnabled ? "on" : "off"} · Rank Mapping ${settings.rankMappingEnabled ? "on" : "off"} · ${mappingLabel}`;
 }
 
 export async function registerDiscordAdminPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
@@ -48,10 +41,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       return reply.code(403).send("Discord administration is not available for this account.");
     }
 
-    const [moduleConfiguration, roleMaps] = await Promise.all([
-      discordModuleConfiguration(),
-      guildDiscordProjectionSettings(undefined, true),
-    ]);
+    const moduleConfiguration = await discordModuleConfiguration();
 
     const secretWarning = moduleConfiguration.secretEncryptionAvailable
       ? ""
@@ -92,7 +82,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       <section class="admin-section">
         <a class="admin-destination" href="/admin/discord/role-maps">
           <span class="admin-destination-title">Role Maps</span>
-          <span class="admin-destination-description">${htmlText(roleMapsState(roleMaps))}</span>
+          <span class="admin-destination-description">Manage Discord roles.</span>
           <span class="admin-destination-arrow" aria-hidden="true">→</span>
         </a>
       </section>
