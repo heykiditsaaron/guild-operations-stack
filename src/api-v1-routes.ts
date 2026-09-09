@@ -82,13 +82,6 @@ export async function registerApiV1Routes(app: FastifyInstance): Promise<void> {
 
     return reply.send({
       guildie_id: state.guildieId,
-      discord: state.discordAssociation
-        ? {
-            discord_user_id: state.discordAssociation.discordUserId,
-            username: state.discordAssociation.username,
-            connected_at: state.discordAssociation.connectedAt,
-          }
-        : null,
       guild: {
         membership: state.guildAuthority
           ? {
