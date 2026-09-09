@@ -16,5 +16,12 @@ export function registerDiscordModuleAdministration(): void {
 export async function registerDiscordModule(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   await registerDiscordAdminPage(app, assets);
   await registerAdminDiscordStatePage(app, assets);
-  await registerDiscordRoutes(app);
+  await app.register(async (discordApp) => {
+    discordApp.addContentTypeParser(
+      "application/x-www-form-urlencoded",
+      { parseAs: "string" },
+      (_request, body, done) => done(null, body),
+    );
+    await registerDiscordRoutes(discordApp);
+  });
 }
