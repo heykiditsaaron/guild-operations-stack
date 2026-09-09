@@ -178,6 +178,8 @@ Mutation results separately expose added and removed role IDs. Unrelated human-m
 
 Bulk reconciliation uses the same evaluator and role operations with bounded concurrency. Discord HTTP 429 responses honor provider retry guidance with bounded retries.
 
+Evaluation remains internal machinery used by reconciliation. Guild Operations does not expose a separate Pending actions or reconciliation-preview administrative surface because enabled Role Maps are reconciled directly rather than staged for later approval.
+
 ## Reconciliation triggers
 
 Discord owns no independent scheduler.
@@ -196,31 +198,35 @@ This observer is intentionally not the future general application event bus. It 
 
 ## Operational inspection
 
-Discord reconciliation publishes useful evidence through global operational inspection under:
+Discord publishes administrator-useful operational history through the shared operational-inspection system.
+
+Single-Guildie reconciliation uses:
 
 ```text
 source: discord
 operation: roles.reconcile
 ```
 
-and for bulk runs:
+Bulk reconciliation uses:
 
 ```text
 source: discord
 operation: roles.reconcile.bulk
 ```
 
+Normal completed Discord work is published as `kind: result`, including successful reconciliation and successful no-op outcomes already emitted by the owning operation.
+
+A Discord operation that cannot complete its intended work is published as `kind: exception`. This includes single-Guildie mutation failures, incomplete role cleanup after disassociation, and bulk reconciliation where one or more Guildies fail evaluation or mutation. Bulk exceptions retain the useful aggregate counts plus safe per-Guildie failure coordinates so an administrator can see what completed and what did not.
+
+Operational-inspection publication is best effort relative to Discord behavior. Failure to write an inspection record does not change the Discord operation and remains runtime logging.
+
 Secrets, OAuth material, authorization headers, and raw Discord payloads must never be recorded in operational inspection.
 
-Read-only reconciliation preview is owned by the Discord module at:
+Discord operational history and exceptions are inspected through the global surface:
 
 ```text
-/admin/discord/state
+/admin/operations
 ```
-
-Its user-facing name is **Pending actions**. It uses the same evaluator as reconciliation and performs no mutation.
-
-Completed outcomes remain inspectable through global `/admin/operations` because operational inspection is shared application infrastructure.
 
 ## Web presentation
 
