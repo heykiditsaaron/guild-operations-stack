@@ -1,23 +1,44 @@
 import { guildieState } from "../application-state.js";
 import { authenticatedGuildie } from "../auth.js";
 import { discordAssociationForGuildie } from "../modules/discord/association.js";
+import { discordModuleConfiguration } from "../modules/discord/module-configuration.js";
 import { administrationAvailabilityForGuildie } from "./administration.js";
 import type { WebViewer } from "./render.js";
 
 export async function viewerForRequest(sessionToken: string | undefined): Promise<WebViewer> {
-  const guildie = await authenticatedGuildie(sessionToken);
-  if (!guildie) return { authenticated: false };
+  const [guildie, discordConfiguration] = await Promise.all([
+    authenticatedGuildie(sessionToken),
+    discordModuleConfiguration(),
+  ]);
+  const discordEnabled = discordConfiguration.enabled;
+  const discordInviteUrl = discordEnabled ? discordConfiguration.inviteUrl : null;
+
+  if (!guildie) {
+    return {
+      authenticated: false,
+      discordEnabled,
+      discordInviteUrl,
+    };
+  }
 
   const [state, administration, discordAssociation] = await Promise.all([
     guildieState(guildie.guildieId),
     administrationAvailabilityForGuildie(guildie.guildieId),
-    discordAssociationForGuildie(guildie.guildieId),
+    discordEnabled ? discordAssociationForGuildie(guildie.guildieId) : Promise.resolve(null),
   ]);
 
-  if (!state) return { authenticated: false };
+  if (!state) {
+    return {
+      authenticated: false,
+      discordEnabled,
+      discordInviteUrl,
+    };
+  }
 
   return {
     authenticated: true,
+    discordEnabled,
+    discordInviteUrl,
     administrationAvailable: administration.available,
     administrationDestinations: administration.navigationDestinations,
     mainCharacter: state.selectedMain
