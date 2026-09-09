@@ -71,7 +71,7 @@ export async function raffleClaimMetrics(roundId: string): Promise<RaffleClaimMe
        COUNT(*) FILTER (WHERE resolution_kind = 'approved')::int AS approved_claim_count,
        COUNT(*) FILTER (WHERE resolution_kind = 'denied')::int AS denied_claim_count,
        COUNT(*) FILTER (WHERE resolution_kind = 'cancelled')::int AS cancelled_claim_count,
-       COALESCE(SUM(requested_ticket_count) FILTER (WHERE resolution_kind = 'approved'), 0)::int AS approved_entry_count
+       COALESCE(SUM(requested_entry_count) FILTER (WHERE resolution_kind = 'approved'), 0)::int AS approved_entry_count
      FROM raffle_claims
      WHERE round_id = $1`,
     [roundId],
@@ -175,7 +175,7 @@ export async function raffleClaimFacts(claimId: string): Promise<RaffleClaimFact
     realm_id: string;
     realm_name: string | null;
     realm_slug: string | null;
-    requested_ticket_count: number;
+    requested_entry_count: number;
     promised_gold_value: string;
     created_at_unix: string;
     resolution_kind: RaffleClaimResolution;
@@ -197,7 +197,7 @@ export async function raffleClaimFacts(claimId: string): Promise<RaffleClaimFact
        c.realm_id,
        COALESCE(grm.realm_name, c.realm_name) AS realm_name,
        COALESCE(grm.realm_slug, c.realm_slug) AS realm_slug,
-       rc.requested_ticket_count,
+       rc.requested_entry_count,
        rc.promised_gold_value,
        rc.created_at_unix,
        rc.resolution_kind,
@@ -231,7 +231,7 @@ export async function raffleClaimFacts(claimId: string): Promise<RaffleClaimFact
     characterId: String(row.character_id),
     realmId: String(row.realm_id),
     characterName: String(row.character_name),
-    requestedTicketCount: Number(row.requested_ticket_count),
+    requestedEntryCount: Number(row.requested_entry_count),
     promisedGoldValue: String(row.promised_gold_value),
     createdAtUnix: Number(row.created_at_unix),
     resolutionKind: row.resolution_kind,
