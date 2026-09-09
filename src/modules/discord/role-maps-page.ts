@@ -55,8 +55,8 @@ async function renderRoleMaps(): Promise<string> {
   const ranks = await guildRankDefinitions();
   const rankMapping = new Map(settings.rankRoles.map((mapping) => [mapping.rankIndex, mapping.discordRoleId]));
 
-  return `<div class="discord-admin" data-discord-admin>
-    <form class="discord-role-maps-form" data-discord-projection-form>
+  return `<form class="discord-role-maps-form" data-discord-projection-form>
+    <div class="discord-admin" data-discord-admin>
       <section class="discord-role-map-section" aria-labelledby="discord-linked-role-heading">
         <div class="discord-projection-heading discord-admin-heading discord-role-map-heading">
           <div>
@@ -76,8 +76,10 @@ async function renderRoleMaps(): Promise<string> {
           </label>
         </div>
       </section>
+    </div>
 
-      <section class="discord-role-map-section discord-projection-form" aria-labelledby="discord-rank-mapping-heading">
+    <div class="discord-admin" data-discord-admin>
+      <section class="discord-role-map-section" aria-labelledby="discord-rank-mapping-heading">
         <div class="discord-projection-heading discord-admin-heading discord-role-map-heading">
           <div>
             <h3 id="discord-rank-mapping-heading">Rank Mapping</h3>
@@ -98,14 +100,14 @@ async function renderRoleMaps(): Promise<string> {
           </label>`).join("")}
         </div>
       </section>
+    </div>
 
-      <div class="discord-projection-actions">
-        <button type="button" data-discord-refresh-roles>Refresh roles</button>
-        <button type="submit" class="button-primary" data-discord-projection-save>Save</button>
-      </div>
-      <p class="discord-projection-feedback" data-discord-projection-feedback role="status" aria-live="polite"></p>
-    </form>
-  </div>`;
+    <div class="discord-projection-actions">
+      <button type="button" data-discord-refresh-roles>Refresh roles</button>
+      <button type="submit" class="button-primary" data-discord-projection-save>Save</button>
+    </div>
+    <p class="discord-projection-feedback" data-discord-projection-feedback role="status" aria-live="polite"></p>
+  </form>`;
 }
 
 export async function registerDiscordRoleMapsPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
