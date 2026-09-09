@@ -4,7 +4,7 @@ import { pool } from "./db.js";
 export type GuildieAttribution = {
   guildieId: string;
   displayName: string;
-  recognitionKind: "main_character" | "discord" | "guildie";
+  recognitionKind: "main_character" | "guildie";
   realmName: string | null;
 };
 
@@ -18,13 +18,11 @@ export async function guildieAttributionsForGuildies(
     guildie_id: string;
     main_character_name: string | null;
     realm_name: string | null;
-    discord_username: string | null;
   }>(
     `SELECT
        g.guildie_id,
        COALESCE(grm.character_name, c.name) AS main_character_name,
-       COALESCE(grm.realm_name, c.realm_name) AS realm_name,
-       da.username AS discord_username
+       COALESCE(grm.realm_name, c.realm_name) AS realm_name
      FROM guildies g
      LEFT JOIN guildie_main_characters gmc
        ON gmc.guildie_id = g.guildie_id
@@ -39,21 +37,13 @@ export async function guildieAttributionsForGuildies(
       AND grm.region = gmc.region
       AND grm.realm_id = gmc.realm_id
       AND grm.character_id = gmc.character_id
-     LEFT JOIN discord_associations da
-       ON da.guildie_id = g.guildie_id
      WHERE g.guildie_id = ANY($1::uuid[])`,
     [uniqueGuildieIds, config.guild.id],
   );
 
   return new Map(result.rows.map((row) => {
-    const recognitionKind = row.main_character_name
-      ? "main_character"
-      : row.discord_username
-        ? "discord"
-        : "guildie";
-    const displayName = row.main_character_name
-      ?? row.discord_username
-      ?? `Guildie ${row.guildie_id.slice(0, 8)}`;
+    const recognitionKind = row.main_character_name ? "main_character" : "guildie";
+    const displayName = row.main_character_name ?? `Guildie ${row.guildie_id.slice(0, 8)}`;
 
     return [row.guildie_id, {
       guildieId: row.guildie_id,
