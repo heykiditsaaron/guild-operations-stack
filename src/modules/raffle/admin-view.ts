@@ -8,7 +8,6 @@ export type RaffleAdministrationRound = RaffleRound & {
   cancelledClaimCount: number;
   deniedClaimCount: number;
   approvedEntryCount: number;
-  approvedTicketCount: number;
 };
 
 export async function raffleRoundsForAdministration(): Promise<RaffleAdministrationRound[]> {
@@ -21,6 +20,5 @@ export async function raffleRoundsForAdministration(): Promise<RaffleAdministrat
     cancelledClaimCount: metrics.cancelledClaimCount,
     deniedClaimCount: metrics.deniedClaimCount,
     approvedEntryCount: metrics.approvedEntryCount,
-    approvedTicketCount: metrics.approvedEntryCount,
   }));
 }
