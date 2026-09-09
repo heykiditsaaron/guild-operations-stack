@@ -6,13 +6,17 @@ import { pool } from "./db.js";
 import {
   establishDiscordAssociation,
   removeDiscordAssociation,
-} from "./discord-association.js";
+} from "./modules/discord/association.js";
+import {
+  discordModuleRuntimeConfiguration,
+  discordOAuthRedirectUri,
+} from "./modules/discord/module-configuration.js";
 import {
   reconcileGuildieDiscordRoles,
   removeManagedDiscordRolesForUser,
 } from "./guildie-discord/roles.js";
 
-export { discordAssociationForGuildie } from "./discord-association.js";
+export { discordAssociationForGuildie } from "./modules/discord/association.js";
 
 const DISCORD_AUTHORIZE_URL = "https://discord.com/oauth2/authorize";
 const DISCORD_TOKEN_URL = "https://discord.com/api/oauth2/token";
@@ -27,6 +31,31 @@ type DiscordUser = {
   id: string;
   username: string;
 };
+
+type DiscordOAuthConfiguration = {
+  clientId: string;
+  clientSecret: string;
+  redirectUri: string;
+};
+
+class DiscordOAuthNotConfiguredError extends Error {
+  constructor() {
+    super("Discord OAuth is not configured");
+    this.name = "DiscordOAuthNotConfiguredError";
+  }
+}
+
+async function oauthConfiguration(): Promise<DiscordOAuthConfiguration> {
+  const current = await discordModuleRuntimeConfiguration();
+  if (!current.enabled || !current.clientId || !current.clientSecret) {
+    throw new DiscordOAuthNotConfiguredError();
+  }
+  return {
+    clientId: current.clientId,
+    clientSecret: current.clientSecret,
+    redirectUri: discordOAuthRedirectUri(),
+  };
+}
 
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
@@ -44,11 +73,11 @@ function withDiscordResult(path: string, result: "connected" | "failed" | "confl
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
-function authorizationUrl(state: string): string {
+function authorizationUrl(state: string, oauth: DiscordOAuthConfiguration): string {
   const url = new URL(DISCORD_AUTHORIZE_URL);
-  url.searchParams.set("client_id", config.discordClientId);
+  url.searchParams.set("client_id", oauth.clientId);
   url.searchParams.set("response_type", "code");
-  url.searchParams.set("redirect_uri", config.discordRedirectUri);
+  url.searchParams.set("redirect_uri", oauth.redirectUri);
   url.searchParams.set("scope", "identify");
   url.searchParams.set("state", state);
   return url.toString();
@@ -81,13 +110,13 @@ async function consumeAttempt(state: string): Promise<DiscordAttempt | null> {
   };
 }
 
-async function exchangeAuthorizationCode(code: string): Promise<string> {
+async function exchangeAuthorizationCode(code: string, oauth: DiscordOAuthConfiguration): Promise<string> {
   const body = new URLSearchParams({
-    client_id: config.discordClientId,
-    client_secret: config.discordClientSecret,
+    client_id: oauth.clientId,
+    client_secret: oauth.clientSecret,
     grant_type: "authorization_code",
     code,
-    redirect_uri: config.discordRedirectUri,
+    redirect_uri: oauth.redirectUri,
   });
 
   const response = await fetch(DISCORD_TOKEN_URL, {
@@ -141,10 +170,20 @@ export async function registerDiscordRoutes(app: FastifyInstance): Promise<void>
     const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
     if (!guildie) return reply.code(401).send({ error: "not_authenticated" });
 
+    let oauth: DiscordOAuthConfiguration;
+    try {
+      oauth = await oauthConfiguration();
+    } catch (error) {
+      if (error instanceof DiscordOAuthNotConfiguredError) {
+        return reply.code(503).send({ error: "discord_not_configured" });
+      }
+      throw error;
+    }
+
     const query = request.query as { return_to?: unknown };
     const returnTo = safeReturnTo(query.return_to) ?? "/";
     const state = await createAttempt(guildie.guildieId, returnTo);
-    return reply.redirect(authorizationUrl(state));
+    return reply.redirect(authorizationUrl(state, oauth));
   });
 
   app.post("/me/discord/disconnect", async (request, reply) => {
@@ -178,7 +217,8 @@ export async function registerDiscordRoutes(app: FastifyInstance): Promise<void>
     }
 
     try {
-      const accessToken = await exchangeAuthorizationCode(query.code);
+      const oauth = await oauthConfiguration();
+      const accessToken = await exchangeAuthorizationCode(query.code, oauth);
       const user = await acquireDiscordUser(accessToken);
       const result = await establishDiscordAssociation(guildie.guildieId, {
         discordUserId: user.id,
