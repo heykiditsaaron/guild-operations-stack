@@ -14,8 +14,8 @@ function rulesBody(): string {
 
       <section aria-labelledby="entering-heading">
         <h2 id="entering-heading">2. Entering a Raffle</h2>
-        <p>Entries are purchased at the ticket price stated for the current raffle. Members may request one or more tickets using an eligible guild character.</p>
-        <p>Submitting an entry is a promise to deposit the corresponding amount of gold into the guild bank. Requested tickets are not entered into the raffle until the deposit has been verified and the claim approved by a raffle attendant.</p>
+        <p>Entries are purchased at the entry price stated for the current raffle. Members may request one or more entries using an eligible guild character.</p>
+        <p>Submitting a claim is a promise to deposit the corresponding amount of gold into the guild bank. Requested entries do not participate in the raffle until the deposit has been verified and the claim approved by a raffle attendant.</p>
       </section>
 
       <section aria-labelledby="deposits-heading">
@@ -25,15 +25,15 @@ function rulesBody(): string {
       </section>
 
       <section aria-labelledby="drawing-heading">
-        <h2 id="drawing-heading">4. Tickets and Drawings</h2>
-        <p>Each approved ticket represents one equal chance in the drawing. All approved tickets are placed into the same selection pool, and one winning ticket is selected at random.</p>
+        <h2 id="drawing-heading">4. Entries and Drawings</h2>
+        <p>Each approved entry represents one equal chance in the drawing. All approved entries are placed into the same selection population, and one winning position is selected at random.</p>
         <p>Only approved entries participate in a drawing.</p>
       </section>
 
       <section aria-labelledby="prizes-heading">
         <h2 id="prizes-heading">5. Prizes</h2>
         <p>The prize and any applicable distribution are stated on the current raffle before entry.</p>
-        <p>For a 50/50 raffle, ticket proceeds form a single pot. The winner receives 50% of that pot and the remaining 50% remains with the guild.</p>
+        <p>For a 50/50 raffle, entry proceeds form a single pot. The winner receives 50% of that pot and the remaining 50% remains with the guild.</p>
       </section>
 
       <section aria-labelledby="cancellation-heading">
