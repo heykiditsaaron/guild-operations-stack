@@ -56,9 +56,9 @@ async function renderRoleMaps(): Promise<string> {
   const rankMapping = new Map(settings.rankRoles.map((mapping) => [mapping.rankIndex, mapping.discordRoleId]));
 
   return `<div class="discord-admin" data-discord-admin>
-    <form class="discord-projection-form discord-role-maps-form" data-discord-projection-form>
-      <section class="discord-role-map-section discord-projection-form" aria-labelledby="discord-linked-role-heading">
-        <div class="discord-projection-heading discord-role-map-heading">
+    <form class="discord-role-maps-form" data-discord-projection-form>
+      <section class="discord-role-map-section" aria-labelledby="discord-linked-role-heading">
+        <div class="discord-projection-heading discord-admin-heading discord-role-map-heading">
           <div>
             <h3 id="discord-linked-role-heading">Linked Role</h3>
             <p>Map Guildies with an established Discord association to one Discord role.</p>
@@ -78,7 +78,7 @@ async function renderRoleMaps(): Promise<string> {
       </section>
 
       <section class="discord-role-map-section discord-projection-form" aria-labelledby="discord-rank-mapping-heading">
-        <div class="discord-projection-heading discord-role-map-heading">
+        <div class="discord-projection-heading discord-admin-heading discord-role-map-heading">
           <div>
             <h3 id="discord-rank-mapping-heading">Rank Mapping</h3>
             <p>Map Blizzard-backed guild ranks to Discord roles.</p>
