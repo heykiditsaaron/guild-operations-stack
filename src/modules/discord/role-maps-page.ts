@@ -32,12 +32,12 @@ function roleOptions(roles: DiscordGuildRole[], selectedRoleId: string | null): 
 }
 
 async function renderRoleMaps(): Promise<string> {
-  const settings = await guildDiscordProjectionSettings();
+  const settings = await guildDiscordProjectionSettings(undefined, true);
   if (!await discordGuildIntegrationConfigured()) {
     return `<div class="discord-admin discord-admin-unavailable">
       <h3>Role Maps</h3>
       <p>Configure and enable the Discord module with a server ID and bot token before managing role maps.</p>
-      <span>Stored role maps are ${settings.enabled ? "active" : "inactive"}.</span>
+      <span>Linked Role is ${settings.linkedMappingEnabled ? "on" : "off"}. Rank Mapping is ${settings.rankMappingEnabled ? "on" : "off"}.</span>
     </div>`;
   }
 
@@ -47,7 +47,8 @@ async function renderRoleMaps(): Promise<string> {
   } catch {
     return `<div class="discord-admin discord-admin-unavailable">
       <h3>Role Maps</h3>
-      <p>Discord roles could not be read. Role maps are currently ${settings.enabled ? "active" : "inactive"}.</p>
+      <p>Discord roles could not be read.</p>
+      <span>Linked Role is ${settings.linkedMappingEnabled ? "on" : "off"}. Rank Mapping is ${settings.rankMappingEnabled ? "on" : "off"}.</span>
       <a href="/admin/discord/state">Pending actions →</a>
     </div>`;
   }
@@ -57,22 +58,17 @@ async function renderRoleMaps(): Promise<string> {
 
   return `<div class="discord-admin" data-discord-admin>
     <form class="discord-projection-form discord-role-maps-form" data-discord-projection-form>
-      <div class="discord-projection-heading">
-        <div>
-          <h4>Apply role maps</h4>
-          <p>Guild Operations continues to evaluate mapped roles while role maps are inactive.</p>
-        </div>
-        <label class="switch discord-projection-toggle">
-          <input type="checkbox" name="enabled" data-discord-projection-enabled${settings.enabled ? " checked" : ""}>
-          <span class="switch-control" aria-hidden="true"></span>
-          <span data-discord-switch-label>${settings.enabled ? "On" : "Off"}</span>
-        </label>
-      </div>
-
       <section class="discord-role-map-section discord-projection-form" aria-labelledby="discord-linked-role-heading">
-        <div class="discord-role-map-heading">
-          <h3 id="discord-linked-role-heading">Linked role</h3>
-          <p>Map Guildies with an established Discord association to one Discord role.</p>
+        <div class="discord-projection-heading discord-role-map-heading">
+          <div>
+            <h3 id="discord-linked-role-heading">Linked Role</h3>
+            <p>Map Guildies with an established Discord association to one Discord role.</p>
+          </div>
+          <label class="switch discord-projection-toggle">
+            <input type="checkbox" data-discord-linked-mapping-enabled${settings.linkedMappingEnabled ? " checked" : ""}>
+            <span class="switch-control" aria-hidden="true"></span>
+            <span data-discord-linked-switch-label>${settings.linkedMappingEnabled ? "On" : "Off"}</span>
+          </label>
         </div>
         <div class="discord-role-fields">
           <label>
@@ -83,9 +79,16 @@ async function renderRoleMaps(): Promise<string> {
       </section>
 
       <section class="discord-role-map-section discord-projection-form" aria-labelledby="discord-rank-mapping-heading">
-        <div class="discord-role-map-heading">
-          <h3 id="discord-rank-mapping-heading">Rank Mapping</h3>
-          <p>Map Blizzard-backed guild ranks to Discord roles.</p>
+        <div class="discord-projection-heading discord-role-map-heading">
+          <div>
+            <h3 id="discord-rank-mapping-heading">Rank Mapping</h3>
+            <p>Map Blizzard-backed guild ranks to Discord roles.</p>
+          </div>
+          <label class="switch discord-projection-toggle">
+            <input type="checkbox" data-discord-rank-mapping-enabled${settings.rankMappingEnabled ? " checked" : ""}>
+            <span class="switch-control" aria-hidden="true"></span>
+            <span data-discord-rank-switch-label>${settings.rankMappingEnabled ? "On" : "Off"}</span>
+          </label>
         </div>
         <div class="discord-role-fields">
           ${ranks.map((rank) => `<label>
