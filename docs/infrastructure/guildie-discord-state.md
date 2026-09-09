@@ -39,7 +39,8 @@ Discord application secret
 Discord server ID
 bot token
 Discord invite URL
-managed-role projection settings
+Linked Role configuration and enablement
+Rank Mapping configuration and enablement
 ```
 
 The application secret and bot token are write-only administrative secrets. The browser can see whether each secret is configured and may replace or remove it, but the stored plaintext is never returned to the browser.
@@ -48,21 +49,26 @@ Persisted Discord secrets are encrypted at rest using the installation-level `AP
 
 The Discord OAuth callback remains derived from global `APP_ORIGIN` because application origin is a property of the installation rather than the Discord module.
 
-Disabling the module does not delete its configuration, associations, or projection settings. It prevents active Discord behavior and hides Discord-provided participation presentation until the module is enabled again.
+Disabling the module does not delete its configuration, associations, or role-map settings. It prevents active Discord behavior and hides Discord-provided participation presentation until the module is enabled again.
 
-## Module enablement and projection enablement
+## Module enablement and Role Maps
 
-Two controls intentionally remain distinct.
+Discord module enablement and Discord role-map enablement are intentionally distinct.
 
 ```text
 Discord module enabled
     → Discord association, observation, presentation, and integration behavior may operate
 
-Managed-role projection enabled
-    → configured managed-role reconciliation may mutate Discord roles
+Linked Role enabled
+    → the configured Linked Role participates in desired-role evaluation and reconciliation
+
+Rank Mapping enabled
+    → configured guild-rank → Discord-role mappings participate in desired-role evaluation and reconciliation
 ```
 
-A guild may therefore use Discord association and observation while leaving managed-role mutation disabled.
+There is no master Role Maps activation switch. The Role Maps page is the administrative home for the concrete mappings the module currently owns. Linked Role and Rank Mapping each preserve their configured role IDs while disabled and independently decide whether they participate in reconciliation.
+
+A guild may therefore use Discord association and observation while leaving either or both managed-role behaviors disabled.
 
 ## Guildie association
 
@@ -102,7 +108,7 @@ The current integration uses direct Discord REST acquisition for associated user
 
 The module manages two role families.
 
-### Linked Guildie role
+### Linked Role
 
 Desired state is:
 
@@ -110,26 +116,26 @@ Desired state is:
 current Blizzard-backed guild membership
 AND Discord association exists
 AND associated Discord user is currently in the server
-→ Linked role present
+→ Linked Role present
 
 otherwise
-→ Linked role absent
+→ Linked Role absent
 ```
 
-Possessing the Linked role never creates or proves an association.
+Possessing the Linked Role never creates or proves an association.
 
-### Rank roles
+### Rank Mapping
 
-Rank roles project Blizzard-owned current rank through Guild Operations authority into configured Discord roles.
+Rank Mapping projects Blizzard-owned current rank through Guild Operations authority into configured Discord roles.
 
 ```text
 Blizzard current rank
     ↓
 Guild Operations effective authority
     ↓
-Discord module rank→role mapping
+Discord module guild-rank → Discord-role mapping
     ↓
-Discord role projection
+Discord role assignment
 ```
 
 Lower numeric Blizzard rank indexes represent higher authority. A Guildie receives the configured role for their effective rank and every configured lower-authority role below it.
@@ -149,10 +155,11 @@ resolve Discord association
     ↓
 read Discord-owned state
     ↓
+apply enabled Linked Role / Rank Mapping policy
+    ↓
 calculate planned additions/removals
     ↓
-projection disabled → stop with plan only
-projection enabled  → execute managed-role mutations
+execute only mutations belonging to enabled mappings
 ```
 
 Evaluation exposes:
@@ -164,6 +171,8 @@ plannedAddRoleIds
 plannedRemoveRoleIds
 observedAt
 ```
+
+A disabled mapping is retained as configuration but does not participate in desired-role evaluation or reconciliation. The other mapping may remain enabled and continue operating independently.
 
 Mutation results separately expose added and removed role IDs. Unrelated human-managed Discord roles are never replaced or removed.
 
@@ -178,8 +187,8 @@ Current triggers are:
 - Discord association establishment;
 - Discord disassociation;
 - guild refresh when Guildie membership/rank context changes;
-- saved projection configuration changes;
-- enabling projection.
+- saved Role Maps configuration changes;
+- enabling Linked Role or Rank Mapping.
 
 Core guild refresh does not import or call Discord directly. It publishes a narrow guild-refresh observation after authoritative guild state commits. The packaged Discord module registers an observer for that concrete operation and reconciles only when the module is enabled and direct Discord integration is configured.
 
