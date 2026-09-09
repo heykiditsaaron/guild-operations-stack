@@ -49,7 +49,6 @@ async function renderRoleMaps(): Promise<string> {
       <h3>Role Maps</h3>
       <p>Discord roles could not be read.</p>
       <span>Linked Role is ${settings.linkedMappingEnabled ? "on" : "off"}. Rank Mapping is ${settings.rankMappingEnabled ? "on" : "off"}.</span>
-      <a href="/admin/discord/state">Pending actions →</a>
     </div>`;
   }
 
@@ -128,7 +127,6 @@ export async function registerDiscordRoleMapsPage(app: FastifyInstance, assets: 
             <h2 id="discord-role-maps-heading">Role Maps</h2>
             <p>Configure how established Guild Operations facts are applied to Discord roles.</p>
           </div>
-          <a class="discord-state-link" href="/admin/discord/state">Pending actions →</a>
         </div>
         ${await renderRoleMaps()}
       </section>
