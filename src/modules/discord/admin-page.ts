@@ -89,11 +89,10 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
         </div>
       </section>
 
-      <section class="admin-section" aria-labelledby="discord-role-maps-card-heading">
-        <h2 id="discord-role-maps-card-heading">Role Maps</h2>
+      <section class="admin-section">
         <a class="admin-destination" href="/admin/discord/role-maps">
           <span class="admin-destination-title">Role Maps</span>
-          <span class="admin-destination-description">${htmlText(roleMapsState(roleMaps))}. Configure Linked Role and Rank Mapping.</span>
+          <span class="admin-destination-description">${htmlText(roleMapsState(roleMaps))}</span>
           <span class="admin-destination-arrow" aria-hidden="true">→</span>
         </a>
       </section>
