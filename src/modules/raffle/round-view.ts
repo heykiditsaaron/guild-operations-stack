@@ -10,7 +10,7 @@ import { raffleClaimFactsForRound, raffleRoundFacts } from "./queries.js";
 export type RafflePublicClaim = {
   claimId: string;
   characterName: string;
-  requestedTicketCount: number;
+  requestedEntryCount: number;
   promisedGoldValue: string;
   createdAtUnix: number;
   resolutionKind: RaffleClaimResolution;
@@ -25,7 +25,7 @@ export type RafflePublicRound = {
   conclusion: RaffleRoundConclusion;
   roundTitle: string | null;
   drawingAtUnix: number;
-  ticketPriceGold: string;
+  entryPriceGold: string;
   prizeKind: RafflePrizeKind;
   winnerPercentage: number | null;
   prizeDescription: string | null;
@@ -61,7 +61,7 @@ export async function rafflePublicRound(roundId: string): Promise<RafflePublicRo
     conclusion: facts.round.conclusion,
     roundTitle: facts.round.roundTitle,
     drawingAtUnix: facts.round.drawingAtUnix,
-    ticketPriceGold: facts.round.ticketPriceGold,
+    entryPriceGold: facts.round.entryPriceGold,
     prizeKind: facts.round.prizeKind,
     winnerPercentage: facts.round.winnerPercentage,
     prizeDescription: facts.round.prizeDescription,
@@ -74,7 +74,7 @@ export async function rafflePublicRound(roundId: string): Promise<RafflePublicRo
     claims: claims.map((claim) => ({
       claimId: claim.claimId,
       characterName: claim.character.name,
-      requestedTicketCount: claim.requestedTicketCount,
+      requestedEntryCount: claim.requestedEntryCount,
       promisedGoldValue: claim.promisedGoldValue,
       createdAtUnix: claim.createdAtUnix,
       resolutionKind: claim.resolutionKind,
