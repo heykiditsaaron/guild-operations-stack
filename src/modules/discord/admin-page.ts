@@ -61,30 +61,32 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       <section class="admin-section" aria-labelledby="discord-module-heading">
         <h2 id="discord-module-heading">Discord module</h2>
         ${secretWarning}
-        <form class="discord-module-form" data-discord-module-form>
-          <div class="discord-projection-heading">
-            <div>
-              <h3>Integration</h3>
-              <p>Enable Discord as a packaged Guild Operations integration.</p>
+        <div class="discord-admin">
+          <form class="discord-module-form" data-discord-module-form>
+            <div class="discord-projection-heading discord-admin-heading">
+              <div>
+                <h3>Integration</h3>
+                <p>Enable Discord as a packaged Guild Operations integration.</p>
+              </div>
+              <label class="switch discord-projection-toggle">
+                <input type="checkbox" data-discord-module-enabled${moduleConfiguration.enabled ? " checked" : ""}>
+                <span class="switch-control" aria-hidden="true"></span>
+                <span data-discord-module-switch-label>${moduleConfiguration.enabled ? "On" : "Off"}</span>
+              </label>
             </div>
-            <label class="switch discord-projection-toggle">
-              <input type="checkbox" data-discord-module-enabled${moduleConfiguration.enabled ? " checked" : ""}>
-              <span class="switch-control" aria-hidden="true"></span>
-              <span data-discord-module-switch-label>${moduleConfiguration.enabled ? "On" : "Off"}</span>
-            </label>
-          </div>
-          <div class="discord-role-fields">
-            <label><span>Application ID</span><input type="text" data-discord-client-id value="${htmlText(moduleConfiguration.clientId ?? "")}" autocomplete="off"></label>
-            <label><span>Application secret</span><input type="password" data-discord-client-secret value="" autocomplete="new-password" placeholder="${moduleConfiguration.clientSecretConfigured ? "Configured — leave blank to keep" : "Not configured"}"></label>
-            <label><span><input type="checkbox" data-discord-client-secret-remove> Remove stored application secret</span></label>
-            <label><span>Discord server ID</span><input type="text" data-discord-guild-id value="${htmlText(moduleConfiguration.discordGuildId ?? "")}" autocomplete="off"></label>
-            <label><span>Bot token</span><input type="password" data-discord-bot-token value="" autocomplete="new-password" placeholder="${moduleConfiguration.botTokenConfigured ? "Configured — leave blank to keep" : "Not configured"}"></label>
-            <label><span><input type="checkbox" data-discord-bot-token-remove> Remove stored bot token</span></label>
-            <label><span>Discord invite URL</span><input type="url" data-discord-invite-url value="${htmlText(moduleConfiguration.inviteUrl ?? "")}" placeholder="https://discord.gg/..."></label>
-          </div>
-          <div class="discord-projection-actions"><button type="submit" class="button-primary" data-discord-module-save>Save Discord configuration</button></div>
-          <p data-discord-module-feedback role="status" aria-live="polite"></p>
-        </form>
+            <div class="discord-role-fields">
+              <label><span>Application ID</span><input type="text" data-discord-client-id value="${htmlText(moduleConfiguration.clientId ?? "")}" autocomplete="off"></label>
+              <label><span>Application secret</span><input type="password" data-discord-client-secret value="" autocomplete="new-password" placeholder="${moduleConfiguration.clientSecretConfigured ? "Configured — leave blank to keep" : "Not configured"}"></label>
+              <label><span><input type="checkbox" data-discord-client-secret-remove> Remove stored application secret</span></label>
+              <label><span>Discord server ID</span><input type="text" data-discord-guild-id value="${htmlText(moduleConfiguration.discordGuildId ?? "")}" autocomplete="off"></label>
+              <label><span>Bot token</span><input type="password" data-discord-bot-token value="" autocomplete="new-password" placeholder="${moduleConfiguration.botTokenConfigured ? "Configured — leave blank to keep" : "Not configured"}"></label>
+              <label><span><input type="checkbox" data-discord-bot-token-remove> Remove stored bot token</span></label>
+              <label><span>Discord invite URL</span><input type="url" data-discord-invite-url value="${htmlText(moduleConfiguration.inviteUrl ?? "")}" placeholder="https://discord.gg/..."></label>
+            </div>
+            <div class="discord-projection-actions"><button type="submit" class="button-primary" data-discord-module-save>Save Discord configuration</button></div>
+            <p class="discord-projection-feedback" data-discord-module-feedback role="status" aria-live="polite"></p>
+          </form>
+        </div>
       </section>
 
       <section class="admin-section" aria-labelledby="discord-role-maps-card-heading">
