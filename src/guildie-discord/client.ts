@@ -1,4 +1,7 @@
-import { config } from "../config.js";
+import {
+  discordModuleConfiguration,
+  discordModuleRuntimeConfiguration,
+} from "../modules/discord/module-configuration.js";
 
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 const DISCORD_RATE_LIMIT_RETRIES = 4;
@@ -25,11 +28,12 @@ export class DiscordGuildIntegrationNotConfiguredError extends Error {
   }
 }
 
-function integrationConfig(): { guildId: string; botToken: string } {
-  if (!config.discordGuildId || !config.discordBotToken) {
+async function integrationConfig(): Promise<{ guildId: string; botToken: string }> {
+  const current = await discordModuleRuntimeConfiguration();
+  if (!current.enabled || !current.discordGuildId || !current.botToken) {
     throw new DiscordGuildIntegrationNotConfiguredError();
   }
-  return { guildId: config.discordGuildId, botToken: config.discordBotToken };
+  return { guildId: current.discordGuildId, botToken: current.botToken };
 }
 
 function wait(milliseconds: number): Promise<void> {
@@ -62,7 +66,7 @@ async function retryAfterMilliseconds(response: Response): Promise<number | null
 }
 
 async function discordRequest(path: string, init: RequestInit = {}): Promise<Response> {
-  const { botToken } = integrationConfig();
+  const { botToken } = await integrationConfig();
 
   for (let attempt = 0; attempt <= DISCORD_RATE_LIMIT_RETRIES; attempt += 1) {
     const response = await fetch(`${DISCORD_API_BASE}${path}`, {
@@ -83,12 +87,16 @@ async function discordRequest(path: string, init: RequestInit = {}): Promise<Res
   throw new Error("Discord request retry loop exhausted unexpectedly");
 }
 
-export function discordGuildIntegrationConfigured(): boolean {
-  return Boolean(config.discordGuildId && config.discordBotToken);
+export async function discordGuildIntegrationConfigured(): Promise<boolean> {
+  const current = await discordModuleConfiguration();
+  return current.enabled
+    && Boolean(current.discordGuildId)
+    && current.botTokenConfigured
+    && current.secretEncryptionAvailable;
 }
 
 export async function getDiscordGuildMember(discordUserId: string): Promise<DiscordGuildMember | null> {
-  const { guildId } = integrationConfig();
+  const { guildId } = await integrationConfig();
   const response = await discordRequest(`/guilds/${encodeURIComponent(guildId)}/members/${encodeURIComponent(discordUserId)}`);
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`Discord guild-member acquisition failed with ${response.status}`);
@@ -115,7 +123,7 @@ export async function getDiscordGuildMember(discordUserId: string): Promise<Disc
 }
 
 export async function getDiscordGuildRoles(): Promise<DiscordGuildRole[]> {
-  const { guildId } = integrationConfig();
+  const { guildId } = await integrationConfig();
   const response = await discordRequest(`/guilds/${encodeURIComponent(guildId)}/roles`);
   if (!response.ok) throw new Error(`Discord guild-role acquisition failed with ${response.status}`);
 
@@ -136,7 +144,7 @@ export async function getDiscordGuildRoles(): Promise<DiscordGuildRole[]> {
 }
 
 export async function addDiscordGuildMemberRole(discordUserId: string, roleId: string): Promise<void> {
-  const { guildId } = integrationConfig();
+  const { guildId } = await integrationConfig();
   const response = await discordRequest(
     `/guilds/${encodeURIComponent(guildId)}/members/${encodeURIComponent(discordUserId)}/roles/${encodeURIComponent(roleId)}`,
     { method: "PUT" },
@@ -145,7 +153,7 @@ export async function addDiscordGuildMemberRole(discordUserId: string, roleId: s
 }
 
 export async function removeDiscordGuildMemberRole(discordUserId: string, roleId: string): Promise<void> {
-  const { guildId } = integrationConfig();
+  const { guildId } = await integrationConfig();
   const response = await discordRequest(
     `/guilds/${encodeURIComponent(guildId)}/members/${encodeURIComponent(discordUserId)}/roles/${encodeURIComponent(roleId)}`,
     { method: "DELETE" },
