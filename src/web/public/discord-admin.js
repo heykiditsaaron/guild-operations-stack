@@ -59,14 +59,17 @@ if (moduleForm instanceof HTMLFormElement) {
 }
 
 const discordForm = document.querySelector("[data-discord-projection-form]");
-const discordEnabled = document.querySelector("[data-discord-projection-enabled]");
+const linkedMappingEnabled = document.querySelector("[data-discord-linked-mapping-enabled]");
+const rankMappingEnabled = document.querySelector("[data-discord-rank-mapping-enabled]");
 const discordRefreshRoles = document.querySelector("[data-discord-refresh-roles]");
 const discordSave = document.querySelector("[data-discord-projection-save]");
 const discordFeedback = document.querySelector("[data-discord-projection-feedback]");
 
-if (discordForm instanceof HTMLFormElement && discordEnabled instanceof HTMLInputElement && discordRefreshRoles instanceof HTMLButtonElement && discordSave instanceof HTMLButtonElement && discordFeedback instanceof HTMLElement) {
-  const toggleLabel = discordEnabled.parentElement?.querySelector("[data-discord-switch-label]");
-  discordEnabled.addEventListener("change", () => { if (toggleLabel) toggleLabel.textContent = discordEnabled.checked ? "On" : "Off"; });
+if (discordForm instanceof HTMLFormElement && linkedMappingEnabled instanceof HTMLInputElement && rankMappingEnabled instanceof HTMLInputElement && discordRefreshRoles instanceof HTMLButtonElement && discordSave instanceof HTMLButtonElement && discordFeedback instanceof HTMLElement) {
+  const linkedToggleLabel = linkedMappingEnabled.parentElement?.querySelector("[data-discord-linked-switch-label]");
+  const rankToggleLabel = rankMappingEnabled.parentElement?.querySelector("[data-discord-rank-switch-label]");
+  linkedMappingEnabled.addEventListener("change", () => { if (linkedToggleLabel) linkedToggleLabel.textContent = linkedMappingEnabled.checked ? "On" : "Off"; });
+  rankMappingEnabled.addEventListener("change", () => { if (rankToggleLabel) rankToggleLabel.textContent = rankMappingEnabled.checked ? "On" : "Off"; });
 
   discordRefreshRoles.addEventListener("click", async () => {
     if (discordRefreshRoles.disabled) return;
@@ -119,12 +122,20 @@ if (discordForm instanceof HTMLFormElement && discordEnabled instanceof HTMLInpu
 
     discordSave.disabled = true;
     discordSave.textContent = "Saving…";
-    discordFeedback.textContent = discordEnabled.checked ? "Saving Discord settings and reconciling roles…" : "Saving Discord settings…";
+    discordFeedback.textContent = linkedMappingEnabled.checked || rankMappingEnabled.checked
+      ? "Saving Discord settings and reconciling enabled role maps…"
+      : "Saving Discord settings…";
     try {
       const response = await fetch("/admin/discord", {
         method: "POST",
         headers: { Accept: "application/json", "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "discord_projection.update", enabled: discordEnabled.checked, linkedRoleId: linkedRole.value || null, rankRoles }),
+        body: JSON.stringify({
+          action: "discord_projection.update",
+          linkedMappingEnabled: linkedMappingEnabled.checked,
+          rankMappingEnabled: rankMappingEnabled.checked,
+          linkedRoleId: linkedRole.value || null,
+          rankRoles,
+        }),
       });
       if (!response.ok) {
         if (response.status === 502) {
