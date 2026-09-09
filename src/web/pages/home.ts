@@ -1,6 +1,5 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../auth.js";
-import { config } from "../../config.js";
 import { getLiveRaffleRound } from "../../modules/raffle/application.js";
 import { assetUrl, type AssetName, type AssetRegistry } from "../assets.js";
 import { renderPage } from "../render.js";
@@ -22,10 +21,7 @@ function liveRafflePromotion(assets: AssetRegistry): string {
 }
 
 function participationPromotions(assets: AssetRegistry, liveRaffle: boolean): string {
-  if (!liveRaffle) {
-    return "";
-  }
-
+  if (!liveRaffle) return "";
   return `
     <section class="home-section" aria-labelledby="home-happening-title">
       <div class="home-section-heading">
@@ -38,12 +34,9 @@ function participationPromotions(assets: AssetRegistry, liveRaffle: boolean): st
     </section>`;
 }
 
-function discordInvitation(): string {
-  if (!config.discordInviteUrl) {
-    return "";
-  }
-
-  return `<p class="home-orientation-action"><a class="button button-secondary" href="${config.discordInviteUrl}">Join us on Discord</a></p>`;
+function discordInvitation(inviteUrl: string | null): string {
+  if (!inviteUrl) return "";
+  return `<p class="home-orientation-action"><a class="button button-secondary" href="${inviteUrl}">Join us on Discord</a></p>`;
 }
 
 export async function registerHomePage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
@@ -54,9 +47,7 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
     ]);
 
     const stylesheets: AssetName[] = ["home.css"];
-    if (liveRaffle) {
-      stylesheets.push("home-raffle.css");
-    }
+    if (liveRaffle) stylesheets.push("home-raffle.css");
 
     const html = renderPage(assets, {
       pathname: "/",
@@ -83,22 +74,10 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
             </div>
 
             <dl class="home-principles">
-              <div class="home-principle">
-                <dt>Play your own way</dt>
-                <dd>Growth is encouraged when you want it. Pressure, gatekeeping, and elitism are not.</dd>
-              </div>
-              <div class="home-principle">
-                <dt>Choose your participation</dt>
-                <dd>Join the things you want to be part of. Different members engage with the guild in different ways.</dd>
-              </div>
-              <div class="home-principle">
-                <dt>Real life wins</dt>
-                <dd>Commitment matters, but plans change and people have lives outside Azeroth.</dd>
-              </div>
-              <div class="home-principle">
-                <dt>Enjoy the chaos</dt>
-                <dd>Mistakes happen. Laugh at the wipes, celebrate the crits, and pull again.</dd>
-              </div>
+              <div class="home-principle"><dt>Play your own way</dt><dd>Growth is encouraged when you want it. Pressure, gatekeeping, and elitism are not.</dd></div>
+              <div class="home-principle"><dt>Choose your participation</dt><dd>Join the things you want to be part of. Different members engage with the guild in different ways.</dd></div>
+              <div class="home-principle"><dt>Real life wins</dt><dd>Commitment matters, but plans change and people have lives outside Azeroth.</dd></div>
+              <div class="home-principle"><dt>Enjoy the chaos</dt><dd>Mistakes happen. Laugh at the wipes, celebrate the crits, and pull again.</dd></div>
             </dl>
           </section>
 
@@ -117,7 +96,7 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
               <article class="home-orientation-item">
                 <h3>In Discord</h3>
                 <p>Follow the channels and activity notifications you care about. Keep the rest quiet. Participation should fit you, not demand your attention.</p>
-                ${discordInvitation()}
+                ${discordInvitation(viewer.discordInviteUrl)}
               </article>
             </div>
           </section>
