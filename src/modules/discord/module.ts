@@ -5,10 +5,12 @@ import { registerAdminDiscordStatePage } from "./admin-state-page.js";
 import { registerDiscordAdministrationDestination } from "./administration.js";
 import { registerDiscordGuildRefreshObserver } from "./guild-refresh.js";
 import { registerDiscordRoutes } from "./routes.js";
+import { registerDiscordWebPresentation } from "./web-presentation.js";
 
 export function registerDiscordModuleAdministration(): void {
   registerDiscordAdministrationDestination();
   registerDiscordGuildRefreshObserver();
+  registerDiscordWebPresentation();
 }
 
 export async function registerDiscordModule(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
