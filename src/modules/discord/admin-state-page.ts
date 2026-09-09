@@ -50,7 +50,7 @@ function renderUnavailable(
     html: renderPage(assets, {
       pathname: "/admin/discord/state",
       title: "Pending actions · OH CRIT I Pulled! Guild Operations",
-      description: "Discord projection pending actions.",
+      description: "Discord role-map pending actions.",
       viewer,
       secondaryNavigation: discordStateNavigation,
       stylesheets: ["admin.css"],
@@ -157,10 +157,10 @@ export async function registerAdminDiscordStatePage(app: FastifyInstance, assets
     const body = `<section class="discord-state-inspection" aria-labelledby="discord-state-heading">
       <div class="discord-state-heading">
         <div>
-          <h2 id="discord-state-heading">Discord role projection</h2>
-          <p>This view evaluates current Discord state against desired managed-role state. It never changes Discord.</p>
+          <h2 id="discord-state-heading">Discord role maps</h2>
+          <p>This view evaluates current Discord state against desired mapped-role state. It never changes Discord.</p>
         </div>
-        <span class="discord-projection-state">Projection ${settings.enabled ? "enabled" : "disabled"}</span>
+        <span class="discord-projection-state">Role maps ${settings.enabled ? "active" : "inactive"}</span>
       </div>
       <div class="discord-state-table-wrap">
         <table class="discord-state-table">
@@ -184,7 +184,7 @@ export async function registerAdminDiscordStatePage(app: FastifyInstance, assets
       .send(renderPage(assets, {
         pathname: "/admin/discord/state",
         title: "Pending actions · OH CRIT I Pulled! Guild Operations",
-        description: "Inspect Discord role projection pending actions.",
+        description: "Inspect Discord role-map pending actions.",
         viewer,
         secondaryNavigation: discordStateNavigation,
         stylesheets: ["admin.css"],
