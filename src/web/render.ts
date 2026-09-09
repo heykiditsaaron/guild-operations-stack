@@ -1,6 +1,7 @@
 import { config } from "../config.js";
 import type { AdministrationNavigationDestination } from "./admin-navigation.js";
 import { assetUrl, type AssetName, type AssetRegistry } from "./assets.js";
+import type { ModuleWebPresentation } from "./module-presentation.js";
 
 function escapeHtml(value: string): string {
   return value
@@ -24,13 +25,12 @@ export type WebViewerCharacter = {
   avatarUrl: string | null;
 };
 
-type DiscordPresentation = {
-  discordEnabled: boolean;
-  discordInviteUrl: string | null;
+type WebViewerPresentation = {
+  modulePresentation: ModuleWebPresentation;
 };
 
 export type WebViewer =
-  | ({ authenticated: false } & DiscordPresentation)
+  | ({ authenticated: false } & WebViewerPresentation)
   | ({
       authenticated: true;
       administrationAvailable: boolean;
@@ -47,10 +47,7 @@ export type WebViewer =
         avatarUrl: string | null;
       } | null;
       characters: WebViewerCharacter[];
-      discordAssociation: {
-        username: string;
-      } | null;
-    } & DiscordPresentation);
+    } & WebViewerPresentation);
 
 export type SecondaryNavigation =
   | { kind: "back"; label: string; href: string }
@@ -73,29 +70,6 @@ function userGlyph(): string {
     <circle cx="12" cy="8" r="4"></circle>
     <path d="M4.8 20c.8-4 3.2-6 7.2-6s6.4 2 7.2 6"></path>
   </svg>`;
-}
-
-function discordGlyph(): string {
-  return `<svg class="footer-discord-icon" viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M7.5 7.2c3-1.4 6-1.4 9 0 1.8 2.4 2.7 5.2 2.5 8.1-1.6 1.2-3.1 1.9-4.6 2.3l-1.1-1.5"></path>
-    <path d="M16.5 7.2c-3-1.4-6-1.4-9 0-1.8 2.4-2.7 5.2-2.5 8.1 1.6 1.2 3.1 1.9 4.6 2.3l1.1-1.5"></path>
-    <circle cx="9.4" cy="12.5" r="0.8" fill="currentColor" stroke="none"></circle>
-    <circle cx="14.6" cy="12.5" r="0.8" fill="currentColor" stroke="none"></circle>
-  </svg>`;
-}
-
-function renderDiscordAssociation(viewer: Extract<WebViewer, { authenticated: true }>, pathname: string): string {
-  if (!viewer.discordAssociation) {
-    return `<a class="discord-connect" href="/me/discord/connect?return_to=${encodeURIComponent(pathname)}">Connect Discord</a>`;
-  }
-  return `<div class="discord-connection" aria-label="Discord connected">
-    <span class="discord-connection-dot" aria-hidden="true"></span>
-    <div class="discord-connection-copy">
-      <span class="discord-connection-name">${escapeHtml(viewer.discordAssociation.username)}</span>
-      <span class="discord-connection-status">Discord</span>
-      <button type="button" class="me-change-main" data-disconnect-discord data-return-to="${escapeHtml(pathname)}">Disconnect</button>
-    </div>
-  </div>`;
 }
 
 function renderCurrentCharacter(viewer: Extract<WebViewer, { authenticated: true }>): string {
@@ -128,14 +102,12 @@ function renderMeControl(viewer: WebViewer, pathname: string): string {
   const administration = viewer.administrationAvailable
     ? '<section class="me-menu-section me-administration-section"><a class="me-administration-link" href="/admin"><span>Administration</span><span aria-hidden="true">→</span></a></section>'
     : "";
-  const discord = viewer.discordEnabled
-    ? `<section class="me-menu-section me-discord-section">${renderDiscordAssociation(viewer, pathname)}</section>`
-    : "";
+  const moduleSections = viewer.modulePresentation.meMenuSections.map((render) => render(pathname)).join("\n");
   return `<details class="me-menu menu-surface">
     <summary class="me-control"><span data-me-label>${escapeHtml(label)}</span><span class="account-visual${viewer.mainCharacter?.avatarUrl ? " account-visual-portrait" : " account-visual-generic"}" data-me-visual>${portrait}</span></summary>
     <div class="menu-panel menu-panel-right me-menu-panel">
       <section class="me-menu-section me-character-section">${renderCurrentCharacter(viewer)}</section>
-      ${discord}
+      ${moduleSections}
       ${administration}
       <section class="me-menu-section me-session-section"><button type="button" class="session-sign-out-action" data-logout>Sign out</button></section>
     </div>
@@ -225,14 +197,12 @@ function externalFooterLink(url: string | null, label: string): string {
 }
 
 function renderFooter(viewer: WebViewer): string {
-  const discord = viewer.discordInviteUrl
-    ? `<a class="footer-link footer-link-discord" href="${escapeHtml(viewer.discordInviteUrl)}" target="_blank" rel="noopener noreferrer">${discordGlyph()}<span>Discord</span></a>`
-    : "";
+  const communityLinks = viewer.modulePresentation.footerCommunityLinks.join("");
   const wowLinks = [externalFooterLink(config.wowArmoryUrl, "WoW Armory"), externalFooterLink(config.raiderIoUrl, "Raider.IO"), externalFooterLink(config.warcraftLogsUrl, "Warcraft Logs")].filter(Boolean).join("");
   return `<footer class="app-footer"><div class="app-footer-inner">
     <div class="footer-brand"><span class="footer-guild-name">OH CRIT I Pulled!</span><span class="footer-guild-context">Gurubashi · US</span></div>
     <div class="footer-destinations">
-      ${discord ? `<section class="footer-group" aria-label="Guild community"><p class="footer-group-title">Join us</p><div class="footer-links">${discord}</div></section>` : ""}
+      ${communityLinks ? `<section class="footer-group" aria-label="Guild community"><p class="footer-group-title">Join us</p><div class="footer-links">${communityLinks}</div></section>` : ""}
       ${wowLinks ? `<section class="footer-group" aria-label="Guild links"><p class="footer-group-title">Find us in Azeroth</p><div class="footer-links">${wowLinks}</div></section>` : ""}
     </div>
     <nav class="footer-site-information" aria-label="Site information"><a href="/privacy">Privacy</a><span aria-hidden="true">·</span><a href="/terms">Terms</a></nav>
