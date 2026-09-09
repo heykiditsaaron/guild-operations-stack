@@ -71,7 +71,7 @@ function roundTerms(body: Record<string, unknown>): RaffleRoundTerms {
   return {
     roundTitle: nullableString(body.round_title, "round_title"),
     drawingAtUnix: requiredInteger(body.drawing_at_unix, "drawing_at_unix"),
-    ticketPriceGold: requiredInteger(body.ticket_price_gold, "ticket_price_gold"),
+    entryPriceGold: requiredInteger(body.entry_price_gold, "entry_price_gold"),
     prizeKind: requiredPrizeKind(body.prize_kind),
     winnerPercentage: nullableInteger(body.winner_percentage, "winner_percentage"),
     prizeDescription: nullableString(body.prize_description, "prize_description"),
@@ -179,7 +179,7 @@ export async function registerRaffleRoutes(app: FastifyInstance): Promise<void> 
         request.params.roundId,
         requiredString(body.realm_id, "realm_id"),
         requiredString(body.character_id, "character_id"),
-        requiredInteger(body.ticket_count, "ticket_count"),
+        requiredInteger(body.entry_count, "entry_count"),
       );
       return reply.code(201).send(claim);
     } catch (error) {
