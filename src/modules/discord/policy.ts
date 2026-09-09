@@ -9,16 +9,23 @@ export type DiscordRankRoleMapping = {
 export type GuildDiscordProjectionSettings = {
   guildId: string;
   enabled: boolean;
+  linkedMappingEnabled: boolean;
+  rankMappingEnabled: boolean;
   linkedRoleId: string | null;
   rankRoles: DiscordRankRoleMapping[];
 };
 
 export async function guildDiscordProjectionSettings(
   guildId: string = config.guild.id,
+  includeInactiveMappings = false,
 ): Promise<GuildDiscordProjectionSettings> {
   const [settingsResult, rankRolesResult] = await Promise.all([
-    pool.query<{ enabled: boolean; linked_role_id: string | null }>(
-      `SELECT enabled, linked_role_id
+    pool.query<{
+      linked_enabled: boolean;
+      rank_enabled: boolean;
+      linked_role_id: string | null;
+    }>(
+      `SELECT linked_enabled, rank_enabled, linked_role_id
          FROM guild_discord_projection_settings
         WHERE guild_id = $1`,
       [guildId],
@@ -32,20 +39,28 @@ export async function guildDiscordProjectionSettings(
     ),
   ]);
 
+  const linkedMappingEnabled = settingsResult.rows[0]?.linked_enabled ?? false;
+  const rankMappingEnabled = settingsResult.rows[0]?.rank_enabled ?? false;
+  const configuredLinkedRoleId = settingsResult.rows[0]?.linked_role_id ?? null;
+  const configuredRankRoles = rankRolesResult.rows.map((row) => ({
+    rankIndex: row.rank_index,
+    discordRoleId: row.discord_role_id,
+  }));
+
   return {
     guildId,
-    enabled: settingsResult.rows[0]?.enabled ?? false,
-    linkedRoleId: settingsResult.rows[0]?.linked_role_id ?? null,
-    rankRoles: rankRolesResult.rows.map((row) => ({
-      rankIndex: row.rank_index,
-      discordRoleId: row.discord_role_id,
-    })),
+    enabled: linkedMappingEnabled || rankMappingEnabled,
+    linkedMappingEnabled,
+    rankMappingEnabled,
+    linkedRoleId: includeInactiveMappings || linkedMappingEnabled ? configuredLinkedRoleId : null,
+    rankRoles: includeInactiveMappings || rankMappingEnabled ? configuredRankRoles : [],
   };
 }
 
 export async function replaceGuildDiscordProjectionSettings(input: {
   guildId?: string;
-  enabled: boolean;
+  linkedMappingEnabled: boolean;
+  rankMappingEnabled: boolean;
   linkedRoleId: string | null;
   rankRoles: DiscordRankRoleMapping[];
 }): Promise<GuildDiscordProjectionSettings> {
@@ -57,13 +72,14 @@ export async function replaceGuildDiscordProjectionSettings(input: {
 
   await withTransaction(async (client) => {
     await client.query(
-      `INSERT INTO guild_discord_projection_settings (guild_id, enabled, linked_role_id)
-       VALUES ($1, $2, $3)
+      `INSERT INTO guild_discord_projection_settings (guild_id, linked_enabled, rank_enabled, linked_role_id)
+       VALUES ($1, $2, $3, $4)
        ON CONFLICT (guild_id) DO UPDATE SET
-         enabled = EXCLUDED.enabled,
+         linked_enabled = EXCLUDED.linked_enabled,
+         rank_enabled = EXCLUDED.rank_enabled,
          linked_role_id = EXCLUDED.linked_role_id,
          updated_at = now()`,
-      [guildId, input.enabled, linkedRoleId],
+      [guildId, input.linkedMappingEnabled, input.rankMappingEnabled, linkedRoleId],
     );
 
     await client.query("DELETE FROM guild_discord_rank_roles WHERE guild_id = $1", [guildId]);
@@ -76,5 +92,5 @@ export async function replaceGuildDiscordProjectionSettings(input: {
     }
   });
 
-  return guildDiscordProjectionSettings(guildId);
+  return guildDiscordProjectionSettings(guildId, true);
 }
