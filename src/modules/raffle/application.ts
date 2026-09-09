@@ -104,14 +104,14 @@ export async function submitRaffleClaim(
   roundId: string,
   realmId: string,
   characterId: string,
-  requestedTicketCount: number,
+  requestedEntryCount: number,
 ): Promise<RaffleClaim> {
   return submitRaffleClaimDomain(
     claimantGuildieId,
     roundId,
     realmId,
     characterId,
-    requestedTicketCount,
+    requestedEntryCount,
   );
 }
 
