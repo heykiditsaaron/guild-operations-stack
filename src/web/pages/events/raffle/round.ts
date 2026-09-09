@@ -48,7 +48,7 @@ function finalWinnings(round: RafflePublicRound): string | null {
   if (round.winnerPercentage === null) return null;
 
   const entries = round.totalEntries ?? round.approvedEntryCount;
-  const pot = BigInt(round.ticketPriceGold) * BigInt(entries);
+  const pot = BigInt(round.entryPriceGold) * BigInt(entries);
   return `${formatGold((pot * BigInt(round.winnerPercentage)) / 100n)} gold`;
 }
 
@@ -71,7 +71,7 @@ function roundFacts(round: RafflePublicRound): string {
       ${fact("Status", htmlText(statusLabel(round)))}
       ${fact("Established", localTime(round.createdAtUnix))}
       ${fact("Estimated drawing time", localTime(round.drawingAtUnix, "full"))}
-      ${fact("Ticket price", `${formatGold(round.ticketPriceGold)} gold`)}
+      ${fact("Entry price", `${formatGold(round.entryPriceGold)} gold`)}
       ${fact("Prize", htmlText(configuredPrize(round)))}
       ${fact(approvedLabel, round.approvedEntryCount.toLocaleString("en-US"))}
       ${round.liveAtUnix === null ? "" : fact("Went live", localTime(round.liveAtUnix))}
@@ -137,7 +137,7 @@ function claimLedger(round: RafflePublicRound): string {
 
   const rows = round.claims.map((claim) => `<tr>
       <td data-label="Character"><strong>${htmlText(claim.characterName)}</strong></td>
-      <td data-label="Requested">${claim.requestedTicketCount.toLocaleString("en-US")}</td>
+      <td data-label="Requested">${claim.requestedEntryCount.toLocaleString("en-US")}</td>
       <td data-label="Promised">${formatGold(claim.promisedGoldValue)} gold</td>
       <td data-label="Claimed">${localTime(claim.createdAtUnix)}</td>
       <td data-label="Resolution">${claimResolution(claim)}</td>
@@ -151,7 +151,7 @@ function claimLedger(round: RafflePublicRound): string {
     ${round.claims.length === 0
       ? '<p class="raffle-status-copy">No claims were recorded for this round.</p>'
       : `<div class="raffle-ledger-wrap"><table class="raffle-ledger">
-          <thead><tr><th scope="col">Character</th><th scope="col">Requested</th><th scope="col">Promised</th><th scope="col">Claimed</th><th scope="col">Resolution</th></tr></thead>
+          <thead><tr><th scope="col">Character</th><th scope="col">Requested entries</th><th scope="col">Promised</th><th scope="col">Claimed</th><th scope="col">Resolution</th></tr></thead>
           <tbody>${rows}</tbody>
         </table></div>`}
   </section>`;
