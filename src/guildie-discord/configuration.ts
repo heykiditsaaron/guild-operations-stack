@@ -43,7 +43,7 @@ export class DiscordProjectionReconciliationError extends Error {
 export async function configureGuildDiscordProjection(
   input: ConfigureGuildDiscordProjectionInput,
 ): Promise<GuildDiscordProjectionSettings> {
-  if (!discordGuildIntegrationConfigured()) {
+  if (!await discordGuildIntegrationConfigured()) {
     throw new DiscordProjectionNotConfiguredError();
   }
 
