@@ -39,14 +39,14 @@ function formatGold(value: bigint | string): string {
 
 function goldPrize(round: RaffleOverview): bigint | null {
   if (round.prizeKind !== "gold" || round.winnerPercentage === null) return null;
-  const pot = BigInt(round.ticketPriceGold) * BigInt(round.approvedEntryCount);
+  const pot = BigInt(round.entryPriceGold) * BigInt(round.approvedEntryCount);
   return (pot * BigInt(round.winnerPercentage)) / 100n;
 }
 
 function historicalPrize(round: RaffleHistoryRound): string | null {
   if (round.prizeKind === "gold" && round.winnerPercentage !== null) {
     const entries = round.totalEntries ?? round.approvedEntryCount;
-    const pot = BigInt(round.ticketPriceGold) * BigInt(entries);
+    const pot = BigInt(round.entryPriceGold) * BigInt(entries);
     return `${formatGold((pot * BigInt(round.winnerPercentage)) / 100n)} gold`;
   }
   return round.prizeDescription;
@@ -142,7 +142,7 @@ function standingRaffleBody(listedRound: RaffleOverview | null, recentWinner: Ra
     ? `<a class="raffle-reference-link raffle-upcoming-record" href="/events/raffle/${encodeURIComponent(listedRound.roundId)}">
         <span>
           <span class="raffle-reference-title">An upcoming raffle has been announced</span>
-          <span class="raffle-status-copy">Inspect its prize, price, and drawing time.</span>
+          <span class="raffle-status-copy">Inspect its prize, entry price, and drawing time.</span>
         </span>
         <span class="raffle-reference-arrow" aria-hidden="true">→</span>
       </a>`
