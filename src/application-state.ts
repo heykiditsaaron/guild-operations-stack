@@ -1,6 +1,5 @@
 import { config, type Region } from "./config.js";
 import { pool } from "./db.js";
-import { discordAssociationForGuildie, type DiscordAssociation } from "./discord-association.js";
 import { effectiveGuildAuthority, type EffectiveGuildAuthority } from "./guild-permissions.js";
 import { guildCharactersForGuildie, type GuildCharacter } from "./guild.js";
 import { mainCharacterForGuildie, type SelectedMainCharacter } from "./main-character.js";
@@ -45,7 +44,6 @@ export type GuildieState = {
   characters: GuildCharacter[];
   selectedMain: GuildieSelectedMain | null;
   guildAuthority: EffectiveGuildAuthority | null;
-  discordAssociation: DiscordAssociation | null;
 };
 
 export async function guildState(guildId: string = config.guild.id): Promise<GuildState | null> {
@@ -140,11 +138,10 @@ export async function guildieState(guildieId: string): Promise<GuildieState | nu
   );
   if (!exists.rowCount) return null;
 
-  const [characters, selectedMain, guildAuthority, discordAssociation] = await Promise.all([
+  const [characters, selectedMain, guildAuthority] = await Promise.all([
     guildCharactersForGuildie(guildieId),
     mainCharacterForGuildie(guildieId),
     effectiveGuildAuthority(guildieId),
-    discordAssociationForGuildie(guildieId),
   ]);
 
   const selectedMainCharacter = selectedMain
@@ -170,6 +167,5 @@ export async function guildieState(guildieId: string): Promise<GuildieState | nu
     characters,
     selectedMain: resolvedSelectedMain,
     guildAuthority,
-    discordAssociation,
   };
 }
