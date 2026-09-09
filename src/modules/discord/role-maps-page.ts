@@ -35,8 +35,7 @@ async function renderRoleMaps(): Promise<string> {
   const settings = await guildDiscordProjectionSettings(undefined, true);
   if (!await discordGuildIntegrationConfigured()) {
     return `<div class="discord-admin discord-admin-unavailable">
-      <h3>Role Maps</h3>
-      <p>Configure and enable the Discord module with a server ID and bot token before managing role maps.</p>
+      <p>Configure and enable Discord with a server ID and bot token before managing roles.</p>
       <span>Linked Role is ${settings.linkedMappingEnabled ? "on" : "off"}. Rank Mapping is ${settings.rankMappingEnabled ? "on" : "off"}.</span>
     </div>`;
   }
@@ -46,7 +45,6 @@ async function renderRoleMaps(): Promise<string> {
     roles = await getDiscordGuildRoles();
   } catch {
     return `<div class="discord-admin discord-admin-unavailable">
-      <h3>Role Maps</h3>
       <p>Discord roles could not be read.</p>
       <span>Linked Role is ${settings.linkedMappingEnabled ? "on" : "off"}. Rank Mapping is ${settings.rankMappingEnabled ? "on" : "off"}.</span>
     </div>`;
@@ -61,7 +59,7 @@ async function renderRoleMaps(): Promise<string> {
         <div class="discord-projection-heading discord-admin-heading discord-role-map-heading">
           <div>
             <h3 id="discord-linked-role-heading">Linked Role</h3>
-            <p>Map Guildies with an established Discord association to one Discord role.</p>
+            <p>Assign one Discord role to Guildies with an established Discord association.</p>
           </div>
           <label class="switch discord-projection-toggle">
             <input type="checkbox" data-discord-linked-mapping-enabled${settings.linkedMappingEnabled ? " checked" : ""}>
@@ -71,7 +69,7 @@ async function renderRoleMaps(): Promise<string> {
         </div>
         <div class="discord-role-fields">
           <label>
-            <span>Linked Guildie role</span>
+            <span>Discord role</span>
             <select name="linkedRoleId" data-discord-role-select>${roleOptions(roles, settings.linkedRoleId)}</select>
           </label>
         </div>
@@ -83,7 +81,7 @@ async function renderRoleMaps(): Promise<string> {
         <div class="discord-projection-heading discord-admin-heading discord-role-map-heading">
           <div>
             <h3 id="discord-rank-mapping-heading">Rank Mapping</h3>
-            <p>Map Blizzard-backed guild ranks to Discord roles.</p>
+            <p>Assign Discord roles from Blizzard-backed guild ranks.</p>
           </div>
           <label class="switch discord-projection-toggle">
             <input type="checkbox" data-discord-rank-mapping-enabled${settings.rankMappingEnabled ? " checked" : ""}>
@@ -123,13 +121,7 @@ export async function registerDiscordRoleMapsPage(app: FastifyInstance, assets: 
     }
 
     const body = `<div class="admin-sections">
-      <section class="admin-section" aria-labelledby="discord-role-maps-heading">
-        <div class="discord-admin-heading">
-          <div>
-            <h2 id="discord-role-maps-heading">Role Maps</h2>
-            <p>Configure how established Guild Operations facts are applied to Discord roles.</p>
-          </div>
-        </div>
+      <section class="admin-section">
         ${await renderRoleMaps()}
       </section>
     </div>`;
@@ -152,7 +144,7 @@ export async function registerDiscordRoleMapsPage(app: FastifyInstance, assets: 
             { label: "Role Maps" },
           ],
         },
-        header: `<div class="admin-page-header"><h1 id="page-title">Role Maps</h1><p class="lede">Configure Discord role assignments backed by Guild Operations.</p></div>`,
+        header: `<div class="admin-page-header"><h1 id="page-title">Role Maps</h1></div>`,
         body,
       }));
   });
