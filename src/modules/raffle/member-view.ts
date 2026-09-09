@@ -8,7 +8,7 @@ export type RaffleMemberClaim = {
   characterId: string;
   realmId: string;
   characterName: string;
-  requestedTicketCount: number;
+  requestedEntryCount: number;
   promisedGoldValue: string;
   createdAtUnix: number;
   resolutionKind: RaffleClaimResolution;
@@ -37,7 +37,7 @@ export async function raffleClaimsForMember(guildieId: string, roundId: string):
     characterId: claim.character.characterId,
     realmId: claim.character.realmId,
     characterName: claim.character.name,
-    requestedTicketCount: claim.requestedTicketCount,
+    requestedEntryCount: claim.requestedEntryCount,
     promisedGoldValue: claim.promisedGoldValue,
     createdAtUnix: claim.createdAtUnix,
     resolutionKind: claim.resolutionKind,
