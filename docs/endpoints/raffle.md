@@ -65,7 +65,7 @@ Raffle REST round resources use snake-case transport naming while preserving est
   "status": "concluded",
   "conclusion": "drawn",
   "drawing_at_unix": 1788901200,
-  "ticket_price_gold": "1000",
+  "entry_price_gold": "1000",
   "prize": {
     "kind": "gold",
     "winner_percentage": 50,
@@ -103,7 +103,7 @@ Raffle REST round resources use snake-case transport naming while preserving est
 
 For item and other prizes, `winner_percentage` is `null`, `description` contains the descriptive prize, and `gold` is `null`.
 
-Only approved claims contribute to `approved_entries`, the gold pot, and draw population. Individual tickets are not persisted or exposed as independent records; approved entry count is derived from approved claims.
+Only approved claims contribute to `approved_entries`, the gold pot, and the drawing population. Entries are derived equal-weight positions used for winner selection; they are not persisted or exposed as independent records.
 
 ### GET `/api/v1/raffle/rounds/live`
 
@@ -210,7 +210,7 @@ Creates a listed round.
 {
   "round_title": "September Raffle",
   "drawing_at_unix": 1788901200,
-  "ticket_price_gold": 1000,
+  "entry_price_gold": 1000,
   "prize_kind": "gold",
   "winner_percentage": 50,
   "prize_description": null
@@ -247,7 +247,7 @@ Resolves a live raffle. Drawing is refused while unresolved claims exist.
 
 The selection population is derived from approved claims. If non-empty, conclusion is `drawn`; if empty, conclusion is `no_participation`.
 
-Claims are durable participation records. Drawing entries are ephemeral selection weight derived from approved claims and are not persisted as independent ticket records.
+Claims are durable participation records. Drawing entries are ephemeral selection weight derived from approved claims and are not persisted as independent records.
 
 ## Claim operations
 
@@ -261,11 +261,11 @@ Submits a claim for a currently controlled Character on the current guild roster
 {
   "realm_id": "...",
   "character_id": "...",
-  "ticket_count": 5
+  "entry_count": 5
 }
 ```
 
-The historical application input name `ticket_count` represents requested draw-entry count. The durable object is the claim, not individual ticket records.
+`entry_count` is the number of equal drawing positions the claim will contribute if approved. The durable object is the claim; entries are derived selection weight rather than independent records.
 
 Returns `201` with the established claim.
 
