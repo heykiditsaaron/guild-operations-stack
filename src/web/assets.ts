@@ -17,6 +17,7 @@ export type AssetName =
   | "site-information.css"
   | "admin.css"
   | "admin.js"
+  | "discord-admin.js"
   | "operations.js"
   | "raffle.css"
   | "raffle-admin.css"
@@ -54,6 +55,7 @@ const assetDefinitions: Array<{ name: AssetName; contentType: string }> = [
   { name: "app.js", contentType: "text/javascript; charset=utf-8" },
   { name: "navigation-shelves.js", contentType: "text/javascript; charset=utf-8" },
   { name: "admin.js", contentType: "text/javascript; charset=utf-8" },
+  { name: "discord-admin.js", contentType: "text/javascript; charset=utf-8" },
   { name: "operations.js", contentType: "text/javascript; charset=utf-8" },
   { name: "raffle.js", contentType: "text/javascript; charset=utf-8" },
   { name: "raffle-entry.js", contentType: "text/javascript; charset=utf-8" },
@@ -105,6 +107,5 @@ export async function registerAssetRoutes(app: FastifyInstance, assets: AssetReg
         .header("Cache-Control", "public, max-age=31536000, immutable")
         .type(asset.contentType)
         .send(asset.body);
-    });
   }
 }
