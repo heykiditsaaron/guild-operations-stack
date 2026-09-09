@@ -1,14 +1,14 @@
 function rafflePromiseText(form) {
-  const countInput = form.querySelector("[data-raffle-ticket-count]");
+  const countInput = form.querySelector("[data-raffle-entry-count]");
   if (!(countInput instanceof HTMLInputElement)) return "";
 
   const count = Number(countInput.value);
-  if (!Number.isInteger(count) || count <= 0) return "Enter a positive whole number of tickets.";
+  if (!Number.isInteger(count) || count <= 0) return "Enter a positive whole number of entries.";
 
   try {
-    const ticketPrice = BigInt(form.dataset.ticketPrice || "0");
-    const promisedGold = ticketPrice * BigInt(count);
-    return `${count} ${count === 1 ? "ticket" : "tickets"} · ${promisedGold.toString()} gold promised`;
+    const entryPrice = BigInt(form.dataset.entryPrice || "0");
+    const promisedGold = entryPrice * BigInt(count);
+    return `${count} ${count === 1 ? "entry" : "entries"} · ${promisedGold.toString()} gold promised`;
   } catch {
     return "Unable to calculate the promised deposit.";
   }
@@ -42,7 +42,7 @@ function showRaffleClaimSuccess(form) {
 async function submitRaffleClaim(form) {
   const status = form.querySelector("[data-raffle-claim-status]");
   const characterSelect = form.querySelector("[data-raffle-character]");
-  const countInput = form.querySelector("[data-raffle-ticket-count]");
+  const countInput = form.querySelector("[data-raffle-entry-count]");
   const submitButton = form.querySelector('button[type="submit"]');
 
   if (!(status instanceof HTMLElement)
@@ -60,11 +60,11 @@ async function submitRaffleClaim(form) {
   const option = characterSelect.selectedOptions[0];
   const realmId = option?.dataset.realmId;
   const characterId = option?.dataset.characterId;
-  const ticketCount = Number(countInput.value);
+  const entryCount = Number(countInput.value);
   const roundId = form.dataset.roundId;
 
-  if (!roundId || !realmId || !characterId || !Number.isInteger(ticketCount) || ticketCount <= 0) {
-    status.textContent = "Choose a character and enter a positive whole number of tickets.";
+  if (!roundId || !realmId || !characterId || !Number.isInteger(entryCount) || entryCount <= 0) {
+    status.textContent = "Choose a character and enter a positive whole number of entries.";
     return;
   }
 
@@ -78,7 +78,7 @@ async function submitRaffleClaim(form) {
       body: JSON.stringify({
         realm_id: realmId,
         character_id: characterId,
-        ticket_count: ticketCount,
+        entry_count: entryCount,
       }),
     });
     const result = await response.json().catch(() => ({}));
