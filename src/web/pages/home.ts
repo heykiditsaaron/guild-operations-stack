@@ -34,11 +34,6 @@ function participationPromotions(assets: AssetRegistry, liveRaffle: boolean): st
     </section>`;
 }
 
-function discordInvitation(inviteUrl: string | null): string {
-  if (!inviteUrl) return "";
-  return `<p class="home-orientation-action"><a class="button button-secondary" href="${inviteUrl}">Join us on Discord</a></p>`;
-}
-
 export async function registerHomePage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/", async (request, reply) => {
     const [viewer, liveRaffle] = await Promise.all([
@@ -48,6 +43,7 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
 
     const stylesheets: AssetName[] = ["home.css"];
     if (liveRaffle) stylesheets.push("home-raffle.css");
+    const communityActions = viewer.modulePresentation.homeCommunityActions.join("\n");
 
     const html = renderPage(assets, {
       pathname: "/",
@@ -96,7 +92,7 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
               <article class="home-orientation-item">
                 <h3>In Discord</h3>
                 <p>Follow the channels and activity notifications you care about. Keep the rest quiet. Participation should fit you, not demand your attention.</p>
-                ${discordInvitation(viewer.discordInviteUrl)}
+                ${communityActions}
               </article>
             </div>
           </section>
