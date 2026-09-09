@@ -107,5 +107,6 @@ export async function registerAssetRoutes(app: FastifyInstance, assets: AssetReg
         .header("Cache-Control", "public, max-age=31536000, immutable")
         .type(asset.contentType)
         .send(asset.body);
+    });
   }
 }
