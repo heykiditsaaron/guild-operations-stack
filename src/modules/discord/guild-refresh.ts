@@ -1,6 +1,6 @@
 import { registerGuildRefreshObserver } from "../../guild-refresh-observers.js";
-import { reconcileGuildiesBestEffort } from "../../guildie-discord/roles.js";
 import { ensureDiscordAdministrationCapabilities } from "./authorization.js";
+import { reconcileGuildiesBestEffort } from "./roles.js";
 
 async function observeGuildRefresh(observation: {
   guildId: string;
