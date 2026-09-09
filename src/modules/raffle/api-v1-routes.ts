@@ -27,7 +27,7 @@ function characterRepresentation(character: RaffleCharacterRecognition) {
 
 function roundRepresentation(facts: RaffleRoundFacts) {
   const { round, metrics, winner } = facts;
-  const pot = BigInt(round.ticketPriceGold) * BigInt(metrics.approvedEntryCount);
+  const pot = BigInt(round.entryPriceGold) * BigInt(metrics.approvedEntryCount);
   const winnerPrize = round.prizeKind === "gold" && round.winnerPercentage !== null
     ? (pot * BigInt(round.winnerPercentage)) / 100n
     : null;
@@ -39,7 +39,7 @@ function roundRepresentation(facts: RaffleRoundFacts) {
     status: round.status,
     conclusion: round.conclusion,
     drawing_at_unix: round.drawingAtUnix,
-    ticket_price_gold: round.ticketPriceGold,
+    entry_price_gold: round.entryPriceGold,
     prize: {
       kind: round.prizeKind,
       winner_percentage: round.winnerPercentage,
@@ -103,7 +103,7 @@ export async function registerRaffleApiV1Routes(app: FastifyInstance): Promise<v
         conclusion: round.conclusion,
       },
       character: characterRepresentation(claim.character),
-      requested_entry_count: claim.requestedTicketCount,
+      requested_entry_count: claim.requestedEntryCount,
       promised_gold_value: claim.promisedGoldValue,
       created_at_unix: claim.createdAtUnix,
       resolution: {
