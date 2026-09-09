@@ -3,11 +3,10 @@ import { acquireGuildAuthority, type BlizzardGuildProfile, type BlizzardGuildRos
 import { config, type Region } from "./config.js";
 import { pool, withTransaction } from "./db.js";
 import {
-  GUILD_DISCORD_MANAGE_CAPABILITY,
   GUILD_REFRESH_CAPABILITY,
   OPERATIONS_INSPECT_CAPABILITY,
 } from "./guild-permissions.js";
-import { reconcileGuildiesBestEffort } from "./guildie-discord/roles.js";
+import { publishGuildRefreshObservation } from "./guild-refresh-observers.js";
 import {
   enrichGuildCharacters,
   guildCharactersNeedingEnrichment,
@@ -128,7 +127,6 @@ async function ensureObservedRankDefinition(client: PoolClient, guildId: string,
     for (const capability of [
       GUILD_REFRESH_CAPABILITY,
       OPERATIONS_INSPECT_CAPABILITY,
-      GUILD_DISCORD_MANAGE_CAPABILITY,
     ]) {
       await client.query(
         `INSERT INTO guild_rank_capabilities (guild_id, rank_index, capability)
@@ -229,7 +227,10 @@ export async function refreshGuildAuthority(): Promise<GuildRefreshResult> {
     };
   });
 
-  await reconcileGuildiesBestEffort(persisted.changedGuildieIds, { trigger: "guild-refresh" });
+  await publishGuildRefreshObservation({
+    guildId: persisted.guildId,
+    changedGuildieIds: persisted.changedGuildieIds,
+  });
 
   const targets = await guildCharactersNeedingEnrichment(persisted.guildId, persisted.roster.changedPresentationCoordinates);
   const enrichment = await enrichGuildCharacters({ guildId: persisted.guildId, targets });
