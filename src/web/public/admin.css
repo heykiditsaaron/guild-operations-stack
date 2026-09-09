@@ -137,6 +137,16 @@
   border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
 
+.discord-role-maps-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.discord-role-maps-form .discord-projection-actions,
+.discord-role-maps-form .discord-projection-feedback {
+  margin-top: 0;
+}
+
 .guild-refresh-toggle,
 .discord-projection-toggle {
   flex: none;
