@@ -24,7 +24,7 @@ The Guildie is authoritative for:
 
 - initiating a claim;
 - selecting the controlled guild Character through which the promised deposit is made;
-- requested ticket quantity;
+- requested entry count;
 - cancelling their own unresolved claim.
 
 A raffle administrator is authoritative for:
@@ -56,7 +56,7 @@ Its operating terms are intentionally small:
 - round ID;
 - optional round title for recognition;
 - drawing deadline as a timezone-neutral Unix instant;
-- ticket price in gold;
+- entry price in gold;
 - prize kind;
 - winner percentage when the prize kind is gold;
 - prize description when the prize kind is item or other.
@@ -134,7 +134,7 @@ A claim is a durable promissory record.
 
 It means, approximately:
 
-> This Guildie, acting through this controlled guild Character, intends to deposit the gold corresponding to this many tickets for this round.
+> This Guildie, acting through this controlled guild Character, intends to deposit the gold corresponding to this many entries for this round.
 
 A claim is not evidence that the deposit occurred and does not itself establish drawing weight.
 
@@ -144,8 +144,8 @@ A claim records:
 - round ID;
 - claimant Guildie;
 - specific controlled WoW Character;
-- requested ticket count;
-- promised gold value derived from the round's ticket price at submission;
+- requested entry count;
+- promised gold value derived from the round's entry price at submission;
 - creation Unix time;
 - optional terminal resolution.
 
@@ -161,7 +161,7 @@ character_record_id
 
 Neither relationship is represented by a generic Subject coordinate. `Subject` is contextual language only.
 
-A Guildie may create multiple claims in the same round, including multiple claims using the same Character, while claim submission remains open. Each claim remains one durable record regardless of requested count. A claim requesting ten tickets is one claim with requested count ten, not ten persisted ticket records.
+A Guildie may create multiple claims in the same round, including multiple claims using the same Character, while claim submission remains open. Each claim remains one durable record regardless of requested count. A claim requesting ten entries is one claim with requested entry count ten, not ten persisted entry records.
 
 Claim admission closes one hour before the drawing deadline. This cutoff prevents new promises from arriving during the final adjudication window while leaving existing unresolved claims available for attendant approval or denial.
 
@@ -175,7 +175,7 @@ An unresolved claim may end in exactly one of three ways:
 - `denied`: explicit denying Guildie, denial Unix time, and mandatory reason;
 - `cancelled`: explicit claimant Guildie and cancellation Unix time.
 
-Approval is the boundary where a claim begins contributing immutable drawing weight. The approved claim's requested ticket count becomes the number of equal positions it contributes when the selection population is constructed. Once approved, the claim cannot be cancelled, reduced, edited, or otherwise withdrawn from that population.
+Approval is the boundary where a claim begins contributing immutable drawing weight. The approved claim's requested entry count becomes the number of equal positions it contributes when the selection population is constructed. Once approved, the claim cannot be cancelled, reduced, edited, or otherwise withdrawn from that population.
 
 Pending claims establish no drawing weight. A denial and a cancellation contribute no drawing weight but remain durable records.
 
@@ -183,9 +183,9 @@ The parent round concluding does not rewrite claim resolution state. In particul
 
 ## Drawing population
 
-Tickets are not durable raffle objects. They are an ephemeral enumeration used only to turn approved claim counts into equal winner-selection positions.
+Entries are not durable raffle objects. They are ephemeral equal-weight positions derived from approved claims for winner selection.
 
-An approved claim contributes its requested count as equal positions in the drawing population. If Claim A was approved for five and Claim B for two, the conceptual population is:
+An approved claim contributes its requested entry count as equal positions in the drawing population. If Claim A was approved for five entries and Claim B for two, the conceptual population is:
 
 ```text
 [A, A, A, A, A, B, B]
@@ -193,7 +193,7 @@ An approved claim contributes its requested count as equal positions in the draw
 
 Every position has exactly one equal chance of selection. There is no member-level weighting model hidden behind the draw.
 
-The population is reconstructed deterministically from approved claims ordered by claim creation time and claim ID. Those individual positions have no independent behavior, authority, lifecycle, or historical significance. Outside winner selection, the durable claims already contain the participation truth.
+The population is reconstructed deterministically from approved claims ordered by claim creation time and claim ID. Those individual positions have no independent behavior, authority, lifecycle, persistence record, or historical significance. Outside winner selection, the durable claims already contain the participation truth.
 
 Once a claim is approved, its drawing weight is immutable. Selection positions cannot be withdrawn from the population even though unresolved claims may still be cancelled before resolution.
 
@@ -262,14 +262,14 @@ Prize kind is declarable raffle state.
 For a gold raffle:
 
 ```text
-pot = approved entry count * ticket price
+pot = approved entry count * entry price
 winner share = pot * winner percentage
 guild share = pot - winner share
 ```
 
 Only approved claims contribute to the pot or prize projection.
 
-For item and other raffles, the configured prize is descriptive text rather than a calculated share of the gold pot. Ticket price remains denominated in WoW gold regardless of prize kind.
+For item and other raffles, the configured prize is descriptive text rather than a calculated share of the gold pot. Entry price remains denominated in WoW gold regardless of prize kind.
 
 ## Historical behavior
 
@@ -304,11 +304,11 @@ concluded
 
 The record exists for transparency, not interaction. It may link a viewer toward the current participation surface while a round is live, but it does not submit claims, cancel claims, adjudicate claims, edit terms, draw, cancel the round, or perform other raffle operations.
 
-A concluded drawn record exposes the recorded winner, actual winnings, final eligible drawing-population size, and a literal one-row-per-claim ledger. Each claim row presents the participating Character, requested count, promised gold, claim time, recorded resolution status, and resolution time where one exists. Denied claims may also present their recorded denial reason.
+A concluded drawn record exposes the recorded winner, actual winnings, final eligible drawing-population size, and a literal one-row-per-claim ledger. Each claim row presents the participating Character, requested entry count, promised gold, claim time, recorded resolution status, and resolution time where one exists. Denied claims may also present their recorded denial reason.
 
 A normally drawn round cannot contain unresolved claims because draw preconditions prohibit it. An operator-cancelled round may contain unresolved claims, and those unresolved rows remain visible exactly because cancellation is the conclusion most likely to require later refund or discrepancy scrutiny. The record does not infer or manufacture refund completion state that Raffle does not own.
 
-The public record intentionally does not enumerate synthetic ticket rows or expose the random-selection implementation merely to appear more detailed. Approved claim counts are sufficient to reconstruct the eligible population; tickets are only the transient enumeration used by winner selection.
+The public record intentionally does not enumerate synthetic entry rows or expose the random-selection implementation merely to appear more detailed. Approved claim counts and requested entry counts are sufficient to reconstruct the eligible population; individual entries are only the transient equal-weight positions used by winner selection.
 
 ## Surface boundary
 
