@@ -95,15 +95,6 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
           <span class="admin-destination-arrow" aria-hidden="true">→</span>
         </a>
       </section>
-
-      <section class="admin-section" aria-labelledby="discord-pending-actions-card-heading">
-        <h2 id="discord-pending-actions-card-heading">Inspection</h2>
-        <a class="admin-destination" href="/admin/discord/state">
-          <span class="admin-destination-title">Pending actions</span>
-          <span class="admin-destination-description">Inspect current, desired, and pending managed Discord role state.</span>
-          <span class="admin-destination-arrow" aria-hidden="true">→</span>
-        </a>
-      </section>
     </div>`;
 
     return reply
