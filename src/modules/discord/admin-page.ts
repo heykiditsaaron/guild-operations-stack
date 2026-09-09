@@ -1,5 +1,4 @@
 import type { FastifyInstance } from "fastify";
-import { guildRankDefinitions } from "../../application-state.js";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
 import { guildieHasGuildCapability } from "../../guild-permissions.js";
 import type { AssetRegistry } from "../../web/assets.js";
@@ -9,7 +8,6 @@ import { DISCORD_ADMIN_CAPABILITY } from "./authorization.js";
 import {
   discordGuildIntegrationConfigured,
   getDiscordGuildRoles,
-  type DiscordGuildRole,
 } from "./client.js";
 import {
   configureGuildDiscordProjection,
@@ -32,78 +30,10 @@ function htmlText(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
-function roleOptions(roles: DiscordGuildRole[], selectedRoleId: string | null): string {
-  return [
-    `<option value="">Not configured</option>`,
-    ...roles
-      .filter((role) => !role.managed)
-      .map((role) => `<option value="${htmlText(role.id)}"${role.id === selectedRoleId ? " selected" : ""}>${htmlText(role.name)}</option>`),
-  ].join("");
-}
-
-async function renderRoleProjection(): Promise<string> {
-  const settings = await guildDiscordProjectionSettings();
-  if (!await discordGuildIntegrationConfigured()) {
-    return `<div class="discord-admin discord-admin-unavailable">
-      <h3>Managed roles</h3>
-      <p>Configure and enable the Discord module with a server ID and bot token before managing role projection.</p>
-      <span>Stored projection is ${settings.enabled ? "enabled" : "disabled"}.</span>
-    </div>`;
-  }
-
-  let roles: DiscordGuildRole[];
-  try {
-    roles = await getDiscordGuildRoles();
-  } catch {
-    return `<div class="discord-admin discord-admin-unavailable">
-      <h3>Managed roles</h3>
-      <p>Discord roles could not be read. Projection is currently ${settings.enabled ? "enabled" : "disabled"}.</p>
-      <a href="/admin/discord/state">Pending actions →</a>
-    </div>`;
-  }
-
-  const ranks = await guildRankDefinitions();
-  const rankMapping = new Map(settings.rankRoles.map((mapping) => [mapping.rankIndex, mapping.discordRoleId]));
-
-  return `<div class="discord-admin" data-discord-admin>
-    <div class="discord-admin-heading">
-      <div>
-        <h3>Managed roles</h3>
-        <p>Project Guild Operations-managed Linked and guild-rank roles into Discord.</p>
-      </div>
-      <a class="discord-state-link" href="/admin/discord/state">Pending actions →</a>
-    </div>
-    <form class="discord-projection-form" data-discord-projection-form>
-      <div class="discord-projection-heading">
-        <div>
-          <h4>Role projection</h4>
-          <p>Observation remains available while projection is disabled.</p>
-        </div>
-        <label class="switch discord-projection-toggle">
-          <input type="checkbox" name="enabled" data-discord-projection-enabled${settings.enabled ? " checked" : ""}>
-          <span class="switch-control" aria-hidden="true"></span>
-          <span data-discord-switch-label>${settings.enabled ? "On" : "Off"}</span>
-        </label>
-      </div>
-      <div class="discord-role-fields">
-        <label>
-          <span>Linked Guildie role</span>
-          <select name="linkedRoleId" data-discord-role-select>${roleOptions(roles, settings.linkedRoleId)}</select>
-        </label>
-        ${ranks.map((rank) => `<label>
-          <span>${htmlText(rank.displayName)}</span>
-          <select data-discord-rank-index="${rank.rankIndex}" data-discord-role-select>
-            ${roleOptions(roles, rankMapping.get(rank.rankIndex) ?? null)}
-          </select>
-        </label>`).join("")}
-      </div>
-      <div class="discord-projection-actions">
-        <button type="button" data-discord-refresh-roles>Refresh roles</button>
-        <button type="submit" class="button-primary" data-discord-projection-save>Save</button>
-      </div>
-      <p class="discord-projection-feedback" data-discord-projection-feedback role="status" aria-live="polite"></p>
-    </form>
-  </div>`;
+function roleMapsState(settings: Awaited<ReturnType<typeof guildDiscordProjectionSettings>>): string {
+  const configuredMappings = settings.rankRoles.length + (settings.linkedRoleId ? 1 : 0);
+  const mappingLabel = configuredMappings === 1 ? "1 mapping configured" : `${configuredMappings} mappings configured`;
+  return `${settings.enabled ? "Active" : "Inactive"} · ${mappingLabel}`;
 }
 
 export async function registerDiscordAdminPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
@@ -118,9 +48,9 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       return reply.code(403).send("Discord administration is not available for this account.");
     }
 
-    const [moduleConfiguration, roleProjection] = await Promise.all([
+    const [moduleConfiguration, roleMaps] = await Promise.all([
       discordModuleConfiguration(),
-      renderRoleProjection(),
+      guildDiscordProjectionSettings(),
     ]);
 
     const secretWarning = moduleConfiguration.secretEncryptionAvailable
@@ -156,9 +86,23 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
           <p data-discord-module-feedback role="status" aria-live="polite"></p>
         </form>
       </section>
-      <section class="admin-section" aria-labelledby="discord-roles-heading">
-        <h2 id="discord-roles-heading">Discord roles</h2>
-        ${roleProjection}
+
+      <section class="admin-section" aria-labelledby="discord-role-maps-card-heading">
+        <h2 id="discord-role-maps-card-heading">Role Maps</h2>
+        <a class="admin-destination" href="/admin/discord/role-maps">
+          <span class="admin-destination-title">Role Maps</span>
+          <span class="admin-destination-description">${htmlText(roleMapsState(roleMaps))}. Configure Linked role and Rank Mapping.</span>
+          <span class="admin-destination-arrow" aria-hidden="true">→</span>
+        </a>
+      </section>
+
+      <section class="admin-section" aria-labelledby="discord-pending-actions-card-heading">
+        <h2 id="discord-pending-actions-card-heading">Inspection</h2>
+        <a class="admin-destination" href="/admin/discord/state">
+          <span class="admin-destination-title">Pending actions</span>
+          <span class="admin-destination-description">Inspect current, desired, and pending managed Discord role state.</span>
+          <span class="admin-destination-arrow" aria-hidden="true">→</span>
+        </a>
       </section>
     </div>`;
 
