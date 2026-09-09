@@ -60,7 +60,7 @@ async function renderRoleMaps(): Promise<string> {
       <div class="discord-projection-heading">
         <div>
           <h4>Apply role maps</h4>
-          <p>Guild Operations continues to evaluate mapped roles while application is off.</p>
+          <p>Guild Operations continues to evaluate mapped roles while role maps are inactive.</p>
         </div>
         <label class="switch discord-projection-toggle">
           <input type="checkbox" name="enabled" data-discord-projection-enabled${settings.enabled ? " checked" : ""}>
@@ -69,7 +69,7 @@ async function renderRoleMaps(): Promise<string> {
         </label>
       </div>
 
-      <section class="discord-role-map-section" aria-labelledby="discord-linked-role-heading">
+      <section class="discord-role-map-section discord-projection-form" aria-labelledby="discord-linked-role-heading">
         <div class="discord-role-map-heading">
           <h3 id="discord-linked-role-heading">Linked role</h3>
           <p>Map Guildies with an established Discord association to one Discord role.</p>
@@ -82,7 +82,7 @@ async function renderRoleMaps(): Promise<string> {
         </div>
       </section>
 
-      <section class="discord-role-map-section" aria-labelledby="discord-rank-mapping-heading">
+      <section class="discord-role-map-section discord-projection-form" aria-labelledby="discord-rank-mapping-heading">
         <div class="discord-role-map-heading">
           <h3 id="discord-rank-mapping-heading">Rank Mapping</h3>
           <p>Map Blizzard-backed guild ranks to Discord roles.</p>
