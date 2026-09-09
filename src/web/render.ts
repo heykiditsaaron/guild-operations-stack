@@ -24,9 +24,14 @@ export type WebViewerCharacter = {
   avatarUrl: string | null;
 };
 
+type DiscordPresentation = {
+  discordEnabled: boolean;
+  discordInviteUrl: string | null;
+};
+
 export type WebViewer =
-  | { authenticated: false }
-  | {
+  | ({ authenticated: false } & DiscordPresentation)
+  | ({
       authenticated: true;
       administrationAvailable: boolean;
       administrationDestinations: AdministrationNavigationDestination[];
@@ -45,7 +50,7 @@ export type WebViewer =
       discordAssociation: {
         username: string;
       } | null;
-    };
+    } & DiscordPresentation);
 
 export type SecondaryNavigation =
   | { kind: "back"; label: string; href: string }
@@ -123,11 +128,14 @@ function renderMeControl(viewer: WebViewer, pathname: string): string {
   const administration = viewer.administrationAvailable
     ? '<section class="me-menu-section me-administration-section"><a class="me-administration-link" href="/admin"><span>Administration</span><span aria-hidden="true">→</span></a></section>'
     : "";
+  const discord = viewer.discordEnabled
+    ? `<section class="me-menu-section me-discord-section">${renderDiscordAssociation(viewer, pathname)}</section>`
+    : "";
   return `<details class="me-menu menu-surface">
     <summary class="me-control"><span data-me-label>${escapeHtml(label)}</span><span class="account-visual${viewer.mainCharacter?.avatarUrl ? " account-visual-portrait" : " account-visual-generic"}" data-me-visual>${portrait}</span></summary>
     <div class="menu-panel menu-panel-right me-menu-panel">
       <section class="me-menu-section me-character-section">${renderCurrentCharacter(viewer)}</section>
-      <section class="me-menu-section me-discord-section">${renderDiscordAssociation(viewer, pathname)}</section>
+      ${discord}
       ${administration}
       <section class="me-menu-section me-session-section"><button type="button" class="session-sign-out-action" data-logout>Sign out</button></section>
     </div>
@@ -216,8 +224,10 @@ function externalFooterLink(url: string | null, label: string): string {
   return `<a class="footer-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`;
 }
 
-function renderFooter(): string {
-  const discord = config.discordInviteUrl ? `<a class="footer-link footer-link-discord" href="${escapeHtml(config.discordInviteUrl)}" target="_blank" rel="noopener noreferrer">${discordGlyph()}<span>Discord</span></a>` : "";
+function renderFooter(viewer: WebViewer): string {
+  const discord = viewer.discordInviteUrl
+    ? `<a class="footer-link footer-link-discord" href="${escapeHtml(viewer.discordInviteUrl)}" target="_blank" rel="noopener noreferrer">${discordGlyph()}<span>Discord</span></a>`
+    : "";
   const wowLinks = [externalFooterLink(config.wowArmoryUrl, "WoW Armory"), externalFooterLink(config.raiderIoUrl, "Raider.IO"), externalFooterLink(config.warcraftLogsUrl, "Warcraft Logs")].filter(Boolean).join("");
   return `<footer class="app-footer"><div class="app-footer-inner">
     <div class="footer-brand"><span class="footer-guild-name">OH CRIT I Pulled!</span><span class="footer-guild-context">Gurubashi · US</span></div>
@@ -257,7 +267,7 @@ ${stylesheets ? `${stylesheets}\n` : ""}  <title>${title}</title>
     ${secondaryNavigation ? `<div class="secondary-navigation-zone">${secondaryNavigation}</div>` : ""}
     <header class="page-header${secondaryNavigation ? " page-header-after-secondary-navigation" : ""}">${input.header}</header>
     <main class="app-main">${input.body}</main>
-    ${renderFooter()}
+    ${renderFooter(input.viewer)}
   </div>
   ${renderMainPicker(input.viewer)}
   <script src="${assetUrl(assets, "app.js")}" defer></script>
