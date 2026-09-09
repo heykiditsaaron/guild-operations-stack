@@ -1,5 +1,6 @@
 import { guildieState } from "../application-state.js";
 import { authenticatedGuildie } from "../auth.js";
+import { discordAssociationForGuildie } from "../modules/discord/association.js";
 import { administrationAvailabilityForGuildie } from "./administration.js";
 import type { WebViewer } from "./render.js";
 
@@ -7,9 +8,10 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
   const guildie = await authenticatedGuildie(sessionToken);
   if (!guildie) return { authenticated: false };
 
-  const [state, administration] = await Promise.all([
+  const [state, administration, discordAssociation] = await Promise.all([
     guildieState(guildie.guildieId),
     administrationAvailabilityForGuildie(guildie.guildieId),
+    discordAssociationForGuildie(guildie.guildieId),
   ]);
 
   if (!state) return { authenticated: false };
@@ -43,9 +45,9 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
       activeSpecName: character.activeSpecName,
       avatarUrl: character.avatarUrl,
     })),
-    discordAssociation: state.discordAssociation
+    discordAssociation: discordAssociation
       ? {
-          username: state.discordAssociation.username,
+          username: discordAssociation.username,
         }
       : null,
   };
