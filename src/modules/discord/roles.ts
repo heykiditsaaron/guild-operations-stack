@@ -321,41 +321,43 @@ async function reconcileGuildieSet(
   };
 
   if (settings.enabled && (plannedAdds > 0 || plannedRemoves > 0 || failures.length > 0)) {
-    const completedMutations = completedAdds + completedRemoves;
-    const plannedMutations = plannedAdds + plannedRemoves;
-    const result = failures.length === 0
-      ? "success"
-      : completedMutations > 0 || plannedMutations > 0
-        ? "partial"
-        : "failure";
+    const details = {
+      trigger: context.trigger ?? null,
+      guildies_considered: summary.guildiesConsidered,
+      guildies_evaluated: summary.guildiesEvaluated,
+      guildies_associated: summary.guildiesAssociated,
+      guildies_current_members: summary.guildiesCurrentMembers,
+      guildies_already_converged: summary.guildiesAlreadyConverged,
+      guildies_needing_changes: summary.guildiesNeedingChanges,
+      planned_adds: summary.plannedAdds,
+      planned_removes: summary.plannedRemoves,
+      completed_adds: summary.completedAdds,
+      completed_removes: summary.completedRemoves,
+      failures: summary.failures.map((failure) => ({
+        guildie_id: failure.guildieId,
+        stage: failure.stage,
+        error: failure.error,
+      })),
+    };
 
-    await publishBestEffort({
-      source: "discord",
-      operation: "roles.reconcile.bulk",
-      kind: "result",
-      result,
-      summary: result === "success"
-        ? `Reconciled Discord roles for ${summary.guildiesNeedingChanges} Guildies.`
-        : `Discord bulk role reconciliation completed with ${failures.length} failure${failures.length === 1 ? "" : "s"}.`,
-      details: {
-        trigger: context.trigger ?? null,
-        guildies_considered: summary.guildiesConsidered,
-        guildies_evaluated: summary.guildiesEvaluated,
-        guildies_associated: summary.guildiesAssociated,
-        guildies_current_members: summary.guildiesCurrentMembers,
-        guildies_already_converged: summary.guildiesAlreadyConverged,
-        guildies_needing_changes: summary.guildiesNeedingChanges,
-        planned_adds: summary.plannedAdds,
-        planned_removes: summary.plannedRemoves,
-        completed_adds: summary.completedAdds,
-        completed_removes: summary.completedRemoves,
-        failures: summary.failures.map((failure) => ({
-          guildie_id: failure.guildieId,
-          stage: failure.stage,
-          error: failure.error,
-        })),
-      },
-    });
+    if (failures.length === 0) {
+      await publishBestEffort({
+        source: "discord",
+        operation: "roles.reconcile.bulk",
+        kind: "result",
+        result: "success",
+        summary: `Reconciled Discord roles for ${summary.guildiesNeedingChanges} Guildies.`,
+        details,
+      });
+    } else {
+      await publishBestEffort({
+        source: "discord",
+        operation: "roles.reconcile.bulk",
+        kind: "exception",
+        summary: `Discord bulk role reconciliation did not fully complete for ${failures.length} Guildie${failures.length === 1 ? "" : "s"}.`,
+        details,
+      });
+    }
   }
 
   return summary;
