@@ -31,7 +31,7 @@ function claimsList(claims: RaffleMemberClaim[]): string {
       ${claims.map((claim) => `
         <li class="raffle-claim-item">
           <div class="raffle-claim-heading">
-            <strong>${htmlText(claim.characterName)} · ${claim.requestedTicketCount} ${claim.requestedTicketCount === 1 ? "ticket" : "tickets"}</strong>
+            <strong>${htmlText(claim.characterName)} · ${claim.requestedEntryCount} ${claim.requestedEntryCount === 1 ? "entry" : "entries"}</strong>
             <span class="raffle-claim-state">${htmlText(claimResolution(claim))}</span>
           </div>
           <p class="raffle-claim-meta">Promised deposit: ${htmlText(claim.promisedGoldValue)} gold · ${localTime(claim.createdAtUnix)}</p>
