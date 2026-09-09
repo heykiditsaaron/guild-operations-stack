@@ -33,7 +33,7 @@ function htmlText(value: string): string {
 function roleMapsState(settings: Awaited<ReturnType<typeof guildDiscordProjectionSettings>>): string {
   const configuredMappings = settings.rankRoles.length + (settings.linkedRoleId ? 1 : 0);
   const mappingLabel = configuredMappings === 1 ? "1 mapping configured" : `${configuredMappings} mappings configured`;
-  return `${settings.enabled ? "Active" : "Inactive"} · ${mappingLabel}`;
+  return `Linked Role ${settings.linkedMappingEnabled ? "on" : "off"} · Rank Mapping ${settings.rankMappingEnabled ? "on" : "off"} · ${mappingLabel}`;
 }
 
 export async function registerDiscordAdminPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
@@ -50,7 +50,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
 
     const [moduleConfiguration, roleMaps] = await Promise.all([
       discordModuleConfiguration(),
-      guildDiscordProjectionSettings(),
+      guildDiscordProjectionSettings(undefined, true),
     ]);
 
     const secretWarning = moduleConfiguration.secretEncryptionAvailable
@@ -91,7 +91,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
         <h2 id="discord-role-maps-card-heading">Role Maps</h2>
         <a class="admin-destination" href="/admin/discord/role-maps">
           <span class="admin-destination-title">Role Maps</span>
-          <span class="admin-destination-description">${htmlText(roleMapsState(roleMaps))}. Configure Linked role and Rank Mapping.</span>
+          <span class="admin-destination-description">${htmlText(roleMapsState(roleMaps))}. Configure Linked Role and Rank Mapping.</span>
           <span class="admin-destination-arrow" aria-hidden="true">→</span>
         </a>
       </section>
@@ -166,7 +166,11 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       });
     }
 
-    if (body.action !== "discord_projection.update" || typeof body.enabled !== "boolean") {
+    if (
+      body.action !== "discord_projection.update"
+      || typeof body.linkedMappingEnabled !== "boolean"
+      || typeof body.rankMappingEnabled !== "boolean"
+    ) {
       return reply.code(400).send({ error: "invalid_admin_request" });
     }
     if (body.linkedRoleId !== null && typeof body.linkedRoleId !== "string") {
@@ -184,7 +188,8 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
 
     try {
       const settings = await configureGuildDiscordProjection({
-        enabled: body.enabled,
+        linkedMappingEnabled: body.linkedMappingEnabled,
+        rankMappingEnabled: body.rankMappingEnabled,
         linkedRoleId: typeof body.linkedRoleId === "string" ? body.linkedRoleId : null,
         rankRoles: rankRoles.filter((mapping): mapping is NonNullable<typeof mapping> => mapping !== null),
       });
