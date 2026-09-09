@@ -37,8 +37,8 @@ type UnavailableStatusCode = 401 | 403 | 503;
 
 const discordStateNavigation: SecondaryNavigation = {
   kind: "back",
-  label: "Administration",
-  href: "/admin",
+  label: "Discord administration",
+  href: "/admin/discord",
 };
 
 function renderUnavailable(
@@ -50,7 +50,7 @@ function renderUnavailable(
   return {
     statusCode,
     html: renderPage(assets, {
-      pathname: "/admin/discord-state",
+      pathname: "/admin/discord/state",
       title: "Pending actions · OH CRIT I Pulled! Guild Operations",
       description: "Discord projection pending actions.",
       viewer,
@@ -64,7 +64,7 @@ function renderUnavailable(
 }
 
 export async function registerAdminDiscordStatePage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
-  app.get("/admin/discord-state", async (request, reply) => {
+  app.get("/admin/discord/state", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie] = await Promise.all([
       viewerForRequest(sessionToken),
@@ -94,7 +94,7 @@ export async function registerAdminDiscordStatePage(app: FastifyInstance, assets
         .send(unavailable.html);
     }
 
-    if (!discordGuildIntegrationConfigured()) {
+    if (!await discordGuildIntegrationConfigured()) {
       const unavailable = renderUnavailable(
         assets,
         viewer,
@@ -184,7 +184,7 @@ export async function registerAdminDiscordStatePage(app: FastifyInstance, assets
       .header("Cache-Control", "no-cache")
       .type("text/html; charset=utf-8")
       .send(renderPage(assets, {
-        pathname: "/admin/discord-state",
+        pathname: "/admin/discord/state",
         title: "Pending actions · OH CRIT I Pulled! Guild Operations",
         description: "Inspect Discord role projection pending actions.",
         viewer,
