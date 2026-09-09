@@ -142,7 +142,14 @@ export async function registerDiscordRoleMapsPage(app: FastifyInstance, assets: 
         viewer,
         stylesheets: ["admin.css"],
         scripts: ["discord-admin.js"],
-        secondaryNavigation: { kind: "back", href: "/admin/discord", label: "Discord" },
+        secondaryNavigation: {
+          kind: "breadcrumb",
+          items: [
+            { label: "Administration", href: "/admin" },
+            { label: "Discord", href: "/admin/discord" },
+            { label: "Role Maps" },
+          ],
+        },
         header: `<div class="admin-page-header"><h1 id="page-title">Role Maps</h1><p class="lede">Configure Discord role assignments backed by Guild Operations.</p></div>`,
         body,
       }));
