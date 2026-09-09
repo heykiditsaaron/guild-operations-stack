@@ -83,16 +83,16 @@ function initializeRaffleEditForm(form) {
 }
 
 function rafflePromiseText(form) {
-  const countInput = form.querySelector("[data-raffle-ticket-count]");
+  const countInput = form.querySelector("[data-raffle-entry-count]");
   if (!(countInput instanceof HTMLInputElement)) return "";
 
   const count = Number(countInput.value);
-  if (!Number.isInteger(count) || count <= 0) return "Enter a positive whole number of tickets.";
+  if (!Number.isInteger(count) || count <= 0) return "Enter a positive whole number of entries.";
 
   try {
-    const ticketPrice = BigInt(form.dataset.ticketPrice || "0");
-    const promisedGold = ticketPrice * BigInt(count);
-    return `${count} ${count === 1 ? "ticket" : "tickets"} · ${promisedGold.toString()} gold promised`;
+    const entryPrice = BigInt(form.dataset.entryPrice || "0");
+    const promisedGold = entryPrice * BigInt(count);
+    return `${count} ${count === 1 ? "entry" : "entries"} · ${promisedGold.toString()} gold promised`;
   } catch {
     return "Unable to calculate the promised deposit.";
   }
@@ -106,7 +106,7 @@ function refreshRafflePromise(form) {
 async function submitRaffleClaim(form) {
   const status = form.querySelector("[data-raffle-claim-status]");
   const characterSelect = form.querySelector("[data-raffle-character]");
-  const countInput = form.querySelector("[data-raffle-ticket-count]");
+  const countInput = form.querySelector("[data-raffle-entry-count]");
   const submitButton = form.querySelector('button[type="submit"]');
 
   if (!(status instanceof HTMLElement)
@@ -124,11 +124,11 @@ async function submitRaffleClaim(form) {
   const option = characterSelect.selectedOptions[0];
   const realmId = option?.dataset.realmId;
   const characterId = option?.dataset.characterId;
-  const ticketCount = Number(countInput.value);
+  const entryCount = Number(countInput.value);
   const roundId = form.dataset.roundId;
 
-  if (!roundId || !realmId || !characterId || !Number.isInteger(ticketCount) || ticketCount <= 0) {
-    status.textContent = "Choose a character and enter a positive whole number of tickets.";
+  if (!roundId || !realmId || !characterId || !Number.isInteger(entryCount) || entryCount <= 0) {
+    status.textContent = "Choose a character and enter a positive whole number of entries.";
     return;
   }
 
@@ -139,7 +139,7 @@ async function submitRaffleClaim(form) {
     const response = await fetch(`/raffle/rounds/${encodeURIComponent(roundId)}/claims`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ realm_id: realmId, character_id: characterId, ticket_count: ticketCount }),
+      body: JSON.stringify({ realm_id: realmId, character_id: characterId, entry_count: entryCount }),
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -193,11 +193,11 @@ function raffleAdminTerms(form, status) {
 
   const roundTitle = titleInput.value.trim();
   const drawingMilliseconds = Date.parse(drawingInput.value);
-  const ticketPrice = Number(priceInput.value);
+  const entryPrice = Number(priceInput.value);
   const prizeKind = kindSelect.value;
 
-  if (!Number.isFinite(drawingMilliseconds) || !Number.isSafeInteger(ticketPrice) || ticketPrice <= 0) {
-    status.textContent = "Enter a drawing time and a positive whole-number ticket price.";
+  if (!Number.isFinite(drawingMilliseconds) || !Number.isSafeInteger(entryPrice) || entryPrice <= 0) {
+    status.textContent = "Enter a drawing time and a positive whole-number entry price.";
     return null;
   }
   if (prizeKind !== "gold" && prizeKind !== "item" && prizeKind !== "other") {
@@ -214,7 +214,7 @@ function raffleAdminTerms(form, status) {
     return {
       round_title: roundTitle || null,
       drawing_at_unix: Math.floor(drawingMilliseconds / 1000),
-      ticket_price_gold: ticketPrice,
+      entry_price_gold: entryPrice,
       prize_kind: prizeKind,
       winner_percentage: winnerPercentage,
       prize_description: null,
@@ -229,7 +229,7 @@ function raffleAdminTerms(form, status) {
   return {
     round_title: roundTitle || null,
     drawing_at_unix: Math.floor(drawingMilliseconds / 1000),
-    ticket_price_gold: ticketPrice,
+    entry_price_gold: entryPrice,
     prize_kind: prizeKind,
     winner_percentage: null,
     prize_description: prizeDescription,
@@ -317,7 +317,7 @@ async function activateRaffleRound(button) {
 function raffleResultPrize(round) {
   if (round.prizeKind === "gold" && Number.isInteger(round.winnerPercentage) && Number.isInteger(round.totalEntries)) {
     try {
-      const pot = BigInt(round.ticketPriceGold) * BigInt(round.totalEntries);
+      const pot = BigInt(round.entryPriceGold) * BigInt(round.totalEntries);
       return `${((pot * BigInt(round.winnerPercentage)) / 100n).toLocaleString("en-US")} gold`;
     } catch {
       return `${round.winnerPercentage}% of the pot`;
@@ -354,7 +354,7 @@ function showRaffleDrawResult(round, winnerClaim) {
     main.innerHTML = `<section class="raffle-admin-message" aria-labelledby="raffle-result-heading">
       <div class="raffle-status-banner raffle-status-banner-upcoming"><span>Raffle concluded</span></div>
       <h2 id="raffle-result-heading">No participation</h2>
-      <p class="raffle-section-note">The draw completed with no approved ticket population, so no winner was selected.</p>
+      <p class="raffle-section-note">The draw completed with no approved entry population, so no winner was selected.</p>
       <div class="raffle-management-controls">
         <a class="raffle-action raffle-action-primary" href="/admin/raffle">Return to raffle administration</a>
         <a class="raffle-action raffle-action-secondary" href="/events/raffle/history">View raffle history ↗</a>
