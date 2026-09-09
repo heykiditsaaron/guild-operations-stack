@@ -109,6 +109,13 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
         viewer,
         stylesheets: ["admin.css"],
         scripts: ["discord-admin.js"],
+        secondaryNavigation: {
+          kind: "breadcrumb",
+          items: [
+            { label: "Administration", href: "/admin" },
+            { label: "Discord" },
+          ],
+        },
         header: `<div class="admin-page-header"><h1 id="page-title">Discord</h1><p class="lede">Configure Guild Operations' Discord integration.</p></div>`,
         body,
       }));
