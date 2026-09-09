@@ -1,29 +1,27 @@
 import type { FastifyInstance } from "fastify";
 import { guildRankDefinitions } from "../../application-state.js";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
-import {
-  GUILD_DISCORD_MANAGE_CAPABILITY,
-  guildieHasGuildCapability,
-} from "../../guild-permissions.js";
+import { guildieHasGuildCapability } from "../../guild-permissions.js";
+import type { AssetRegistry } from "../../web/assets.js";
+import { renderPage } from "../../web/render.js";
+import { viewerForRequest } from "../../web/viewer.js";
+import { DISCORD_ADMIN_CAPABILITY } from "./authorization.js";
 import {
   discordGuildIntegrationConfigured,
   getDiscordGuildRoles,
   type DiscordGuildRole,
-} from "../../guildie-discord/client.js";
+} from "./client.js";
 import {
   configureGuildDiscordProjection,
   DiscordProjectionNotConfiguredError,
   DiscordProjectionReconciliationError,
   UnknownDiscordProjectionRoleError,
-} from "../../guildie-discord/configuration.js";
-import { guildDiscordProjectionSettings } from "../../guildie-discord/policy.js";
-import type { AssetRegistry } from "../../web/assets.js";
-import { renderPage } from "../../web/render.js";
-import { viewerForRequest } from "../../web/viewer.js";
+} from "./configuration.js";
 import {
   discordModuleConfiguration,
   updateDiscordModuleConfiguration,
 } from "./module-configuration.js";
+import { guildDiscordProjectionSettings } from "./policy.js";
 
 function htmlText(value: string): string {
   return value
@@ -116,7 +114,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       authenticatedGuildie(sessionToken),
     ]);
     if (!guildie) return reply.code(401).send("Authentication is required.");
-    if (!await guildieHasGuildCapability(guildie.guildieId, GUILD_DISCORD_MANAGE_CAPABILITY)) {
+    if (!await guildieHasGuildCapability(guildie.guildieId, DISCORD_ADMIN_CAPABILITY)) {
       return reply.code(403).send("Discord administration is not available for this account.");
     }
 
@@ -182,7 +180,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
   app.post("/admin/discord", async (request, reply) => {
     const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
     if (!guildie) return reply.code(401).send({ error: "not_authenticated" });
-    if (!await guildieHasGuildCapability(guildie.guildieId, GUILD_DISCORD_MANAGE_CAPABILITY)) {
+    if (!await guildieHasGuildCapability(guildie.guildieId, DISCORD_ADMIN_CAPABILITY)) {
       return reply.code(403).send({ error: "not_authorized" });
     }
 
