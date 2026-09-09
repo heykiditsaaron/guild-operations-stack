@@ -11,7 +11,8 @@ import {
 import { reconcileAllGuildieDiscordRoles } from "./roles.js";
 
 export type ConfigureGuildDiscordProjectionInput = {
-  enabled: boolean;
+  linkedMappingEnabled: boolean;
+  rankMappingEnabled: boolean;
   linkedRoleId: string | null;
   rankRoles: DiscordRankRoleMapping[];
 };
@@ -64,15 +65,21 @@ export async function configureGuildDiscordProjection(
     throw new UnknownDiscordProjectionRoleError("rank");
   }
 
-  const previous = await guildDiscordProjectionSettings();
+  const previous = await guildDiscordProjectionSettings(undefined, true);
   const settings = await replaceGuildDiscordProjectionSettings({
-    enabled: input.enabled,
+    linkedMappingEnabled: input.linkedMappingEnabled,
+    rankMappingEnabled: input.rankMappingEnabled,
     linkedRoleId,
     rankRoles,
   });
+
   const previousManagedRoleIds = [
-    ...(previous.linkedRoleId ? [previous.linkedRoleId] : []),
-    ...previous.rankRoles.map((mapping) => mapping.discordRoleId),
+    ...(input.linkedMappingEnabled && previous.linkedMappingEnabled && previous.linkedRoleId
+      ? [previous.linkedRoleId]
+      : []),
+    ...(input.rankMappingEnabled && previous.rankMappingEnabled
+      ? previous.rankRoles.map((mapping) => mapping.discordRoleId)
+      : []),
   ];
 
   try {
