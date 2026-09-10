@@ -1,347 +1,463 @@
-# Event Participation Discovery
+# Event Participation Model
 
 ## Status
 
-This document preserves design discovery for a projected Guild Operations Event module and related event-shaped activities.
+This document is the incumbent design model for coordinated participation in Guild Operations events.
 
-It is guidance, not doctrine, and it is not an implementation specification. The concepts here were discovered by pressure-testing different guild activities against one another. They should help later design work recognize useful common structure without forcing activities to conform to a generic lifecycle.
+It replaces the earlier `Opportunity → Operation → Participation → Result` discovery model. That earlier model was useful for finding the domain, but subsequent pressure testing through raids, Mythic+ groups, fashion shows, housing competitions, and existing activity modules produced a smaller and more concrete vocabulary.
 
-The central observed convergence is:
+This is design guidance, not a commitment that every noun below must become a global persistence object or shared implementation abstraction. Shared machinery should still be earned through concrete activities. Raid is the current proving ground.
 
-> **Opportunity → Operation → Participation → Result**
+The intended coordination model is:
 
-This is a map for reasoning about participation, not a requirement that every event implement four states, four interfaces, four persistence objects, or a fixed state machine. When a real guild activity contradicts this map, the activity wins.
+```text
+Guild Event
+├── Metadata
+├── Composition
+│   ├── Opportunities
+│   └── Goals
+├── Applications
+├── Assignments
+├── Participation
+└── Products?          activity-owned, optional
+```
+
+The central distinctions are:
+
+> **Opportunities describe the places available for participation. Goals describe desired properties of the assembled whole. Applications offer participation. Eligibility determines fit. Assignments establish the organizer's placement decision. Participation records what actually happened.**
 
 ## Mechanical Guild Event boundary
 
-The participation progression above does not define what mechanically constitutes a Guild Event. That question has a smaller answer.
+The coordination model does not define what mechanically constitutes a Guild Event. Event-ness has a smaller contract.
 
 > **A Guild Event is defined mechanically by conformance to its required metadata contract, not by declaration or operational behavior.**
 
-At minimum, a Guild Event must establish:
+At minimum, a Guild Event establishes:
 
 - `occurs_at_unix` — the authoritative temporal coordinate occupied by the event, represented as an instant or range according to the established Unix-time contract;
 - `label` — the human-recognizable label for what occupies that temporal slot.
 
-A module does not make an object a Guild Event merely by calling it one, exposing event-like routes, or implementing participation machinery. Without the required metadata, the object is not mechanically a Guild Event.
-
-This deliberately defines **event-ness without defining event operation**.
-
-A raid may operate through applicants, Character context, roles, approvals, assignments, confirmations, and attendance. A raffle may operate through claims, tickets, draws, winners, and winnings. Hidden in Plain Sight may operate through entirely different game rules. Those operational models remain owned by the emanating module and do not need to conform to a universal Guild Event lifecycle or state machine.
-
-The shared contract standardizes how the wider application understands that these different activities are Guild Events. It does not standardize what participation in them means.
+A module does not make an object a Guild Event merely by calling it one or by implementing participation machinery. This deliberately defines event-ness without requiring every event to operate participation in the same way.
 
 ## Standardized event metadata enrichment
 
-Once an object satisfies the required Guild Event metadata contract, Guild Operations provides standardized optional vocabulary through which its module may enrich how consumers understand and approach it.
-
-Current enrichment concepts include:
+Once an object satisfies the required Guild Event metadata contract, it may use standardized optional vocabulary such as:
 
 - `description` — additional human-readable understanding of the event;
 - `tags` — standardized classification or interpretation metadata;
 - `interactions` — standardized metadata describing available approaches to module-owned operation.
 
-These enrichment fields are optional to produce and optional to consume. Their absence does not make an otherwise conforming object less of a Guild Event.
-
-Their vocabulary is nevertheless contractual when used. A module may omit `interactions`, but it cannot invent an unrelated field such as `buttons` and expect generic Guild Event consumers to understand it as the shared interaction surface.
-
 The governing rule is:
 
-> **Guild Event metadata standardizes vocabulary, not completeness. Production is optional. Consumption is optional. Conformance is required when the shared vocabulary is used.**
+> **Guild Event metadata standardizes vocabulary, not completeness. Production is optional. Consumption is optional. Conformance is required when shared vocabulary is used.**
 
-This also permits partial consumer literacy. A Calendar consumer may understand only temporal coordinates, labels, and selected enrichment. A Discord consumer may understand additional tags or interactions. An unfamiliar standardized enrichment or interaction does not invalidate the event; a consumer can ignore what it does not understand and use what it does.
-
-### Interactions as the operation seam
-
-`interactions` is where module-owned operation can meet expansion into other surfaces without moving operational authority into Guild Event machinery.
-
-An event may expose no interactions or a large interaction surface. A raid might eventually advertise concepts such as manage, join, decline, or subscribe. The exact interaction-object shape is intentionally not fixed by this discovery document; it should be earned through implementation pressure.
-
-What is already important is the authority boundary:
-
-> **Interactions may describe ways to approach module-owned operation. They do not relocate that operation into the Guild Event contract.**
-
-A consumer may learn how to present or invoke a standardized interaction without learning the originating module's entire operational model. The module remains authoritative for what the interaction means, whether it is permitted, what context it requires, and what operation follows.
-
-This allows consumers to become more capable independently. Calendar, Discord, web presentation, notifications, and future consumers can each understand as much standardized enrichment as is useful to their medium without forcing modules to reduce their event surface to the least-capable consumer.
+`interactions` is the seam through which module-owned operation may become available to generic consumers. It does not relocate operational authority into Guild Event machinery. The exact interaction shape remains intentionally uncommitted until implementation pressure earns it.
 
 ## Metadata ownership and authority
 
-The emanating module owns its Guild Event metadata as part of its authoritative state. Its own presentation and generic consumers should consult the same metadata fields rather than maintain peer copies of event-description truth.
+The emanating activity or module owns its Guild Event metadata as part of its authoritative state. Its own presentation and generic consumers should consult those same facts rather than maintain peer copies.
 
-For example, a raid's authoritative `label` should be the same `label` used by the raid's own web presentation, Calendar, Discord, and any future Guild Event consumer. A module-specific `raid_title`, a copied Calendar title, and a copied Discord title representing the same fact would create unnecessary concurrent truths.
-
-The same principle applies to temporal coordinates and standardized enrichment.
+A raid's authoritative `label`, for example, should be the label used by the raid surface and by future Calendar, Discord, notification, or other consumers. Consumers may present that fact differently, but they should not become independent owners of it.
 
 > **A consumer should not own a second authoritative version of an event-description fact merely because it needs that fact to render.**
 
-Consumers may express the same metadata differently because their mediums differ. Calendar may render an event spatially in time; Discord may render it as a message or component surface. Those are presentations of the same module-owned metadata, not independent ownership of the underlying facts.
+Guild Operations defines the shared language by which an activity can be understood as a Guild Event. The emanating activity defines how that event operates and what participation means.
 
-This minimizes authority conflicts while leaving module sovereignty intact:
+## Composition
 
-- the module owns what its event is and how it operates;
-- the Guild Event contract owns the shared language by which event-ness and standardized enrichment are understood;
-- consumers decide which parts of that language they can use;
-- no consumer becomes authoritative merely by presenting the event.
+Composition is the organizer-authored shape of coordinated participation.
 
-The resulting balance is intentional:
+It contains two complementary kinds of information:
 
-> **Guild Operations defines what it means for an activity to be understood uniformly as a Guild Event. The emanating module defines what that Guild Event means to operate and participate in.**
+```text
+Composition
+├── Opportunities   What positions need filling?
+└── Goals           What should the assembled composition achieve?
+```
 
-## Why this discovery matters
+This distinction is fundamental:
 
-Guild participation takes many forms. Raids, housing competitions, fashion shows, raffles, scavenger hunts, achievement runs, Mythic+ groups, guild photos, and other activities can have very different rules and outcomes.
+> **Opportunities constrain individual assignment. Goals evaluate aggregate assignment.**
 
-They nevertheless create recurring friction between the people offering participation and the people trying to participate. Organizers need sufficiently shaped information to operate an activity. Applicants need to understand what meaningful participation requires without reconstructing that requirement from Discord messages, follow-up questions, spreadsheets, or assumptions.
+An activity may use Opportunities without Goals. A housing competition may simply expose unlimited general participation. A raid may use both because assembling a useful roster requires more than counting occupied positions.
 
-The useful commonality is therefore not that all events behave alike. It is that many activities move through a recognizable progression from an opportunity to participate, through whatever operation is necessary, into actual participation, and sometimes into a distinct result.
+Composition describes what Guild Operations is coordinating. It does not need to reconstruct every real-world participant or position already accounted for outside the application. If a Mythic+ organizer already has two confirmed players, the Composition may describe only the remaining places being offered.
 
-Commonality is strongest near Opportunity and becomes progressively more contextual afterward.
+### Opportunities
 
-## Opportunity
+An Opportunity is the unit of Composition.
 
-Opportunity is the region in which participation is offered and sought.
+> **An Opportunity is an assignable place available for participation.**
 
-It answers questions such as:
+Examples include:
 
-- Who is allowed to seek participation?
-- What must an applicant provide or express?
-- What does taking part in this particular opportunity require?
+```text
+general × unlimited
 
-Several concepts have repeatedly survived pressure testing here.
+tank × 1
+healer × 1
+damage × 3
 
-### Eligibility
+tank × 2
+healer × 4
+damage × 14
+```
 
-Eligibility answers **who is allowed**.
+Opportunity quantity may be bounded or unlimited where the activity permits it. Capacity is therefore derived from the Opportunities rather than authored as a second independent fact.
 
-Current useful distinctions are:
+Opportunities should remain as structurally simple as the activity permits. In WoW combat composition, Blizzard's familiar role geometry gives us the useful fundamental shapes `tank`, `healer`, and `damage`. More specific composition concerns such as ranged, melee, physical, magical, lust, or battle resurrection should not automatically become new Opportunity types merely because an organizer cares about them.
 
-- **Anyone** — Guild Operations identity is not required. If a known identity relationship exists, it may be projected; otherwise the system must not invent one.
-- **Guildie** — the applicant must resolve to a current Guildie.
-- **Guild character** — participation must be expressed through a currently controlled character that is currently on the guild roster.
+A `general` Opportunity remains useful for participation that does not need a more specific shape.
 
-Eligibility is not approval. Someone may be eligible without applying, and an eligible applicant may still require an organizer's approval.
+Presets may populate a useful set of Opportunities, but are authoring shortcuts rather than event kinds. A Mythic+ preset can produce one tank, one healer, and three damage Opportunities without making `Mythic+ preset` a fundamental persisted event category.
 
-### Applicant and intent
+### Goals
 
-An **Applicant** is an actor seeking to take part. The applicant authors **Intent**.
+A Goal describes a desired aggregate property of the assembled Composition.
 
-Intent is the applicant's expression that they want to participate, together with whatever applicant-authored context the opportunity requires.
+Examples for a raid or Mythic+ group might include:
 
-Applicant is an authority relationship around the event, not a new identity type. A Guildie may be both an Applicant and an Organizer.
+```text
+lust >= 1
+battle_res >= 1
+ranged >= 6
+```
 
-### Participation Context
+Nothing is assigned to a Goal. Goals are evaluated over the currently assigned Applications and the authoritative or derived properties those Applications bring.
 
-Participation Context answers:
+This prevents an organizer's roster objective from becoming a false statement about individual eligibility. A Shadow Priest can be fully eligible for a Damage Opportunity even when the current roster still needs lust. A Fire Mage may also be eligible for that same Opportunity while additionally satisfying the outstanding lust Goal.
 
-> **What must an applicant tell us, and what does taking part in this opportunity look like?**
+The system can therefore expose consequences such as:
 
-This is where much of an event's useful shape appears.
+```text
+Fire Mage
+[damage] [ranged] [lust]
+Would satisfy: Lust
 
-A housing competition might require almost no context beyond eligible entry. A fashion show may require a Character. A Mythic+ group may require a Character and expose five role-shaped places. A progression raid may require substantially more precise Character, role, specialization, or availability context.
+Shadow Priest
+[damage] [ranged]
+No currently unmet Goal satisfied
+```
 
-Concepts such as composition, slots, capacity, WoW role, and presets have not earned independent universal status. They can currently be understood as ways Participation Context may be constructed or authored.
+without deciding which applicant the organizer should choose.
 
-Presets are especially useful as authoring shortcuts, but should not automatically become event kinds. A "10-player raid" preset can populate useful Participation Context without requiring the backend to treat `10-player raid` as a fundamental domain category.
+The governing authority rule is:
 
-## Operation
+> **Guild Operations should calculate composition consequences; the organizer retains composition judgment.**
 
-Operation is the region where expressed intent is acted upon.
+Goals are optional. Activities that gain nothing from aggregate composition evaluation should not inherit raid-level complexity.
 
-It may include:
+## Applications
 
-- Organizer authority
-- Approval
-- Assignment where constrained Participation Context requires it
-- Activity-specific preparation or procedure
+An Application is an applicant-authored offer to fill an Opportunity.
 
-An **Organizer** is an actor with authority to operate the opportunity. Automatic procedure does not create a new authority: automation executes policy established by the organizer or activity.
+For a raid, an Application may contain:
 
-### Approval
+```text
+Application
+├── target opportunity shape: damage
+├── character: Mage
+└── specialization: Fire
+```
 
-Approval answers the broadly reusable question:
+Another activity may require less. A fashion show may require a Character but no specialization. A general guild activity may require neither. The application shape belongs to the activity and should not become a speculative generic dynamic-form framework.
 
-> **Has this applicant's intent been accepted into the activity?**
+A single applicant may submit multiple Applications when they are genuinely offering multiple ways to participate. For example, a Guildie might offer a Mistweaver Monk for Healer and a Fire Mage for Damage. Those are two distinct offers, not one ambiguous list of possible roles.
 
-Approval is distinct from eligibility and distinct from actual participation.
+### Applications are the pool
 
-A person may be eligible, apply, and be approved, yet never actually participate.
+There is no separate applicant-pool entity.
 
-### Assignment
+> **Applications are the pool.**
 
-Assignment is useful but has not proven to be an irreducible event primitive.
+The actionable remainder is derived from Applications that remain valid and are not currently consumed by a mutually exclusive Assignment.
 
-It answers a narrower operational question:
+An unassigned Application has no inherent social or operational meaning beyond being unassigned. Guild Operations must not silently promote it to `backup`, `bench`, `alternate`, or another organizer judgment.
 
-> **If approval is constrained by Participation Context, where does this approved intent fit?**
+If an organizer wants to classify an Application as backup, priority, contacted, or similar, that meaning belongs to the organizer and may eventually be expressed as organizer-authored annotation or tagging over the Application.
 
-For a raid, assignment may be substantial because the opportunity has strongly structured places. For an unlimited housing competition, approval may require no assignment at all. For a raffle, forcing ticket creation into a generic Assignment abstraction would discard useful raffle-specific meaning.
+> **The unassigned pool has no inherent meaning beyond being unassigned. Further classification belongs to whoever has authority to make that classification.**
 
-Assignment should therefore remain optional operational machinery unless further activities prove a stronger common abstraction.
+Historical Applications should not be deleted merely because another Application from the same applicant receives an Assignment. The historical fact that the applicant offered another shape remains useful. The competing Application may simply cease to be actionable while the mutually exclusive Assignment exists.
 
-Authorship must remain visible. "Aaron applied as damage" and "Aaron was assigned tank" are different facts even if both ultimately concern the same participation.
+If that Assignment is released, still-valid Applications may become actionable again according to the activity's rules.
+
+## Eligibility
+
+Eligibility is not merely a broad gate describing who may apply.
+
+> **Eligibility is whether an Application satisfies the criteria necessary to align with an Opportunity.**
+
+Conceptually:
+
+```text
+Opportunity ───────┐
+                   ├── Eligibility
+Application ───────┘
+```
+
+Eligibility may incorporate several kinds of facts where relevant:
+
+- the allowed applicant boundary, such as Anyone, Guildie, or Guild character;
+- controlled Character relationship;
+- current guild membership when required;
+- Character and specialization facts;
+- WoW role derived from specialization;
+- Opportunity-specific criteria.
+
+The applicant authors intent. Eligibility validates alignment.
+
+For example, if a Fire Mage Application targets a Damage Opportunity, Blizzard-authored specialization geometry establishes that the offered Character/spec can legitimately fill that role. Guild Operations should use that authoritative geometry rather than create a parallel manual truth.
+
+Eligibility does not decide whether the organizer wants that applicant in the final composition. That decision belongs to Assignment.
+
+## WoW-authored geometry and traits
+
+Blizzard remains authoritative for Blizzard-owned Character and specialization facts. Guild Operations should preserve useful geometry from those facts rather than ask organizers or applicants to restate it manually.
+
+For combat participation, an Application can expose derived properties such as:
+
+```text
+Fire Mage
+├── role: damage
+└── traits
+    ├── ranged
+    ├── magical
+    └── lust
+```
+
+or:
+
+```text
+Fury Warrior
+├── role: damage
+└── traits
+    ├── melee
+    └── physical
+```
+
+The precise trait vocabulary and source mappings should be established through Raid implementation rather than prematurely generalized. The important boundary is already clear:
+
+- Blizzard-authored facts and deterministic derivations describe what the offered Character/spec is capable of;
+- the applicant authors which Character/spec they are offering;
+- the organizer authors composition Goals and operational judgments.
+
+Authoritative or derived traits must not be confused with organizer-authored tags. `ranged` and `lust` describe the offered piece. `backup` and `priority` describe how an organizer regards an Application.
+
+> **Preserve authoritative geometry; constrain only the dimensions the activity actually cares about.**
+
+## Assignments
+
+An Assignment binds an eligible Application to an Opportunity.
+
+```text
+Application ── Assignment ──► Opportunity
+```
+
+Assignment is the organizer's meaningful placement decision. A separate generic Approval layer is not required merely to say that an Application has been accepted: for coordinated composition, Assignment establishes the acceptance that matters.
+
+Authorship must remain visible. The applicant authors the Application. The organizer authors the Assignment, unless an organizer-established policy performs that procedure automatically.
+
+### Automatic assignment
+
+Automatic assignment is an assignment policy, not an event type.
+
+Conceptually:
+
+```text
+Application submitted
+→ Eligibility passes
+→ compatible open Opportunity exists
+→ Assignment created
+```
+
+Manual assignment uses the same domain facts:
+
+```text
+Application submitted
+→ Eligibility passes
+→ Application remains in pool
+→ organizer assigns
+```
+
+Automatic procedure does not manufacture authority. It executes policy established by the organizer or activity.
+
+First-come-first-served behavior can naturally emerge from automatic assignment against remaining open Opportunities without requiring a separate event mode.
+
+### Multiple Applications and mutual exclusivity
+
+An applicant may have multiple eligible Applications, but an Assignment may consume that applicant's availability for mutually exclusive Opportunities.
+
+For Raid, assigning a Guildie's Healer Application should make that Guildie's competing Damage Application non-actionable while the Assignment exists. The competing Application remains historical rather than being deleted.
+
+This should not be elevated into a universal one-assignment-per-person rule for every future activity. Mutual exclusivity belongs to the activity where the constraint is real.
+
+## Composition coverage
+
+Assignments give Guild Operations enough information to project the current assembled Composition.
+
+For a raid, the organizer can be shown both structural filling and Goal coverage:
+
+```text
+OPPORTUNITIES
+✓ Tanks       2 / 2
+✓ Healers     4 / 4
+○ Damage     12 / 14
+
+GOALS
+✓ Lust        1 / 1
+✓ Battle Res  1 / 1
+○ Ranged      5 / 6
+```
+
+This projection should update as Assignments are created, changed, or released.
+
+The same information can help at the point of decision. An Application can show which unmet Goals would become satisfied if assigned, without ranking applicants or making the selection on behalf of the organizer.
+
+This is an important Guild Operations value proposition: remove calculation burden without manufacturing human judgment.
 
 ## Participation
 
-Participation is the factual boundary where participation actually occurs.
+Participation means participating.
 
-This distinction matters because participation cannot be compelled by software or by an organizer. Approval does not make somebody a Participant.
+Assignment records planned or accepted placement. Participation records what actually happened.
 
-A person can:
+Someone may be eligible without applying, apply without being assigned, be assigned and fail to appear, or participate after a legitimate real-world substitution. Those distinctions should remain representable rather than being collapsed into a single participant status.
 
-- be eligible and never apply;
-- apply and never be approved;
-- be approved and never participate; or
-- in some activities, legitimately participate without having followed the normal pre-event path.
+The threshold that establishes actual Participation belongs to the activity. Raid attendance, a fashion-show presentation, a housing entry, and asynchronous game participation may establish reality differently.
 
-For that reason, **Participant is better understood as an observation or projection over what actually happened than as a pre-event actor primitive or lifecycle status.**
+Presence and participation are not synonymous.
 
-The threshold that establishes participation belongs to the activity.
+Historical Participation should remain meaningful even when current eligibility later changes. Current authority can govern what someone may do now without rewriting what actually happened.
 
-Examples:
+## Products
 
-- In a raid, an approved roster member may still no-show; actual involvement realizes participation.
-- In a raffle, an accepted entry or its resulting tickets may themselves constitute asynchronous participation.
-- In a housing competition, an accepted or submitted entry may constitute participation even when the entrant is absent during judging.
+A Product is an optional activity-owned output of an event.
 
-Presence and participation are therefore not synonymous.
+Events are not required to produce one, and no universal Product schema has been earned.
 
-Historical participation should remain meaningful even when current eligibility later changes. Current membership can govern whether an action is allowed now without rewriting what actually happened in the past.
+Examples include:
 
-## Result
+- raffle winner and winnings;
+- fashion-show placements or awards;
+- housing-competition placements or awards;
+- Hidden in Plain Sight mode-specific resolution.
 
-Result is where the activity is most free to assert its own meaning.
+A Raid does not need a Product merely because another activity has one.
 
-Some activities have a strong, distinct result:
+Products therefore sit outside the base coordination chain and remain the prerogative of the activity.
 
-- a raffle establishes a winner and winnings;
-- a housing competition may establish placements or awards;
-- Hidden in Plain Sight may resolve according to its game mode.
+## Identity and representation
 
-Other activities may have no useful result beyond participation itself. A raid does not require a universal Result object merely because another event does.
+Application context does not replace durable identity.
 
-Result is therefore contextual and optional. No universal result schema has been earned.
+A Guildie remains the durable actor even when a particular Character is meaningful to an Application. Role and specialization shape the offered participation but do not become identity.
 
-Two questions should remain activity-owned:
+Useful boundaries include:
 
-1. **What counts as participation?**
-2. **What does that participation produce, if anything?**
+- Guildie participation may project the selected main when no event-specific Character is meaningful;
+- Character-specific Applications should present the Character actually being offered rather than silently substituting the selected main;
+- Guild-character eligibility constrains the offered Character to the currently controlled/current-roster intersection;
+- Anyone eligibility may project a known Guildie relationship when one exists while allowing event-local identity when it does not.
 
-## The geometry model
+Organizers configure participation rules. Representation is derived from identity, Application context, and surface rather than selected independently by the organizer.
 
-A useful way to reason about Opportunity is as geometry.
-
-**Opportunity defines the hole. Participation Context communicates the shape of a fitting piece. The applicant expresses Intent in that geometry. Operation fits or bounds those pieces. Participation is the shape actually being realized. Result, where meaningful, is what the completed shape produces or means.**
-
-Different activities create differently complex shapes.
-
-A housing competition may be close to an oval: almost any eligible entry fits. A progression raid may be a much more complex shape because Character, role, specialization, availability, composition, and limited places can all matter.
-
-The goal is not to force a generic applicant through a complicated hole. It is to expose the opportunity's geometry early enough that applicants can express intent already shaped appropriately.
-
-In that sense, Guild Operations should create the conditions for a participant to produce a rhombus-shaped piece for a rhombus-shaped hole rather than repeatedly trying to push an egg through it.
-
-This reduces friction on both sides:
-
-- applicants can see what meaningful intent needs to contain;
-- organizers receive intent shaped well enough to operate directly.
-
-A useful design test is:
-
-> **Does this help the opportunity express its shape, help the applicant produce appropriately shaped intent, or help the organizer operate the resulting pieces?**
-
-Complexity should remain proportional to the opportunity. A simple activity should not inherit raid-level machinery merely because raids need it.
-
-## WoW-authored geometry
-
-Not all useful geometry is authored by Guild Operations.
-
-Blizzard already authoritatively establishes facts about WoW objects and relationships, including Character identity and other Blizzard-owned Character, account, and guild facts. Guild Operations should neither create parallel truths for those facts nor throw away useful truth that is already available.
-
-The guiding principle is:
-
-> **Preserve authoritative geometry; constrain only the dimensions the opportunity actually cares about. Do not fight WoW-authored geometry, and do not waste it.**
-
-A raid may care deeply about Character, guild membership, class, specialization, or role compatibility. A fashion show may require a Character while ignoring specialization and role. A housing competition may care only that an applicant is a Guildie.
-
-Ignoring a dimension for a particular opportunity does not erase or override the underlying fact. The opportunity simply does not constrain participation along that dimension.
-
-This preserves the authority boundary:
-
-- Blizzard owns the facts Blizzard establishes.
-- Guild Operations owns what guild-authored opportunities require those facts to mean for participation.
-
-The event's hole is deliberately mutable even though the pieces retain their authoritative geometry.
-
-## Derived participation subject and representation
-
-The effective participation subject should be derived from the intersection of **eligibility** and **applicant-side Participation Context**, not selected independently by an organizer.
-
-Examples:
-
-- Guildie eligibility with no Character context yields a Guildie participation subject.
-- Guildie eligibility with selected Character context remains the same durable Guildie actor while carrying that Character as meaningful participation context.
-- Guild character eligibility necessarily constrains the selected Character to the currently controlled/current-roster intersection.
-- Anyone eligibility may project a known Guildie relationship when one exists, while allowing event-local identity where it does not.
-
-Role and specialization may shape participation but do not become identity.
-
-Presentation is downstream of these facts. Organizers configure participation rules; the system derives representation from identity, participation context, and surface. A selected main can remain a useful web recognition surface without silently replacing a Character that is specifically meaningful to an event.
-
-## Concepts deliberately not universalized
-
-Pressure testing has repeatedly made the model smaller rather than larger.
-
-The following concepts are useful in some activities but have not earned status as universal event primitives:
-
-- **Participant lifecycle** — Participant emerges from actual participation.
-- **Composition** — currently a way Participation Context may be constructed.
-- **Slots** — currently Participation Context machinery.
-- **Capacity** — can be expressed through bounded or unbounded Participation Context where needed.
-- **WoW role** — contextual specialization, not identity.
-- **Presets** — authoring shortcuts, not persisted event kinds by default.
-- **Assignment** — optional operational machinery.
-- **Representation** — derived from identity, context, and surface.
-- **Result schema** — activity-owned and optional.
-- **Generic event sourcing** — not justified merely because meaningful transitions and authorship need preservation.
-
-Existing activity-specific vocabulary should also survive where it carries real meaning. A raffle can continue to own claims, tickets, draws, winners, and winnings rather than translating those concepts into generic event nouns simply because conceptual parallels exist.
-
-## Pressure-test examples
+## Pressure tests
 
 ### Progression raid
 
-Opportunity can expose Guildie or guild-character eligibility and precise Participation Context around Character, role, specialization, availability, and constrained places. Applicants submit shaped intent. Organizers approve and may assign that intent into a deliberate roster. Approval does not guarantee attendance; participation is realized by actual raid involvement. A separate Result may not be necessary.
+```text
+Composition
+├── Opportunities
+│   ├── tank × 2
+│   ├── healer × 4
+│   └── damage × 14
+└── Goals
+    ├── lust >= 1
+    ├── battle_res >= 1
+    └── ranged >= 6
+```
 
-### Housing competition
+Applicants may offer multiple Character/spec Applications. Eligibility validates each offer against its target role. Blizzard-derived traits make the effect of each potential Assignment legible. The organizer assigns a deliberate roster while Guild Operations continuously projects filled Opportunities and Goal coverage.
 
-Opportunity may be Guildie-only with little additional Participation Context and potentially unlimited entries. Operation may be little more than accepting an entry. The submitted or accepted entry can itself realize asynchronous participation. Judging and awards may later establish a distinct Result without requiring the entrant to be present.
+Unassigned Applications remain the remainder pool. They are not automatically backups. The organizer may eventually annotate them when useful.
+
+Assignment does not establish actual raid attendance; Participation does.
+
+### Mythic+ group
+
+An organizer who already accounts for part of the real group may expose only the places Guild Operations needs to coordinate:
+
+```text
+Composition
+├── Opportunities
+│   ├── tank × 1
+│   ├── healer × 1
+│   └── damage × 1
+└── Goals
+    ├── lust >= 1
+    └── battle_res >= 1
+```
+
+The Composition does not need to reconstruct all five in-game positions. Goals evaluate the assembled group properties while Opportunities describe the open coordinated places.
 
 ### Fashion show
 
-Opportunity may require a Character while leaving class, specialization, and role irrelevant. It may have bounded or unlimited places. Participation is creative presentation rather than combat composition. Judging or awards can be activity-specific Result machinery.
+```text
+Composition
+├── Opportunities
+│   └── general × 10
+└── Goals
+    └── none
+```
 
-### Raffle
+An Application may require a Character but no specialization. Automatic assignment can fill the bounded general Opportunities. Additional Applications simply remain unassigned unless an Opportunity becomes available. Judging or awards may later be activity-owned Products.
 
-The raffle's existing domain vocabulary already maps usefully onto the discovered progression without needing to be replaced by it. A live round offers an Opportunity. A claim expresses Intent. Claim approval operates that intent and creates the raffle-specific ticket population. Accepted entry/tickets realize asynchronous participation. The draw establishes the raffle's strongly meaningful Result: winner and winnings.
+### Housing competition
 
-### Hidden in Plain Sight
+```text
+Composition
+├── Opportunities
+│   └── general × unlimited
+└── Goals
+    └── none
+```
 
-The opportunity establishes the exploration or deduction challenge and whatever eligibility and Participation Context its game mode requires. Operation and the threshold for participation can vary by mode. Resolution is game-specific and remains owned by Hidden in Plain Sight rather than by generic event machinery.
+Eligible Applications can be automatically assigned immediately. Participation and eventual judging remain activity-specific. The simple activity does not inherit Raid's composition complexity merely because the same coordination vocabulary can describe both.
 
-## Guidance for future design
+### Raffle and Hidden in Plain Sight
 
-`Opportunity → Operation → Participation → Result` should be treated as a treasure map: it identifies terrain that repeatedly appeared while examining real guild activities.
+Existing self-contained activity modules should not be mechanically translated into this coordination vocabulary merely because conceptual parallels can be found.
 
-It should help answer questions such as:
+Raffle already owns meaningful concepts such as claims, tickets, draws, winner, and winnings. Hidden in Plain Sight owns game-mode-specific participation and resolution. Their Guild Event conformance comes from the shared metadata contract, not from being forced through Raid-shaped coordination machinery.
 
-- Is this requirement describing how participation is offered, how intent is operated, what actually constitutes participation, or what the activity produces afterward?
-- Is a proposed abstraction genuinely shared, or are two activities merely using similar words for different domain behavior?
-- Are we preserving useful authoritative facts or asking members and organizers to restate geometry the system already knows?
-- Are we adding machinery because a real activity requires it, or because a generic event platform can be imagined?
+This is an important boundary: the coordination model exists to support activities that genuinely need coordinated participation. It is not a requirement that every Guild Event implement Applications, Assignments, Opportunities, or Goals.
 
-The map is allowed to be wrong. A future guild activity that does not fit should pressure the model rather than be distorted to preserve it.
+## Geometry model
 
-The strongest current guidance is therefore not a fixed lifecycle. It is:
+The geometric analogy remains useful, but its pieces are now concrete:
 
-> **Shape the opportunity clearly enough that people can respond to it in kind. Preserve authoritative geometry, automate useful procedure, and let each activity retain ownership of what participation and result actually mean.**
+> **Composition defines the shape. Opportunities are the individual holes. Applications offer pieces. Eligibility determines whether a piece fits a hole. Assignment places the piece. Goals evaluate the assembled shape. Participation records what was actually realized.**
+
+WoW and Blizzard may already author important dimensions of the pieces. Guild Operations should preserve that geometry and let the activity constrain only what it actually cares about.
+
+The goal is not to remove meaningful constraints. It is to eliminate the work caused by poorly expressing and operating those constraints.
+
+## Implementation guidance
+
+This model should now guide Raid implementation and be refined only when concrete implementation or another real activity exposes a contradiction.
+
+Several implementation details remain deliberately open:
+
+- whether an Application targets an Opportunity class/shape or a specific bounded Opportunity instance before Assignment;
+- the exact persistence and API representation of Eligibility;
+- the exact source and vocabulary of WoW-derived traits;
+- the representation of organizer-authored Application annotations;
+- the evidence that realizes Raid Participation;
+- which coordination concepts prove reusable enough to live in shared Guild Event machinery rather than Raid-owned implementation.
+
+These are implementation questions, not reasons to reopen the conceptual model prematurely.
+
+Do not introduce a generic rules engine, roster solver, event-sourcing framework, notification bus, guest-identity framework, universal Product schema, or other generalized machinery merely because this model creates a place where one could be imagined.
+
+Build Raid against the model. Let shared machinery reveal itself under pressure.
