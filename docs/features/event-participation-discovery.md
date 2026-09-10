@@ -12,6 +12,82 @@ The central observed convergence is:
 
 This is a map for reasoning about participation, not a requirement that every event implement four states, four interfaces, four persistence objects, or a fixed state machine. When a real guild activity contradicts this map, the activity wins.
 
+## Mechanical Guild Event boundary
+
+The participation progression above does not define what mechanically constitutes a Guild Event. That question has a smaller answer.
+
+> **A Guild Event is defined mechanically by conformance to its required metadata contract, not by declaration or operational behavior.**
+
+At minimum, a Guild Event must establish:
+
+- `occurs_at_unix` — the authoritative temporal coordinate occupied by the event, represented as an instant or range according to the established Unix-time contract;
+- `label` — the human-recognizable label for what occupies that temporal slot.
+
+A module does not make an object a Guild Event merely by calling it one, exposing event-like routes, or implementing participation machinery. Without the required metadata, the object is not mechanically a Guild Event.
+
+This deliberately defines **event-ness without defining event operation**.
+
+A raid may operate through applicants, Character context, roles, approvals, assignments, confirmations, and attendance. A raffle may operate through claims, tickets, draws, winners, and winnings. Hidden in Plain Sight may operate through entirely different game rules. Those operational models remain owned by the emanating module and do not need to conform to a universal Guild Event lifecycle or state machine.
+
+The shared contract standardizes how the wider application understands that these different activities are Guild Events. It does not standardize what participation in them means.
+
+## Standardized event metadata enrichment
+
+Once an object satisfies the required Guild Event metadata contract, Guild Operations provides standardized optional vocabulary through which its module may enrich how consumers understand and approach it.
+
+Current enrichment concepts include:
+
+- `description` — additional human-readable understanding of the event;
+- `tags` — standardized classification or interpretation metadata;
+- `interactions` — standardized metadata describing available approaches to module-owned operation.
+
+These enrichment fields are optional to produce and optional to consume. Their absence does not make an otherwise conforming object less of a Guild Event.
+
+Their vocabulary is nevertheless contractual when used. A module may omit `interactions`, but it cannot invent an unrelated field such as `buttons` and expect generic Guild Event consumers to understand it as the shared interaction surface.
+
+The governing rule is:
+
+> **Guild Event metadata standardizes vocabulary, not completeness. Production is optional. Consumption is optional. Conformance is required when the shared vocabulary is used.**
+
+This also permits partial consumer literacy. A Calendar consumer may understand only temporal coordinates, labels, and selected enrichment. A Discord consumer may understand additional tags or interactions. An unfamiliar standardized enrichment or interaction does not invalidate the event; a consumer can ignore what it does not understand and use what it does.
+
+### Interactions as the operation seam
+
+`interactions` is where module-owned operation can meet expansion into other surfaces without moving operational authority into Guild Event machinery.
+
+An event may expose no interactions or a large interaction surface. A raid might eventually advertise concepts such as manage, join, decline, or subscribe. The exact interaction-object shape is intentionally not fixed by this discovery document; it should be earned through implementation pressure.
+
+What is already important is the authority boundary:
+
+> **Interactions may describe ways to approach module-owned operation. They do not relocate that operation into the Guild Event contract.**
+
+A consumer may learn how to present or invoke a standardized interaction without learning the originating module's entire operational model. The module remains authoritative for what the interaction means, whether it is permitted, what context it requires, and what operation follows.
+
+This allows consumers to become more capable independently. Calendar, Discord, web presentation, notifications, and future consumers can each understand as much standardized enrichment as is useful to their medium without forcing modules to reduce their event surface to the least-capable consumer.
+
+## Metadata ownership and authority
+
+The emanating module owns its Guild Event metadata as part of its authoritative state. Its own presentation and generic consumers should consult the same metadata fields rather than maintain peer copies of event-description truth.
+
+For example, a raid's authoritative `label` should be the same `label` used by the raid's own web presentation, Calendar, Discord, and any future Guild Event consumer. A module-specific `raid_title`, a copied Calendar title, and a copied Discord title representing the same fact would create unnecessary concurrent truths.
+
+The same principle applies to temporal coordinates and standardized enrichment.
+
+> **A consumer should not own a second authoritative version of an event-description fact merely because it needs that fact to render.**
+
+Consumers may express the same metadata differently because their mediums differ. Calendar may render an event spatially in time; Discord may render it as a message or component surface. Those are presentations of the same module-owned metadata, not independent ownership of the underlying facts.
+
+This minimizes authority conflicts while leaving module sovereignty intact:
+
+- the module owns what its event is and how it operates;
+- the Guild Event contract owns the shared language by which event-ness and standardized enrichment are understood;
+- consumers decide which parts of that language they can use;
+- no consumer becomes authoritative merely by presenting the event.
+
+The resulting balance is intentional:
+
+> **Guild Operations defines what it means for an activity to be understood uniformly as a Guild Event. The emanating module defines what that Guild Event means to operate and participate in.**
+
 ## Why this discovery matters
 
 Guild participation takes many forms. Raids, housing competitions, fashion shows, raffles, scavenger hunts, achievement runs, Mythic+ groups, guild photos, and other activities can have very different rules and outcomes.
