@@ -19,6 +19,8 @@ export type AssetName =
   | "admin.js"
   | "discord-admin.js"
   | "operations.js"
+  | "group-coordinator.css"
+  | "group-coordinator.js"
   | "raffle.css"
   | "raffle-admin.css"
   | "raffle-admin-overview.css"
@@ -47,6 +49,7 @@ const assetDefinitions: Array<{ name: AssetName; contentType: string }> = [
   { name: "events.css", contentType: "text/css; charset=utf-8" },
   { name: "site-information.css", contentType: "text/css; charset=utf-8" },
   { name: "admin.css", contentType: "text/css; charset=utf-8" },
+  { name: "group-coordinator.css", contentType: "text/css; charset=utf-8" },
   { name: "raffle.css", contentType: "text/css; charset=utf-8" },
   { name: "raffle-admin.css", contentType: "text/css; charset=utf-8" },
   { name: "raffle-admin-overview.css", contentType: "text/css; charset=utf-8" },
@@ -57,6 +60,7 @@ const assetDefinitions: Array<{ name: AssetName; contentType: string }> = [
   { name: "admin.js", contentType: "text/javascript; charset=utf-8" },
   { name: "discord-admin.js", contentType: "text/javascript; charset=utf-8" },
   { name: "operations.js", contentType: "text/javascript; charset=utf-8" },
+  { name: "group-coordinator.js", contentType: "text/javascript; charset=utf-8" },
   { name: "raffle.js", contentType: "text/javascript; charset=utf-8" },
   { name: "raffle-entry.js", contentType: "text/javascript; charset=utf-8" },
   { name: "raffle-public.js", contentType: "text/javascript; charset=utf-8" },
