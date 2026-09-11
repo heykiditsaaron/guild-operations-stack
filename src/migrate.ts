@@ -19,6 +19,7 @@ const migrationFiles = [
   "014_raffle_entry_vocabulary.sql",
   "015_discord_module.sql",
   "016_discord_role_map_enablement.sql",
+  "017_group_coordinator.sql",
 ];
 
 for (const migrationFile of migrationFiles) {
