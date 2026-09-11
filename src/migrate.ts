@@ -20,6 +20,7 @@ const migrationFiles = [
   "015_discord_module.sql",
   "016_discord_role_map_enablement.sql",
   "017_group_coordinator.sql",
+  "018_group_coordinator_composition.sql",
 ];
 
 for (const migrationFile of migrationFiles) {
