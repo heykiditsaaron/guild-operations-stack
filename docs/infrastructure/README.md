@@ -15,6 +15,7 @@ Use these documents when implementing against an existing facility, operating it
 
 ## Shared participation infrastructure
 
+- [`group-coordinator.md`](group-coordinator.md) — reusable organizer-demand, applicant-supply, and assignment machinery for modules that need to assemble groups.
 - [`guild-event-discovery.md`](guild-event-discovery.md) — enduring Offering and temporal Calendar Listing contracts used by Guild Event discovery.
 
 ## Application infrastructure
