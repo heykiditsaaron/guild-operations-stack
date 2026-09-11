@@ -72,6 +72,29 @@ The Guild Event contract describes a temporal occurrence. Group Coordinator desc
 
 Calendar, Discord, notifications, and other future consumers remain downstream presentation or interaction surfaces over authoritative state. Group Coordinator should not register coordination truth into a second authoritative listing merely for discovery.
 
+## Coordination instances
+
+Group Coordinator operates durable coordination instances.
+
+> **A Coordination is one durable instance of organizer-authored demand, applicant-authored supply, and their reconciliation through assignment.**
+
+A Coordination has its own identity so a consuming module can create one, retain its identifier, and call Group Coordinator to operate it. The consumer owns why that Coordination exists. Group Coordinator owns the coordination state itself.
+
+Conceptually:
+
+```text
+Group Coordinator
+└── Coordination
+    ├── organizers
+    ├── demand
+    ├── offers
+    └── assignments
+```
+
+A consumer may hold a reference such as a `coordination_id`, but Group Coordinator does not need to store `raid_id`, `event_id`, `module_type`, or another reverse reference merely to know why it was created.
+
+One Coordination represents one coherent coordination effort. Consumers may create additional Coordinations when an activity genuinely contains multiple independent groups.
+
 ## Coordination stages
 
 Group formation can be understood through ordinary stages:
@@ -117,22 +140,54 @@ Applicant eligibility answers exactly one question:
 
 > **Who is allowed to submit an offer?**
 
-It is a meta-level access boundary over supply creation.
+It constrains applicants, not Applications.
 
-Applicant eligibility does not answer:
+The initial eligibility vocabulary is:
 
+```text
+guild_character
+guildie
+anyone
+```
+
+These modes establish increasingly broad populations that may enter the application process.
+
+#### `guild_character`
+
+The applicant must control at least one Character that is currently on the guild roster.
+
+This is useful for activities whose participation population should be rooted specifically in current guild Characters, such as guild Character achievement runs or guild Character key runs.
+
+Qualifying through this boundary does not constrain the Application to the qualifying Character. Once admitted, the applicant still authors the supply they choose to offer.
+
+#### `guildie`
+
+The applicant must be a current Guildie: a Subject whose controlled Characters intersect the current guild roster according to the established member model.
+
+This is useful when the activity belongs to guild members as people rather than specifically to guild-roster Characters. A Guildie may therefore participate while offering context involving another controlled Character, including an off-guild alt, when the consuming activity supports that offer shape.
+
+#### `anyone`
+
+Guild membership is not required to enter the application process.
+
+This supports activities that may legitimately need participation outside the guild population, such as a progression raid that may need pugs. The concrete identity ceremony for an applicant who is not already known to Guild Operations must preserve the existing rule: project known identity when it exists, and do not manufacture Guildie identity when it does not.
+
+The critical invariant across all three modes is:
+
+> **Applicant eligibility constrains applicants. It does not shape Applications.**
+
+Eligibility therefore does not answer:
+
+- which Character an admitted applicant may offer;
+- which class, specialization, role, or other payload they may submit;
 - what the group currently needs;
 - whether an offer fits an Opportunity;
 - whether an offer advances a Goal;
 - whether the organizer is likely to assign it.
 
-Once an applicant passes this gate, the content of their offer belongs to them.
+Those are downstream concerns. Once the applicant passes the configured eligibility boundary, the Application remains applicant-authored supply.
 
-Concrete activity modules may expose different useful eligibility choices. The Group Coordinator should provide the common mechanism without inventing a speculative rules language. Exact eligibility vocabulary should be introduced only when real consumers need it.
-
-The invariant is:
-
-> **Applicant eligibility is the only organizer-authored gate controlling whether supply may be offered. Once admitted, the applicant authors the supply.**
+The eligibility modes should be implemented as explicit, understandable policies rather than a generalized eligibility-expression language. Additional modes should be added only when a real coordination activity proves another applicant population is necessary.
 
 ### Opportunities
 
@@ -162,11 +217,48 @@ Submitting a compatible offer does not reserve, consume, or fill an Opportunity.
 
 Opportunity quantity may be bounded or unlimited when the consuming activity permits it. Capacity should follow from the expressed demand rather than being authored as a second independent fact.
 
-The exact Opportunity vocabulary belongs to the consuming activity or a trustworthy domain vocabulary it uses. Group Coordinator should not hard-code Raid-specific shapes merely because Raid is an early consumer.
+### Spec registry and coordination capabilities
+
+Group Coordinator owns a curated registry of WoW specializations for coordination purposes.
+
+The registry associates a specialization with its coordination role and useful capability tags. For example:
+
+```text
+Fire Mage
+├── role: damage
+└── capability tags
+    ├── lust
+    ├── magic_damage
+    ├── ranged
+    ├── curse_dispel
+    └── intellect_buff
+```
+
+These capability tags are Guild Operations coordination classifications. They are not Blizzard-authored facts merely because they describe WoW gameplay. Blizzard may author the observed fact that a Character is a Fire Mage; Group Coordinator owns the curated classification of Fire Mage as providing the coordination capabilities above.
+
+The registry is available intelligence, not mandatory ceremony. A Coordination with no Goals may never consult most capability tags. Consumers that need only simple group composition can ignore them.
+
+The registry should be extensible as concrete coordination needs emerge. New capability tags should be added because a real activity needs to reason about that distinction, not because Guild Operations is attempting to model every mechanical property in World of Warcraft.
+
+The governing relationship is:
+
+```text
+Spec registry
+    ↓
+describes available coordination capabilities
+
+Goals
+    ↓
+select which capabilities matter to this Coordination
+
+Assignments
+    ↓
+determine actual coverage from assigned offers
+```
 
 ### Goals
 
-Goals express desired aggregate properties of the assembled group.
+Goals express desired aggregate properties of the assembled group by selecting coordination capabilities that matter to this Coordination.
 
 Examples from a WoW combat-oriented consumer might include:
 
@@ -176,7 +268,7 @@ battle_res >= 1
 ranged >= 6
 ```
 
-Nothing is assigned to a Goal. Goals are evaluated over current Assignments and the properties brought by the assigned offers.
+Nothing is assigned to a Goal. Goals are evaluated over current Assignments and the registered capabilities brought by the assigned offers.
 
 Goals are informational during application and consequential during assignment. An applicant may see an unmet Goal and voluntarily offer supply that helps satisfy it. The system must not require them to do so.
 
@@ -184,7 +276,7 @@ At assignment time, the coordinator may calculate how a proposed Assignment affe
 
 > **Show the consequences. Let the organizer decide.**
 
-Goals are optional. Consumers that do not need aggregate composition evaluation should not inherit unnecessary complexity.
+Goals are optional. If no Goals are configured, capability tags simply do not affect Goal evaluation. Consumers that do not need aggregate composition evaluation should not inherit unnecessary complexity.
 
 ### Presets
 
@@ -208,25 +300,19 @@ The application surface may show the organizer's demand for context, but it must
 
 An offer may still be validated for its own structural coherence or authoritative facts. That is different from validating it against organizer demand.
 
-For example, if a consumer accepts a declared WoW class and specialization, Group Coordinator may rely on the consumer's trustworthy domain geometry to establish that the specialization belongs to the class. That validation says the offer is coherent; it does not say the organizer needs it.
+### Offer shape
 
-### Offer shape belongs to the consumer
+Group Coordinator may support different useful offer forms without requiring every Coordination to use every form.
 
-Group Coordinator must not assume every offer is a WoW Character or class/spec combination.
-
-A Raid or Key Listing consumer may expose playable offers. A Fashion Show may need a Character but no specialization. Another activity may only need a participant identity and a general offer.
-
-The consuming module defines the meaningful offer payload. Group Coordinator owns the common supply lifecycle and relationship to assignments.
-
-For WoW-oriented consumers, two useful offer forms have already emerged:
+For WoW-oriented coordination, two useful offer forms have emerged:
 
 ```text
 Character-backed offer
 └── Character
-    ├── class            derived from authoritative Character facts
-    ├── specialization   derived according to the consumer's authoritative rules
-    ├── role             derived
-    └── traits           derived
+    ├── class            known from Character facts
+    ├── specialization   established by the offer/known state
+    ├── role             classified by the spec registry
+    └── capabilities     classified by the spec registry
 ```
 
 and:
@@ -235,11 +321,11 @@ and:
 Declared offer
 ├── class
 ├── specialization
-├── role                 derived
-└── traits               derived
+├── role                 classified by the spec registry
+└── capabilities         classified by the spec registry
 ```
 
-These are not universal Group Coordinator fields. They are useful payloads supplied by WoW-oriented consumers.
+A simpler activity may need only participant identity or Character context and may ignore specialization capabilities entirely.
 
 Known identity should remain known. If Guild Operations can resolve an applicant to a Guildie, broader participation eligibility should not erase that relationship. Conversely, infrastructure must not manufacture a Guildie or Character identity when it does not possess that authority.
 
@@ -291,7 +377,9 @@ Assignment answers the downstream questions that deliberately do not belong to a
 - What Goals would the Assignment satisfy or advance?
 - Does the organizer actually want to make this placement?
 
-The coordinator may calculate fit and consequences. The organizer retains composition judgment unless the consuming activity explicitly establishes an automatic assignment policy.
+For WoW spec-backed offers, the spec registry gives Group Coordinator enough shared vocabulary to evaluate basic role fit and Goal contribution without requiring the consuming module to recreate those classifications.
+
+The coordinator calculates fit and consequences. The organizer retains composition judgment unless the consuming activity explicitly establishes an automatic assignment policy.
 
 A useful boundary is:
 
@@ -357,7 +445,7 @@ Battle Res                     unmet
 Ranged                         5 / 6
 ```
 
-The exact rendering belongs to the consumer or shared presentation facilities, but the underlying relationship belongs to Group Coordinator.
+Goal coverage is derived from current Assignments and the spec registry rather than persisted as a second authoritative fact.
 
 At the point of assignment, the coordinator may also expose calculated consequences:
 
@@ -382,15 +470,17 @@ Group Coordinator should provide a clean handoff from assembled plan to activity
 
 Someone may offer without being assigned, be assigned and fail to participate, or participate after a legitimate real-world substitution. Consumers should remain able to preserve those distinctions.
 
-## Identity and authority
+## Identity and organizer authority
 
 Group Coordinator operates over Guild Operations identity and authority; it does not replace them.
 
 A Guildie remains a durable actor. A Character, class, specialization, role, or other activity payload may describe offered participation without becoming identity.
 
-The consuming activity is responsible for supplying the identity context and authoritative domain facts required by its offers. Group Coordinator should preserve those references and apply coordination rules without becoming an alternate owner of Blizzard or Guildie truth.
+The consuming activity determines whether an actor is authorized to create the activity and therefore invoke creation of its Coordination. Group Coordinator should not invent a global right to create every kind of coordinated activity merely because it provides the reusable machinery.
 
-Organizer authority must likewise come from existing Guild Operations capability and activity-authority machinery. Group Coordinator may enforce that only an authorized organizer can author demand or assignments, but it should not manufacture authority simply because it owns the procedure.
+A Coordination may retain one or more organizers established by its caller. Once established, Group Coordinator can use that relationship to enforce organizer operations such as authoring demand and making Assignments without needing to know what kind of activity owns the Coordination.
+
+The exact organizer mutation/delegation contract remains to be settled before implementation. In particular, the ability for one organizer to grant organizer authority to another should not be assumed merely because multiple organizers are structurally possible.
 
 ## Infrastructure invariants
 
@@ -398,17 +488,20 @@ The implementation should preserve these invariants:
 
 1. Organizer authors demand.
 2. Applicant authors supply.
-3. Applicant eligibility only determines who may offer.
-4. Demand may inform supply but must not constrain it.
-5. Offers do not target or consume Opportunities.
-6. Assignment is the reconciliation operation between demand and supply.
-7. Goals evaluate the assembled group; they do not gate offers.
-8. Application and assignment may proceed concurrently.
-9. Unassigned supply has no inherent meaning beyond being unassigned.
-10. Group Coordinator calculates structural consequences without manufacturing organizer judgment.
-11. Activity-specific offer payloads and participation semantics remain activity-owned.
-12. Group Coordinator owns coordination truth once a consumer invokes it; consumers should not maintain peer copies of the same coordination facts.
-13. Group Coordinator is infrastructure, not an activity module and not a generic workflow engine.
+3. Applicant eligibility constrains applicants, not Applications.
+4. `guild_character`, `guildie`, and `anyone` are distinct applicant-population boundaries.
+5. Demand may inform supply but must not constrain it.
+6. Offers do not target or consume Opportunities.
+7. Assignment is the reconciliation operation between demand and supply.
+8. Goals evaluate the assembled group; they do not gate offers.
+9. Spec capability tags are curated Group Coordinator classifications, not Blizzard-authored facts.
+10. Capability tags matter only when a Coordination uses Goals that reference them.
+11. Application and assignment may proceed concurrently.
+12. Unassigned supply has no inherent meaning beyond being unassigned.
+13. Group Coordinator calculates structural consequences without manufacturing organizer judgment.
+14. Activity-specific participation semantics remain activity-owned.
+15. Group Coordinator owns coordination truth once a consumer invokes it; consumers should not maintain peer copies of the same coordination facts.
+16. Group Coordinator is infrastructure, not an activity module and not a generic workflow engine.
 
 ## Implementation pressure test
 
