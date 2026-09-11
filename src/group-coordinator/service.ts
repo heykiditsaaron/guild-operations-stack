@@ -75,12 +75,37 @@ async function isCurrentGuildCharacter(
   return Boolean(result.rowCount);
 }
 
-async function guildieControlsCharacter(client: PoolClient, guildieId: string, characterRecordId: string): Promise<boolean> {
-  const result = await client.query(
-    `SELECT 1 FROM characters WHERE character_record_id = $1 AND guildie_id = $2 AND currently_controlled = true`,
+type ControlledCharacterOfferFacts = {
+  className: string | null;
+  activeSpecName: string | null;
+};
+
+async function controlledCharacterOfferFacts(
+  client: PoolClient,
+  guildieId: string,
+  characterRecordId: string,
+): Promise<ControlledCharacterOfferFacts | null> {
+  const result = await client.query<{
+    class_name: string | null;
+    active_spec_name: string | null;
+  }>(
+    `SELECT wcp.class_name, wcp.active_spec_name
+       FROM characters c
+       LEFT JOIN wow_character_profiles wcp
+         ON wcp.region = c.region
+        AND wcp.realm_id = c.realm_id
+        AND wcp.character_id = c.character_id
+      WHERE c.character_record_id = $1
+        AND c.guildie_id = $2
+        AND c.currently_controlled = true`,
     [characterRecordId, guildieId],
   );
-  return Boolean(result.rowCount);
+
+  if (!result.rowCount) return null;
+  return {
+    className: result.rows[0].class_name,
+    activeSpecName: result.rows[0].active_spec_name,
+  };
 }
 
 export async function createCoordination(input: {
@@ -203,13 +228,6 @@ export async function submitOffer(input: {
   specName?: string | null;
   payload?: Record<string, unknown>;
 }): Promise<string> {
-  const hasClass = Boolean(input.className);
-  const hasSpec = Boolean(input.specName);
-  if (hasClass !== hasSpec) throw new Error("Class and specialization must be supplied together");
-  if (input.className && input.specName && !getSpecDefinition(input.className, input.specName)) {
-    throw new Error("Unknown class/specialization combination");
-  }
-
   return withTransaction(async (client) => {
     const applicant = await client.query<{ coordination_id: string; guildie_id: string | null }>(
       `SELECT coordination_id, guildie_id FROM coordination_applicants WHERE applicant_id = $1`,
@@ -219,11 +237,33 @@ export async function submitOffer(input: {
       throw new Error("Applicant does not belong to this Coordination");
     }
 
+    let className = input.className ?? null;
+    let specName = input.specName ?? null;
+
     if (input.characterRecordId) {
       const guildieId = applicant.rows[0].guildie_id;
-      if (!guildieId || !(await guildieControlsCharacter(client, guildieId, input.characterRecordId))) {
-        throw new Error("Offered Character is not currently controlled by the applicant");
+      if (!guildieId) throw new Error("Character-backed offers require a known Guildie applicant");
+
+      const character = await controlledCharacterOfferFacts(client, guildieId, input.characterRecordId);
+      if (!character) throw new Error("Offered Character is not currently controlled by the applicant");
+
+      if (character.className) {
+        if (className && className !== character.className) {
+          throw new Error("Declared class does not match the offered Character");
+        }
+        className = character.className;
+        specName = specName ?? character.activeSpecName;
       }
+
+      if (!className || !specName) {
+        throw new Error("Character class and specialization must be declared when they are not available from Blizzard Character profile state");
+      }
+    } else if (!className || !specName) {
+      throw new Error("Declared offers require class and specialization");
+    }
+
+    if (!getSpecDefinition(className, specName)) {
+      throw new Error("Unknown class/specialization combination");
     }
 
     const result = await client.query<{ offer_id: string }>(
@@ -235,8 +275,8 @@ export async function submitOffer(input: {
         input.coordinationId,
         input.applicantId,
         input.characterRecordId ?? null,
-        input.className ?? null,
-        input.specName ?? null,
+        className,
+        specName,
         JSON.stringify(input.payload ?? {}),
       ],
     );
@@ -306,8 +346,8 @@ export async function assignOffer(input: {
 
     const requiredRole = opportunity.rows[0].required_role;
     if (requiredRole) {
-      const { class_name: className, spec_name: specName } = offer.rows[0];
-      const definition = className && specName ? getSpecDefinition(className, specName) : null;
+      const { class_name: offerClassName, spec_name: offerSpecName } = offer.rows[0];
+      const definition = offerClassName && offerSpecName ? getSpecDefinition(offerClassName, offerSpecName) : null;
       if (!definition || definition.role !== requiredRole) {
         throw new Error(`Offer does not satisfy required role: ${requiredRole}`);
       }
