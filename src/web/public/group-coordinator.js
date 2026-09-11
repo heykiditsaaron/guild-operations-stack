@@ -17,6 +17,8 @@ for (const form of document.querySelectorAll('[data-coordinator-form]')) {
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     const status = form.querySelector('[data-coordinator-status]');
+    const controls = [...form.querySelectorAll('button, input, select')];
+    for (const control of controls) control.disabled = true;
     if (status) status.textContent = 'Saving…';
     try {
       const data = formDataObject(form);
@@ -25,6 +27,7 @@ for (const form of document.querySelectorAll('[data-coordinator-form]')) {
       else window.location.reload();
     } catch (error) {
       if (status) status.textContent = error instanceof Error ? error.message : String(error);
+      for (const control of controls) control.disabled = false;
     }
   });
 }
