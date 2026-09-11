@@ -75,9 +75,14 @@ const DEFINITIONS: readonly SpecDefinition[] = [
 ];
 
 const BY_KEY = new Map(DEFINITIONS.map((definition) => [`${definition.className}:${definition.specName}`, definition]));
+const CAPABILITY_TAGS = [...new Set(DEFINITIONS.flatMap((definition) => definition.tags))].sort();
 
 export function allSpecDefinitions(): readonly SpecDefinition[] {
   return DEFINITIONS;
+}
+
+export function allCapabilityTags(): readonly string[] {
+  return CAPABILITY_TAGS;
 }
 
 export function getSpecDefinition(className: string, specName: string): SpecDefinition | null {
