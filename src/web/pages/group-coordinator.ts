@@ -161,7 +161,8 @@ function capabilityLabel(tag: string): string {
 }
 
 function offerIdentity(offer: OfferRow): string {
-  return offer.character_name ?? offer.external_label ?? [offer.spec_name, offer.class_name].filter(Boolean).join(" ") || "Declared offer";
+  const declared = [offer.spec_name, offer.class_name].filter(Boolean).join(" ");
+  return offer.character_name ?? offer.external_label ?? (declared || "Declared offer");
 }
 
 function offerMeta(offer: OfferRow): string {
