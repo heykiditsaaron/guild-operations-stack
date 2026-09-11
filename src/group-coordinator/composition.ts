@@ -33,6 +33,32 @@ export async function addCoordinationRoleSlot(input: {
 }): Promise<string> {
   return withTransaction(async (client) => {
     await requireOrganizer(client, input.coordinationId, input.actorGuildieId);
+
+    const existing = await client.query<{ opportunity_id: string; quantity: number | null }>(
+      `SELECT opportunity_id, quantity
+         FROM coordination_opportunities
+        WHERE coordination_id = $1
+          AND required_role = $2
+          AND removed_at_unix IS NULL
+        ORDER BY created_at_unix, opportunity_id
+        LIMIT 1
+        FOR UPDATE`,
+      [input.coordinationId, input.role],
+    );
+
+    if (existing.rowCount) {
+      const opportunityId = existing.rows[0].opportunity_id;
+      const quantity = existing.rows[0].quantity;
+      if (quantity === null) return opportunityId;
+      await client.query(
+        `UPDATE coordination_opportunities
+            SET quantity = quantity + 1
+          WHERE opportunity_id = $1`,
+        [opportunityId],
+      );
+      return opportunityId;
+    }
+
     const key = `role:${input.role}`;
     const label = roleLabel(input.role);
     const result = await client.query<{ opportunity_id: string }>(
@@ -41,11 +67,7 @@ export async function addCoordinationRoleSlot(input: {
        ) VALUES ($1, $2, $3, $4, 1)
        ON CONFLICT (coordination_id, key)
        DO UPDATE SET
-         quantity = CASE
-           WHEN coordination_opportunities.removed_at_unix IS NULL
-             THEN COALESCE(coordination_opportunities.quantity, 0) + 1
-           ELSE 1
-         END,
+         quantity = 1,
          label = EXCLUDED.label,
          required_role = EXCLUDED.required_role,
          removed_at_unix = NULL
