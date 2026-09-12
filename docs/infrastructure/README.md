@@ -16,6 +16,7 @@ Use these documents when implementing against an existing facility, operating it
 ## Shared participation infrastructure
 
 - [`guild-event-discovery.md`](guild-event-discovery.md) — enduring Offering and temporal Calendar Listing contracts used by Guild Event discovery.
+- [`wow-trait-index.md`](wow-trait-index.md) — game-authored class/spec capability registry for high-visibility group evaluation.
 
 ## Application infrastructure
 
