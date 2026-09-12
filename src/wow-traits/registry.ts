@@ -8,14 +8,20 @@ export type WowTrait =
   | "armor.plate"
   | "buff.arcane_intellect"
   | "buff.battle_shout"
+  | "buff.blessing_of_the_bronze"
+  | "buff.chaos_brand"
+  | "buff.devotion_aura"
+  | "buff.mark_of_the_wild"
   | "buff.mystic_touch"
   | "buff.power_word_fortitude"
+  | "buff.skyfury"
   | "effect.bloodlust"
   | "effect.combat_resurrection"
   | "dispel.harm.magic"
   | "dispel.harm.curse"
   | "dispel.harm.poison"
   | "dispel.harm.disease"
+  | "dispel.harm.bleed"
   | "dispel.help.magic"
   | "dispel.help.enrage"
   | "control.interrupt"
@@ -36,19 +42,144 @@ export type WowSpecTraitDefinition = {
 };
 
 const classTraits: readonly WowClassTraitDefinition[] = [
-  { className: "Death Knight", traits: ["armor.plate", "control.interrupt"] },
-  { className: "Demon Hunter", traits: ["armor.leather", "control.interrupt"] },
-  { className: "Druid", traits: ["armor.leather", "effect.combat_resurrection", "control.root"] },
-  { className: "Evoker", traits: ["armor.mail", "effect.bloodlust", "control.interrupt"] },
-  { className: "Hunter", traits: ["armor.mail", "effect.bloodlust", "dispel.help.magic", "dispel.help.enrage", "control.interrupt", "control.root"] },
-  { className: "Mage", traits: ["armor.cloth", "buff.arcane_intellect", "effect.bloodlust", "dispel.harm.curse", "control.interrupt", "control.root", "control.incapacitate"] },
-  { className: "Monk", traits: ["armor.leather", "buff.mystic_touch", "control.interrupt", "control.stun", "control.incapacitate"] },
-  { className: "Paladin", traits: ["armor.plate", "effect.combat_resurrection", "control.interrupt", "control.stun"] },
-  { className: "Priest", traits: ["armor.cloth", "buff.power_word_fortitude", "dispel.harm.magic", "dispel.help.magic", "control.fear"] },
-  { className: "Rogue", traits: ["armor.leather", "dispel.help.enrage", "control.interrupt", "control.stun", "control.incapacitate"] },
-  { className: "Shaman", traits: ["armor.mail", "effect.bloodlust", "dispel.help.magic", "control.interrupt", "control.stun"] },
-  { className: "Warlock", traits: ["armor.cloth", "effect.combat_resurrection", "control.interrupt", "control.fear", "control.stun"] },
-  { className: "Warrior", traits: ["armor.plate", "buff.battle_shout", "control.interrupt", "control.stun", "control.fear"] },
+  {
+    className: "Death Knight",
+    traits: ["armor.plate", "effect.combat_resurrection", "control.interrupt", "control.stun"],
+  },
+  {
+    className: "Demon Hunter",
+    traits: [
+      "armor.leather",
+      "buff.chaos_brand",
+      "dispel.help.magic",
+      "control.interrupt",
+      "control.stun",
+      "control.incapacitate",
+    ],
+  },
+  {
+    className: "Druid",
+    traits: [
+      "armor.leather",
+      "buff.mark_of_the_wild",
+      "effect.combat_resurrection",
+      "dispel.harm.curse",
+      "dispel.harm.poison",
+      "dispel.help.enrage",
+      "control.root",
+    ],
+  },
+  {
+    className: "Evoker",
+    traits: [
+      "armor.mail",
+      "buff.blessing_of_the_bronze",
+      "effect.bloodlust",
+      "dispel.harm.bleed",
+      "dispel.help.enrage",
+      "control.interrupt",
+      "control.stun",
+      "control.root",
+    ],
+  },
+  {
+    className: "Hunter",
+    traits: [
+      "armor.mail",
+      "effect.bloodlust",
+      "dispel.help.magic",
+      "dispel.help.enrage",
+      "control.interrupt",
+      "control.stun",
+      "control.root",
+    ],
+  },
+  {
+    className: "Mage",
+    traits: [
+      "armor.cloth",
+      "buff.arcane_intellect",
+      "effect.bloodlust",
+      "dispel.harm.curse",
+      "control.interrupt",
+      "control.root",
+      "control.incapacitate",
+    ],
+  },
+  {
+    className: "Monk",
+    traits: [
+      "armor.leather",
+      "buff.mystic_touch",
+      "dispel.harm.poison",
+      "dispel.harm.disease",
+      "dispel.help.enrage",
+      "control.interrupt",
+      "control.stun",
+      "control.incapacitate",
+    ],
+  },
+  {
+    className: "Paladin",
+    traits: [
+      "armor.plate",
+      "buff.devotion_aura",
+      "effect.combat_resurrection",
+      "dispel.harm.poison",
+      "dispel.harm.disease",
+      "control.interrupt",
+      "control.stun",
+    ],
+  },
+  {
+    className: "Priest",
+    traits: [
+      "armor.cloth",
+      "buff.power_word_fortitude",
+      "dispel.harm.magic",
+      "dispel.harm.disease",
+      "dispel.help.magic",
+      "control.fear",
+    ],
+  },
+  {
+    className: "Rogue",
+    traits: [
+      "armor.leather",
+      "dispel.help.enrage",
+      "control.interrupt",
+      "control.stun",
+      "control.incapacitate",
+    ],
+  },
+  {
+    className: "Shaman",
+    traits: [
+      "armor.mail",
+      "buff.skyfury",
+      "effect.bloodlust",
+      "dispel.harm.curse",
+      "dispel.help.magic",
+      "control.interrupt",
+      "control.stun",
+      "control.root",
+    ],
+  },
+  {
+    className: "Warlock",
+    traits: [
+      "armor.cloth",
+      "effect.combat_resurrection",
+      "dispel.help.magic",
+      "control.interrupt",
+      "control.fear",
+      "control.stun",
+    ],
+  },
+  {
+    className: "Warrior",
+    traits: ["armor.plate", "buff.battle_shout", "control.interrupt", "control.stun", "control.fear"],
+  },
 ];
 
 const specTraits: readonly WowSpecTraitDefinition[] = [
@@ -61,7 +192,7 @@ const specTraits: readonly WowSpecTraitDefinition[] = [
   { className: "Druid", specName: "Balance", traits: ["role.damage"] },
   { className: "Druid", specName: "Feral", traits: ["role.damage"] },
   { className: "Druid", specName: "Guardian", traits: ["role.tank"] },
-  { className: "Druid", specName: "Restoration", traits: ["role.healer", "dispel.harm.magic", "dispel.harm.curse", "dispel.harm.poison"] },
+  { className: "Druid", specName: "Restoration", traits: ["role.healer", "dispel.harm.magic"] },
   { className: "Evoker", specName: "Devastation", traits: ["role.damage"] },
   { className: "Evoker", specName: "Preservation", traits: ["role.healer", "dispel.harm.magic", "dispel.harm.poison"] },
   { className: "Evoker", specName: "Augmentation", traits: ["role.damage"] },
@@ -72,20 +203,20 @@ const specTraits: readonly WowSpecTraitDefinition[] = [
   { className: "Mage", specName: "Fire", traits: ["role.damage"] },
   { className: "Mage", specName: "Frost", traits: ["role.damage"] },
   { className: "Monk", specName: "Brewmaster", traits: ["role.tank"] },
-  { className: "Monk", specName: "Mistweaver", traits: ["role.healer", "dispel.harm.magic", "dispel.harm.poison", "dispel.harm.disease"] },
+  { className: "Monk", specName: "Mistweaver", traits: ["role.healer", "dispel.harm.magic"] },
   { className: "Monk", specName: "Windwalker", traits: ["role.damage"] },
-  { className: "Paladin", specName: "Holy", traits: ["role.healer", "dispel.harm.magic", "dispel.harm.poison", "dispel.harm.disease"] },
+  { className: "Paladin", specName: "Holy", traits: ["role.healer", "dispel.harm.magic"] },
   { className: "Paladin", specName: "Protection", traits: ["role.tank"] },
   { className: "Paladin", specName: "Retribution", traits: ["role.damage"] },
-  { className: "Priest", specName: "Discipline", traits: ["role.healer", "dispel.harm.disease"] },
-  { className: "Priest", specName: "Holy", traits: ["role.healer", "dispel.harm.disease"] },
-  { className: "Priest", specName: "Shadow", traits: ["role.damage", "dispel.harm.disease"] },
+  { className: "Priest", specName: "Discipline", traits: ["role.healer"] },
+  { className: "Priest", specName: "Holy", traits: ["role.healer"] },
+  { className: "Priest", specName: "Shadow", traits: ["role.damage"] },
   { className: "Rogue", specName: "Assassination", traits: ["role.damage"] },
   { className: "Rogue", specName: "Outlaw", traits: ["role.damage"] },
   { className: "Rogue", specName: "Subtlety", traits: ["role.damage"] },
   { className: "Shaman", specName: "Elemental", traits: ["role.damage"] },
   { className: "Shaman", specName: "Enhancement", traits: ["role.damage"] },
-  { className: "Shaman", specName: "Restoration", traits: ["role.healer", "dispel.harm.magic", "dispel.harm.curse"] },
+  { className: "Shaman", specName: "Restoration", traits: ["role.healer", "dispel.harm.magic"] },
   { className: "Warlock", specName: "Affliction", traits: ["role.damage"] },
   { className: "Warlock", specName: "Demonology", traits: ["role.damage"] },
   { className: "Warlock", specName: "Destruction", traits: ["role.damage"] },
