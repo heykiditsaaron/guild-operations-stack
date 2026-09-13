@@ -30,16 +30,10 @@ export type RaidEventFacts = {
 };
 
 async function resolveApplicantGuildie(anchor: RaidApplicantAnchor): Promise<string | null> {
-  if (anchor.kind === "guildie") {
-    const result = await pool.query<{ guildie_id: string }>(
-      "SELECT guildie_id FROM guildies WHERE guildie_id = $1",
-      [anchor.value],
-    );
-    return result.rows[0]?.guildie_id ?? null;
-  }
+  if (anchor.kind !== "guildie") return null;
 
   const result = await pool.query<{ guildie_id: string }>(
-    "SELECT guildie_id FROM discord_associations WHERE discord_user_id = $1",
+    "SELECT guildie_id FROM guildies WHERE guildie_id = $1",
     [anchor.value],
   );
   return result.rows[0]?.guildie_id ?? null;
