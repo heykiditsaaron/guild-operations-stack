@@ -5,7 +5,7 @@ export type RaidRole = "tank" | "healer" | "damage";
 
 export type RaidApplicantAnchor =
   | { kind: "guildie"; value: string }
-  | { kind: "discord_user"; value: string };
+  | { kind: "external"; value: string };
 
 export type RaidCharacterReference = {
   region: string;
