@@ -1,0 +1,52 @@
+.raid-admin-form {
+  display: grid;
+  gap: 1rem;
+  max-width: 42rem;
+}
+
+.raid-admin-form label {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.raid-admin-form input,
+.raid-admin-form select,
+.raid-admin-form textarea {
+  width: 100%;
+}
+
+.raid-admin-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.raid-admin-item {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--border-subtle, currentColor);
+}
+
+.raid-admin-item:first-child {
+  border-top: 0;
+}
+
+.raid-admin-item h3,
+.raid-admin-item p {
+  margin: 0;
+}
+
+.raid-admin-item dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0;
+}
+
+.raid-admin-item dt {
+  font-weight: 700;
+}
+
+.raid-admin-item dd {
+  margin: 0;
+}
