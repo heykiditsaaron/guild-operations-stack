@@ -5,6 +5,7 @@ export type GuildCapability = string;
 
 export const GUILD_REFRESH_CAPABILITY = "guild.refresh";
 export const OPERATIONS_INSPECT_CAPABILITY = "operations.inspect";
+export const RAID_CREATE_CAPABILITY = "raid.create";
 
 export type EffectiveGuildAuthority = {
   guildId: string;
