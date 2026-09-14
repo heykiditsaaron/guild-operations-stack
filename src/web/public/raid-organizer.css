@@ -10,7 +10,12 @@
 .raid-role-icon-tank { background-image: var(--raid-role-tank-icon); }
 .raid-role-icon-healer { background-image: var(--raid-role-healer-icon); }
 .raid-role-icon-damage { background-image: var(--raid-role-damage-icon); }
-.raid-role-lane-heading h3::before, .raid-roster-diagnostics > div:nth-child(n + 2) dt::before { border-radius: 50%; background-size: cover; }
+.raid-role-lane-heading h3::before { border-radius: 50%; background-size: cover; }
+.raid-roster-diagnostics { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.raid-roster-diagnostics > div { align-items:center; }
+.raid-roster-diagnostics dt { display:flex; align-items:center; gap:.4rem; }
+.raid-roster-diagnostics dt .raid-role-icon { width:1.55rem; height:1.55rem; }
+.raid-roster-diagnostics dt::before { display:none; }
 .raid-scoreboard { margin-top: 0.85rem; padding-top: 0.7rem; border-top: 1px solid rgba(255,255,255,.07); }
 .raid-diagnostic-shelves { position: relative; z-index: 20; display: grid; gap: .45rem; }
 .raid-diagnostic-tabs { display:none; }
@@ -76,4 +81,4 @@
 .raid-pool-toggle.raid-drop-available { border-color:rgba(124,198,141,.3); }
 .raid-pool-toggle.raid-drop-active { border-color:rgba(124,198,141,.58); background:rgba(124,198,141,.09); }
 }
-@media (max-width:30rem) { .raid-role-lane:nth-child(3) .raid-role-cards { grid-template-columns:1fr; } }
+@media (max-width:30rem) { .raid-roster-diagnostics { grid-template-columns:repeat(2,minmax(0,1fr)); } .raid-role-lane:nth-child(3) .raid-role-cards { grid-template-columns:1fr; } }
