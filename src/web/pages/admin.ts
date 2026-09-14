@@ -1,15 +1,13 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
-import { guildRefreshStatus } from "../../guild-admin.js";
 import {
   GUILD_REFRESH_MINIMUM_INTERVAL_SECONDS,
   guildRefreshSchedule,
   type GuildRefreshSchedule,
 } from "../../guild-refresh-schedule.js";
 import {
-  GUILD_REFRESH_CAPABILITY,
+  GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY,
   MODULES_CONFIGURE_CAPABILITY,
-  OPERATIONS_INSPECT_CAPABILITY,
   RAID_PERMISSIONS_CAPABILITY,
   guildieHasGuildCapability,
   guildieHasGuildCapabilityOrOperator,
@@ -79,55 +77,31 @@ function renderModuleLifecycle(modules: PackagedModuleState[]): string {
   </article>`).join("\n")}</div>`;
 }
 
-function renderGuildRefresh(
-  status: Awaited<ReturnType<typeof guildRefreshStatus>>,
-  schedule: GuildRefreshSchedule,
-): string {
-  const memberCount = status
-    ? `<strong>${status.currentMemberCount.toLocaleString("en-US")}</strong><span>current members</span>`
-    : `<strong>—</strong><span>current members</span>`;
-  const lastReconciled = status
-    ? `<time data-unix-time="${status.lastReconciledAtUnix}">${status.lastReconciledAtUnix}</time>`
-    : "Not yet observed";
+function renderGuildRefreshSchedule(schedule: GuildRefreshSchedule): string {
   const nextAutomaticRefresh = schedule.nextDueAtUnix === null
     ? "Disabled"
     : `<time data-unix-time="${schedule.nextDueAtUnix}">${schedule.nextDueAtUnix}</time>`;
 
-  return `<div class="guild-refresh-admin" data-guild-refresh-admin>
-    <div class="guild-refresh-admin-heading">
-      <div>
-        <h3>Guild refresh</h3>
-        <p>Reconcile current guild membership and rank authority from Blizzard.</p>
-      </div>
-      <button type="button" class="guild-refresh-button button-primary" data-guild-refresh-button>Refresh now</button>
+  return `<form class="guild-refresh-schedule" data-guild-refresh-schedule-form>
+    <div class="guild-refresh-schedule-heading">
+      <div><h3>Automatic guild refresh</h3><p>Reconcile current guild membership and rank authority from Blizzard on a repeating cadence.</p></div>
+      <label class="switch guild-refresh-toggle">
+        <input type="checkbox" data-guild-refresh-schedule-enabled${schedule.enabled ? " checked" : ""}>
+        <span class="switch-control" aria-hidden="true"></span>
+        <span data-switch-label>${schedule.enabled ? "On" : "Off"}</span>
+      </label>
     </div>
-    <div class="guild-refresh-status">
-      <div class="guild-refresh-stat">${memberCount}</div>
-      <div class="guild-refresh-stat"><span>Last reconciled</span><strong>${lastReconciled}</strong></div>
+    <div class="guild-refresh-schedule-controls">
+      <label>
+        <span>Every</span>
+        <input type="number" min="${GUILD_REFRESH_MINIMUM_INTERVAL_SECONDS}" step="1" value="${schedule.intervalSeconds}" inputmode="numeric" data-guild-refresh-schedule-interval>
+        <span>seconds</span>
+      </label>
+      <button type="submit" class="button-primary" data-guild-refresh-schedule-save>Save</button>
     </div>
-    <p class="guild-refresh-feedback" data-guild-refresh-feedback role="status" aria-live="polite"></p>
-
-    <form class="guild-refresh-schedule" data-guild-refresh-schedule-form>
-      <div class="guild-refresh-schedule-heading">
-        <div><h4>Automatic refresh</h4><p>Run guild refresh from Guild Operations on a repeating cadence.</p></div>
-        <label class="switch guild-refresh-toggle">
-          <input type="checkbox" data-guild-refresh-schedule-enabled${schedule.enabled ? " checked" : ""}>
-          <span class="switch-control" aria-hidden="true"></span>
-          <span data-switch-label>${schedule.enabled ? "On" : "Off"}</span>
-        </label>
-      </div>
-      <div class="guild-refresh-schedule-controls">
-        <label>
-          <span>Every</span>
-          <input type="number" min="${GUILD_REFRESH_MINIMUM_INTERVAL_SECONDS}" step="1" value="${schedule.intervalSeconds}" inputmode="numeric" data-guild-refresh-schedule-interval>
-          <span>seconds</span>
-        </label>
-        <button type="submit" class="button-primary" data-guild-refresh-schedule-save>Save</button>
-      </div>
-      <div class="guild-refresh-schedule-next"><span>Next automatic refresh</span><strong data-guild-refresh-schedule-next>${nextAutomaticRefresh}</strong></div>
-      <p class="guild-refresh-schedule-feedback" data-guild-refresh-schedule-feedback role="status" aria-live="polite"></p>
-    </form>
-  </div>`;
+    <div class="guild-refresh-schedule-next"><span>Next automatic refresh</span><strong data-guild-refresh-schedule-next>${nextAutomaticRefresh}</strong></div>
+    <p class="guild-refresh-schedule-feedback" data-guild-refresh-schedule-feedback role="status" aria-live="polite"></p>
+  </form>`;
 }
 
 export async function registerAdminPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
@@ -140,18 +114,16 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       authenticatedGuildie(sessionToken),
     ]);
 
-    const [canRefreshGuild, canInspectOperations, canConfigureModules, administration] = guildie
+    const [canConfigureModules, canConfigureGuildRefreshSchedule, administration] = guildie
       ? await Promise.all([
-          guildieHasGuildCapability(guildie.guildieId, GUILD_REFRESH_CAPABILITY),
-          guildieHasGuildCapability(guildie.guildieId, OPERATIONS_INSPECT_CAPABILITY),
           guildieHasGuildCapabilityOrOperator(guildie.guildieId, MODULES_CONFIGURE_CAPABILITY),
+          guildieHasGuildCapability(guildie.guildieId, GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY),
           administrationAvailabilityForGuildie(guildie.guildieId),
         ])
-      : [false, false, false, null];
+      : [false, false, null];
 
-    const [refreshStatus, refreshSchedule, modulesState] = await Promise.all([
-      canRefreshGuild ? guildRefreshStatus() : Promise.resolve(null),
-      canRefreshGuild ? guildRefreshSchedule() : Promise.resolve(null),
+    const [refreshSchedule, modulesState] = await Promise.all([
+      canConfigureGuildRefreshSchedule ? guildRefreshSchedule() : Promise.resolve(null),
       canConfigureModules ? packagedModuleStates() : Promise.resolve([]),
     ]);
 
@@ -166,8 +138,8 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
         )
       : "";
 
-    const guildSettings = canRefreshGuild && refreshSchedule
-      ? administrationSection("guild-settings", "guild-settings-heading", "Guild settings", renderGuildRefresh(refreshStatus, refreshSchedule))
+    const guildSettings = canConfigureGuildRefreshSchedule && refreshSchedule
+      ? administrationSection("guild-settings", "guild-settings-heading", "Guild settings", renderGuildRefreshSchedule(refreshSchedule))
       : "";
 
     const discordSettings = administration?.canConfigureDiscord
@@ -188,10 +160,6 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       : `<section class="admin-unavailable" aria-labelledby="admin-unavailable-heading"><h2 id="admin-unavailable-heading">Administration is not available for this account.</h2></section>`;
     const body = `${administrationTabs("general")}${content}`;
 
-    const logUtility = canInspectOperations
-      ? '<a class="admin-header-utility" href="/admin/operations">View logs</a>'
-      : "";
-
     const html = renderPage(assets, {
       pathname: "/admin/general",
       title: "General Administration · OH CRIT I Pulled! Guild Operations",
@@ -199,7 +167,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       viewer,
       stylesheets: ["admin.css", "admin-modules.css"],
       scripts: ["admin.js", "admin-modules.js"],
-      header: `<div class="admin-page-header-row"><div class="admin-page-header"><h1 id="page-title">Administration</h1><p class="lede">Configure Guild Operations and its modules.</p></div>${logUtility}</div>`,
+      header: `<div class="admin-page-header"><h1 id="page-title">Administration</h1><p class="lede">Configure Guild Operations and its modules.</p></div>`,
       body,
     });
 
