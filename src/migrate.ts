@@ -26,6 +26,7 @@ const migrationFiles = [
   "022_raid_permission_split.sql",
   "023_raid_permission_administration.sql",
   "024_module_lifecycle.sql",
+  "025_guild_refresh_schedule_capability.sql",
 ];
 
 for (const migrationFile of migrationFiles) {
