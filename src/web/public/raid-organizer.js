@@ -17,13 +17,11 @@ if (titleBar instanceof HTMLElement && adminActions instanceof HTMLElement) {
 }
 
 if (workspaceHeading instanceof HTMLElement) workspaceHeading.remove();
-
 if (organizerGrid instanceof HTMLElement && rosterDiagnostics instanceof HTMLElement) {
   organizerGrid.insertAdjacentElement("beforebegin", rosterDiagnostics);
 }
 
 const diagnosticRoot = document.querySelector("[data-raid-diagnostics]");
-
 function closeDiagnosticShelves() {
   if (!(diagnosticRoot instanceof HTMLElement)) return;
   for (const button of diagnosticRoot.querySelectorAll("[data-raid-shelf-toggle]")) {
@@ -47,16 +45,13 @@ if (diagnosticRoot instanceof HTMLElement) {
       panel.dataset.open = "true";
     });
   }
-
   for (const button of diagnosticRoot.querySelectorAll("[data-raid-shelf-close]")) {
     if (button instanceof HTMLButtonElement) button.addEventListener("click", closeDiagnosticShelves);
   }
-
   document.addEventListener("pointerdown", (event) => {
     if (!(event.target instanceof Node) || diagnosticRoot.contains(event.target)) return;
     closeDiagnosticShelves();
   });
-
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") closeDiagnosticShelves();
   });
@@ -96,53 +91,31 @@ if (poolPanel instanceof HTMLElement && poolToggle instanceof HTMLButtonElement)
     if (event.key === "Escape") setPoolOpen(false);
   });
 
-  let poolPointer = null;
-
-  poolPanel.addEventListener("pointerdown", (event) => {
-    if (!event.isPrimary || event.button !== 0 || !(event.target instanceof Element)) return;
-    const card = event.target.closest("[data-raid-participant-card][data-assigned='false']");
-    if (!(card instanceof HTMLElement)) return;
-    poolPointer = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      collapsed: false,
-    };
-  }, true);
-
-  window.addEventListener("pointermove", (event) => {
-    if (!poolPointer || event.pointerId !== poolPointer.pointerId || poolPointer.collapsed) return;
-    if (Math.hypot(event.clientX - poolPointer.startX, event.clientY - poolPointer.startY) < 7) return;
-    poolPointer.collapsed = true;
+  let poolCollapsedForDrag = false;
+  document.addEventListener("raid:dragstart", (event) => {
+    const card = event.detail?.card;
+    if (!(card instanceof HTMLElement) || !poolPanel.contains(card)) return;
+    poolCollapsedForDrag = true;
     poolPanel.dataset.dragCollapsed = "true";
-  }, true);
+  });
 
-  function restorePoolAfterPointer(event) {
-    if (!poolPointer || event.pointerId !== poolPointer.pointerId) return;
-    const shouldRestore = poolPointer.collapsed;
-    poolPointer = null;
+  document.addEventListener("raid:dragend", () => {
+    if (!poolCollapsedForDrag) return;
+    poolCollapsedForDrag = false;
     delete poolPanel.dataset.dragCollapsed;
-    if (shouldRestore) setPoolOpen(true);
-  }
-
-  window.addEventListener("pointerup", restorePoolAfterPointer, true);
-  window.addEventListener("pointercancel", restorePoolAfterPointer, true);
+    setPoolOpen(true);
+  });
 }
 
 for (const button of document.querySelectorAll("[data-raid-unassign]")) {
   if (!(button instanceof HTMLButtonElement)) continue;
-
-  button.addEventListener("pointerdown", (event) => {
-    event.stopPropagation();
-  });
-
+  button.addEventListener("pointerdown", (event) => event.stopPropagation());
   button.addEventListener("click", async (event) => {
     event.stopPropagation();
     const card = button.closest("[data-raid-participant-card]");
     if (!(card instanceof HTMLElement)) return;
     const signupRowId = card.dataset.signupRowId;
     if (!signupRowId) return;
-
     button.disabled = true;
     try {
       const response = await fetch(`${window.location.pathname}/unassign`, {
