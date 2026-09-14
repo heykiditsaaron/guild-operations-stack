@@ -48,6 +48,8 @@ Those are migration conditions, not the target information architecture.
 
 Legacy `/admin/raid` now redirects to the Raid-owned operational overview. Legacy `/admin/raid/permissions` redirects to the global Raid permission editor. Compatibility POST routes remain temporarily while existing browser scripts are migrated.
 
+Authorized Raid creators/managers discover Raid operations contextually from `/events`; Raid operations are no longer published as an Administration destination.
+
 ## Existing registration model
 
 Modules historically published an administrative destination through `registerModuleAdministrationDestination(...)`.
