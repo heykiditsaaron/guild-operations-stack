@@ -9,6 +9,11 @@ import {
   guildEventOfferings,
   type GuildEventOffering,
 } from "../../../guild-events/offerings/registry.js";
+import {
+  packagedModuleForPath,
+  packagedModuleStates,
+  type PackagedModuleState,
+} from "../../../module-lifecycle.js";
 import { assetUrl, type AssetName, type AssetRegistry } from "../../assets.js";
 import { htmlText, renderPage } from "../../render.js";
 import { viewerForRequest } from "../../viewer.js";
@@ -54,6 +59,15 @@ function isHappeningNow(event: GuildCalendarEvent, nowUnix: number): boolean {
   const [start, end] = event.occursAt;
   if (end === undefined) return start === nowUnix;
   return start <= nowUnix && nowUnix <= end;
+}
+
+function destinationAvailable(
+  destination: string | null,
+  modules: Map<string, PackagedModuleState>,
+): boolean {
+  if (!destination) return true;
+  const moduleKey = packagedModuleForPath(destination);
+  return moduleKey === null || modules.get(moduleKey)?.enabled !== false;
 }
 
 function offeringArtworkUrl(offering: GuildEventOffering, assets: AssetRegistry): string | null {
@@ -168,14 +182,18 @@ function renderCalendar(
 export async function registerEventsPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/events", async (request, reply) => {
     const nowUnix = Math.floor(Date.now() / 1000);
-    const [viewer, events, guild] = await Promise.all([
+    const [viewer, events, guild, moduleStates] = await Promise.all([
       viewerForRequest(request.cookies[SESSION_COOKIE_NAME]),
       discoverableGuildCalendarEvents(),
       guildState(),
+      packagedModuleStates(),
     ]);
-    const offerings = guildEventOfferings();
+    const moduleStateByKey = new Map(moduleStates.map((module) => [module.key, module]));
+    const offerings = guildEventOfferings().filter((offering) => destinationAvailable(offering.destination, moduleStateByKey));
 
-    const relevant = events.filter((event) => occursThrough(event) >= nowUnix);
+    const relevant = events
+      .filter((event) => destinationAvailable(event.destination, moduleStateByKey))
+      .filter((event) => occursThrough(event) >= nowUnix);
     const happeningNow = relevant.filter((event) => isHappeningNow(event, nowUnix));
     const upcoming = relevant.filter((event) => !isHappeningNow(event, nowUnix));
     const guildCommunity = guild ? `${htmlText(guild.name)}&apos;s community` : "the guild&apos;s community";
