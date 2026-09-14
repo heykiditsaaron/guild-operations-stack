@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
 import { GuildCapabilityDeniedError, RAID_MANAGE_CAPABILITY, guildieHasGuildCapabilityOrOperator } from "../../../../guild-permissions.js";
 import {
@@ -145,171 +145,197 @@ function raidActionStatusCode(error: unknown): 400 | 403 {
   return error instanceof GuildCapabilityDeniedError ? 403 : 400;
 }
 
-export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
-  app.get<{ Params: RaidParams }>("/admin/raid/:raidId", async (request, reply) => {
-    const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, guildie] = await Promise.all([viewerForRequest(sessionToken), authenticatedGuildie(sessionToken)]);
-    const authorized = guildie ? await guildieHasGuildCapabilityOrOperator(guildie.guildieId, RAID_MANAGE_CAPABILITY) : false;
-    if (!guildie || !authorized) {
-      const html = renderPage(assets, {
-        pathname: request.url,
-        title: "Raid Administration · OH CRIT I Pulled! Guild Operations",
-        viewer,
-        stylesheets: ["admin.css", "raid-admin.css"],
-        secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Administration", href: "/admin" }, { label: "Raid", href: "/admin/raid" }, { label: "Unavailable" }] },
-        header: `<div class="admin-page-header"><h1>Raid</h1></div>`,
-        body: `<section class="admin-unavailable"><h2>Raid management is not available for this account.</h2></section>`,
-      });
-      return reply.code(guildie ? 403 : 401).header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
-    }
-
-    const raid = await raidEventFacts(request.params.raidId);
-    if (!raid) return reply.code(404).send({ error: "Raid not found" });
-
-    const [rows, diagnostics] = await Promise.all([
-      raidSignupRows(raid.raidId),
-      raidRosterDiagnostics(raid.raidId),
-    ]);
-    const assigned = rows.filter((row) => row.assignmentId !== null);
-    const available = rows.filter((row) => row.assignmentId === null && !rows.some((candidate) => candidate.applicantId === row.applicantId && candidate.assignmentId !== null));
-
-    const navigation: SecondaryNavigation = {
-      kind: "breadcrumb",
-      items: [{ label: "Administration", href: "/admin" }, { label: "Raid", href: "/admin/raid" }, { label: raid.label }],
-    };
-
-    const raidBuffItems = (await Promise.all(RAID_BUFF_TRAITS.map((trait) => raidBuffDiagnosticItem(trait, assigned)))).join("");
-    const utilityItems = UTILITY_TRAITS.map((trait) => textDiagnosticItem(capabilityLabel(trait), coverageCount(assigned, trait))).join("");
-    const armorItems = ARMOR_TRAITS.map((trait) => textDiagnosticItem(armorLabel(trait), coverageCount(assigned, trait))).join("");
-
-    const diagnosticsBody = `<dl class="raid-roster-diagnostics">
-      <div class="raid-comp-tank"><dt><span class="raid-role-icon raid-role-icon-tank" aria-hidden="true"></span>Tank</dt><dd>${diagnostics.tanks}</dd></div>
-      <div class="raid-comp-healer"><dt><span class="raid-role-icon raid-role-icon-healer" aria-hidden="true"></span>Healer</dt><dd>${diagnostics.healers}</dd></div>
-      <div class="raid-comp-melee"><dt><span class="raid-role-icon raid-role-icon-damage" aria-hidden="true"></span>Melee</dt><dd>${diagnostics.melee}</dd></div>
-      <div class="raid-comp-ranged"><dt><span class="raid-role-icon raid-role-icon-damage" aria-hidden="true"></span>Ranged</dt><dd>${diagnostics.ranged}</dd></div>
-    </dl>`;
-
-    const shelves = `<div class="raid-diagnostic-shelves" data-raid-diagnostics>
-      <div class="raid-diagnostic-tabs" aria-label="Raid diagnostics">
-        <button type="button" class="raid-diagnostic-tab" data-raid-shelf-toggle aria-expanded="false" aria-controls="raid-buffs-panel">Raid buffs</button>
-        <button type="button" class="raid-diagnostic-tab" data-raid-shelf-toggle aria-expanded="false" aria-controls="raid-utility-panel">Utility</button>
-        <button type="button" class="raid-diagnostic-tab" data-raid-shelf-toggle aria-expanded="false" aria-controls="raid-armor-panel">Armor</button>
-      </div>
-      <div class="raid-diagnostic-panels">
-        ${diagnosticPanel("raid-buffs-panel", "Raid buffs", raidBuffItems)}
-        ${diagnosticPanel("raid-utility-panel", "Utility", utilityItems)}
-        ${diagnosticPanel("raid-armor-panel", "Armor", armorItems)}
-      </div>
-    </div>`;
-
-    const pool = available.length
-      ? (await Promise.all(available.map(signupCard))).join("")
-      : `<p class="raid-pool-empty">All applicants are currently assigned.</p>`;
-
-    const lanes = (await Promise.all(RAID_ROLES.map(async (role) => {
-      const members = assigned.filter((row) => row.selectedRole === role);
-      const cards = (await Promise.all(members.map(assignedCard))).join("");
-      return `<section class="raid-role-lane" data-raid-role-drop="${role}">
-        <div class="raid-role-lane-heading"><h3>${htmlText(roleLabel(role))}</h3><span>${members.length}</span></div>
-        <div class="raid-role-cards">${cards}</div>
-        <button type="button" class="raid-add-slot" data-raid-drop-role="${role}" aria-label="Assign a ${htmlText(roleLabel(role).toLowerCase())}">+</button>
-      </section>`;
-    }))).join("");
-
-    const body = `<section class="raid-title-bar">
-        <div>
-          <h1>${htmlText(raid.label)}</h1>
-          <p><time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${htmlText(difficultyLabel(raid.difficulty))} · Signups ${raid.signupsOpen ? "open" : "closed"}</p>
-        </div>
-        <div class="raid-admin-actions">
-          <button type="button" class="button-secondary" disabled title="Raid metadata editing will be added later">Edit</button>
-          <button type="button" class="button-primary" data-raid-signups-toggle data-open="${raid.signupsOpen ? "false" : "true"}">${raid.signupsOpen ? "Close signups" : "Open signups"}</button>
-          <a class="button-secondary" href="/events/raid/${encodeURIComponent(raid.raidId)}">View signup page ↗</a>
-        </div>
-      </section>
-      <section class="raid-workspace">
-        <p class="raid-board-status" data-raid-action-status role="status" aria-live="polite"></p>
-        ${diagnosticsBody}
-        <div class="raid-organizer-grid">
-          <section class="raid-pool-panel" data-raid-pool-panel data-open="false" id="raid-applicant-pool-panel">
-            <div class="raid-pool-panel-header"><h2>Available</h2><span>${available.length}</span><button type="button" class="raid-pool-close" data-raid-pool-close aria-label="Close available participants">×</button></div>
-            <div class="raid-signup-pool" data-raid-pool-drop>${pool}</div>
-          </section>
-          <div class="raid-assignment-board">
-            <h2>Raid group</h2>
-            <div class="raid-role-lanes">${lanes}</div>
-          </div>
-        </div>
-        <button type="button" class="raid-pool-toggle" data-raid-pool-toggle data-raid-pool-drop aria-expanded="false" aria-controls="raid-applicant-pool-panel"><span>Available</span><span>${available.length}</span></button>
-      </section>
-      <section class="raid-scoreboard" aria-labelledby="raid-scoreboard-heading">
-        <h2 id="raid-scoreboard-heading">Raid diagnostics</h2>
-        ${shelves}
-      </section>
-      <dialog class="raid-spec-dialog" data-raid-spec-dialog>
-        <form method="dialog">
-          <h2>Choose specialization</h2>
-          <p data-raid-spec-dialog-copy></p>
-          <div data-raid-spec-options></div>
-          <button type="button" class="button-secondary" data-raid-spec-cancel>Cancel</button>
-        </form>
-      </dialog>`;
-
+async function renderRaidOrganizer(
+  request: FastifyRequest<{ Params: RaidParams }>,
+  reply: FastifyReply,
+  assets: AssetRegistry,
+) {
+  const sessionToken = request.cookies[SESSION_COOKIE_NAME];
+  const [viewer, guildie] = await Promise.all([viewerForRequest(sessionToken), authenticatedGuildie(sessionToken)]);
+  const authorized = guildie ? await guildieHasGuildCapabilityOrOperator(guildie.guildieId, RAID_MANAGE_CAPABILITY) : false;
+  if (!guildie || !authorized) {
     const html = renderPage(assets, {
       pathname: request.url,
-      title: `${raid.label} · Raid Administration · OH CRIT I Pulled! Guild Operations`,
-      description: raid.description ?? "Raid administration.",
+      title: "Raid Operations · OH CRIT I Pulled! Guild Operations",
       viewer,
-      stylesheets: ["admin.css", "raid-admin.css", "raid-iconography.css", "raid-organizer.css"],
-      scripts: ["admin.js", "raid-admin.js", "raid-organizer.js"],
-      secondaryNavigation: navigation,
-      header: "",
-      body,
+      stylesheets: ["admin.css", "raid-admin.css"],
+      secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Events", href: "/events" }, { label: "Raid operations", href: "/events/raid/manage" }, { label: "Unavailable" }] },
+      header: `<div class="admin-page-header"><h1>Raid</h1></div>`,
+      body: `<section class="admin-unavailable"><h2>Raid management is not available for this account.</h2></section>`,
     });
-    return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
-  });
+    return reply.code(guildie ? 403 : 401).header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
+  }
 
-  app.post<{ Params: RaidParams; Body: ToggleBody }>("/admin/raid/:raidId/signups", async (request, reply) => {
-    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
-    if (!guildie) return reply.code(401).send({ error: "Authentication required" });
-    if (typeof request.body?.open !== "boolean") return reply.code(400).send({ error: "Signup state is required" });
-    try {
-      await setRaidSignupsOpen(guildie.guildieId, request.params.raidId, request.body.open);
-      return { ok: true };
-    } catch (error) {
-      return reply.code(raidActionStatusCode(error)).send({ error: error instanceof Error ? error.message : "Signup state could not be changed" });
-    }
-  });
+  const raid = await raidEventFacts(request.params.raidId);
+  if (!raid) return reply.code(404).send({ error: "Raid not found" });
 
-  app.post<{ Params: RaidParams; Body: AssignBody }>("/admin/raid/:raidId/assign", async (request, reply) => {
-    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
-    if (!guildie) return reply.code(401).send({ error: "Authentication required" });
-    const body = request.body ?? {};
-    if (typeof body.signupRowId !== "string" || typeof body.selectedSpec !== "string" || (body.selectedRole !== "tank" && body.selectedRole !== "healer" && body.selectedRole !== "damage")) {
-      return reply.code(400).send({ error: "Assignment is incomplete" });
-    }
-    try {
-      const assignmentId = await assignRaidParticipation(guildie.guildieId, {
-        raidId: request.params.raidId,
-        signupRowId: body.signupRowId,
-        selectedSpec: body.selectedSpec,
-        selectedRole: body.selectedRole,
-      });
-      return reply.code(201).send({ assignmentId });
-    } catch (error) {
-      return reply.code(raidActionStatusCode(error)).send({ error: error instanceof Error ? error.message : "Participant could not be assigned" });
-    }
-  });
+  const [rows, diagnostics] = await Promise.all([
+    raidSignupRows(raid.raidId),
+    raidRosterDiagnostics(raid.raidId),
+  ]);
+  const assigned = rows.filter((row) => row.assignmentId !== null);
+  const available = rows.filter((row) => row.assignmentId === null && !rows.some((candidate) => candidate.applicantId === row.applicantId && candidate.assignmentId !== null));
 
-  app.post<{ Params: RaidParams; Body: UnassignBody }>("/admin/raid/:raidId/unassign", async (request, reply) => {
-    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
-    if (!guildie) return reply.code(401).send({ error: "Authentication required" });
-    if (typeof request.body?.signupRowId !== "string") return reply.code(400).send({ error: "Participation row is required" });
-    try {
-      await unassignRaidParticipation(guildie.guildieId, request.params.raidId, request.body.signupRowId);
-      return { ok: true };
-    } catch (error) {
-      return reply.code(raidActionStatusCode(error)).send({ error: error instanceof Error ? error.message : "Participant could not be unassigned" });
-    }
+  const navigation: SecondaryNavigation = {
+    kind: "breadcrumb",
+    items: [{ label: "Events", href: "/events" }, { label: "Raid operations", href: "/events/raid/manage" }, { label: raid.label }],
+  };
+
+  const raidBuffItems = (await Promise.all(RAID_BUFF_TRAITS.map((trait) => raidBuffDiagnosticItem(trait, assigned)))).join("");
+  const utilityItems = UTILITY_TRAITS.map((trait) => textDiagnosticItem(capabilityLabel(trait), coverageCount(assigned, trait))).join("");
+  const armorItems = ARMOR_TRAITS.map((trait) => textDiagnosticItem(armorLabel(trait), coverageCount(assigned, trait))).join("");
+
+  const diagnosticsBody = `<dl class="raid-roster-diagnostics">
+    <div class="raid-comp-tank"><dt><span class="raid-role-icon raid-role-icon-tank" aria-hidden="true"></span>Tank</dt><dd>${diagnostics.tanks}</dd></div>
+    <div class="raid-comp-healer"><dt><span class="raid-role-icon raid-role-icon-healer" aria-hidden="true"></span>Healer</dt><dd>${diagnostics.healers}</dd></div>
+    <div class="raid-comp-melee"><dt><span class="raid-role-icon raid-role-icon-damage" aria-hidden="true"></span>Melee</dt><dd>${diagnostics.melee}</dd></div>
+    <div class="raid-comp-ranged"><dt><span class="raid-role-icon raid-role-icon-damage" aria-hidden="true"></span>Ranged</dt><dd>${diagnostics.ranged}</dd></div>
+  </dl>`;
+
+  const shelves = `<div class="raid-diagnostic-shelves" data-raid-diagnostics>
+    <div class="raid-diagnostic-tabs" aria-label="Raid diagnostics">
+      <button type="button" class="raid-diagnostic-tab" data-raid-shelf-toggle aria-expanded="false" aria-controls="raid-buffs-panel">Raid buffs</button>
+      <button type="button" class="raid-diagnostic-tab" data-raid-shelf-toggle aria-expanded="false" aria-controls="raid-utility-panel">Utility</button>
+      <button type="button" class="raid-diagnostic-tab" data-raid-shelf-toggle aria-expanded="false" aria-controls="raid-armor-panel">Armor</button>
+    </div>
+    <div class="raid-diagnostic-panels">
+      ${diagnosticPanel("raid-buffs-panel", "Raid buffs", raidBuffItems)}
+      ${diagnosticPanel("raid-utility-panel", "Utility", utilityItems)}
+      ${diagnosticPanel("raid-armor-panel", "Armor", armorItems)}
+    </div>
+  </div>`;
+
+  const pool = available.length
+    ? (await Promise.all(available.map(signupCard))).join("")
+    : `<p class="raid-pool-empty">All applicants are currently assigned.</p>`;
+
+  const lanes = (await Promise.all(RAID_ROLES.map(async (role) => {
+    const members = assigned.filter((row) => row.selectedRole === role);
+    const cards = (await Promise.all(members.map(assignedCard))).join("");
+    return `<section class="raid-role-lane" data-raid-role-drop="${role}">
+      <div class="raid-role-lane-heading"><h3>${htmlText(roleLabel(role))}</h3><span>${members.length}</span></div>
+      <div class="raid-role-cards">${cards}</div>
+      <button type="button" class="raid-add-slot" data-raid-drop-role="${role}" aria-label="Assign a ${htmlText(roleLabel(role).toLowerCase())}">+</button>
+    </section>`;
+  }))).join("");
+
+  const body = `<section class="raid-title-bar">
+      <div>
+        <h1>${htmlText(raid.label)}</h1>
+        <p><time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${htmlText(difficultyLabel(raid.difficulty))} · Signups ${raid.signupsOpen ? "open" : "closed"}</p>
+      </div>
+      <div class="raid-admin-actions">
+        <button type="button" class="button-secondary" disabled title="Raid metadata editing will be added later">Edit</button>
+        <button type="button" class="button-primary" data-raid-signups-toggle data-open="${raid.signupsOpen ? "false" : "true"}">${raid.signupsOpen ? "Close signups" : "Open signups"}</button>
+        <a class="button-secondary" href="/events/raid/${encodeURIComponent(raid.raidId)}">View signup page ↗</a>
+      </div>
+    </section>
+    <section class="raid-workspace">
+      <p class="raid-board-status" data-raid-action-status role="status" aria-live="polite"></p>
+      ${diagnosticsBody}
+      <div class="raid-organizer-grid">
+        <section class="raid-pool-panel" data-raid-pool-panel data-open="false" id="raid-applicant-pool-panel">
+          <div class="raid-pool-panel-header"><h2>Available</h2><span>${available.length}</span><button type="button" class="raid-pool-close" data-raid-pool-close aria-label="Close available participants">×</button></div>
+          <div class="raid-signup-pool" data-raid-pool-drop>${pool}</div>
+        </section>
+        <div class="raid-assignment-board">
+          <h2>Raid group</h2>
+          <div class="raid-role-lanes">${lanes}</div>
+        </div>
+      </div>
+      <button type="button" class="raid-pool-toggle" data-raid-pool-toggle data-raid-pool-drop aria-expanded="false" aria-controls="raid-applicant-pool-panel"><span>Available</span><span>${available.length}</span></button>
+    </section>
+    <section class="raid-scoreboard" aria-labelledby="raid-scoreboard-heading">
+      <h2 id="raid-scoreboard-heading">Raid diagnostics</h2>
+      ${shelves}
+    </section>
+    <dialog class="raid-spec-dialog" data-raid-spec-dialog>
+      <form method="dialog">
+        <h2>Choose specialization</h2>
+        <p data-raid-spec-dialog-copy></p>
+        <div data-raid-spec-options></div>
+        <button type="button" class="button-secondary" data-raid-spec-cancel>Cancel</button>
+      </form>
+    </dialog>`;
+
+  const html = renderPage(assets, {
+    pathname: request.url,
+    title: `${raid.label} · Raid Operations · OH CRIT I Pulled! Guild Operations`,
+    description: raid.description ?? "Raid operations.",
+    viewer,
+    stylesheets: ["admin.css", "raid-admin.css", "raid-iconography.css", "raid-organizer.css"],
+    scripts: ["admin.js", "raid-admin.js", "raid-organizer.js"],
+    secondaryNavigation: navigation,
+    header: "",
+    body,
   });
+  return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
+}
+
+async function updateSignupState(
+  request: FastifyRequest<{ Params: RaidParams; Body: ToggleBody }>,
+  reply: FastifyReply,
+) {
+  const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
+  if (!guildie) return reply.code(401).send({ error: "Authentication required" });
+  if (typeof request.body?.open !== "boolean") return reply.code(400).send({ error: "Signup state is required" });
+  try {
+    await setRaidSignupsOpen(guildie.guildieId, request.params.raidId, request.body.open);
+    return { ok: true };
+  } catch (error) {
+    return reply.code(raidActionStatusCode(error)).send({ error: error instanceof Error ? error.message : "Signup state could not be changed" });
+  }
+}
+
+async function assignParticipant(
+  request: FastifyRequest<{ Params: RaidParams; Body: AssignBody }>,
+  reply: FastifyReply,
+) {
+  const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
+  if (!guildie) return reply.code(401).send({ error: "Authentication required" });
+  const body = request.body ?? {};
+  if (typeof body.signupRowId !== "string" || typeof body.selectedSpec !== "string" || (body.selectedRole !== "tank" && body.selectedRole !== "healer" && body.selectedRole !== "damage")) {
+    return reply.code(400).send({ error: "Assignment is incomplete" });
+  }
+  try {
+    const assignmentId = await assignRaidParticipation(guildie.guildieId, {
+      raidId: request.params.raidId,
+      signupRowId: body.signupRowId,
+      selectedSpec: body.selectedSpec,
+      selectedRole: body.selectedRole,
+    });
+    return reply.code(201).send({ assignmentId });
+  } catch (error) {
+    return reply.code(raidActionStatusCode(error)).send({ error: error instanceof Error ? error.message : "Participant could not be assigned" });
+  }
+}
+
+async function unassignParticipant(
+  request: FastifyRequest<{ Params: RaidParams; Body: UnassignBody }>,
+  reply: FastifyReply,
+) {
+  const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
+  if (!guildie) return reply.code(401).send({ error: "Authentication required" });
+  if (typeof request.body?.signupRowId !== "string") return reply.code(400).send({ error: "Participation row is required" });
+  try {
+    await unassignRaidParticipation(guildie.guildieId, request.params.raidId, request.body.signupRowId);
+    return { ok: true };
+  } catch (error) {
+    return reply.code(raidActionStatusCode(error)).send({ error: error instanceof Error ? error.message : "Participant could not be unassigned" });
+  }
+}
+
+export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
+  app.get<{ Params: RaidParams }>("/admin/raid/:raidId", async (request, reply) => {
+    return reply.redirect(`/events/raid/manage/${encodeURIComponent(request.params.raidId)}`);
+  });
+  app.get<{ Params: RaidParams }>("/events/raid/manage/:raidId", async (request, reply) => renderRaidOrganizer(request, reply, assets));
+
+  app.post<{ Params: RaidParams; Body: ToggleBody }>("/events/raid/manage/:raidId/signups", updateSignupState);
+  app.post<{ Params: RaidParams; Body: AssignBody }>("/events/raid/manage/:raidId/assign", assignParticipant);
+  app.post<{ Params: RaidParams; Body: UnassignBody }>("/events/raid/manage/:raidId/unassign", unassignParticipant);
+
+  app.post<{ Params: RaidParams; Body: ToggleBody }>("/admin/raid/:raidId/signups", updateSignupState);
+  app.post<{ Params: RaidParams; Body: AssignBody }>("/admin/raid/:raidId/assign", assignParticipant);
+  app.post<{ Params: RaidParams; Body: UnassignBody }>("/admin/raid/:raidId/unassign", unassignParticipant);
 }
