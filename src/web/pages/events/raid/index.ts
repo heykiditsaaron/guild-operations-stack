@@ -6,7 +6,7 @@ import {
   raidSignupRowsForGuildie,
   type RaidParticipationCharacter,
 } from "../../../../modules/raid/participation-view.js";
-import type { RaidRole } from "../../../../modules/raid/domain.js";
+import type { RaidDifficulty, RaidRole } from "../../../../modules/raid/domain.js";
 import {
   allWowClassTraitDefinitions,
   specHasTrait,
@@ -26,6 +26,10 @@ type SignupBody = {
 
 function roleLabel(role: RaidRole): string {
   return role === "damage" ? "Damage" : role === "healer" ? "Healer" : "Tank";
+}
+
+function difficultyLabel(value: RaidDifficulty): string {
+  return value[0].toUpperCase() + value.slice(1);
 }
 
 function rolesForClass(className: string): RaidRole[] {
@@ -125,7 +129,7 @@ export async function registerRaidPage(app: FastifyInstance, assets: AssetRegist
           ? participationEditor(characters, allowDeclaredClass)
           : `<section class="raid-signup-state"><h2>No eligible characters</h2><p>No currently controlled character is eligible for this raid.</p></section>`;
         ownRows = rows.length
-          ? `<section class="raid-my-offers"><h2>Your participation offers</h2><div>${rows.map((row) => `<article><strong>${htmlText(row.characterName ?? row.className)}</strong><span>${row.realmName ? `${htmlText(row.realmName)} · ` : ""}${htmlText(row.className)}</span><span>${row.willingSpecs.map(htmlText).join(", ")} · ${row.willingRoles.map((role) => htmlText(roleLabel(role))).join(", ")}</span>${row.assignedSlotIndex !== null ? `<span>Assigned to slot ${row.assignedSlotIndex} as ${htmlText(row.selectedSpec ?? "")} ${htmlText(roleLabel(row.selectedRole!))}</span>` : ""}</article>`).join("")}</div></section>`
+          ? `<section class="raid-my-offers"><h2>Your participation offers</h2><div>${rows.map((row) => `<article><strong>${htmlText(row.characterName ?? row.className)}</strong><span>${row.realmName ? `${htmlText(row.realmName)} · ` : ""}${htmlText(row.className)}</span><span>${row.willingSpecs.map(htmlText).join(", ")} · ${row.willingRoles.map((role) => htmlText(roleLabel(role))).join(", ")}</span>${row.assignmentId !== null ? `<span>Assigned as ${htmlText(row.selectedSpec ?? "")} ${htmlText(roleLabel(row.selectedRole!))}</span>` : ""}</article>`).join("")}</div></section>`
           : "";
       } catch (error) {
         participation = `<section class="raid-signup-state"><h2>Not eligible</h2><p>${htmlText(error instanceof Error ? error.message : "You are not eligible to participate in this raid.")}</p></section>`;
@@ -140,7 +144,7 @@ export async function registerRaidPage(app: FastifyInstance, assets: AssetRegist
       stylesheets: ["raid.css"],
       scripts: ["raid.js"],
       secondaryNavigation: { kind: "back", label: "Events", href: "/events" },
-      header: `<div><h1>${htmlText(raid.label)}</h1>${raid.description ? `<p class="lede">${htmlText(raid.description)}</p>` : ""}<p><time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${raid.raidSize} player raid</p></div>`,
+      header: `<div><h1>${htmlText(raid.label)}</h1>${raid.description ? `<p class="lede">${htmlText(raid.description)}</p>` : ""}<p><time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${htmlText(difficultyLabel(raid.difficulty))}</p></div>`,
       body: `${participation}${ownRows}`,
     });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
