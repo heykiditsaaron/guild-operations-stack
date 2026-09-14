@@ -81,4 +81,4 @@
 .raid-pool-toggle.raid-drop-available { border-color:rgba(124,198,141,.3); }
 .raid-pool-toggle.raid-drop-active { border-color:rgba(124,198,141,.58); background:rgba(124,198,141,.09); }
 }
-@media (max-width:30rem) { .raid-role-lane:nth-child(3) .raid-role-cards { grid-template-columns:1fr; } }
+@media (max-width:36rem) { .raid-roster-diagnostics { grid-template-columns:repeat(2,minmax(0,1fr)); } .raid-role-lane:nth-child(3) .raid-role-cards { grid-template-columns:1fr; } }
