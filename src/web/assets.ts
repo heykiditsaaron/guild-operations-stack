@@ -36,6 +36,7 @@ export type AssetName =
   | "raid-organizer.css"
   | "raid-permissions.css"
   | "raid-admin.js"
+  | "raid-create.js"
   | "raid-organizer.js"
   | "raid-permissions.js"
   | "images/raffle/gold-sack.png";
@@ -80,6 +81,7 @@ const assetDefinitions: Array<{ name: AssetName; contentType: string }> = [
   { name: "raffle-public.js", contentType: "text/javascript; charset=utf-8" },
   { name: "raid.js", contentType: "text/javascript; charset=utf-8" },
   { name: "raid-admin.js", contentType: "text/javascript; charset=utf-8" },
+  { name: "raid-create.js", contentType: "text/javascript; charset=utf-8" },
   { name: "raid-organizer.js", contentType: "text/javascript; charset=utf-8" },
   { name: "raid-permissions.js", contentType: "text/javascript; charset=utf-8" },
   { name: "images/raffle/gold-sack.png", contentType: "image/png" },
