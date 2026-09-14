@@ -28,7 +28,7 @@ export type RaidSignupRowView = {
   className: string;
   willingSpecs: string[];
   willingRoles: RaidRole[];
-  assignedSlotIndex: number | null;
+  assignmentId: string | null;
   selectedSpec: string | null;
   selectedRole: RaidRole | null;
 };
@@ -102,7 +102,7 @@ export async function raidSignupRows(raidId: string): Promise<RaidSignupRowView[
     declared_class: string | null;
     willing_specs: string[];
     willing_roles: RaidRole[];
-    slot_index: number | null;
+    assignment_id: string | null;
     selected_spec: string | null;
     selected_role: RaidRole | null;
   }>(
@@ -118,7 +118,7 @@ export async function raidSignupRows(raidId: string): Promise<RaidSignupRowView[
        rr.declared_class,
        rr.willing_specs,
        rr.willing_roles,
-       ras.slot_index,
+       ras.assignment_id,
        ras.selected_spec,
        ras.selected_role
      FROM raid_signup_rows rr
@@ -148,7 +148,7 @@ export async function raidSignupRows(raidId: string): Promise<RaidSignupRowView[
     className: row.class_name ?? row.declared_class ?? "Unknown",
     willingSpecs: row.willing_specs,
     willingRoles: row.willing_roles,
-    assignedSlotIndex: row.slot_index,
+    assignmentId: row.assignment_id,
     selectedSpec: row.selected_spec,
     selectedRole: row.selected_role,
   }));
