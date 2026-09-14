@@ -9,7 +9,9 @@ import {
 import {
   GUILD_REFRESH_CAPABILITY,
   OPERATIONS_INSPECT_CAPABILITY,
+  RAID_PERMISSIONS_CAPABILITY,
   guildieHasGuildCapability,
+  guildieHasGuildCapabilityOrOperator,
 } from "../../guild-permissions.js";
 import { administrationAvailabilityForGuildie } from "../administration.js";
 import type { AssetRegistry } from "../assets.js";
@@ -31,6 +33,13 @@ function destination(title: string, description: string, href: string): string {
     <span class="admin-destination-description">${htmlText(description)}</span>
     <span class="admin-destination-arrow" aria-hidden="true">→</span>
   </a>`;
+}
+
+function administrationTabs(current: "general" | "permissions"): string {
+  return `<nav class="admin-tabs" aria-label="Administration sections">
+    <a href="/admin/general"${current === "general" ? ' aria-current="page"' : ""}>General</a>
+    <a href="/admin/permissions"${current === "permissions" ? ' aria-current="page"' : ""}>Permissions</a>
+  </nav>`;
 }
 
 function administrationSection(
@@ -97,7 +106,9 @@ function renderGuildRefresh(
 }
 
 export async function registerAdminPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
-  app.get("/admin", async (request, reply) => {
+  app.get("/admin", async (_request, reply) => reply.redirect("/admin/general"));
+
+  app.get("/admin/general", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie] = await Promise.all([
       viewerForRequest(sessionToken),
@@ -128,27 +139,78 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       ? administrationSection(
           "available-administration",
           "available-administration-heading",
-          "Available administration",
-          `<div class="admin-destinations">${moduleDestinations.map((item) => destination(item.label, `Open ${item.label} administration.`, item.href)).join("\n")}</div>`,
+          "Current module tools",
+          `<div class="admin-destinations">${moduleDestinations.map((item) => destination(item.label, `Open the current ${item.label} privileged surface.`, item.href)).join("\n")}</div>`,
         )
       : "";
 
-    const body = hasAdministration
+    const content = hasAdministration
       ? `<div class="admin-sections">${guildSettings}${modules}</div>`
       : `<section class="admin-unavailable" aria-labelledby="admin-unavailable-heading"><h2 id="admin-unavailable-heading">Administration is not available for this account.</h2></section>`;
+    const body = `${administrationTabs("general")}${content}`;
 
     const logUtility = canInspectOperations
       ? '<a class="admin-header-utility" href="/admin/operations">View logs</a>'
       : "";
 
     const html = renderPage(assets, {
-      pathname: "/admin",
-      title: "Administration · OH CRIT I Pulled! Guild Operations",
-      description: "Guild Operations administration.",
+      pathname: "/admin/general",
+      title: "General Administration · OH CRIT I Pulled! Guild Operations",
+      description: "Configure Guild Operations.",
       viewer,
       stylesheets: ["admin.css"],
       scripts: ["admin.js"],
-      header: `<div class="admin-page-header-row"><div class="admin-page-header"><h1 id="page-title">Administration</h1><p class="lede">Operate and configure the guild.</p></div>${logUtility}</div>`,
+      header: `<div class="admin-page-header-row"><div class="admin-page-header"><h1 id="page-title">Administration</h1><p class="lede">Configure Guild Operations and its modules.</p></div>${logUtility}</div>`,
+      body,
+    });
+
+    if (!hasAdministration) {
+      return reply.code(guildie ? 403 : 401).header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
+    }
+
+    return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
+  });
+
+  app.get("/admin/permissions", async (request, reply) => {
+    const sessionToken = request.cookies[SESSION_COOKIE_NAME];
+    const [viewer, guildie] = await Promise.all([
+      viewerForRequest(sessionToken),
+      authenticatedGuildie(sessionToken),
+    ]);
+
+    const [administration, canConfigureRaidPermissions] = guildie
+      ? await Promise.all([
+          administrationAvailabilityForGuildie(guildie.guildieId),
+          guildieHasGuildCapabilityOrOperator(guildie.guildieId, RAID_PERMISSIONS_CAPABILITY),
+        ])
+      : [null, false];
+    const hasAdministration = administration?.available === true;
+
+    const permissionDestinations = canConfigureRaidPermissions
+      ? `<div class="admin-destinations">${destination(
+          "Raid",
+          "Map current Blizzard guild ranks to Raid creation and management capabilities.",
+          "/admin/raid/permissions",
+        )}</div>`
+      : `<p class="admin-empty-state">No configurable permission policies are available for this account.</p>`;
+
+    const content = hasAdministration
+      ? `<div class="admin-sections">${administrationSection(
+          "configurable-permissions",
+          "configurable-permissions-heading",
+          "Configurable permissions",
+          permissionDestinations,
+        )}</div>`
+      : `<section class="admin-unavailable" aria-labelledby="admin-unavailable-heading"><h2 id="admin-unavailable-heading">Administration is not available for this account.</h2></section>`;
+    const body = `${administrationTabs("permissions")}${content}`;
+
+    const html = renderPage(assets, {
+      pathname: "/admin/permissions",
+      title: "Permissions Administration · OH CRIT I Pulled! Guild Operations",
+      description: "Configure Guild Operations permission policy.",
+      viewer,
+      stylesheets: ["admin.css"],
+      header: `<div class="admin-page-header"><h1 id="page-title">Administration</h1><p class="lede">Configure who may operate Guild Operations capabilities.</p></div>`,
       body,
     });
 
