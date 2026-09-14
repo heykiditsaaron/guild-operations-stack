@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
 import { guildieHasGuildCapability } from "../../guild-permissions.js";
 import type { AssetRegistry } from "../../web/assets.js";
@@ -112,7 +112,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       }));
   });
 
-  const updateDiscordConfiguration = async (request: Parameters<Parameters<FastifyInstance["post"]>[1]>[0], reply: Parameters<Parameters<FastifyInstance["post"]>[1]>[1]) => {
+  const updateDiscordConfiguration = async (request: FastifyRequest, reply: FastifyReply) => {
     const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
     if (!guildie) return reply.code(401).send({ error: "not_authenticated" });
     if (!await guildieHasGuildCapability(guildie.guildieId, DISCORD_ADMIN_CAPABILITY)) {
