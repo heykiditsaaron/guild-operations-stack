@@ -33,32 +33,29 @@ Current usage contracts live in [`../infrastructure/guild-event-offerings.md`](.
 
 Do not put rules, eligibility, administration, history, or module procedure into shared discovery projections merely because a shared interface consumes them.
 
-## Administration publication
+## Participation, operations, and administration
 
-A module with its own administration surface may publish that surface into the shared administration navigation.
+A module may expose participation, privileged operations, administrative configuration, or any combination of those roles. The distinctions are defined in [`surface-roles.md`](surface-roles.md).
 
-The publication is intentionally small:
+Do not classify a module-owned surface as Administration merely because it requires elevated authority.
+
+- Participation stays with the activity being participated in.
+- Operations stay with the activity or process being operated.
+- Administration owns durable configuration, module lifecycle state, and configurable permission policy.
+
+Administration has stable global concerns rather than one top-level destination per module:
 
 ```text
-label
-    → name shown in administration navigation
-
-destination
-    → module-owned landing route below /admin
-
-permission scope
-    → stable module-owned coordinate describing the authority required for the destination
+Administration
+├── General
+└── Permissions
 ```
 
-The module also supplies the authorization evaluation for that permission scope against current Guild Operations authority. A module-specific permission does not need to become globally persisted capability state merely so the shell can decide whether to show navigation.
+A module contributes only configuration or configurable permission policy it has actually earned. A module with no such state does not need an administrative destination merely because it exists or has privileged operators.
 
-A module publishes its administrative presence; it does not publish its administrative interface into the global page. The module continues to own its routes, procedure, authorization enforcement, and presentation after navigation reaches its destination.
+Module enablement is administrative state. Operational use of an enabled module remains module-owned.
 
-The global shell owns the administration selector. Once a module destination is registered, pages at that destination and its descendants can participate in the shared selector without reproducing selector markup or styling.
-
-Do not register a destination merely because a module exists. Registration is appropriate only when the module has a real administrative surface. Do not add navigation metadata beyond the established administrative identity and authorization seam until actual module administration creates the need.
-
-The current shell contract is documented in [`../infrastructure/web-rendering.md`](../infrastructure/web-rendering.md).
+Do not introduce a generic module administration registry, lifecycle framework, entitlement system, or contribution framework before multiple concrete modules demonstrate the required contract. Current packaged-module behavior may establish the smallest useful seam first; future entitlement or premium distribution must remain independent from operational procedure.
 
 ## Persistence
 
@@ -71,6 +68,8 @@ Application-wide persistence ownership is defined in [`global-persistence.md`](g
 Modules consume globally authoritative member, roster, rank, and capability facts while owning permission policy specific to their own procedure.
 
 Do not duplicate global authority state merely to make a local authorization decision. Current shared permission machinery is documented in [`../infrastructure/guild-permissioning.md`](../infrastructure/guild-permissioning.md).
+
+A module capability may exist without being administratively configurable. When the guild is allowed to configure module permission policy, that configuration belongs to the global Permissions concern while enforcement remains in backend authority and module procedure.
 
 ## Rendering
 
