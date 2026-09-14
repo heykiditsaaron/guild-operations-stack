@@ -7,6 +7,11 @@ import {
   type RaidParticipationCharacter,
 } from "../../../../modules/raid/participation-view.js";
 import type { RaidRole } from "../../../../modules/raid/domain.js";
+import {
+  allWowClassTraitDefinitions,
+  specHasTrait,
+  specsForClass,
+} from "../../../../wow-traits/registry.js";
 import type { AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
@@ -14,6 +19,7 @@ import { viewerForRequest } from "../../../viewer.js";
 type RaidParams = { raidId: string };
 type SignupBody = {
   character?: unknown;
+  declaredClass?: unknown;
   willingSpecs?: unknown;
   willingRoles?: unknown;
 };
@@ -22,26 +28,73 @@ function roleLabel(role: RaidRole): string {
   return role === "damage" ? "Damage" : role === "healer" ? "Healer" : "Tank";
 }
 
-function characterForm(character: RaidParticipationCharacter): string {
-  return `<article class="raid-character-offer">
-    <div class="raid-character-heading">
-      <h3>${htmlText(character.name)}</h3>
-      <p>${htmlText(character.className)}${character.realmName ? ` · ${htmlText(character.realmName)}` : ""}</p>
+function rolesForClass(className: string): RaidRole[] {
+  const specs = specsForClass(className);
+  const roles: RaidRole[] = [];
+  if (specs.some((spec) => specHasTrait(className, spec, "role.tank"))) roles.push("tank");
+  if (specs.some((spec) => specHasTrait(className, spec, "role.healer"))) roles.push("healer");
+  if (specs.some((spec) => specHasTrait(className, spec, "role.damage"))) roles.push("damage");
+  return roles;
+}
+
+function encoded(values: readonly string[]): string {
+  return encodeURIComponent(JSON.stringify(values));
+}
+
+function characterOption(character: RaidParticipationCharacter): string {
+  const label = `${character.name}${character.realmName ? ` — ${character.realmName}` : ""} · ${character.className}`;
+  return `<option
+    value="character:${htmlText(character.region)}:${htmlText(character.realmId)}:${htmlText(character.characterId)}"
+    data-kind="character"
+    data-region="${htmlText(character.region)}"
+    data-realm-id="${htmlText(character.realmId)}"
+    data-character-id="${htmlText(character.characterId)}"
+    data-class-name="${htmlText(character.className)}"
+    data-specs="${encoded(character.specs)}"
+    data-roles="${encoded(character.roles)}"
+  >${htmlText(label)}</option>`;
+}
+
+function participationEditor(characters: RaidParticipationCharacter[], allowDeclaredClass: boolean): string {
+  const classOptions = allowDeclaredClass
+    ? allWowClassTraitDefinitions()
+        .map((definition) => {
+          const specs = specsForClass(definition.className);
+          const roles = rolesForClass(definition.className);
+          return `<option
+            value="class:${htmlText(definition.className)}"
+            data-kind="class"
+            data-class-name="${htmlText(definition.className)}"
+            data-specs="${encoded(specs)}"
+            data-roles="${encoded(roles)}"
+          >Declare ${htmlText(definition.className)}</option>`;
+        })
+        .join("")
+    : "";
+
+  return `<section class="raid-participation" aria-labelledby="raid-offer-heading">
+    <div>
+      <h2 id="raid-offer-heading">Offer participation</h2>
+      <p>Choose one character you are willing to bring${allowDeclaredClass ? ", or declare a class" : ""}.</p>
     </div>
-    <form data-raid-signup-form
-      data-region="${htmlText(character.region)}"
-      data-realm-id="${htmlText(character.realmId)}"
-      data-character-id="${htmlText(character.characterId)}">
-      <fieldset><legend>Specializations you are willing to play</legend>
-        ${character.specs.map((spec) => `<label><input type="checkbox" name="spec" value="${htmlText(spec)}"> <span>${htmlText(spec)}</span></label>`).join("")}
-      </fieldset>
-      <fieldset><legend>Roles you are willing to fill</legend>
-        ${character.roles.map((role) => `<label><input type="checkbox" name="role" value="${role}"> <span>${htmlText(roleLabel(role))}</span></label>`).join("")}
-      </fieldset>
-      <button type="submit" class="button-primary">Offer this character</button>
+    <form class="raid-offer-form" data-raid-signup-form>
+      <label class="raid-offer-selector">
+        <span>Participation option</span>
+        <select name="participation" data-raid-participation-choice required>
+          <option value="">Select a character…</option>
+          ${characters.map(characterOption).join("\n")}
+          ${classOptions ? `<optgroup label="Class declaration">${classOptions}</optgroup>` : ""}
+        </select>
+      </label>
+      <div class="raid-offer-editor" data-raid-offer-editor hidden>
+        <div class="raid-offer-identity" data-raid-offer-identity></div>
+        <fieldset data-raid-specs><legend>Specializations you are willing to play</legend></fieldset>
+        <fieldset data-raid-roles><legend>Roles you are willing to fill</legend></fieldset>
+        <button type="submit" class="button-primary">Offer participation</button>
+      </div>
       <p data-raid-signup-status role="status" aria-live="polite"></p>
     </form>
-  </article>`;
+  </section>`;
 }
 
 export async function registerRaidPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
@@ -67,8 +120,9 @@ export async function registerRaidPage(app: FastifyInstance, assets: AssetRegist
           raidParticipationCharacters(raid.raidId, guildie.guildieId),
           raidSignupRowsForGuildie(raid.raidId, guildie.guildieId),
         ]);
-        participation = characters.length
-          ? `<section class="raid-participation"><h2>Offer participation</h2><p>Select each character you are willing to bring, then choose the specs and roles you are willing to play.</p><div class="raid-character-offers">${characters.map(characterForm).join("")}</div></section>`
+        const allowDeclaredClass = raid.eligibility === "anyone";
+        participation = characters.length || allowDeclaredClass
+          ? participationEditor(characters, allowDeclaredClass)
           : `<section class="raid-signup-state"><h2>No eligible characters</h2><p>No currently controlled character is eligible for this raid.</p></section>`;
         ownRows = rows.length
           ? `<section class="raid-my-offers"><h2>Your participation offers</h2><div>${rows.map((row) => `<article><strong>${htmlText(row.characterName ?? row.className)}</strong><span>${row.realmName ? `${htmlText(row.realmName)} · ` : ""}${htmlText(row.className)}</span><span>${row.willingSpecs.map(htmlText).join(", ")} · ${row.willingRoles.map((role) => htmlText(roleLabel(role))).join(", ")}</span>${row.assignedSlotIndex !== null ? `<span>Assigned to slot ${row.assignedSlotIndex} as ${htmlText(row.selectedSpec ?? "")} ${htmlText(roleLabel(row.selectedRole!))}</span>` : ""}</article>`).join("")}</div></section>`
@@ -97,21 +151,35 @@ export async function registerRaidPage(app: FastifyInstance, assets: AssetRegist
     if (!guildie) return reply.code(401).send({ error: "Authentication required" });
 
     const character = request.body?.character;
+    const declaredClass = request.body?.declaredClass;
     const willingSpecs = request.body?.willingSpecs;
     const willingRoles = request.body?.willingRoles;
-    if (!character || typeof character !== "object") return reply.code(400).send({ error: "Character is required" });
-    const coordinate = character as Record<string, unknown>;
-    if (typeof coordinate.region !== "string" || typeof coordinate.realmId !== "string" || typeof coordinate.characterId !== "string") {
-      return reply.code(400).send({ error: "Character reference is invalid" });
-    }
     if (!Array.isArray(willingSpecs) || !willingSpecs.every((value) => typeof value === "string")) return reply.code(400).send({ error: "Specializations are required" });
     if (!Array.isArray(willingRoles) || !willingRoles.every((value) => value === "tank" || value === "healer" || value === "damage")) return reply.code(400).send({ error: "Roles are required" });
+
+    let participationKey;
+    if (typeof declaredClass === "string" && declaredClass.trim()) {
+      participationKey = { declaredClass: declaredClass.trim() } as const;
+    } else {
+      if (!character || typeof character !== "object") return reply.code(400).send({ error: "Character or declared class is required" });
+      const coordinate = character as Record<string, unknown>;
+      if (typeof coordinate.region !== "string" || typeof coordinate.realmId !== "string" || typeof coordinate.characterId !== "string") {
+        return reply.code(400).send({ error: "Character reference is invalid" });
+      }
+      participationKey = {
+        character: {
+          region: coordinate.region,
+          realmId: coordinate.realmId,
+          characterId: coordinate.characterId,
+        },
+      } as const;
+    }
 
     try {
       const signupRowId = await submitRaidParticipationRow({
         raidId: request.params.raidId,
         applicantAnchor: { kind: "guildie", value: guildie.guildieId },
-        participationKey: { character: { region: coordinate.region, realmId: coordinate.realmId, characterId: coordinate.characterId } },
+        participationKey,
         willingSpecs,
         willingRoles: willingRoles as RaidRole[],
       });
