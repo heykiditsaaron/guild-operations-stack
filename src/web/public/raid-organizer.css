@@ -33,6 +33,13 @@
   background-size: cover;
 }
 
+/* Diagnostics describe the assembled roster; they are visually secondary to it. */
+.raid-scoreboard {
+  margin-top: 0.85rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
 .raid-diagnostic-shelves {
   position: relative;
   z-index: 20;
@@ -136,21 +143,28 @@
   font-weight: 850;
 }
 
+/* Available offers and the assembled group share one bounded working surface. */
 .raid-organizer-grid {
   display: grid;
-  grid-template-columns: minmax(14rem, 0.82fr) minmax(0, 1.7fr);
-  gap: 0.75rem;
-  align-items: start;
+  grid-template-columns: minmax(13rem, 0.7fr) minmax(0, 2.3fr);
+  gap: 0.65rem;
+  align-items: stretch;
 }
 
 .raid-pool-panel,
 .raid-assignment-board {
   min-width: 0;
+  padding: 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.012);
 }
 
 .raid-pool-panel {
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 0.45rem;
+  max-height: min(68vh, 42rem);
 }
 
 .raid-pool-panel-header {
@@ -162,12 +176,15 @@
 
 .raid-pool-panel-header h2 {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.8rem;
+  font-weight: 850;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
 }
 
 .raid-pool-panel-header span {
   color: #8f8b82;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 800;
 }
 
@@ -177,17 +194,64 @@
 }
 
 .raid-signup-pool {
-  max-height: min(62vh, 38rem);
+  max-height: none;
+  min-height: 12rem;
   overflow-y: auto;
   align-content: flex-start;
   overscroll-behavior: contain;
 }
 
+.raid-signup-pool .raid-participant-card {
+  width: 100%;
+}
+
 .raid-assignment-board {
-  padding-top: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.45rem;
+  padding-top: 0.55rem;
+}
+
+.raid-assignment-board > h2 {
+  color: #aaa69c;
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+/* Tanks and healers form the compact support column; damage owns roster width. */
+.raid-role-lanes {
+  display: grid;
+  grid-template-columns: minmax(10.5rem, 0.72fr) minmax(18rem, 1.8fr);
+  grid-template-areas:
+    "tank damage"
+    "healer damage";
+  gap: 0.55rem;
+  align-items: start;
+}
+
+.raid-role-lane:nth-child(1) { grid-area: tank; }
+.raid-role-lane:nth-child(2) { grid-area: healer; }
+.raid-role-lane:nth-child(3) { grid-area: damage; }
+
+.raid-role-lane:nth-child(3) .raid-role-cards {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.raid-role-lane:nth-child(3) .raid-add-slot {
+  min-height: 2.5rem;
+}
+
+.raid-board-status {
+  min-height: 0;
 }
 
 @media (max-width: 48rem) {
+  .raid-scoreboard {
+    margin-top: 0.65rem;
+  }
+
   .raid-diagnostic-shelves {
     position: sticky;
     top: 0.35rem;
@@ -265,6 +329,19 @@
 
   .raid-assignment-board {
     display: grid;
+    padding: 0.45rem;
+  }
+
+  .raid-role-lanes {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "tank"
+      "healer"
+      "damage";
+  }
+
+  .raid-role-lane:nth-child(3) .raid-role-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .raid-pool-panel {
@@ -314,6 +391,7 @@
   }
 
   .raid-signup-pool {
+    min-height: 0;
     max-height: calc(min(52vh, 32rem) - 4rem);
   }
 
@@ -351,5 +429,11 @@
   .raid-pool-toggle.raid-drop-active {
     border-color: rgba(124, 198, 141, 0.58);
     background: rgba(124, 198, 141, 0.09);
+  }
+}
+
+@media (max-width: 30rem) {
+  .raid-role-lane:nth-child(3) .raid-role-cards {
+    grid-template-columns: 1fr;
   }
 }
