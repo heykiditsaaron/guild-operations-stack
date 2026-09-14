@@ -1,7 +1,12 @@
 import { config } from "../../config.js";
 import { controlledCharactersForGuildie } from "../../controlled-characters.js";
 import { pool, withTransaction } from "../../db.js";
-import { effectiveGuildAuthority, RAID_CREATE_CAPABILITY, RAID_MANAGE_CAPABILITY, requireGuildCapability } from "../../guild-permissions.js";
+import {
+  effectiveGuildAuthority,
+  RAID_CREATE_CAPABILITY,
+  RAID_MANAGE_CAPABILITY,
+  requireGuildCapabilityOrOperator,
+} from "../../guild-permissions.js";
 import { characterMembership } from "../../application-state.js";
 import { traitsForSpec, type WowTrait } from "../../wow-traits/registry.js";
 import {
@@ -86,7 +91,7 @@ export async function raidEventFacts(raidId: string): Promise<RaidEventFacts | n
 
 export async function createRaid(actorGuildieId: string, input: CreateRaidInput): Promise<RaidEventFacts> {
   validateCreateRaidInput(input);
-  await requireGuildCapability(actorGuildieId, RAID_CREATE_CAPABILITY);
+  await requireGuildCapabilityOrOperator(actorGuildieId, RAID_CREATE_CAPABILITY);
   const tags = normalizedStrings(input.tags ?? ["raid"]);
 
   const result = await pool.query<{ raid_id: string }>(
@@ -114,7 +119,7 @@ export async function createRaid(actorGuildieId: string, input: CreateRaidInput)
 }
 
 export async function setRaidSignupsOpen(actorGuildieId: string, raidId: string, open: boolean): Promise<void> {
-  await requireGuildCapability(actorGuildieId, RAID_MANAGE_CAPABILITY);
+  await requireGuildCapabilityOrOperator(actorGuildieId, RAID_MANAGE_CAPABILITY);
   const result = await pool.query(
     `UPDATE raid_events
         SET signups_open = $2,
@@ -223,7 +228,7 @@ export async function assignRaidParticipation(
   actorGuildieId: string,
   input: AssignRaidParticipationInput,
 ): Promise<string> {
-  await requireGuildCapability(actorGuildieId, RAID_MANAGE_CAPABILITY);
+  await requireGuildCapabilityOrOperator(actorGuildieId, RAID_MANAGE_CAPABILITY);
   const raid = await raidEventFacts(input.raidId);
   if (!raid) throw new Error("Raid not found");
 
@@ -270,7 +275,7 @@ export async function unassignRaidParticipation(
   raidId: string,
   signupRowId: string,
 ): Promise<void> {
-  await requireGuildCapability(actorGuildieId, RAID_MANAGE_CAPABILITY);
+  await requireGuildCapabilityOrOperator(actorGuildieId, RAID_MANAGE_CAPABILITY);
   await pool.query(
     "DELETE FROM raid_assignments WHERE raid_id = $1 AND signup_row_id = $2",
     [raidId, signupRowId],
