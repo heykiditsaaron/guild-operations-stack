@@ -8,7 +8,7 @@ import {
   requireGuildCapabilityOrOperator,
 } from "../../guild-permissions.js";
 import { characterMembership } from "../../application-state.js";
-import { traitsForSpec, type WowTrait } from "../../wow-traits/registry.js";
+import { positionForSpec, traitsForSpec, type WowTrait } from "../../wow-traits/registry.js";
 import {
   normalizedStrings,
   validateCreateRaidInput,
@@ -40,6 +40,8 @@ export type RaidRosterDiagnostics = {
   tanks: number;
   healers: number;
   damage: number;
+  melee: number;
+  ranged: number;
 };
 
 async function resolveApplicantGuildie(anchor: RaidApplicantAnchor): Promise<string | null> {
@@ -284,27 +286,41 @@ export async function unassignRaidParticipation(
 
 export async function raidRosterDiagnostics(raidId: string): Promise<RaidRosterDiagnostics> {
   const result = await pool.query<{
-    assigned: string;
-    tanks: string;
-    healers: string;
-    damage: string;
+    selected_role: RaidRole;
+    selected_spec: string;
+    declared_class: string | null;
+    class_name: string | null;
   }>(
-    `SELECT
-       count(*)::text AS assigned,
-       count(*) FILTER (WHERE selected_role = 'tank')::text AS tanks,
-       count(*) FILTER (WHERE selected_role = 'healer')::text AS healers,
-       count(*) FILTER (WHERE selected_role = 'damage')::text AS damage
-     FROM raid_assignments
-     WHERE raid_id = $1`,
+    `SELECT ra.selected_role, ra.selected_spec, rr.declared_class, wcp.class_name
+       FROM raid_assignments ra
+       JOIN raid_signup_rows rr ON rr.signup_row_id = ra.signup_row_id
+       LEFT JOIN wow_character_profiles wcp
+         ON wcp.region = rr.character_region
+        AND wcp.realm_id = rr.character_realm_id
+        AND wcp.character_id = rr.character_id
+      WHERE ra.raid_id = $1`,
     [raidId],
   );
-  const row = result.rows[0];
-  return {
-    assigned: Number(row?.assigned ?? 0),
-    tanks: Number(row?.tanks ?? 0),
-    healers: Number(row?.healers ?? 0),
-    damage: Number(row?.damage ?? 0),
-  };
+
+  return result.rows.reduce<RaidRosterDiagnostics>((diagnostics, row) => {
+    diagnostics.assigned += 1;
+    if (row.selected_role === "tank") diagnostics.tanks += 1;
+    if (row.selected_role === "healer") diagnostics.healers += 1;
+    if (row.selected_role === "damage") diagnostics.damage += 1;
+
+    const className = row.class_name ?? row.declared_class;
+    const position = className ? positionForSpec(className, row.selected_spec) : null;
+    if (position === "melee") diagnostics.melee += 1;
+    if (position === "ranged") diagnostics.ranged += 1;
+    return diagnostics;
+  }, {
+    assigned: 0,
+    tanks: 0,
+    healers: 0,
+    damage: 0,
+    melee: 0,
+    ranged: 0,
+  });
 }
 
 export async function assignedRaidCapabilities(raidId: string): Promise<readonly WowTrait[]> {

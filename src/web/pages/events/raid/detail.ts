@@ -188,6 +188,8 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
       <div><dt>Tanks</dt><dd>${diagnostics.tanks}</dd></div>
       <div><dt>Healers</dt><dd>${diagnostics.healers}</dd></div>
       <div><dt>Damage</dt><dd>${diagnostics.damage}</dd></div>
+      <div><dt>Melee</dt><dd>${diagnostics.melee}</dd></div>
+      <div><dt>Ranged</dt><dd>${diagnostics.ranged}</dd></div>
     </dl>`;
 
     const shelves = `<div class="raid-diagnostic-shelves" data-raid-diagnostics>

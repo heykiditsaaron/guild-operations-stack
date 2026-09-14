@@ -30,6 +30,8 @@ export type WowTrait =
   | "control.incapacitate"
   | "control.root";
 
+export type WowPosition = "melee" | "ranged";
+
 export type WowClassTraitDefinition = {
   className: string;
   traits: readonly WowTrait[];
@@ -38,6 +40,7 @@ export type WowClassTraitDefinition = {
 export type WowSpecTraitDefinition = {
   className: string;
   specName: string;
+  position: WowPosition;
   traits: readonly WowTrait[];
 };
 
@@ -57,47 +60,50 @@ const classTraits: readonly WowClassTraitDefinition[] = [
   { className: "Warrior", traits: ["armor.plate", "buff.battle_shout", "control.interrupt", "control.stun", "control.fear"] },
 ];
 
+// Position is Blizzard's melee/ranged specialization classification from
+// ChrSpecialization flags. It describes the specialization, not a character's
+// current physical distance or encounter-specific targeting eligibility.
 const specTraits: readonly WowSpecTraitDefinition[] = [
-  { className: "Death Knight", specName: "Blood", traits: ["role.tank"] },
-  { className: "Death Knight", specName: "Frost", traits: ["role.damage"] },
-  { className: "Death Knight", specName: "Unholy", traits: ["role.damage"] },
-  { className: "Demon Hunter", specName: "Havoc", traits: ["role.damage"] },
-  { className: "Demon Hunter", specName: "Vengeance", traits: ["role.tank"] },
-  { className: "Demon Hunter", specName: "Devourer", traits: ["role.damage"] },
-  { className: "Druid", specName: "Balance", traits: ["role.damage"] },
-  { className: "Druid", specName: "Feral", traits: ["role.damage"] },
-  { className: "Druid", specName: "Guardian", traits: ["role.tank"] },
-  { className: "Druid", specName: "Restoration", traits: ["role.healer", "dispel.harm.magic"] },
-  { className: "Evoker", specName: "Devastation", traits: ["role.damage"] },
-  { className: "Evoker", specName: "Preservation", traits: ["role.healer", "dispel.harm.magic", "dispel.harm.poison"] },
-  { className: "Evoker", specName: "Augmentation", traits: ["role.damage"] },
-  { className: "Hunter", specName: "Beast Mastery", traits: ["role.damage"] },
-  { className: "Hunter", specName: "Marksmanship", traits: ["role.damage"] },
-  { className: "Hunter", specName: "Survival", traits: ["role.damage"] },
-  { className: "Mage", specName: "Arcane", traits: ["role.damage"] },
-  { className: "Mage", specName: "Fire", traits: ["role.damage"] },
-  { className: "Mage", specName: "Frost", traits: ["role.damage"] },
-  { className: "Monk", specName: "Brewmaster", traits: ["role.tank"] },
-  { className: "Monk", specName: "Mistweaver", traits: ["role.healer", "dispel.harm.magic"] },
-  { className: "Monk", specName: "Windwalker", traits: ["role.damage"] },
-  { className: "Paladin", specName: "Holy", traits: ["role.healer", "dispel.harm.magic"] },
-  { className: "Paladin", specName: "Protection", traits: ["role.tank"] },
-  { className: "Paladin", specName: "Retribution", traits: ["role.damage"] },
-  { className: "Priest", specName: "Discipline", traits: ["role.healer"] },
-  { className: "Priest", specName: "Holy", traits: ["role.healer"] },
-  { className: "Priest", specName: "Shadow", traits: ["role.damage"] },
-  { className: "Rogue", specName: "Assassination", traits: ["role.damage"] },
-  { className: "Rogue", specName: "Outlaw", traits: ["role.damage"] },
-  { className: "Rogue", specName: "Subtlety", traits: ["role.damage"] },
-  { className: "Shaman", specName: "Elemental", traits: ["role.damage"] },
-  { className: "Shaman", specName: "Enhancement", traits: ["role.damage"] },
-  { className: "Shaman", specName: "Restoration", traits: ["role.healer", "dispel.harm.magic"] },
-  { className: "Warlock", specName: "Affliction", traits: ["role.damage"] },
-  { className: "Warlock", specName: "Demonology", traits: ["role.damage"] },
-  { className: "Warlock", specName: "Destruction", traits: ["role.damage"] },
-  { className: "Warrior", specName: "Arms", traits: ["role.damage"] },
-  { className: "Warrior", specName: "Fury", traits: ["role.damage"] },
-  { className: "Warrior", specName: "Protection", traits: ["role.tank"] },
+  { className: "Death Knight", specName: "Blood", position: "melee", traits: ["role.tank"] },
+  { className: "Death Knight", specName: "Frost", position: "melee", traits: ["role.damage"] },
+  { className: "Death Knight", specName: "Unholy", position: "melee", traits: ["role.damage"] },
+  { className: "Demon Hunter", specName: "Havoc", position: "melee", traits: ["role.damage"] },
+  { className: "Demon Hunter", specName: "Vengeance", position: "melee", traits: ["role.tank"] },
+  { className: "Demon Hunter", specName: "Devourer", position: "ranged", traits: ["role.damage"] },
+  { className: "Druid", specName: "Balance", position: "ranged", traits: ["role.damage"] },
+  { className: "Druid", specName: "Feral", position: "melee", traits: ["role.damage"] },
+  { className: "Druid", specName: "Guardian", position: "melee", traits: ["role.tank"] },
+  { className: "Druid", specName: "Restoration", position: "ranged", traits: ["role.healer", "dispel.harm.magic"] },
+  { className: "Evoker", specName: "Devastation", position: "ranged", traits: ["role.damage"] },
+  { className: "Evoker", specName: "Preservation", position: "ranged", traits: ["role.healer", "dispel.harm.magic", "dispel.harm.poison"] },
+  { className: "Evoker", specName: "Augmentation", position: "ranged", traits: ["role.damage"] },
+  { className: "Hunter", specName: "Beast Mastery", position: "ranged", traits: ["role.damage"] },
+  { className: "Hunter", specName: "Marksmanship", position: "ranged", traits: ["role.damage"] },
+  { className: "Hunter", specName: "Survival", position: "melee", traits: ["role.damage"] },
+  { className: "Mage", specName: "Arcane", position: "ranged", traits: ["role.damage"] },
+  { className: "Mage", specName: "Fire", position: "ranged", traits: ["role.damage"] },
+  { className: "Mage", specName: "Frost", position: "ranged", traits: ["role.damage"] },
+  { className: "Monk", specName: "Brewmaster", position: "melee", traits: ["role.tank"] },
+  { className: "Monk", specName: "Mistweaver", position: "melee", traits: ["role.healer", "dispel.harm.magic"] },
+  { className: "Monk", specName: "Windwalker", position: "melee", traits: ["role.damage"] },
+  { className: "Paladin", specName: "Holy", position: "melee", traits: ["role.healer", "dispel.harm.magic"] },
+  { className: "Paladin", specName: "Protection", position: "melee", traits: ["role.tank"] },
+  { className: "Paladin", specName: "Retribution", position: "melee", traits: ["role.damage"] },
+  { className: "Priest", specName: "Discipline", position: "ranged", traits: ["role.healer"] },
+  { className: "Priest", specName: "Holy", position: "ranged", traits: ["role.healer"] },
+  { className: "Priest", specName: "Shadow", position: "ranged", traits: ["role.damage"] },
+  { className: "Rogue", specName: "Assassination", position: "melee", traits: ["role.damage"] },
+  { className: "Rogue", specName: "Outlaw", position: "melee", traits: ["role.damage"] },
+  { className: "Rogue", specName: "Subtlety", position: "melee", traits: ["role.damage"] },
+  { className: "Shaman", specName: "Elemental", position: "ranged", traits: ["role.damage"] },
+  { className: "Shaman", specName: "Enhancement", position: "melee", traits: ["role.damage"] },
+  { className: "Shaman", specName: "Restoration", position: "ranged", traits: ["role.healer", "dispel.harm.magic"] },
+  { className: "Warlock", specName: "Affliction", position: "ranged", traits: ["role.damage"] },
+  { className: "Warlock", specName: "Demonology", position: "ranged", traits: ["role.damage"] },
+  { className: "Warlock", specName: "Destruction", position: "ranged", traits: ["role.damage"] },
+  { className: "Warrior", specName: "Arms", position: "melee", traits: ["role.damage"] },
+  { className: "Warrior", specName: "Fury", position: "melee", traits: ["role.damage"] },
+  { className: "Warrior", specName: "Protection", position: "melee", traits: ["role.tank"] },
 ];
 
 function normalized(value: string): string {
@@ -133,6 +139,14 @@ export function traitsForSpec(className: string, specName: string): readonly Wow
   )?.traits ?? [];
 
   return [...new Set<WowTrait>([...inherited, ...specialization])];
+}
+
+export function positionForSpec(className: string, specName: string): WowPosition | null {
+  const classKey = normalized(className);
+  const specKey = normalized(specName);
+  return specTraits.find(
+    (definition) => normalized(definition.className) === classKey && normalized(definition.specName) === specKey,
+  )?.position ?? null;
 }
 
 export function specHasTrait(className: string, specName: string, trait: WowTrait): boolean {

@@ -2,6 +2,7 @@ export {
   allWowClassTraitDefinitions,
   allWowSpecTraitDefinitions,
   allWowTraits,
+  positionForSpec,
   specHasTrait,
   traitsForClass,
   traitsForSpec,
@@ -9,6 +10,7 @@ export {
 
 export type {
   WowClassTraitDefinition,
+  WowPosition,
   WowSpecTraitDefinition,
   WowTrait,
 } from "./registry.js";
