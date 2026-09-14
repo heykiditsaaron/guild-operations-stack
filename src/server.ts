@@ -8,7 +8,6 @@ import { registerGuildRoutes } from "./guild-routes.js";
 import { startGuildRefreshScheduler } from "./guild-refresh-scheduler.js";
 import { packagedModuleEnabled, type PackagedModuleKey } from "./module-lifecycle.js";
 import { registerDiscordModule, registerDiscordModuleAdministration } from "./modules/discord/module.js";
-import { registerRaidAdministrationDestination } from "./modules/raid/administration.js";
 import { registerRaffleAdministrationDestination } from "./modules/raffle/administration.js";
 import { registerRaffleApiV1Routes } from "./modules/raffle/api-v1-routes.js";
 import { reconcileRaffleCalendarListingDestinations } from "./modules/raffle/calendar-listing.js";
@@ -38,7 +37,6 @@ const app = Fastify({
 });
 await app.register(cookie);
 registerDiscordModuleAdministration();
-registerRaidAdministrationDestination();
 registerRaffleAdministrationDestination();
 registerRaffleGuildEventOffering();
 await reconcileRaffleCalendarListingDestinations();
