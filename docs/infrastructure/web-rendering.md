@@ -36,34 +36,34 @@ Rendering may express the result of an authorization decision by showing, hiding
 
 A missing or disabled control is presentation, not access control. Routes and procedures must still enforce required capabilities against backend authority through [`guild-permissioning.md`](guild-permissioning.md) or the appropriate module-owned authorization policy.
 
-## Administration navigation
+## Administration shell
 
-Administration navigation is shared shell infrastructure for moving between independently owned administrative areas.
+`/admin` is the global Administration entry and currently redirects to `/admin/general`.
 
-`/admin` is the Guild Operations administrative area. It owns application-wide operational configuration and does not need to embed module administration merely to make module tooling discoverable.
-
-A module may publish an administration destination consisting of:
+The Administration shell owns two stable concerns:
 
 ```text
-label
-    → human-facing administrative area name
-
-destination
-    → module-owned administrative landing route below /admin
-
-permission scope
-    → stable module-owned coordinate describing the authority required for that destination
+Administration
+├── General
+└── Permissions
 ```
 
-The module also supplies the authorization evaluation for that permission scope against current Guild Operations authority. This preserves module-owned permission policy without forcing module permissions into globally persisted capability state merely to support navigation.
+- `/admin/general` is the home for durable application/module configuration and, as module lifecycle work lands, module enablement.
+- `/admin/permissions` is the home for administratively configurable permission policy.
 
-The shared shell owns the selector presentation, current-area treatment, responsive behavior, and navigation interaction. The module owns the destination label, route, permission scope, authorization policy, and all presentation after navigation reaches that module.
+The shell owns the concern navigation and current-section treatment. Modules do not receive top-level Administration tabs merely because they exist.
 
-Published destinations are filtered against backend authority before they reach rendering. The selector is therefore a projection of authorized administrative destinations, not an authorization boundary of its own. Module routes must continue to enforce their own administration permission.
+The current migration still contains legacy module administrative destinations below `/admin` for Raid, Raffle, and Discord. Those routes remain reachable while their contents are classified and moved to the correct configuration or domain-operation surface. They are compatibility structure during the separation, not the target Administration information architecture.
 
-The shell recognizes a module administrative area from its published destination and descendants. A module should not duplicate the selector in its own pages merely to participate in administration navigation.
+A module capability may exist without appearing under Permissions. Only permission policy the guild is actually allowed to configure belongs there. Backend authority remains the enforcement boundary regardless of whether a policy is rendered in Administration.
 
-The registration contract is deliberately small. Do not extend it with icons, categories, descriptions, badges, nested navigation, ordering frameworks, or page factories until real administrative surfaces require those distinctions.
+## Legacy administration navigation
+
+The shared renderer still supports the previous module administration destination selector for legacy `/admin/<module>` routes during migration.
+
+Published destinations are filtered against backend authority before they reach rendering. The selector is a projection of authorized legacy destinations, not an authorization boundary of its own. Module routes must continue enforcing their own authority requirements.
+
+Do not extend the legacy destination registration contract. New Administration behavior should target General or Permissions according to [`../doctrine/surface-roles.md`](../doctrine/surface-roles.md), and privileged domain operations should remain with the domain being operated.
 
 ## Secondary navigation
 
