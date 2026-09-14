@@ -75,6 +75,7 @@ const RAID_BUFF_SPELLS: Readonly<Record<RaidBuffTrait, { spellId: number; label:
 };
 
 const iconCache = new Map<string, string | null>();
+let accessTokenCache: { value: string; refreshAt: number } | null = null;
 
 function normalized(value: string): string {
   return value.trim().toLocaleLowerCase("en-US");
@@ -90,11 +91,18 @@ function mediaAssetUrl(media: BlizzardMedia): string | null {
     ?? null;
 }
 
+async function iconAccessToken(): Promise<string> {
+  if (accessTokenCache && accessTokenCache.refreshAt > Date.now()) return accessTokenCache.value;
+  const value = await applicationAccessToken();
+  accessTokenCache = { value, refreshAt: Date.now() + 30 * 60 * 1000 };
+  return value;
+}
+
 async function mediaIcon(kind: "playable-specialization" | "spell", id: number): Promise<string | null> {
   const cacheKey = `${kind}:${id}`;
   if (iconCache.has(cacheKey)) return iconCache.get(cacheKey) ?? null;
 
-  const accessToken = await applicationAccessToken();
+  const accessToken = await iconAccessToken();
   const region = config.guild.region;
   try {
     const media = await getJsonWithRetry<BlizzardMedia>(
