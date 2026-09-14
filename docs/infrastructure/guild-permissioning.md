@@ -38,6 +38,26 @@ global authorization decision
 
 Capability sets are explicit. The resolver does not assume implicit capability inheritance from numeric rank ordering.
 
+## Operator authority
+
+Guild Operations also has a deliberately separate operator authority seam for deployment ownership. The configured operator is identified by the durable Guildie coordinate supplied as `OPERATOR_GUILDIE_ID`.
+
+Operator authority is not a synthetic guild rank and does not add entries to `guild_rank_capabilities`. It must not rewrite Blizzard-observed rank or membership facts. Procedures opt into operator override explicitly when deployment ownership needs to survive the guild's ordinary rank policy.
+
+The Raid module currently opts into operator override for `raid.create`, `raid.manage`, and Raid permission administration. Its rank-mapping authority remains `raid.permissions`, granted only to Blizzard rank 0. The configured operator may perform that administration independently of current Raid rank grants.
+
+This distinction is intentional:
+
+```text
+Blizzard rank authority
+        → explicit guild capability grants
+
+configured operator identity
+        → explicit procedure-specific override
+```
+
+The operator seam is not an implicit superuser capability applied to every module or operation.
+
 ## Authorization and presentation
 
 This infrastructure owns the authorization decision. Presentation infrastructure may hide, disable, label, or otherwise express an action according to the current authorized state, but presentation is never the enforcement boundary.
@@ -52,4 +72,4 @@ Using shared authorization machinery does not transfer module-specific policy to
 
 ## Current scope
 
-This infrastructure covers rank-derived authorization for globally owned Guild Operations behavior. System/operator authorization remains outside its current scope.
+This infrastructure covers rank-derived authorization and the minimal explicit operator identity seam. Module procedures remain responsible for deciding whether operator override is legitimate for their own operations.

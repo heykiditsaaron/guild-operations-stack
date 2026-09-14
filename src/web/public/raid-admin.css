@@ -1,0 +1,591 @@
+.raid-admin-overview {
+  width: min(100%, 54rem);
+}
+
+.raid-admin-header-action {
+  flex: none;
+}
+
+.raid-admin-setup {
+  margin: 0 0 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.raid-admin-form {
+  display: grid;
+  gap: 1rem;
+  max-width: 42rem;
+}
+
+.raid-admin-form label {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.raid-admin-form input,
+.raid-admin-form select,
+.raid-admin-form textarea {
+  width: 100%;
+}
+
+.raid-admin-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.raid-admin-card {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.raid-admin-card-open {
+  border-color: rgba(124, 198, 141, 0.2);
+  background: rgba(124, 198, 141, 0.035);
+}
+
+.raid-admin-card-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.raid-admin-card-identity h2,
+.raid-admin-card-identity p,
+.raid-admin-card-description {
+  margin: 0;
+}
+
+.raid-admin-card-identity h2 {
+  font-size: 1rem;
+}
+
+.raid-admin-card-identity p,
+.raid-admin-card-description {
+  margin-top: 0.35rem;
+  color: #aaa69c;
+  font-size: 0.9rem;
+}
+
+.raid-admin-card-state {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.55rem;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  color: #c8c4ba;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.raid-admin-card-open .raid-admin-card-state {
+  border-color: rgba(124, 198, 141, 0.28);
+  color: #b9dfc1;
+}
+
+.raid-admin-card-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0;
+}
+
+.raid-admin-card-facts dt {
+  font-weight: 700;
+}
+
+.raid-admin-card-facts dd {
+  margin: 0;
+}
+
+.raid-admin-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.raid-admin-card-actions .button-primary {
+  min-height: 2.35rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.88rem;
+}
+
+.raid-admin-empty {
+  color: #aaa69c;
+}
+
+.raid-title-bar,
+.raid-scoreboard,
+.raid-workspace {
+  width: min(100%, 72rem);
+}
+
+.raid-title-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.raid-title-bar h1,
+.raid-title-bar p,
+.raid-scoreboard h2,
+.raid-scoreboard h3,
+.raid-workspace h2,
+.raid-workspace h3,
+.raid-workspace p {
+  margin: 0;
+}
+
+.raid-title-bar h1 {
+  font-size: clamp(1.35rem, 4vw, 1.9rem);
+  line-height: 1.1;
+}
+
+.raid-title-bar p,
+.raid-workspace-heading p,
+.raid-scoreboard-empty,
+.raid-pool-empty {
+  color: #aaa69c;
+}
+
+.raid-title-bar p {
+  margin-top: 0.28rem;
+  font-size: 0.82rem;
+}
+
+.raid-scoreboard {
+  display: grid;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+}
+
+.raid-scoreboard > h2 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.raid-roster-diagnostics {
+  display: grid;
+  grid-template-columns: 1.35fr repeat(3, minmax(0, 0.8fr));
+  margin: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.7rem;
+  background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
+}
+
+.raid-roster-diagnostics > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.5rem 0.65rem;
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.raid-roster-diagnostics > div:last-child {
+  border-right: 0;
+}
+
+.raid-roster-diagnostics dt {
+  color: #8f8b82;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.raid-roster-diagnostics dd {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.raid-roster-diagnostics dd span {
+  margin-left: 0.08rem;
+  color: #8f8b82;
+  font-size: 0.72em;
+  font-weight: 700;
+}
+
+.raid-scoreboard-capabilities {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.raid-scoreboard-capabilities h3 {
+  flex: none;
+  color: #8f8b82;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.raid-capabilities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.raid-capabilities li {
+  padding: 0.18rem 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  color: #aaa69c;
+  font-size: 0.68rem;
+  line-height: 1.25;
+}
+
+.raid-workspace {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.raid-workspace-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.2rem;
+}
+
+.raid-workspace-heading h2,
+.raid-assignment-board > h2 {
+  font-size: 0.95rem;
+}
+
+.raid-workspace-heading p {
+  margin-top: 0.2rem;
+  font-size: 0.76rem;
+}
+
+.raid-admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.raid-admin-actions .button-primary,
+.raid-admin-actions .button-secondary {
+  min-height: 2rem;
+  padding: 0.36rem 0.6rem;
+  font-size: 0.78rem;
+}
+
+.raid-signup-pool {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.45rem;
+  min-height: 4.2rem;
+  padding: 0.55rem;
+  border: 1px dashed rgba(255, 255, 255, 0.11);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.012);
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.raid-participant-card {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 0.12rem;
+  width: 9.2rem;
+  min-height: 3.55rem;
+  padding: 0.52rem 0.58rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.62rem;
+  background: rgba(255, 255, 255, 0.035);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease, opacity 120ms ease;
+}
+
+.raid-participant-card *,
+.raid-drag-ghost * {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+}
+
+.raid-participant-card:hover,
+.raid-participant-card:focus-visible,
+.raid-participant-card-selected {
+  border-color: rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.065);
+  outline: none;
+}
+
+.raid-participant-card-selected {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 0 0 2px rgba(124, 198, 141, 0.16);
+}
+
+.raid-participant-card-dragging {
+  opacity: 0.2;
+}
+
+.raid-drag-ghost {
+  position: fixed;
+  z-index: 1000;
+  margin: 0;
+  pointer-events: none;
+  opacity: 0.96;
+  transform: rotate(1deg) scale(1.015);
+  box-shadow: 0 0.55rem 1.35rem rgba(0, 0, 0, 0.38);
+}
+
+.raid-participant-card strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.84rem;
+  line-height: 1.2;
+}
+
+.raid-participant-card span,
+.raid-participant-card small {
+  overflow: hidden;
+  color: #aaa69c;
+  font-size: 0.68rem;
+  line-height: 1.22;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.raid-participant-card small {
+  color: #8f8b82;
+}
+
+.raid-participant-card-assigned {
+  width: 100%;
+  min-height: 3.4rem;
+}
+
+.raid-board-status {
+  min-height: 0;
+  color: #c8c4ba;
+  font-size: 0.76rem;
+}
+
+.raid-board-status:empty {
+  display: none;
+}
+
+.raid-assignment-board {
+  display: grid;
+  gap: 0.5rem;
+  padding-top: 0.15rem;
+}
+
+.raid-role-lanes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.raid-role-lane {
+  display: grid;
+  align-content: start;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.015);
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.raid-role-lane-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 1.6rem;
+}
+
+.raid-role-lane-heading h3 {
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.055em;
+}
+
+.raid-role-lane-heading span {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.45rem;
+  min-height: 1.45rem;
+  padding: 0.12rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.045);
+  color: #8f8b82;
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.raid-role-cards {
+  display: grid;
+  gap: 0.38rem;
+}
+
+.raid-add-slot {
+  display: grid;
+  place-items: center;
+  min-height: 3.4rem;
+  padding: 0.3rem;
+  border: 1px dashed rgba(255, 255, 255, 0.13);
+  border-radius: 0.62rem;
+  background: transparent;
+  color: #77736b;
+  font-size: 1.15rem;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease;
+}
+
+.raid-role-lane.raid-drop-available,
+.raid-signup-pool.raid-drop-available {
+  border-color: rgba(124, 198, 141, 0.24);
+}
+
+.raid-role-lane.raid-drop-active,
+.raid-signup-pool.raid-drop-active,
+.raid-add-slot:hover,
+.raid-add-slot:focus-visible {
+  border-color: rgba(124, 198, 141, 0.5);
+  background: rgba(124, 198, 141, 0.06);
+  color: #b9dfc1;
+  outline: none;
+}
+
+.raid-role-lane.raid-drop-active .raid-add-slot {
+  border-color: rgba(124, 198, 141, 0.4);
+  color: #b9dfc1;
+}
+
+.raid-spec-dialog {
+  width: min(calc(100% - 2rem), 28rem);
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.85rem;
+  background: #171715;
+  color: inherit;
+}
+
+.raid-spec-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+.raid-spec-dialog form {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+}
+
+.raid-spec-dialog h2,
+.raid-spec-dialog p {
+  margin: 0;
+}
+
+.raid-spec-dialog p {
+  color: #aaa69c;
+}
+
+.raid-spec-dialog [data-raid-spec-options] {
+  display: grid;
+  gap: 0.5rem;
+}
+
+@media (max-width: 48rem) {
+  .raid-workspace-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .raid-scoreboard-capabilities {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .raid-role-lanes {
+    grid-template-columns: 1fr;
+  }
+
+  .raid-participant-card {
+    width: calc(50% - 0.225rem);
+  }
+
+  .raid-participant-card-assigned {
+    width: 100%;
+  }
+}
+
+@media (max-width: 30rem) {
+  .raid-title-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .raid-title-bar .button-secondary {
+    align-self: flex-start;
+  }
+
+  .raid-roster-diagnostics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .raid-roster-diagnostics > div:nth-child(2) {
+    border-right: 0;
+  }
+
+  .raid-roster-diagnostics > div:nth-child(-n + 2) {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .raid-participant-card {
+    width: 100%;
+  }
+}
+
+@media (max-width: 42rem) {
+  .raid-admin-card-heading {
+    align-items: baseline;
+  }
+}

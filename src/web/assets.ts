@@ -27,6 +27,15 @@ export type AssetName =
   | "raffle.js"
   | "raffle-entry.js"
   | "raffle-public.js"
+  | "raid.css"
+  | "raid.js"
+  | "raid-admin.css"
+  | "raid-iconography.css"
+  | "raid-organizer.css"
+  | "raid-permissions.css"
+  | "raid-admin.js"
+  | "raid-organizer.js"
+  | "raid-permissions.js"
   | "images/raffle/gold-sack.png";
 
 type WebAsset = {
@@ -52,6 +61,11 @@ const assetDefinitions: Array<{ name: AssetName; contentType: string }> = [
   { name: "raffle-admin-overview.css", contentType: "text/css; charset=utf-8" },
   { name: "raffle-winner.css", contentType: "text/css; charset=utf-8" },
   { name: "raffle-round.css", contentType: "text/css; charset=utf-8" },
+  { name: "raid.css", contentType: "text/css; charset=utf-8" },
+  { name: "raid-admin.css", contentType: "text/css; charset=utf-8" },
+  { name: "raid-iconography.css", contentType: "text/css; charset=utf-8" },
+  { name: "raid-organizer.css", contentType: "text/css; charset=utf-8" },
+  { name: "raid-permissions.css", contentType: "text/css; charset=utf-8" },
   { name: "app.js", contentType: "text/javascript; charset=utf-8" },
   { name: "navigation-shelves.js", contentType: "text/javascript; charset=utf-8" },
   { name: "admin.js", contentType: "text/javascript; charset=utf-8" },
@@ -60,6 +74,10 @@ const assetDefinitions: Array<{ name: AssetName; contentType: string }> = [
   { name: "raffle.js", contentType: "text/javascript; charset=utf-8" },
   { name: "raffle-entry.js", contentType: "text/javascript; charset=utf-8" },
   { name: "raffle-public.js", contentType: "text/javascript; charset=utf-8" },
+  { name: "raid.js", contentType: "text/javascript; charset=utf-8" },
+  { name: "raid-admin.js", contentType: "text/javascript; charset=utf-8" },
+  { name: "raid-organizer.js", contentType: "text/javascript; charset=utf-8" },
+  { name: "raid-permissions.js", contentType: "text/javascript; charset=utf-8" },
   { name: "images/raffle/gold-sack.png", contentType: "image/png" },
 ];
 

@@ -67,6 +67,7 @@ export const config = {
   sessionCookieSecure: (process.env.SESSION_COOKIE_SECURE ?? "false") === "true",
   authAttemptTtlMinutes: 10,
   sessionTtlDays: 30,
+  operatorGuildieId: optional("OPERATOR_GUILDIE_ID"),
   guild: {
     id: required("GUILD_BLIZZARD_ID"),
     region: guildRegion,

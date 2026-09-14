@@ -20,6 +20,11 @@ const migrationFiles = [
   "015_discord_module.sql",
   "016_discord_role_map_enablement.sql",
   "018_remove_group_coordinator.sql",
+  "019_raid_module.sql",
+  "020_raid_external_anchor.sql",
+  "021_raid_assignment_derived_composition.sql",
+  "022_raid_permission_split.sql",
+  "023_raid_permission_administration.sql",
 ];
 
 for (const migrationFile of migrationFiles) {
