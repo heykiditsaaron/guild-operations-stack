@@ -46,6 +46,9 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     const secretWarning = moduleConfiguration.secretEncryptionAvailable
       ? ""
       : `<p class="admin-unavailable">APPLICATION_ENCRYPTION_KEY is not configured. Discord secrets cannot be stored or used until an installation encryption key is provided.</p>`;
+    const moduleState = moduleConfiguration.enabled
+      ? '<p class="discord-projection-state">Discord is enabled from Administration → General.</p>'
+      : '<p class="discord-projection-state">Discord is currently disabled. Configuration can be prepared here before enabling it from Administration → General.</p>';
 
     const body = `<div class="admin-sections">
       <section class="admin-section" aria-labelledby="discord-module-heading">
@@ -56,13 +59,9 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
             <div class="discord-projection-heading discord-admin-heading">
               <div>
                 <h3>Integration</h3>
-                <p>Enable Discord as a packaged Guild Operations integration.</p>
+                <p>Configure the packaged Discord integration.</p>
+                ${moduleState}
               </div>
-              <label class="switch discord-projection-toggle">
-                <input type="checkbox" data-discord-module-enabled${moduleConfiguration.enabled ? " checked" : ""}>
-                <span class="switch-control" aria-hidden="true"></span>
-                <span data-discord-module-switch-label>${moduleConfiguration.enabled ? "On" : "Off"}</span>
-              </label>
             </div>
             <div class="discord-role-fields">
               <label><span>Application ID</span><input type="text" data-discord-client-id value="${htmlText(moduleConfiguration.clientId ?? "")}" autocomplete="off"></label>
@@ -101,7 +100,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
         secondaryNavigation: {
           kind: "breadcrumb",
           items: [
-            { label: "Administration", href: "/admin" },
+            { label: "Administration", href: "/admin/general" },
             { label: "Discord" },
           ],
         },
@@ -120,7 +119,6 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     const body = request.body as Record<string, unknown>;
 
     if (body.action === "discord_module.update") {
-      if (typeof body.enabled !== "boolean") return reply.code(400).send({ error: "invalid_module_configuration" });
       const textOrNull = (value: unknown): string | null | undefined => {
         if (value === undefined) return undefined;
         if (value === null) return null;
@@ -129,7 +127,6 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       };
       try {
         const settings = await updateDiscordModuleConfiguration({
-          enabled: body.enabled,
           clientId: textOrNull(body.clientId) ?? null,
           discordGuildId: textOrNull(body.discordGuildId) ?? null,
           inviteUrl: textOrNull(body.inviteUrl) ?? null,
