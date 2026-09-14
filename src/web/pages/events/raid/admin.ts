@@ -1,6 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
-import { effectiveGuildAuthority, RAID_CREATE_CAPABILITY, RAID_MANAGE_CAPABILITY } from "../../../../guild-permissions.js";
+import {
+  effectiveGuildAuthority,
+  RAID_CREATE_CAPABILITY,
+  RAID_MANAGE_CAPABILITY,
+  RAID_PERMISSIONS_CAPABILITY,
+} from "../../../../guild-permissions.js";
 import { raidsForAdministration } from "../../../../modules/raid/admin-view.js";
 import { createRaid } from "../../../../modules/raid/application.js";
 import type { RaidDifficulty, RaidEligibility } from "../../../../modules/raid/domain.js";
@@ -96,7 +101,8 @@ export async function registerRaidAdminPage(app: FastifyInstance, assets: AssetR
     const authority = guildie ? await effectiveGuildAuthority(guildie.guildieId) : null;
     const canCreate = authority?.capabilities.includes(RAID_CREATE_CAPABILITY) ?? false;
     const canManage = authority?.capabilities.includes(RAID_MANAGE_CAPABILITY) ?? false;
-    const authorized = canCreate || canManage;
+    const canPermissions = authority?.operator === true || authority?.capabilities.includes(RAID_PERMISSIONS_CAPABILITY) === true;
+    const authorized = canCreate || canManage || canPermissions;
 
     const body = authorized
       ? `<section class="raid-admin-overview" aria-labelledby="page-title">
@@ -104,6 +110,13 @@ export async function registerRaidAdminPage(app: FastifyInstance, assets: AssetR
           ${await raidList(canManage)}
         </section>`
       : `<section class="admin-unavailable"><h2>Raid administration is not available for this account.</h2></section>`;
+
+    const headerActions = authorized
+      ? `<div class="raid-admin-header-actions">
+          ${canPermissions ? `<a class="button-secondary" href="/admin/raid/permissions">Permissions</a>` : ""}
+          ${canCreate ? `<button class="button-primary raid-admin-header-action" type="button" data-toggle-raid-setup>New raid</button>` : ""}
+        </div>`
+      : "";
 
     const html = renderPage(assets, {
       pathname: "/admin/raid",
@@ -114,7 +127,7 @@ export async function registerRaidAdminPage(app: FastifyInstance, assets: AssetR
       scripts: ["admin.js", "raid-admin.js"],
       secondaryNavigation: navigation,
       header: authorized
-        ? `<div class="admin-page-header-row"><div class="admin-page-header"><h1 id="page-title">Raid</h1><p class="lede">Create raids and operate participation.</p></div>${canCreate ? `<button class="button-primary raid-admin-header-action" type="button" data-toggle-raid-setup>New raid</button>` : ""}</div>`
+        ? `<div class="admin-page-header-row"><div class="admin-page-header"><h1 id="page-title">Raid</h1><p class="lede">Create raids and operate participation.</p></div>${headerActions}</div>`
         : `<div class="admin-page-header"><h1 id="page-title">Raid</h1><p class="lede">Create raids and operate participation.</p></div>`,
       body,
     });
