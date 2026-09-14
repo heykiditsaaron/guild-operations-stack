@@ -20,3 +20,6 @@ ALTER TABLE raid_events
 
 ALTER TABLE raid_assignments
   DROP COLUMN IF EXISTS slot_index;
+
+CREATE INDEX IF NOT EXISTS raid_assignments_raid_idx
+  ON raid_assignments(raid_id, assigned_at_unix, assignment_id);
