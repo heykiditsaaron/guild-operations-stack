@@ -12,6 +12,7 @@ import {
   type AssignRaidParticipationInput,
   type CreateRaidInput,
   type RaidApplicantAnchor,
+  type RaidDifficulty,
   type RaidEligibility,
   type RaidRole,
   type SubmitRaidParticipationRowInput,
@@ -25,8 +26,15 @@ export type RaidEventFacts = {
   occursAt: readonly [number] | readonly [number, number];
   tags: string[];
   eligibility: RaidEligibility;
-  raidSize: number;
+  difficulty: RaidDifficulty;
   signupsOpen: boolean;
+};
+
+export type RaidRosterDiagnostics = {
+  assigned: number;
+  tanks: number;
+  healers: number;
+  damage: number;
 };
 
 async function resolveApplicantGuildie(anchor: RaidApplicantAnchor): Promise<string | null> {
@@ -49,11 +57,11 @@ export async function raidEventFacts(raidId: string): Promise<RaidEventFacts | n
     occurs_end_unix: string | null;
     tags: string[];
     eligibility: RaidEligibility;
-    raid_size: number;
+    difficulty: RaidDifficulty;
     signups_open: boolean;
   }>(
     `SELECT raid_id, guild_id, label, description, occurs_start_unix, occurs_end_unix,
-            tags, eligibility, raid_size, signups_open
+            tags, eligibility, difficulty, signups_open
        FROM raid_events
       WHERE raid_id = $1`,
     [raidId],
@@ -71,7 +79,7 @@ export async function raidEventFacts(raidId: string): Promise<RaidEventFacts | n
     occursAt: end === null ? [start] : [start, end],
     tags: row.tags,
     eligibility: row.eligibility,
-    raidSize: row.raid_size,
+    difficulty: row.difficulty,
     signupsOpen: row.signups_open,
   };
 }
@@ -84,7 +92,7 @@ export async function createRaid(actorGuildieId: string, input: CreateRaidInput)
   const result = await pool.query<{ raid_id: string }>(
     `INSERT INTO raid_events (
        guild_id, label, description, occurs_start_unix, occurs_end_unix, tags,
-       eligibility, raid_size, created_by_guildie_id
+       eligibility, difficulty, created_by_guildie_id
      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
      RETURNING raid_id`,
     [
@@ -95,7 +103,7 @@ export async function createRaid(actorGuildieId: string, input: CreateRaidInput)
       input.occursAt.length === 2 ? input.occursAt[1] : null,
       tags,
       input.eligibility,
-      input.raidSize,
+      input.difficulty,
       actorGuildieId,
     ],
   );
@@ -218,9 +226,6 @@ export async function assignRaidParticipation(
   await requireGuildCapability(actorGuildieId, RAID_CREATE_CAPABILITY);
   const raid = await raidEventFacts(input.raidId);
   if (!raid) throw new Error("Raid not found");
-  if (!Number.isInteger(input.slotIndex) || input.slotIndex < 1 || input.slotIndex > raid.raidSize) {
-    throw new Error("Raid slot is outside the configured raid size");
-  }
 
   const rowResult = await pool.query<{
     applicant_id: string;
@@ -247,17 +252,49 @@ export async function assignRaidParticipation(
 
   const result = await pool.query<{ assignment_id: string }>(
     `INSERT INTO raid_assignments (
-       raid_id, applicant_id, signup_row_id, slot_index, selected_spec, selected_role, assigned_by_guildie_id
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7)
+       raid_id, applicant_id, signup_row_id, selected_spec, selected_role, assigned_by_guildie_id
+     ) VALUES ($1,$2,$3,$4,$5,$6)
      RETURNING assignment_id`,
-    [input.raidId, row.applicant_id, input.signupRowId, input.slotIndex, input.selectedSpec, input.selectedRole, actorGuildieId],
+    [input.raidId, row.applicant_id, input.signupRowId, input.selectedSpec, input.selectedRole, actorGuildieId],
   );
   return result.rows[0].assignment_id;
 }
 
-export async function unassignRaidSlot(actorGuildieId: string, raidId: string, slotIndex: number): Promise<void> {
+export async function unassignRaidParticipation(
+  actorGuildieId: string,
+  raidId: string,
+  signupRowId: string,
+): Promise<void> {
   await requireGuildCapability(actorGuildieId, RAID_CREATE_CAPABILITY);
-  await pool.query("DELETE FROM raid_assignments WHERE raid_id = $1 AND slot_index = $2", [raidId, slotIndex]);
+  await pool.query(
+    "DELETE FROM raid_assignments WHERE raid_id = $1 AND signup_row_id = $2",
+    [raidId, signupRowId],
+  );
+}
+
+export async function raidRosterDiagnostics(raidId: string): Promise<RaidRosterDiagnostics> {
+  const result = await pool.query<{
+    assigned: string;
+    tanks: string;
+    healers: string;
+    damage: string;
+  }>(
+    `SELECT
+       count(*)::text AS assigned,
+       count(*) FILTER (WHERE selected_role = 'tank')::text AS tanks,
+       count(*) FILTER (WHERE selected_role = 'healer')::text AS healers,
+       count(*) FILTER (WHERE selected_role = 'damage')::text AS damage
+     FROM raid_assignments
+     WHERE raid_id = $1`,
+    [raidId],
+  );
+  const row = result.rows[0];
+  return {
+    assigned: Number(row?.assigned ?? 0),
+    tanks: Number(row?.tanks ?? 0),
+    healers: Number(row?.healers ?? 0),
+    damage: Number(row?.damage ?? 0),
+  };
 }
 
 export async function assignedRaidCapabilities(raidId: string): Promise<readonly WowTrait[]> {
@@ -274,7 +311,7 @@ export async function assignedRaidCapabilities(raidId: string): Promise<readonly
         AND wcp.realm_id = rr.character_realm_id
         AND wcp.character_id = rr.character_id
       WHERE ra.raid_id = $1
-      ORDER BY ra.slot_index`,
+      ORDER BY ra.assigned_at_unix, ra.assignment_id`,
     [raidId],
   );
 
