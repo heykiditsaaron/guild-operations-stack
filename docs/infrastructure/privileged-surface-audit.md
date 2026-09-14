@@ -48,7 +48,7 @@ Those are migration conditions, not the target information architecture.
 
 Legacy `/admin/raid` redirects to the Raid-owned operational overview. Legacy `/admin/raid/:raidId` redirects to the Raid-owned organizer. Legacy `/admin/raid/permissions` redirects to the global Raid permission editor. Compatibility POST routes remain temporarily for old clients, but current Raid browser flows use the canonical Raid-owned operational routes.
 
-Legacy `/admin/raffle` and `/admin/raffle/:roundId` now redirect to the Raffle-owned operational surfaces. The previous `/events/raffle/admin` aliases also redirect to the same canonical operational coordinates. Current Raffle browser navigation uses `/events/raffle/manage...` directly.
+Legacy `/admin/raffle` and `/admin/raffle/:roundId` redirect to the Raffle-owned operational surfaces. The previous `/events/raffle/admin` aliases also redirect to the same canonical operational coordinates. Current Raffle browser navigation uses `/events/raffle/manage...` directly.
 
 Authorized Raid and Raffle operators discover their operational surfaces contextually from `/events`. Neither module publishes its operational surface as an Administration destination.
 
@@ -103,7 +103,8 @@ During migration:
 - Administration must not become a generic privileged-action dashboard;
 - operational inspection must not determine Administration availability in the final model;
 - module lifecycle changes must not create new dependencies on legacy Calendar machinery;
-- legacy web routes are temporary migration scaffolding rather than durable endpoint contracts and should be deleted once all current callers use canonical routes.
+- legacy web routes are temporary migration scaffolding rather than durable endpoint contracts and should be deleted once all current callers use canonical routes;
+- application/domain operations must remain endpoint-agnostic so later HTTP contract changes do not become domain migrations.
 
 ## Unresolved operational placement
 
