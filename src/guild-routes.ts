@@ -7,6 +7,7 @@ import {
 } from "./guild-refresh-schedule.js";
 import {
   GUILD_REFRESH_CAPABILITY,
+  GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY,
   GuildCapabilityDeniedError,
   requireGuildCapability,
 } from "./guild-permissions.js";
@@ -53,7 +54,7 @@ export async function registerGuildRoutes(app: FastifyInstance): Promise<void> {
     if (!guildie) return reply.code(401).send({ error: "not_authenticated" });
 
     try {
-      await requireGuildCapability(guildie.guildieId, GUILD_REFRESH_CAPABILITY);
+      await requireGuildCapability(guildie.guildieId, GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY);
     } catch (error) {
       if (error instanceof GuildCapabilityDeniedError) {
         return reply.code(403).send({ error: "guild_capability_required", capability: error.capability });
