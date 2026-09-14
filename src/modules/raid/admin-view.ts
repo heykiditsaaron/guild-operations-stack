@@ -1,6 +1,6 @@
 import { config } from "../../config.js";
 import { pool } from "../../db.js";
-import type { RaidEligibility } from "./domain.js";
+import type { RaidDifficulty, RaidEligibility } from "./domain.js";
 
 export type RaidAdministrationEvent = {
   raidId: string;
@@ -9,7 +9,7 @@ export type RaidAdministrationEvent = {
   occursAt: readonly [number] | readonly [number, number];
   tags: string[];
   eligibility: RaidEligibility;
-  raidSize: number;
+  difficulty: RaidDifficulty;
   signupsOpen: boolean;
 };
 
@@ -22,11 +22,11 @@ export async function raidsForAdministration(): Promise<RaidAdministrationEvent[
     occurs_end_unix: string | null;
     tags: string[];
     eligibility: RaidEligibility;
-    raid_size: number;
+    difficulty: RaidDifficulty;
     signups_open: boolean;
   }>(
     `SELECT raid_id, label, description, occurs_start_unix, occurs_end_unix,
-            tags, eligibility, raid_size, signups_open
+            tags, eligibility, difficulty, signups_open
        FROM raid_events
       WHERE guild_id = $1
       ORDER BY occurs_start_unix ASC, created_at_unix ASC`,
@@ -43,7 +43,7 @@ export async function raidsForAdministration(): Promise<RaidAdministrationEvent[
       occursAt: end === null ? [start] : [start, end],
       tags: row.tags,
       eligibility: row.eligibility,
-      raidSize: row.raid_size,
+      difficulty: row.difficulty,
       signupsOpen: row.signups_open,
     };
   });
