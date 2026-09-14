@@ -1,26 +1,3 @@
-const titleBar = document.querySelector(".raid-title-bar");
-const workspaceHeading = document.querySelector(".raid-workspace-heading");
-const adminActions = document.querySelector(".raid-admin-actions");
-const editButton = titleBar?.querySelector(":scope > .button-secondary");
-const organizerGrid = document.querySelector(".raid-organizer-grid");
-const rosterDiagnostics = document.querySelector(".raid-roster-diagnostics");
-
-if (titleBar instanceof HTMLElement && adminActions instanceof HTMLElement) {
-  if (editButton instanceof HTMLElement) adminActions.prepend(editButton);
-  titleBar.style.display = "grid";
-  titleBar.style.gridTemplateColumns = "minmax(0, 1fr)";
-  titleBar.style.alignItems = "start";
-  adminActions.style.width = "100%";
-  adminActions.style.paddingTop = "0.65rem";
-  adminActions.style.borderTop = "1px solid rgba(255, 255, 255, 0.07)";
-  titleBar.append(adminActions);
-}
-
-if (workspaceHeading instanceof HTMLElement) workspaceHeading.remove();
-if (organizerGrid instanceof HTMLElement && rosterDiagnostics instanceof HTMLElement) {
-  organizerGrid.insertAdjacentElement("beforebegin", rosterDiagnostics);
-}
-
 const diagnosticRoot = document.querySelector("[data-raid-diagnostics]");
 function closeDiagnosticShelves() {
   if (!(diagnosticRoot instanceof HTMLElement)) return;
