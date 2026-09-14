@@ -116,6 +116,7 @@ async function assignedCard(row: RaidSignupRowView): Promise<string> {
       <strong>${htmlText(row.characterName ?? row.className)}</strong>
       <span>${htmlText(selectedSpec)}</span>
     </div>
+    <button type="button" class="raid-assignment-remove" data-raid-unassign aria-label="Return ${htmlText(row.characterName ?? row.className)} to available participants" title="Return to available">×</button>
   </article>`;
 }
 
@@ -223,14 +224,9 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
         </div>
         <button type="button" class="button-secondary" disabled title="Raid metadata editing will be added later">Edit</button>
       </section>
-      <section class="raid-scoreboard" aria-labelledby="raid-scoreboard-heading">
-        <h2 id="raid-scoreboard-heading">Scoreboard</h2>
-        ${diagnosticsBody}
-        ${shelves}
-      </section>
       <section class="raid-workspace">
         <div class="raid-workspace-heading">
-          <div><h2>Raid organizer</h2><p>Build the raid group from participation offers. Drag cards between the applicant pool and raid roles.</p></div>
+          <div><h2>Raid organizer</h2><p>Build the raid group from participation offers. Drag cards between available participants and raid roles.</p></div>
           <div class="raid-admin-actions">
             <button type="button" class="button-primary" data-raid-signups-toggle data-open="${raid.signupsOpen ? "false" : "true"}">${raid.signupsOpen ? "Close signups" : "Open signups"}</button>
             <a class="button-secondary" href="/events/raid/${encodeURIComponent(raid.raidId)}">View signup page ↗</a>
@@ -239,7 +235,7 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
         <p class="raid-board-status" data-raid-action-status role="status" aria-live="polite"></p>
         <div class="raid-organizer-grid">
           <section class="raid-pool-panel" data-raid-pool-panel data-open="false" id="raid-applicant-pool-panel">
-            <div class="raid-pool-panel-header"><h2>Participation pool</h2><span>${available.length} available</span><button type="button" class="raid-pool-close" data-raid-pool-close aria-label="Close participation pool">×</button></div>
+            <div class="raid-pool-panel-header"><h2>Available</h2><span>${available.length}</span><button type="button" class="raid-pool-close" data-raid-pool-close aria-label="Close available participants">×</button></div>
             <div class="raid-signup-pool" data-raid-pool-drop>${pool}</div>
           </section>
           <div class="raid-assignment-board">
@@ -247,7 +243,12 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
             <div class="raid-role-lanes">${lanes}</div>
           </div>
         </div>
-        <button type="button" class="raid-pool-toggle" data-raid-pool-toggle data-raid-pool-drop aria-expanded="false" aria-controls="raid-applicant-pool-panel"><span>Applicants</span><span>${available.length}</span></button>
+        <button type="button" class="raid-pool-toggle" data-raid-pool-toggle data-raid-pool-drop aria-expanded="false" aria-controls="raid-applicant-pool-panel"><span>Available</span><span>${available.length}</span></button>
+      </section>
+      <section class="raid-scoreboard" aria-labelledby="raid-scoreboard-heading">
+        <h2 id="raid-scoreboard-heading">Raid diagnostics</h2>
+        ${diagnosticsBody}
+        ${shelves}
       </section>
       <dialog class="raid-spec-dialog" data-raid-spec-dialog>
         <form method="dialog">
