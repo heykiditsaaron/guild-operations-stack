@@ -69,7 +69,7 @@ const RAID_BUFF_SPELLS: Readonly<Record<RaidBuffTrait, { spellId: number; label:
   "buff.chaos_brand": { spellId: 1490, label: "Chaos Brand" },
   "buff.devotion_aura": { spellId: 465, label: "Devotion Aura" },
   "buff.mark_of_the_wild": { spellId: 1126, label: "Mark of the Wild" },
-  "buff.mystic_touch": { spellId: 113746, label: "Mystic Touch" },
+  "buff.mystic_touch": { spellId: 8647, label: "Mystic Touch" },
   "buff.power_word_fortitude": { spellId: 21562, label: "Power Word: Fortitude" },
   "buff.skyfury": { spellId: 462854, label: "Skyfury" },
 };
