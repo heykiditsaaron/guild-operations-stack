@@ -175,6 +175,7 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
       stylesheets: ["admin.css", "raid-admin.css"],
       scripts: ["admin.js", "raid-admin.js"],
       secondaryNavigation: navigation,
+      header: "",
       body,
     });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
