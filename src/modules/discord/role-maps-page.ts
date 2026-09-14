@@ -109,7 +109,9 @@ async function renderRoleMaps(): Promise<string> {
 }
 
 export async function registerDiscordRoleMapsPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
-  app.get("/admin/discord/role-maps", async (request, reply) => {
+  app.get("/admin/discord/role-maps", async (_request, reply) => reply.redirect("/admin/general/discord/role-maps"));
+
+  app.get("/admin/general/discord/role-maps", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie] = await Promise.all([
       viewerForRequest(sessionToken),
@@ -130,7 +132,7 @@ export async function registerDiscordRoleMapsPage(app: FastifyInstance, assets: 
       .header("Cache-Control", "no-cache")
       .type("text/html; charset=utf-8")
       .send(renderPage(assets, {
-        pathname: "/admin/discord/role-maps",
+        pathname: "/admin/general/discord/role-maps",
         title: "Discord role maps · OH CRIT I Pulled! Guild Operations",
         description: "Configure Discord role maps.",
         viewer,
@@ -139,12 +141,13 @@ export async function registerDiscordRoleMapsPage(app: FastifyInstance, assets: 
         secondaryNavigation: {
           kind: "breadcrumb",
           items: [
-            { label: "Administration", href: "/admin" },
-            { label: "Discord", href: "/admin/discord" },
+            { label: "Administration", href: "/admin/general" },
+            { label: "General", href: "/admin/general" },
+            { label: "Discord", href: "/admin/general/discord" },
             { label: "Role Maps" },
           ],
         },
-        header: `<div class="admin-page-header"><h1 id="page-title">Role Maps</h1></div>`,
+        header: `<div class="admin-page-header"><h1 id="page-title">Role Maps</h1><p class="lede">Configure Discord role projection policy.</p></div>`,
         body,
       }));
   });
