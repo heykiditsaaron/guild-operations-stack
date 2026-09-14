@@ -30,6 +30,7 @@ export type AssetName =
   | "raid.css"
   | "raid.js"
   | "raid-admin.css"
+  | "raid-iconography.css"
   | "raid-admin.js"
   | "images/raffle/gold-sack.png";
 
@@ -58,6 +59,7 @@ const assetDefinitions: Array<{ name: AssetName; contentType: string }> = [
   { name: "raffle-round.css", contentType: "text/css; charset=utf-8" },
   { name: "raid.css", contentType: "text/css; charset=utf-8" },
   { name: "raid-admin.css", contentType: "text/css; charset=utf-8" },
+  { name: "raid-iconography.css", contentType: "text/css; charset=utf-8" },
   { name: "app.js", contentType: "text/javascript; charset=utf-8" },
   { name: "navigation-shelves.js", contentType: "text/javascript; charset=utf-8" },
   { name: "admin.js", contentType: "text/javascript; charset=utf-8" },
