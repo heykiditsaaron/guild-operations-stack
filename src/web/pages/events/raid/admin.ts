@@ -99,9 +99,10 @@ export async function registerRaidAdminPage(app: FastifyInstance, assets: AssetR
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie] = await Promise.all([viewerForRequest(sessionToken), authenticatedGuildie(sessionToken)]);
     const authority = guildie ? await effectiveGuildAuthority(guildie.guildieId) : null;
-    const canCreate = authority?.capabilities.includes(RAID_CREATE_CAPABILITY) ?? false;
-    const canManage = authority?.capabilities.includes(RAID_MANAGE_CAPABILITY) ?? false;
-    const canPermissions = authority?.operator === true || authority?.capabilities.includes(RAID_PERMISSIONS_CAPABILITY) === true;
+    const operator = authority?.operator === true;
+    const canCreate = operator || (authority?.capabilities.includes(RAID_CREATE_CAPABILITY) ?? false);
+    const canManage = operator || (authority?.capabilities.includes(RAID_MANAGE_CAPABILITY) ?? false);
+    const canPermissions = operator || authority?.capabilities.includes(RAID_PERMISSIONS_CAPABILITY) === true;
     const authorized = canCreate || canManage || canPermissions;
 
     const body = authorized
