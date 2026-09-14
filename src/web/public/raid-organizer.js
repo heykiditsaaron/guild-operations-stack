@@ -1,4 +1,13 @@
 const diagnosticRoot = document.querySelector("[data-raid-diagnostics]");
+const scoreboard = document.querySelector(".raid-scoreboard");
+const workspace = document.querySelector(".raid-workspace");
+
+// The roster is the organizer's primary working object. Diagnostics describe the
+// roster, so keep them immediately after the assignment workspace rather than
+// between the event heading and the work itself.
+if (scoreboard instanceof HTMLElement && workspace instanceof HTMLElement) {
+  workspace.insertAdjacentElement("afterend", scoreboard);
+}
 
 function closeDiagnosticShelves() {
   if (!(diagnosticRoot instanceof HTMLElement)) return;
