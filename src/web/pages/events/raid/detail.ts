@@ -55,6 +55,7 @@ function signupCard(row: Awaited<ReturnType<typeof raidSignupRows>>[number]): st
   const roleSpecs = specsByRole(row.className, row.willingSpecs, row.willingRoles);
   return `<article class="raid-participant-card" draggable="true" tabindex="0"
     data-raid-participant-card
+    data-assigned="false"
     data-signup-row-id="${htmlText(row.signupRowId)}"
     data-role-specs="${htmlText(JSON.stringify(roleSpecs))}">
     <strong>${htmlText(row.characterName ?? row.className)}</strong>
@@ -64,12 +65,16 @@ function signupCard(row: Awaited<ReturnType<typeof raidSignupRows>>[number]): st
 }
 
 function assignedCard(row: Awaited<ReturnType<typeof raidSignupRows>>[number]): string {
+  const roleSpecs = specsByRole(row.className, row.willingSpecs, row.willingRoles);
   return `<article class="raid-participant-card raid-participant-card-assigned" draggable="true" tabindex="0"
-    data-raid-assigned-card
-    data-signup-row-id="${htmlText(row.signupRowId)}">
+    data-raid-participant-card
+    data-assigned="true"
+    data-current-role="${htmlText(row.selectedRole ?? "")}"
+    data-current-spec="${htmlText(row.selectedSpec ?? "")}"
+    data-signup-row-id="${htmlText(row.signupRowId)}"
+    data-role-specs="${htmlText(JSON.stringify(roleSpecs))}">
     <strong>${htmlText(row.characterName ?? row.className)}</strong>
     <span>${htmlText(row.selectedSpec ?? "")} · ${htmlText(roleLabel(row.selectedRole!))}</span>
-    <button type="button" class="raid-card-remove" data-raid-unassign data-signup-row-id="${htmlText(row.signupRowId)}" aria-label="Unassign ${htmlText(row.characterName ?? row.className)}">×</button>
   </article>`;
 }
 
@@ -101,6 +106,7 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
     ]);
     const assigned = rows.filter((row) => row.assignmentId !== null);
     const available = rows.filter((row) => row.assignmentId === null && !rows.some((candidate) => candidate.applicantId === row.applicantId && candidate.assignmentId !== null));
+    const applicantCount = new Set(rows.map((row) => row.applicantId)).size;
 
     const navigation: SecondaryNavigation = {
       kind: "breadcrumb",
@@ -112,7 +118,7 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
       : `<p class="raid-scoreboard-empty">No capabilities are currently available from assigned participants.</p>`;
 
     const diagnosticsBody = `<dl class="raid-roster-diagnostics">
-      <div><dt>Assigned</dt><dd>${diagnostics.assigned}</dd></div>
+      <div><dt>Assigned</dt><dd>${diagnostics.assigned}<span>/${applicantCount}</span></dd></div>
       <div><dt>Tanks</dt><dd>${diagnostics.tanks}</dd></div>
       <div><dt>Healers</dt><dd>${diagnostics.healers}</dd></div>
       <div><dt>Damage</dt><dd>${diagnostics.damage}</dd></div>
@@ -120,11 +126,11 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
 
     const pool = available.length
       ? available.map(signupCard).join("")
-      : `<p class="raid-pool-empty">No unassigned participation rows are available.</p>`;
+      : `<p class="raid-pool-empty">All applicants are currently assigned.</p>`;
 
     const lanes = RAID_ROLES.map((role) => {
       const members = assigned.filter((row) => row.selectedRole === role);
-      return `<section class="raid-role-lane" data-raid-role-lane="${role}">
+      return `<section class="raid-role-lane" data-raid-role-drop="${role}">
         <div class="raid-role-lane-heading"><h3>${htmlText(roleLabel(role))}</h3><span>${members.length}</span></div>
         <div class="raid-role-cards">${members.map(assignedCard).join("")}</div>
         <button type="button" class="raid-add-slot" data-raid-drop-role="${role}" aria-label="Assign a ${htmlText(roleLabel(role).toLowerCase())}">+</button>
@@ -145,7 +151,7 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
       </section>
       <section class="raid-workspace">
         <div class="raid-workspace-heading">
-          <div><h2>Participation pool</h2><p>Drag a signup onto a role, or select a card and then choose a + slot.</p></div>
+          <div><h2>Participation pool</h2><p>Drag cards between the pool and raid roles. Tap a card to use the + controls instead.</p></div>
           <div class="raid-admin-actions">
             <button type="button" class="button-primary" data-raid-signups-toggle data-open="${raid.signupsOpen ? "false" : "true"}">${raid.signupsOpen ? "Close signups" : "Open signups"}</button>
             <a class="button-secondary" href="/events/raid/${encodeURIComponent(raid.raidId)}">View signup page ↗</a>
