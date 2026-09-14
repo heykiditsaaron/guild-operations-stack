@@ -80,13 +80,6 @@ if (poolPanel instanceof HTMLElement && poolToggle instanceof HTMLButtonElement)
 
   if (poolClose instanceof HTMLButtonElement) poolClose.addEventListener("click", () => setPoolOpen(false));
 
-  document.addEventListener("pointerdown", (event) => {
-    if (poolPanel.dataset.open !== "true") return;
-    if (!(event.target instanceof Node)) return;
-    if (poolPanel.contains(event.target) || poolToggle.contains(event.target)) return;
-    setPoolOpen(false);
-  });
-
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") setPoolOpen(false);
   });
