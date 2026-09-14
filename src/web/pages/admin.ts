@@ -8,11 +8,18 @@ import {
 } from "../../guild-refresh-schedule.js";
 import {
   GUILD_REFRESH_CAPABILITY,
+  MODULES_CONFIGURE_CAPABILITY,
   OPERATIONS_INSPECT_CAPABILITY,
   RAID_PERMISSIONS_CAPABILITY,
   guildieHasGuildCapability,
   guildieHasGuildCapabilityOrOperator,
 } from "../../guild-permissions.js";
+import {
+  isPackagedModuleKey,
+  packagedModuleStates,
+  setPackagedModuleEnabled,
+  type PackagedModuleState,
+} from "../../module-lifecycle.js";
 import { administrationAvailabilityForGuildie } from "../administration.js";
 import type { AssetRegistry } from "../assets.js";
 import { renderPage } from "../render.js";
@@ -52,6 +59,34 @@ function administrationSection(
     <h2 id="${headingId}">${heading}</h2>
     ${content}
   </section>`;
+}
+
+function moduleConfigurationDestination(module: PackagedModuleState): string {
+  if (module.key === "discord") {
+    return `<a class="module-lifecycle-configure" href="/admin/discord">Configure</a>`;
+  }
+  return "";
+}
+
+function renderModuleLifecycle(modules: PackagedModuleState[]): string {
+  return `<div class="module-lifecycle-list" data-module-lifecycle-list>
+    ${modules.map((module) => `<article class="module-lifecycle-card" data-module-lifecycle-card data-module-key="${htmlText(module.key)}">
+      <div class="module-lifecycle-copy">
+        <div class="module-lifecycle-heading">
+          <h3>${htmlText(module.label)}</h3>
+          <span class="module-lifecycle-availability">Included</span>
+        </div>
+        <p>${module.enabled ? "Available to Guild Operations." : "Installed but not available to participation or operations."}</p>
+        ${moduleConfigurationDestination(module)}
+      </div>
+      <label class="switch module-lifecycle-toggle">
+        <input type="checkbox" data-module-enabled${module.enabled ? " checked" : ""}>
+        <span class="switch-control" aria-hidden="true"></span>
+        <span data-module-enabled-label>${module.enabled ? "On" : "Off"}</span>
+      </label>
+      <p class="module-lifecycle-feedback" data-module-lifecycle-feedback role="status" aria-live="polite"></p>
+    </article>`).join("\n")}
+  </div>`;
 }
 
 function renderGuildRefresh(
@@ -115,21 +150,32 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       authenticatedGuildie(sessionToken),
     ]);
 
-    const [canRefreshGuild, canInspectOperations, administration] = guildie
+    const [canRefreshGuild, canInspectOperations, canConfigureModules, administration] = guildie
       ? await Promise.all([
           guildieHasGuildCapability(guildie.guildieId, GUILD_REFRESH_CAPABILITY),
           guildieHasGuildCapability(guildie.guildieId, OPERATIONS_INSPECT_CAPABILITY),
+          guildieHasGuildCapabilityOrOperator(guildie.guildieId, MODULES_CONFIGURE_CAPABILITY),
           administrationAvailabilityForGuildie(guildie.guildieId),
         ])
-      : [false, false, null];
+      : [false, false, false, null];
 
-    const [refreshStatus, refreshSchedule] = await Promise.all([
+    const [refreshStatus, refreshSchedule, modulesState] = await Promise.all([
       canRefreshGuild ? guildRefreshStatus() : Promise.resolve(null),
       canRefreshGuild ? guildRefreshSchedule() : Promise.resolve(null),
+      canConfigureModules ? packagedModuleStates() : Promise.resolve([]),
     ]);
 
     const moduleDestinations = administration?.navigationDestinations.filter((item) => item.href !== "/admin") ?? [];
-    const hasAdministration = canRefreshGuild || canInspectOperations || moduleDestinations.length > 0;
+    const hasAdministration = administration?.available === true;
+
+    const moduleLifecycle = canConfigureModules
+      ? administrationSection(
+          "modules",
+          "modules-heading",
+          "Modules",
+          `${renderModuleLifecycle(modulesState)}<p class="admin-section-note">Enablement controls whether an installed module participates in Guild Operations. Acquisition or entitlement is a separate concern and is not implemented here.</p>`,
+        )
+      : "";
 
     const guildSettings = canRefreshGuild && refreshSchedule
       ? administrationSection("guild-settings", "guild-settings-heading", "Guild settings", renderGuildRefresh(refreshStatus, refreshSchedule))
@@ -145,7 +191,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       : "";
 
     const content = hasAdministration
-      ? `<div class="admin-sections">${guildSettings}${modules}</div>`
+      ? `<div class="admin-sections">${moduleLifecycle}${guildSettings}${modules}</div>`
       : `<section class="admin-unavailable" aria-labelledby="admin-unavailable-heading"><h2 id="admin-unavailable-heading">Administration is not available for this account.</h2></section>`;
     const body = `${administrationTabs("general")}${content}`;
 
@@ -169,6 +215,26 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     }
 
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
+  });
+
+  app.put("/admin/general/modules/:moduleKey", async (request, reply) => {
+    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
+    if (!guildie) return reply.code(401).send({ error: "authentication_required" });
+    if (!await guildieHasGuildCapabilityOrOperator(guildie.guildieId, MODULES_CONFIGURE_CAPABILITY)) {
+      return reply.code(403).send({ error: "module_configuration_not_authorized" });
+    }
+
+    const params = request.params as { moduleKey?: unknown };
+    const body = (request.body ?? {}) as { enabled?: unknown };
+    if (typeof params.moduleKey !== "string" || !isPackagedModuleKey(params.moduleKey)) {
+      return reply.code(404).send({ error: "unknown_module" });
+    }
+    if (typeof body.enabled !== "boolean") {
+      return reply.code(400).send({ error: "enabled_must_be_boolean" });
+    }
+
+    const module = await setPackagedModuleEnabled(params.moduleKey, body.enabled);
+    return reply.send({ module });
   });
 
   app.get("/admin/permissions", async (request, reply) => {
