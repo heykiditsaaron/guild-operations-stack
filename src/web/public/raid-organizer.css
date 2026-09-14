@@ -62,11 +62,11 @@
 .raid-role-lane:nth-child(3) .raid-role-cards { grid-template-columns:repeat(2,minmax(0,1fr)); }
 .raid-pool-panel { position:fixed; z-index:70; right:.6rem; bottom:.6rem; left:.6rem; max-height:min(52vh,32rem); padding:.7rem; border:1px solid rgba(255,255,255,.12); border-radius:.85rem; background:rgba(23,23,21,.99); box-shadow:0 .9rem 2.5rem rgba(0,0,0,.5); transform:translateY(calc(100% + 1.2rem)); visibility:hidden; transition:transform 160ms ease,visibility 160ms ease; }
 .raid-pool-panel[data-open="true"] { transform:translateY(0); visibility:visible; }
-.raid-pool-panel[data-drag-collapsed="true"] { transform:translateY(calc(100% + 1.2rem)); visibility:hidden; transition-duration:90ms; }
+.raid-pool-panel[data-drag-collapsed="true"] { transform:translateY(calc(100% + 1.2rem)); visibility:visible; pointer-events:none; transition-duration:90ms; }
 .raid-pool-panel-header { padding-bottom:.2rem; }
 .raid-pool-close { display:inline-grid; place-items:center; width:1.9rem; height:1.9rem; padding:0; border:0; border-radius:50%; background:rgba(255,255,255,.06); color:#aaa69c; font:inherit; cursor:pointer; }
 .raid-signup-pool { min-height:0; max-height:calc(min(52vh,32rem) - 4rem); padding-right:2.9rem; touch-action:pan-y; }
-.raid-signup-pool .raid-participant-card { min-height:2.85rem; padding:.38rem .5rem; touch-action:pan-y; }
+.raid-signup-pool .raid-participant-card { min-height:2.85rem; padding:.38rem .5rem; touch-action:pan-y; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
 .raid-signup-pool .raid-participant-card strong { font-size:.8rem; }
 .raid-signup-pool .raid-participant-card span,.raid-signup-pool .raid-participant-card small { font-size:.64rem; }
 .raid-pool-toggle { position:sticky; z-index:45; bottom:.55rem; display:flex; align-items:center; justify-content:space-between; width:100%; min-height:3.15rem; margin-top:.75rem; padding:.65rem .85rem; border:1px solid rgba(255,255,255,.22); border-radius:.8rem; background:rgba(31,31,28,.985); color:#f1eee6; font:inherit; font-size:.84rem; font-weight:850; box-shadow:0 .6rem 1.5rem rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.04); cursor:pointer; }
