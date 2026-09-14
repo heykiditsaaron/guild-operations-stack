@@ -99,9 +99,3 @@ BEGIN
       ON raid_assignments(raid_id, slot_index);
   END IF;
 END $$;
-
-INSERT INTO guild_rank_capabilities (guild_id, rank_index, capability)
-SELECT guild_id, rank_index, 'raid.create'
-  FROM guild_rank_definitions
- WHERE rank_index IN (0, 1, 2)
-ON CONFLICT (guild_id, rank_index, capability) DO NOTHING;
