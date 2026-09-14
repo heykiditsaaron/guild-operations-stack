@@ -19,6 +19,7 @@ import {
   packagedModuleStates,
   type PackagedModuleState,
 } from "../../../module-lifecycle.js";
+import { raffleGuildieCanAdminister } from "../../../modules/raffle/authorization.js";
 import { assetUrl, type AssetName, type AssetRegistry } from "../../assets.js";
 import { htmlText, renderPage } from "../../render.js";
 import { viewerForRequest } from "../../viewer.js";
@@ -194,22 +195,33 @@ export async function registerEventsPage(app: FastifyInstance, assets: AssetRegi
       guildState(),
       packagedModuleStates(),
     ]);
-    const authority = guildie ? await effectiveGuildAuthority(guildie.guildieId) : null;
+    const [authority, canAdministerRaffle] = guildie
+      ? await Promise.all([
+          effectiveGuildAuthority(guildie.guildieId),
+          raffleGuildieCanAdminister(guildie.guildieId),
+        ])
+      : [null, false];
     const moduleStateByKey = new Map(moduleStates.map((module) => [module.key, module]));
     const offerings = guildEventOfferings().filter((offering) => offeringAvailable(offering.destination, moduleStateByKey));
     const raidEnabled = moduleStateByKey.get("raid")?.enabled !== false;
+    const raffleEnabled = moduleStateByKey.get("raffle")?.enabled !== false;
     const canOperateRaid = raidEnabled && Boolean(
       authority?.operator
       || authority?.capabilities.includes(RAID_CREATE_CAPABILITY)
       || authority?.capabilities.includes(RAID_MANAGE_CAPABILITY),
     );
+    const canOperateRaffle = raffleEnabled && canAdministerRaffle;
 
     const relevant = events.filter((event) => occursThrough(event) >= nowUnix);
     const happeningNow = relevant.filter((event) => isHappeningNow(event, nowUnix));
     const upcoming = relevant.filter((event) => !isHappeningNow(event, nowUnix));
     const guildCommunity = guild ? `${htmlText(guild.name)}&apos;s community` : "the guild&apos;s community";
-    const operationalEntry = canOperateRaid
-      ? `<div class="events-operator-actions"><a class="button button-secondary" href="/events/raid/manage">Manage raids</a></div>`
+    const operationalEntries = [
+      canOperateRaid ? `<a class="button button-secondary" href="/events/raid/manage">Manage raids</a>` : "",
+      canOperateRaffle ? `<a class="button button-secondary" href="/events/raffle/manage">Manage raffles</a>` : "",
+    ].filter(Boolean).join("");
+    const operationalEntry = operationalEntries
+      ? `<div class="events-operator-actions">${operationalEntries}</div>`
       : "";
 
     const body = `
