@@ -1,3 +1,19 @@
+.raid-admin-overview {
+  width: min(100%, 54rem);
+}
+
+.raid-admin-header-action {
+  flex: none;
+}
+
+.raid-admin-setup {
+  margin: 0 0 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+
 .raid-admin-form {
   display: grid;
   gap: 1rem;
@@ -17,36 +33,101 @@
 
 .raid-admin-list {
   display: grid;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
-.raid-admin-item {
+.raid-admin-card {
   display: grid;
+  gap: 0.9rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.raid-admin-card-open {
+  border-color: rgba(124, 198, 141, 0.2);
+  background: rgba(124, 198, 141, 0.035);
+}
+
+.raid-admin-card-heading {
+  display: flex;
+  justify-content: space-between;
   gap: 1rem;
-  padding: 1rem 0;
-  border-top: 1px solid var(--border-subtle, currentColor);
+  align-items: flex-start;
 }
 
-.raid-admin-item:first-child {
-  border-top: 0;
-}
-
-.raid-admin-item h3,
-.raid-admin-item p {
+.raid-admin-card-identity h2,
+.raid-admin-card-identity p,
+.raid-admin-card-description {
   margin: 0;
 }
 
-.raid-admin-item dl {
+.raid-admin-card-identity h2 {
+  font-size: 1rem;
+}
+
+.raid-admin-card-identity p,
+.raid-admin-card-description {
+  margin-top: 0.35rem;
+  color: #aaa69c;
+  font-size: 0.9rem;
+}
+
+.raid-admin-card-state {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.55rem;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  color: #c8c4ba;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.raid-admin-card-open .raid-admin-card-state {
+  border-color: rgba(124, 198, 141, 0.28);
+  color: #b9dfc1;
+}
+
+.raid-admin-card-facts {
   display: grid;
   grid-template-columns: max-content 1fr;
   gap: 0.35rem 1rem;
   margin: 0;
 }
 
-.raid-admin-item dt {
+.raid-admin-card-facts dt {
   font-weight: 700;
 }
 
-.raid-admin-item dd {
+.raid-admin-card-facts dd {
   margin: 0;
+}
+
+.raid-admin-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.raid-admin-card-actions .button-primary {
+  min-height: 2.35rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.88rem;
+}
+
+.raid-admin-empty {
+  color: #aaa69c;
+}
+
+@media (max-width: 42rem) {
+  .raid-admin-card-heading {
+    align-items: baseline;
+  }
 }
