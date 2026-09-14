@@ -3,7 +3,7 @@ import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
 import { RAID_CREATE_CAPABILITY, guildieHasGuildCapability } from "../../../../guild-permissions.js";
 import { raidsForAdministration } from "../../../../modules/raid/admin-view.js";
 import { createRaid } from "../../../../modules/raid/application.js";
-import type { RaidEligibility } from "../../../../modules/raid/domain.js";
+import type { RaidDifficulty, RaidEligibility } from "../../../../modules/raid/domain.js";
 import type { AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage, type SecondaryNavigation } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
@@ -13,7 +13,7 @@ type RaidCreateRequestBody = {
   description?: unknown;
   occursAt?: unknown;
   eligibility?: unknown;
-  raidSize?: unknown;
+  difficulty?: unknown;
 };
 
 const navigation: SecondaryNavigation = {
@@ -30,17 +30,25 @@ function eligibilityLabel(value: RaidEligibility): string {
   return "Anyone";
 }
 
+function difficultyLabel(value: RaidDifficulty): string {
+  return value[0].toUpperCase() + value.slice(1);
+}
+
 function createForm(): string {
   return `<form class="raid-admin-form" data-raid-create-form>
     <label><span>Raid name</span><input name="label" type="text" required></label>
     <label><span>Description <small>(optional)</small></span><textarea name="description" rows="3"></textarea></label>
     <label><span>Start time</span><input name="startsAt" type="datetime-local" required></label>
+    <label><span>Difficulty</span><select name="difficulty" required>
+      <option value="normal">Normal</option>
+      <option value="heroic">Heroic</option>
+      <option value="mythic">Mythic</option>
+    </select></label>
     <label><span>Eligibility</span><select name="eligibility" required>
       <option value="guild_character_member">Guild Character Member</option>
       <option value="guildie">Guildie</option>
       <option value="anyone">Anyone</option>
     </select></label>
-    <label><span>Raid size</span><input name="raidSize" type="number" min="1" max="40" step="1" value="10" required></label>
     <button type="submit" class="button-primary">Create raid</button>
     <p data-raid-create-status role="status" aria-live="polite"></p>
   </form>`;
@@ -63,8 +71,8 @@ async function raidList(): Promise<string> {
       </div>
       ${raid.description ? `<p class="raid-admin-card-description">${htmlText(raid.description)}</p>` : ""}
       <dl class="raid-admin-card-facts">
+        <dt>Difficulty</dt><dd>${htmlText(difficultyLabel(raid.difficulty))}</dd>
         <dt>Eligibility</dt><dd>${htmlText(eligibilityLabel(raid.eligibility))}</dd>
-        <dt>Raid size</dt><dd>${raid.raidSize}</dd>
       </dl>
       <div class="raid-admin-card-actions">
         <a class="button-primary" href="/admin/raid/${encodeURIComponent(raid.raidId)}">Manage</a>
@@ -75,6 +83,10 @@ async function raidList(): Promise<string> {
 
 function validEligibility(value: unknown): value is RaidEligibility {
   return value === "guild_character_member" || value === "guildie" || value === "anyone";
+}
+
+function validDifficulty(value: unknown): value is RaidDifficulty {
+  return value === "normal" || value === "heroic" || value === "mythic";
 }
 
 export async function registerRaidAdminPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
@@ -118,16 +130,16 @@ export async function registerRaidAdminPage(app: FastifyInstance, assets: AssetR
     if (typeof body.label !== "string") return reply.code(400).send({ error: "Raid name is required" });
     if (body.description !== undefined && body.description !== null && typeof body.description !== "string") return reply.code(400).send({ error: "Raid description must be text" });
     if (!Array.isArray(body.occursAt) || body.occursAt.length !== 1 || typeof body.occursAt[0] !== "number") return reply.code(400).send({ error: "Raid start time is required" });
+    if (!validDifficulty(body.difficulty)) return reply.code(400).send({ error: "Raid difficulty is invalid" });
     if (!validEligibility(body.eligibility)) return reply.code(400).send({ error: "Raid eligibility is invalid" });
-    if (typeof body.raidSize !== "number") return reply.code(400).send({ error: "Raid size is required" });
 
     try {
       const raid = await createRaid(guildie.guildieId, {
         label: body.label,
         description: typeof body.description === "string" ? body.description : null,
         occursAt: [body.occursAt[0]],
+        difficulty: body.difficulty,
         eligibility: body.eligibility,
-        raidSize: body.raidSize,
       });
       return reply.code(201).send({ raid });
     } catch (error) {
