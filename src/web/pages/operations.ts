@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
+import { guildRefreshStatus } from "../../guild-admin.js";
 import {
+  GUILD_REFRESH_CAPABILITY,
   OPERATIONS_INSPECT_CAPABILITY,
   guildieHasGuildCapability,
 } from "../../guild-permissions.js";
@@ -59,85 +61,124 @@ function normalizedKind(value: string | undefined): OperationalRecordKind | unde
   return undefined;
 }
 
+function renderGuildRefresh(status: Awaited<ReturnType<typeof guildRefreshStatus>>): string {
+  const memberCount = status
+    ? status.currentMemberCount.toLocaleString("en-US")
+    : "—";
+  const lastReconciled = status
+    ? `<time data-unix-time="${status.lastReconciledAtUnix}">${status.lastReconciledAtUnix}</time>`
+    : "Not yet observed";
+
+  return `<section class="admin-section" aria-labelledby="guild-refresh-operation-heading">
+    <div class="guild-refresh-admin" data-guild-refresh-admin>
+      <div class="guild-refresh-admin-heading">
+        <div>
+          <h2 id="guild-refresh-operation-heading">Guild refresh</h2>
+          <p>Reconcile current guild membership and rank authority from Blizzard now.</p>
+        </div>
+        <button type="button" class="guild-refresh-button button-primary" data-guild-refresh-button>Refresh now</button>
+      </div>
+      <div class="guild-refresh-status">
+        <div class="guild-refresh-stat"><strong>${memberCount}</strong><span>current members</span></div>
+        <div class="guild-refresh-stat"><span>Last reconciled</span><strong>${lastReconciled}</strong></div>
+      </div>
+      <p class="guild-refresh-feedback" data-guild-refresh-feedback role="status" aria-live="polite"></p>
+    </div>
+  </section>`;
+}
+
+function renderInspection(
+  records: OperationalRecord[],
+  source: string | undefined,
+  kind: OperationalRecordKind | undefined,
+): string {
+  const filters = `<form class="operations-filters" method="get" action="/operations">
+    <label>
+      <span>Source</span>
+      <input type="text" name="source" value="${escapeHtml(source ?? "")}" placeholder="Any source">
+    </label>
+    <label>
+      <span>Kind</span>
+      <select name="kind">
+        <option value=""${kind === undefined ? " selected" : ""}>Any kind</option>
+        <option value="result"${kind === "result" ? " selected" : ""}>Result</option>
+        <option value="exception"${kind === "exception" ? " selected" : ""}>Exception</option>
+      </select>
+    </label>
+    <button type="submit">Apply</button>
+    ${(source || kind) ? '<a href="/operations">Clear</a>' : ""}
+  </form>`;
+
+  return `<section class="operations-inspection admin-section" aria-labelledby="operations-records-heading">
+    <h2 id="operations-records-heading">Operational history</h2>
+    <p class="admin-section-note">Review recorded operational results and exceptions.</p>
+    ${filters}
+    <div class="operations-records-heading">
+      <h3>Recent records</h3>
+      <span>${records.length} shown</span>
+    </div>
+    <div class="operations-records">
+      ${records.length
+        ? records.map(renderRecord).join("\n")
+        : '<p class="operations-empty">No operational records match this view.</p>'}
+    </div>
+  </section>`;
+}
+
 export async function registerOperationsAdminPage(
   app: FastifyInstance,
   assets: AssetRegistry,
 ): Promise<void> {
-  app.get("/admin/operations", async (request, reply) => {
+  app.get("/admin/operations", async (_request, reply) => reply.redirect("/operations"));
+
+  app.get("/operations", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie] = await Promise.all([
       viewerForRequest(sessionToken),
       authenticatedGuildie(sessionToken),
     ]);
 
-    const canInspect = guildie
-      ? await guildieHasGuildCapability(guildie.guildieId, OPERATIONS_INSPECT_CAPABILITY)
-      : false;
+    const [canRefresh, canInspect] = guildie
+      ? await Promise.all([
+          guildieHasGuildCapability(guildie.guildieId, GUILD_REFRESH_CAPABILITY),
+          guildieHasGuildCapability(guildie.guildieId, OPERATIONS_INSPECT_CAPABILITY),
+        ])
+      : [false, false];
 
     const query = request.query as { source?: string; kind?: string };
     const source = query.source?.trim() || undefined;
     const kind = normalizedKind(query.kind);
-    const records = canInspect
-      ? await listOperationalRecords({ source, kind, limit: 100 })
-      : [];
+    const [status, records] = await Promise.all([
+      canRefresh ? guildRefreshStatus() : Promise.resolve(null),
+      canInspect ? listOperationalRecords({ source, kind, limit: 100 }) : Promise.resolve([]),
+    ]);
 
-    const filters = `<form class="operations-filters" method="get" action="/admin/operations">
-      <label>
-        <span>Source</span>
-        <input type="text" name="source" value="${escapeHtml(source ?? "")}" placeholder="Any source">
-      </label>
-      <label>
-        <span>Kind</span>
-        <select name="kind">
-          <option value=""${kind === undefined ? " selected" : ""}>Any kind</option>
-          <option value="result"${kind === "result" ? " selected" : ""}>Result</option>
-          <option value="exception"${kind === "exception" ? " selected" : ""}>Exception</option>
-        </select>
-      </label>
-      <button type="submit">Apply</button>
-      ${(source || kind) ? '<a href="/admin/operations">Clear</a>' : ""}
-    </form>`;
+    const sections = [
+      canRefresh ? renderGuildRefresh(status) : "",
+      canInspect ? renderInspection(records, source, kind) : "",
+    ].filter(Boolean).join("\n");
 
-    const body = canInspect
-      ? `<section class="operations-inspection" aria-labelledby="operations-records-heading">
-          ${filters}
-          <div class="operations-records-heading">
-            <h2 id="operations-records-heading">Recent records</h2>
-            <span>${records.length} shown</span>
-          </div>
-          <div class="operations-records">
-            ${records.length
-              ? records.map(renderRecord).join("\n")
-              : '<p class="operations-empty">No operational records match this view.</p>'}
-          </div>
-        </section>`
-      : `<section class="admin-unavailable">
-          <h2>Operational logging is not available for this account.</h2>
-        </section>`;
+    const body = sections
+      ? `<div class="admin-sections">${sections}</div>`
+      : `<section class="admin-unavailable"><h2>Operations are not available for this account.</h2></section>`;
 
     const html = renderPage(assets, {
-      pathname: "/admin/operations",
-      title: "Operational logging · OH CRIT I Pulled!",
-      description: "Administrative operational logging.",
+      pathname: "/operations",
+      title: "Operations · OH CRIT I Pulled! Guild Operations",
+      description: "Run and inspect privileged Guild Operations procedures.",
       viewer,
       stylesheets: ["admin.css"],
       scripts: ["operations.js"],
-      secondaryNavigation: {
-        kind: "breadcrumb",
-        items: [
-          { label: "Administration", href: "/admin" },
-          { label: "Operational logging" },
-        ],
-      },
       header: `
         <div class="admin-page-header">
-          <h1 id="page-title">Operational logging</h1>
-          <p class="lede">Review operational results and exceptions published for administrative inspection.</p>
+          <h1 id="page-title">Operations</h1>
+          <p class="lede">Run privileged guild procedures and inspect their recorded outcomes.</p>
         </div>`,
       body,
     });
 
-    const statusCode = !guildie ? 401 : canInspect ? 200 : 403;
+    const available = canRefresh || canInspect;
+    const statusCode = !guildie ? 401 : available ? 200 : 403;
     return reply
       .code(statusCode)
       .header("Cache-Control", "no-cache")
