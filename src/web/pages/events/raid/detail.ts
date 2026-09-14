@@ -107,7 +107,7 @@ async function assignedCard(row: RaidSignupRowView): Promise<string> {
   return `<article class="raid-participant-card raid-participant-card-assigned" draggable="true" tabindex="0"
     data-raid-participant-card
     data-assigned="true"
-    data-current-role="${htmlText(row.selectedRole ?? "")}">
+    data-current-role="${htmlText(row.selectedRole ?? "")}"
     data-current-spec="${htmlText(selectedSpec)}"
     data-signup-row-id="${htmlText(row.signupRowId)}"
     data-role-specs="${htmlText(JSON.stringify(roleSpecs))}">
@@ -130,7 +130,7 @@ async function raidBuffDiagnosticItem(trait: RaidBuffTrait, assigned: readonly R
 }
 
 function textDiagnosticItem(label: string, count: number): string {
-  return `<li class="raid-diagnostic-item" data-count="${count}"><span class="raid-diagnostic-label">${htmlText(label)}</span><strong class="raid-diagnostic-count">${count}</strong></li>`;
+  return `<li class="raid-diagnostic-item" data-count="${count}"><span class="raid-diagnostic-text-spacer" aria-hidden="true"></span><span class="raid-diagnostic-label">${htmlText(label)}</span><strong class="raid-diagnostic-count">${count}</strong></li>`;
 }
 
 function diagnosticPanel(id: string, label: string, body: string): string {
