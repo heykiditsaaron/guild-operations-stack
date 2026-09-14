@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
 import {
   RAID_PERMISSIONS_CAPABILITY,
@@ -47,6 +47,23 @@ function validUpdates(value: unknown): value is RaidRankPermissionUpdate[] {
       && typeof update.canCreate === "boolean"
       && typeof update.canManage === "boolean";
   });
+}
+
+async function savePermissions(request: FastifyRequest, reply: FastifyReply) {
+  const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
+  if (!guildie) return reply.code(401).send({ error: "Authentication required" });
+
+  const body = (request.body ?? {}) as PermissionBody;
+  if (!validUpdates(body.updates)) return reply.code(400).send({ error: "Raid permission mapping is invalid" });
+
+  try {
+    await setRaidRankPermissions(guildie.guildieId, body.updates);
+    return { ok: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Raid permissions could not be updated";
+    const statusCode = message.includes("lacks required guild capability") ? 403 : 400;
+    return reply.code(statusCode).send({ error: message });
+  }
 }
 
 export async function registerRaidPermissionsPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
@@ -111,23 +128,6 @@ export async function registerRaidPermissionsPage(app: FastifyInstance, assets: 
 
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
-
-  const savePermissions = async (request: Parameters<Parameters<FastifyInstance["post"]>[1]>[0], reply: Parameters<Parameters<FastifyInstance["post"]>[1]>[1]) => {
-    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
-    if (!guildie) return reply.code(401).send({ error: "Authentication required" });
-
-    const body = (request.body ?? {}) as PermissionBody;
-    if (!validUpdates(body.updates)) return reply.code(400).send({ error: "Raid permission mapping is invalid" });
-
-    try {
-      await setRaidRankPermissions(guildie.guildieId, body.updates);
-      return { ok: true };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Raid permissions could not be updated";
-      const statusCode = message.includes("lacks required guild capability") ? 403 : 400;
-      return reply.code(statusCode).send({ error: message });
-    }
-  };
 
   app.post("/admin/permissions/raid", savePermissions);
   app.post("/admin/raid/permissions", savePermissions);
