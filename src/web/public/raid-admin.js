@@ -18,23 +18,18 @@ if (setup instanceof HTMLElement && setupToggle instanceof HTMLButtonElement) {
 
 const createForm = document.querySelector("[data-raid-create-form]");
 const createStatus = document.querySelector("[data-raid-create-status]");
-
 if (createForm instanceof HTMLFormElement) {
   createForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!(createStatus instanceof HTMLElement)) return;
-
     const data = new FormData(createForm);
     const startsAt = String(data.get("startsAt") ?? "");
     const startDate = new Date(startsAt);
-
     if (!startsAt || !Number.isFinite(startDate.getTime())) {
       createStatus.textContent = "Choose a valid raid start time.";
       return;
     }
-
     createStatus.textContent = "Creating raid…";
-
     try {
       const response = await fetch("/admin/raid", {
         method: "POST",
@@ -47,10 +42,8 @@ if (createForm instanceof HTMLFormElement) {
           eligibility: String(data.get("eligibility") ?? ""),
         }),
       });
-
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? "Raid could not be created");
-
       window.location.href = `/admin/raid/${encodeURIComponent(payload.raid.raidId)}`;
     } catch (error) {
       createStatus.textContent = error instanceof Error ? error.message : "Raid could not be created.";
@@ -126,7 +119,6 @@ function chooseSpec(signupRowId, role, specs) {
     return;
   }
   if (!(specDialog instanceof HTMLDialogElement) || !(specOptions instanceof HTMLElement)) return;
-
   if (specDialogCopy instanceof HTMLElement) {
     specDialogCopy.textContent = `Choose the specialization to assign as ${role === "damage" ? "Damage" : role[0].toUpperCase() + role.slice(1)}.`;
   }
@@ -152,6 +144,8 @@ if (specCancel instanceof HTMLButtonElement && specDialog instanceof HTMLDialogE
 let selectedCard = null;
 let pointerDrag = null;
 let activeDropTarget = null;
+const TOUCH_HOLD_MS = 400;
+const TOUCH_CANCEL_DISTANCE = 10;
 
 function participantRoleSpecs(card, role) {
   if (!(card instanceof HTMLElement)) return [];
@@ -230,13 +224,11 @@ function assignCardToRole(card, role) {
 function targetAtPoint(card, x, y) {
   const element = document.elementFromPoint(x, y);
   if (!(element instanceof Element)) return null;
-
   const lane = element.closest("[data-raid-role-drop]");
   if (lane instanceof HTMLElement) {
     const role = roleForTarget(lane);
     if (role && participantRoleSpecs(card, role).length) return lane;
   }
-
   const pool = element.closest("[data-raid-pool-drop]");
   if (pool instanceof HTMLElement && card.dataset.assigned === "true") return pool;
   return null;
@@ -250,11 +242,15 @@ function markActiveTarget(target) {
 }
 
 function startPointerDrag(state, event) {
+  if (state.holdTimer) {
+    clearTimeout(state.holdTimer);
+    state.holdTimer = null;
+  }
   state.started = true;
   clearSelectedCard();
   state.card.classList.add("raid-participant-card-dragging");
   showAvailableTargets(state.card);
-
+  if (!state.card.hasPointerCapture(state.pointerId)) state.card.setPointerCapture(state.pointerId);
   const rect = state.card.getBoundingClientRect();
   state.offsetX = event.clientX - rect.left;
   state.offsetY = event.clientY - rect.top;
@@ -265,6 +261,7 @@ function startPointerDrag(state, event) {
   ghost.style.width = `${rect.width}px`;
   document.body.append(ghost);
   state.ghost = ghost;
+  document.dispatchEvent(new CustomEvent("raid:dragstart", { detail: { card: state.card } }));
 }
 
 function positionPointerGhost(state, event) {
@@ -278,18 +275,22 @@ function finishPointerDrag(state, event) {
   state.ghost?.remove();
   state.card.classList.remove("raid-participant-card-dragging");
   clearDropState();
-
+  document.dispatchEvent(new CustomEvent("raid:dragend", { detail: { card: state.card } }));
   if (!(target instanceof HTMLElement)) return;
   const role = roleForTarget(target);
   if (role) {
     assignCardToRole(state.card, role);
     return;
   }
-
   if (target.matches("[data-raid-pool-drop]") && state.card.dataset.assigned === "true") {
     const signupRowId = state.card.dataset.signupRowId;
     if (signupRowId) void unassignParticipant(signupRowId);
   }
+}
+
+function cancelPointerState(state) {
+  if (state.holdTimer) clearTimeout(state.holdTimer);
+  state.holdTimer = null;
 }
 
 for (const card of document.querySelectorAll("[data-raid-participant-card]")) {
@@ -298,23 +299,46 @@ for (const card of document.querySelectorAll("[data-raid-participant-card]")) {
 
   card.addEventListener("pointerdown", (event) => {
     if (!event.isPrimary || event.button !== 0) return;
-    pointerDrag = {
+    const state = {
       card,
       pointerId: event.pointerId,
+      pointerType: event.pointerType,
       startX: event.clientX,
       startY: event.clientY,
+      lastX: event.clientX,
+      lastY: event.clientY,
       started: false,
+      cancelled: false,
+      holdTimer: null,
       ghost: null,
       offsetX: 0,
       offsetY: 0,
     };
+    pointerDrag = state;
+    if (event.pointerType === "touch") {
+      state.holdTimer = window.setTimeout(() => {
+        if (pointerDrag !== state || state.cancelled || state.started) return;
+        startPointerDrag(state, { clientX: state.lastX, clientY: state.lastY });
+        if (navigator.vibrate) navigator.vibrate(18);
+      }, TOUCH_HOLD_MS);
+      return;
+    }
     card.setPointerCapture(event.pointerId);
   });
 
   card.addEventListener("pointermove", (event) => {
     const state = pointerDrag;
     if (!state || state.card !== card || state.pointerId !== event.pointerId) return;
+    state.lastX = event.clientX;
+    state.lastY = event.clientY;
     const distance = Math.hypot(event.clientX - state.startX, event.clientY - state.startY);
+    if (state.pointerType === "touch" && !state.started) {
+      if (distance >= TOUCH_CANCEL_DISTANCE) {
+        state.cancelled = true;
+        cancelPointerState(state);
+      }
+      return;
+    }
     if (!state.started && distance >= 7) startPointerDrag(state, event);
     if (!state.started) return;
     event.preventDefault();
@@ -326,18 +350,21 @@ for (const card of document.querySelectorAll("[data-raid-participant-card]")) {
     const state = pointerDrag;
     if (!state || state.card !== card || state.pointerId !== event.pointerId) return;
     pointerDrag = null;
+    cancelPointerState(state);
     if (card.hasPointerCapture(event.pointerId)) card.releasePointerCapture(event.pointerId);
     if (state.started) finishPointerDrag(state, event);
-    else selectCard(card);
+    else if (!state.cancelled) selectCard(card);
   });
 
   card.addEventListener("pointercancel", (event) => {
     const state = pointerDrag;
     if (!state || state.card !== card || state.pointerId !== event.pointerId) return;
     pointerDrag = null;
+    cancelPointerState(state);
     state.ghost?.remove();
     card.classList.remove("raid-participant-card-dragging");
     clearDropState();
+    if (state.started) document.dispatchEvent(new CustomEvent("raid:dragend", { detail: { card: state.card } }));
   });
 
   card.addEventListener("keydown", (event) => {
