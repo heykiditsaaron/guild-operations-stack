@@ -321,6 +321,7 @@ for (const card of document.querySelectorAll("[data-raid-participant-card]")) {
     };
     pointerDrag = state;
     if (event.pointerType === "touch") {
+      card.setPointerCapture(event.pointerId);
       state.holdTimer = window.setTimeout(() => {
         if (pointerDrag !== state || state.cancelled || state.started) return;
         startPointerDrag(state, { clientX: state.lastX, clientY: state.lastY });
