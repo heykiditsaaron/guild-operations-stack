@@ -1,5 +1,6 @@
 import { config } from "./config.js";
 import { pool } from "./db.js";
+import { isConfiguredOperator } from "./operator-authority.js";
 
 export type GuildCapability = string;
 
@@ -7,12 +8,15 @@ export const GUILD_REFRESH_CAPABILITY = "guild.refresh";
 export const OPERATIONS_INSPECT_CAPABILITY = "operations.inspect";
 export const RAID_CREATE_CAPABILITY = "raid.create";
 export const RAID_MANAGE_CAPABILITY = "raid.manage";
+export const RAID_PERMISSIONS_CAPABILITY = "raid.permissions";
 
 export type EffectiveGuildAuthority = {
+  guildieId: string;
   guildId: string;
   rankIndex: number;
   rankDisplayName: string;
   capabilities: GuildCapability[];
+  operator: boolean;
 };
 
 export async function effectiveGuildAuthority(
@@ -56,10 +60,12 @@ export async function effectiveGuildAuthority(
   );
 
   return {
+    guildieId,
     guildId,
     rankIndex: rank.rank_index,
     rankDisplayName: rank.display_name ?? `Rank ${rank.rank_index}`,
     capabilities: capabilityResult.rows.map((row) => row.capability),
+    operator: isConfiguredOperator(guildieId),
   };
 }
 
@@ -70,6 +76,15 @@ export async function guildieHasGuildCapability(
 ): Promise<boolean> {
   const authority = await effectiveGuildAuthority(guildieId, guildId);
   return authority?.capabilities.includes(capability) ?? false;
+}
+
+export async function guildieHasGuildCapabilityOrOperator(
+  guildieId: string,
+  capability: GuildCapability,
+  guildId: string = config.guild.id,
+): Promise<boolean> {
+  if (isConfiguredOperator(guildieId)) return true;
+  return guildieHasGuildCapability(guildieId, capability, guildId);
 }
 
 export async function requireGuildCapability(
@@ -84,6 +99,15 @@ export async function requireGuildCapability(
   }
 
   return authority;
+}
+
+export async function requireGuildCapabilityOrOperator(
+  guildieId: string,
+  capability: GuildCapability,
+  guildId: string = config.guild.id,
+): Promise<void> {
+  if (isConfiguredOperator(guildieId)) return;
+  await requireGuildCapability(guildieId, capability, guildId);
 }
 
 export class GuildCapabilityDeniedError extends Error {
