@@ -15,7 +15,7 @@ if (form instanceof HTMLFormElement) {
     }));
 
     try {
-      const response = await fetch("/admin/raid/permissions", {
+      const response = await fetch("/admin/permissions/raid", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ updates }),
