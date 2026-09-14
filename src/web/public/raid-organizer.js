@@ -84,15 +84,23 @@ if (poolPanel instanceof HTMLElement && poolToggle instanceof HTMLButtonElement)
     if (event.key === "Escape") setPoolOpen(false);
   });
 
+  let poolDragCard = null;
   let poolCollapsedForDrag = false;
   document.addEventListener("raid:dragstart", (event) => {
     const card = event.detail?.card;
     if (!(card instanceof HTMLElement) || !poolPanel.contains(card)) return;
+    poolDragCard = card;
+  });
+
+  document.addEventListener("pointermove", (event) => {
+    if (!(poolDragCard instanceof HTMLElement) || poolCollapsedForDrag) return;
+    if (!(event instanceof PointerEvent) || !event.isPrimary) return;
     poolCollapsedForDrag = true;
     poolPanel.dataset.dragCollapsed = "true";
   });
 
   document.addEventListener("raid:dragend", () => {
+    poolDragCard = null;
     if (!poolCollapsedForDrag) return;
     poolCollapsedForDrag = false;
     delete poolPanel.dataset.dragCollapsed;
