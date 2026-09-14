@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
-import { RAID_CREATE_CAPABILITY, guildieHasGuildCapability } from "../../../../guild-permissions.js";
+import { GuildCapabilityDeniedError, RAID_MANAGE_CAPABILITY, guildieHasGuildCapability } from "../../../../guild-permissions.js";
 import {
   assignRaidParticipation,
   assignedRaidCapabilities,
@@ -109,11 +109,15 @@ async function assignedCard(row: RaidSignupRowView): Promise<string> {
   </article>`;
 }
 
+function raidActionStatusCode(error: unknown): 400 | 403 {
+  return error instanceof GuildCapabilityDeniedError ? 403 : 400;
+}
+
 export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get<{ Params: RaidParams }>("/admin/raid/:raidId", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie] = await Promise.all([viewerForRequest(sessionToken), authenticatedGuildie(sessionToken)]);
-    const authorized = guildie ? await guildieHasGuildCapability(guildie.guildieId, RAID_CREATE_CAPABILITY) : false;
+    const authorized = guildie ? await guildieHasGuildCapability(guildie.guildieId, RAID_MANAGE_CAPABILITY) : false;
     if (!guildie || !authorized) {
       const html = renderPage(assets, {
         pathname: request.url,
@@ -122,7 +126,7 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
         stylesheets: ["admin.css", "raid-admin.css"],
         secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Administration", href: "/admin" }, { label: "Raid", href: "/admin/raid" }, { label: "Unavailable" }] },
         header: `<div class="admin-page-header"><h1>Raid</h1></div>`,
-        body: `<section class="admin-unavailable"><h2>Raid administration is not available for this account.</h2></section>`,
+        body: `<section class="admin-unavailable"><h2>Raid management is not available for this account.</h2></section>`,
       });
       return reply.code(guildie ? 403 : 401).header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
     }
@@ -246,7 +250,7 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
       await setRaidSignupsOpen(guildie.guildieId, request.params.raidId, request.body.open);
       return { ok: true };
     } catch (error) {
-      return reply.code(400).send({ error: error instanceof Error ? error.message : "Signup state could not be changed" });
+      return reply.code(raidActionStatusCode(error)).send({ error: error instanceof Error ? error.message : "Signup state could not be changed" });
     }
   });
 
@@ -266,7 +270,7 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
       });
       return reply.code(201).send({ assignmentId });
     } catch (error) {
-      return reply.code(400).send({ error: error instanceof Error ? error.message : "Participant could not be assigned" });
+      return reply.code(raidActionStatusCode(error)).send({ error: error instanceof Error ? error.message : "Participant could not be assigned" });
     }
   });
 
@@ -278,7 +282,7 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
       await unassignRaidParticipation(guildie.guildieId, request.params.raidId, request.body.signupRowId);
       return { ok: true };
     } catch (error) {
-      return reply.code(400).send({ error: error instanceof Error ? error.message : "Participant could not be unassigned" });
+      return reply.code(raidActionStatusCode(error)).send({ error: error instanceof Error ? error.message : "Participant could not be unassigned" });
     }
   });
 }
