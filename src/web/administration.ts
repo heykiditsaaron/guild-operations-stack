@@ -5,27 +5,24 @@ import {
   RAID_PERMISSIONS_CAPABILITY,
   effectiveGuildAuthority,
 } from "../guild-permissions.js";
-import {
-  authorizedModuleAdministrationDestinations,
-  type AdministrationNavigationDestination,
-} from "./admin-navigation.js";
+import { DISCORD_ADMIN_CAPABILITY } from "../modules/discord/authorization.js";
 
 export type AdministrationAvailability = {
   available: boolean;
   canConfigureModules: boolean;
   canConfigurePermissions: boolean;
+  canConfigureDiscord: boolean;
   canRefreshGuild: boolean;
   canInspectOperations: boolean;
-  navigationDestinations: AdministrationNavigationDestination[];
 };
 
 const unavailableAdministration: AdministrationAvailability = {
   available: false,
   canConfigureModules: false,
   canConfigurePermissions: false,
+  canConfigureDiscord: false,
   canRefreshGuild: false,
   canInspectOperations: false,
-  navigationDestinations: [],
 };
 
 export async function administrationAvailabilityForGuildie(
@@ -36,23 +33,21 @@ export async function administrationAvailabilityForGuildie(
 
   const canConfigureModules = authority.operator || authority.capabilities.includes(MODULES_CONFIGURE_CAPABILITY);
   const canConfigurePermissions = authority.operator || authority.capabilities.includes(RAID_PERMISSIONS_CAPABILITY);
+  const canConfigureDiscord = authority.capabilities.includes(DISCORD_ADMIN_CAPABILITY);
   const canRefreshGuild = authority.capabilities.includes(GUILD_REFRESH_CAPABILITY);
   const canInspectOperations = authority.capabilities.includes(OPERATIONS_INSPECT_CAPABILITY);
-  const moduleDestinations = authorizedModuleAdministrationDestinations(authority);
   const available = canConfigureModules
     || canConfigurePermissions
+    || canConfigureDiscord
     || canRefreshGuild
-    || canInspectOperations
-    || moduleDestinations.length > 0;
+    || canInspectOperations;
 
   return {
     available,
     canConfigureModules,
     canConfigurePermissions,
+    canConfigureDiscord,
     canRefreshGuild,
     canInspectOperations,
-    navigationDestinations: available
-      ? [{ label: "Guild Operations", href: "/admin" }, ...moduleDestinations]
-      : [],
   };
 }
