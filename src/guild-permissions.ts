@@ -5,6 +5,7 @@ import { isConfiguredOperator } from "./operator-authority.js";
 export type GuildCapability = string;
 
 export const GUILD_REFRESH_CAPABILITY = "guild.refresh";
+export const GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY = "guild.refresh.schedule.configure";
 export const MODULES_CONFIGURE_CAPABILITY = "modules.configure";
 export const OPERATIONS_INSPECT_CAPABILITY = "operations.inspect";
 export const RAID_CREATE_CAPABILITY = "raid.create";
