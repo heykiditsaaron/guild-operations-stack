@@ -5,26 +5,39 @@
   gap: 1rem;
 }
 
-.raid-character-offers,
-.raid-my-offers > div {
+.raid-offer-form {
   display: grid;
   gap: 1rem;
+  max-width: 34rem;
 }
 
-.raid-character-offer,
-.raid-my-offers article {
+.raid-offer-selector {
+  display: grid;
+  gap: .4rem;
+}
+
+.raid-offer-selector select {
+  width: 100%;
+}
+
+.raid-offer-editor {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
   border: 1px solid var(--border-subtle, #2a2a2f);
   border-radius: 1rem;
-  padding: 1rem;
   background: var(--surface-raised, #141419);
 }
 
-.raid-character-offer form {
-  display: grid;
-  gap: 1rem;
+.raid-offer-editor[hidden] {
+  display: none;
 }
 
-.raid-character-offer fieldset {
+.raid-offer-identity {
+  font-weight: 700;
+}
+
+.raid-offer-editor fieldset {
   display: grid;
   gap: .5rem;
   border: 0;
@@ -32,13 +45,22 @@
   margin: 0;
 }
 
-.raid-character-offer fieldset label {
+.raid-offer-editor fieldset label {
   display: flex;
   gap: .5rem;
   align-items: center;
 }
 
+.raid-my-offers > div {
+  display: grid;
+  gap: 1rem;
+}
+
 .raid-my-offers article {
   display: grid;
   gap: .25rem;
+  border: 1px solid var(--border-subtle, #2a2a2f);
+  border-radius: 1rem;
+  padding: 1rem;
+  background: var(--surface-raised, #141419);
 }
