@@ -79,7 +79,7 @@ async function raidList(canManage: boolean): Promise<string> {
         <dt>Eligibility</dt><dd>${htmlText(eligibilityLabel(raid.eligibility))}</dd>
       </dl>
       ${canManage ? `<div class="raid-admin-card-actions">
-        <a class="button-primary" href="/admin/raid/${encodeURIComponent(raid.raidId)}">Manage</a>
+        <a class="button-primary" href="/events/raid/manage/${encodeURIComponent(raid.raidId)}">Manage</a>
       </div>` : ""}
     </article>`;
   }).join("\n")}</div>`;
