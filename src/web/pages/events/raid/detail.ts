@@ -222,17 +222,15 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
           <h1>${htmlText(raid.label)}</h1>
           <p><time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${htmlText(difficultyLabel(raid.difficulty))} · Signups ${raid.signupsOpen ? "open" : "closed"}</p>
         </div>
-        <button type="button" class="button-secondary" disabled title="Raid metadata editing will be added later">Edit</button>
+        <div class="raid-admin-actions">
+          <button type="button" class="button-secondary" disabled title="Raid metadata editing will be added later">Edit</button>
+          <button type="button" class="button-primary" data-raid-signups-toggle data-open="${raid.signupsOpen ? "false" : "true"}">${raid.signupsOpen ? "Close signups" : "Open signups"}</button>
+          <a class="button-secondary" href="/events/raid/${encodeURIComponent(raid.raidId)}">View signup page ↗</a>
+        </div>
       </section>
       <section class="raid-workspace">
-        <div class="raid-workspace-heading">
-          <div><h2>Raid organizer</h2><p>Build the raid group from participation offers. Drag cards between available participants and raid roles.</p></div>
-          <div class="raid-admin-actions">
-            <button type="button" class="button-primary" data-raid-signups-toggle data-open="${raid.signupsOpen ? "false" : "true"}">${raid.signupsOpen ? "Close signups" : "Open signups"}</button>
-            <a class="button-secondary" href="/events/raid/${encodeURIComponent(raid.raidId)}">View signup page ↗</a>
-          </div>
-        </div>
         <p class="raid-board-status" data-raid-action-status role="status" aria-live="polite"></p>
+        ${diagnosticsBody}
         <div class="raid-organizer-grid">
           <section class="raid-pool-panel" data-raid-pool-panel data-open="false" id="raid-applicant-pool-panel">
             <div class="raid-pool-panel-header"><h2>Available</h2><span>${available.length}</span><button type="button" class="raid-pool-close" data-raid-pool-close aria-label="Close available participants">×</button></div>
@@ -247,7 +245,6 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
       </section>
       <section class="raid-scoreboard" aria-labelledby="raid-scoreboard-heading">
         <h2 id="raid-scoreboard-heading">Raid diagnostics</h2>
-        ${diagnosticsBody}
         ${shelves}
       </section>
       <dialog class="raid-spec-dialog" data-raid-spec-dialog>
