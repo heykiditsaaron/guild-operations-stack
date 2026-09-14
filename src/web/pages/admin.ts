@@ -155,7 +155,6 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       canConfigureModules ? packagedModuleStates() : Promise.resolve([]),
     ]);
 
-    const moduleDestinations = administration?.navigationDestinations.filter((item) => item.href !== "/admin") ?? [];
     const hasAdministration = administration?.available === true;
 
     const moduleLifecycle = canConfigureModules
@@ -171,17 +170,21 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       ? administrationSection("guild-settings", "guild-settings-heading", "Guild settings", renderGuildRefresh(refreshStatus, refreshSchedule))
       : "";
 
-    const modules = moduleDestinations.length
+    const discordSettings = administration?.canConfigureDiscord
       ? administrationSection(
-          "available-administration",
-          "available-administration-heading",
-          "Current module tools",
-          `<div class="admin-destinations">${moduleDestinations.map((item) => destination(item.label, `Open the current ${item.label} privileged surface.`, item.href)).join("\n")}</div>`,
+          "discord-settings",
+          "discord-settings-heading",
+          "Discord",
+          `<div class="admin-destinations">${destination(
+            "Discord integration",
+            "Configure application credentials, server association, invite URL, and managed role policy.",
+            "/admin/general/discord",
+          )}</div>`,
         )
       : "";
 
     const content = hasAdministration
-      ? `<div class="admin-sections">${moduleLifecycle}${guildSettings}${modules}</div>`
+      ? `<div class="admin-sections">${moduleLifecycle}${guildSettings}${discordSettings}</div>`
       : `<section class="admin-unavailable" aria-labelledby="admin-unavailable-heading"><h2 id="admin-unavailable-heading">Administration is not available for this account.</h2></section>`;
     const body = `${administrationTabs("general")}${content}`;
 
