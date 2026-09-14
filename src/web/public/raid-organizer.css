@@ -1,3 +1,5 @@
+.raid-title-bar { display:grid; grid-template-columns:minmax(0,1fr); align-items:start; }
+.raid-title-bar .raid-admin-actions { width:100%; padding-top:.65rem; border-top:1px solid rgba(255,255,255,.07); }
 .raid-spec-icon,
 .raid-participant-assigned-icon .raid-spec-icon,
 .raid-capability-icon,
