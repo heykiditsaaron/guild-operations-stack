@@ -254,6 +254,11 @@ export async function assignRaidParticipation(
     `INSERT INTO raid_assignments (
        raid_id, applicant_id, signup_row_id, selected_spec, selected_role, assigned_by_guildie_id
      ) VALUES ($1,$2,$3,$4,$5,$6)
+     ON CONFLICT (raid_id, signup_row_id) DO UPDATE
+       SET selected_spec = EXCLUDED.selected_spec,
+           selected_role = EXCLUDED.selected_role,
+           assigned_by_guildie_id = EXCLUDED.assigned_by_guildie_id,
+           assigned_at_unix = extract(epoch FROM now())::bigint
      RETURNING assignment_id`,
     [input.raidId, row.applicant_id, input.signupRowId, input.selectedSpec, input.selectedRole, actorGuildieId],
   );
