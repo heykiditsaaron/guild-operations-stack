@@ -1,5 +1,6 @@
 import { config } from "../../config.js";
 import { pool } from "../../db.js";
+import { packagedModuleEnabled } from "../../module-lifecycle.js";
 import { decryptSecret, encryptSecret, secretEncryptionAvailable } from "./secrets.js";
 
 export type DiscordModuleConfiguration = {
@@ -19,7 +20,6 @@ export type DiscordModuleRuntimeConfiguration = DiscordModuleConfiguration & {
 };
 
 export type UpdateDiscordModuleConfigurationInput = {
-  enabled: boolean;
   clientId: string | null;
   discordGuildId: string | null;
   inviteUrl: string | null;
@@ -43,7 +43,6 @@ function optionalHttpUrl(value: string | null): string | null {
 }
 
 async function row(guildId: string = config.guild.id): Promise<{
-  enabled: boolean;
   client_id: string | null;
   client_secret_ciphertext: string | null;
   discord_guild_id: string | null;
@@ -51,14 +50,13 @@ async function row(guildId: string = config.guild.id): Promise<{
   invite_url: string | null;
 } | null> {
   const result = await pool.query<{
-    enabled: boolean;
     client_id: string | null;
     client_secret_ciphertext: string | null;
     discord_guild_id: string | null;
     bot_token_ciphertext: string | null;
     invite_url: string | null;
   }>(
-    `SELECT enabled, client_id, client_secret_ciphertext, discord_guild_id, bot_token_ciphertext, invite_url
+    `SELECT client_id, client_secret_ciphertext, discord_guild_id, bot_token_ciphertext, invite_url
        FROM discord_module_settings
       WHERE guild_id = $1`,
     [guildId],
@@ -69,10 +67,13 @@ async function row(guildId: string = config.guild.id): Promise<{
 export async function discordModuleConfiguration(
   guildId: string = config.guild.id,
 ): Promise<DiscordModuleConfiguration> {
-  const current = await row(guildId);
+  const [current, enabled] = await Promise.all([
+    row(guildId),
+    packagedModuleEnabled("discord", guildId),
+  ]);
   return {
     guildId,
-    enabled: current?.enabled ?? false,
+    enabled,
     clientId: current?.client_id ?? null,
     clientSecretConfigured: Boolean(current?.client_secret_ciphertext),
     discordGuildId: current?.discord_guild_id ?? null,
@@ -85,10 +86,13 @@ export async function discordModuleConfiguration(
 export async function discordModuleRuntimeConfiguration(
   guildId: string = config.guild.id,
 ): Promise<DiscordModuleRuntimeConfiguration> {
-  const current = await row(guildId);
+  const [current, enabled] = await Promise.all([
+    row(guildId),
+    packagedModuleEnabled("discord", guildId),
+  ]);
   return {
     guildId,
-    enabled: current?.enabled ?? false,
+    enabled,
     clientId: current?.client_id ?? null,
     clientSecretConfigured: Boolean(current?.client_secret_ciphertext),
     clientSecret: current?.client_secret_ciphertext ? decryptSecret(current.client_secret_ciphertext) : null,
@@ -119,9 +123,8 @@ export async function updateDiscordModuleConfiguration(
   await pool.query(
     `INSERT INTO discord_module_settings (
        guild_id, enabled, client_id, client_secret_ciphertext, discord_guild_id, bot_token_ciphertext, invite_url
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7)
+     ) VALUES ($1,false,$2,$3,$4,$5,$6)
      ON CONFLICT (guild_id) DO UPDATE SET
-       enabled = EXCLUDED.enabled,
        client_id = EXCLUDED.client_id,
        client_secret_ciphertext = EXCLUDED.client_secret_ciphertext,
        discord_guild_id = EXCLUDED.discord_guild_id,
@@ -130,7 +133,6 @@ export async function updateDiscordModuleConfiguration(
        updated_at = now()`,
     [
       guildId,
-      input.enabled,
       optionalText(input.clientId),
       clientSecretCiphertext,
       optionalText(input.discordGuildId),
