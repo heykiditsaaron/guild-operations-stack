@@ -65,8 +65,8 @@ const SPECIALIZATION_IDS: Readonly<Record<string, number>> = {
 const RAID_BUFF_SPELLS: Readonly<Record<RaidBuffTrait, { spellId: number; label: string }>> = {
   "buff.arcane_intellect": { spellId: 1459, label: "Arcane Intellect" },
   "buff.battle_shout": { spellId: 6673, label: "Battle Shout" },
-  "buff.blessing_of_the_bronze": { spellId: 381748, label: "Blessing of the Bronze" },
-  "buff.chaos_brand": { spellId: 1490, label: "Chaos Brand" },
+  "buff.blessing_of_the_bronze": { spellId: 364342, label: "Blessing of the Bronze" },
+  "buff.chaos_brand": { spellId: 255260, label: "Chaos Brand" },
   "buff.devotion_aura": { spellId: 465, label: "Devotion Aura" },
   "buff.mark_of_the_wild": { spellId: 1126, label: "Mark of the Wild" },
   "buff.mystic_touch": { spellId: 8647, label: "Mystic Touch" },
