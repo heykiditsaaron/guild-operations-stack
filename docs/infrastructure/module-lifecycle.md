@@ -54,18 +54,19 @@ Module enablement is distinct from module-specific configuration. A disabled mod
 
 ## Runtime behavior
 
-Disabling a module prevents its participation and operational surfaces from being used and removes its discoverable projections where applicable.
+Disabling a module prevents its participation and operational surfaces from being used and removes active module-owned presentation where applicable.
 
 Current behavior includes:
 
 - disabled Raffle and Raid web and module API routes refuse requests;
-- disabled Raffle and Raid offerings/calendar entries are omitted from web event discovery;
-- disabled module-backed calendar entries are omitted from the read-facing global calendar API;
+- disabled Raffle and Raid participation offerings are omitted from event discovery;
 - the home-page Raffle promotion is absent while Raffle is disabled;
 - disabled Discord removes Discord member-facing presentation and prevents Discord runtime integration from operating;
 - administrative configuration that is intentionally independent of operational use may remain reachable while the module is disabled.
 
-Disabling a module does not delete its durable domain history. Existing Raffle rounds, Raid records, calendar projections, Discord configuration, and similar module-owned facts remain persisted unless their owning procedure has a separate reason to change them.
+The current Calendar machinery is legacy and remains independent of module lifecycle in this work. Calendar listings, Calendar API behavior, and Calendar-specific projection semantics are intentionally not being redesigned here. They should be addressed as part of the dedicated Calendar work rather than coupled to this administration migration.
+
+Disabling a module does not delete its durable domain history or configuration. Existing Raffle rounds, Raid records, Discord configuration, and similar module-owned facts remain persisted unless their owning procedure has a separate reason to change them.
 
 ## Ownership boundary
 
@@ -76,7 +77,7 @@ It does not own:
 - module procedure;
 - module-specific configuration;
 - permission policy beyond the authority required to change enablement;
-- event discovery truth;
+- Calendar behavior or Calendar projection truth;
 - acquisition or entitlement;
 - licensing, billing, or premium tiers.
 
