@@ -1,7 +1,6 @@
 import {
-  GUILD_REFRESH_CAPABILITY,
+  GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY,
   MODULES_CONFIGURE_CAPABILITY,
-  OPERATIONS_INSPECT_CAPABILITY,
   RAID_PERMISSIONS_CAPABILITY,
   effectiveGuildAuthority,
 } from "../guild-permissions.js";
@@ -12,8 +11,7 @@ export type AdministrationAvailability = {
   canConfigureModules: boolean;
   canConfigurePermissions: boolean;
   canConfigureDiscord: boolean;
-  canRefreshGuild: boolean;
-  canInspectOperations: boolean;
+  canConfigureGuildRefreshSchedule: boolean;
 };
 
 const unavailableAdministration: AdministrationAvailability = {
@@ -21,8 +19,7 @@ const unavailableAdministration: AdministrationAvailability = {
   canConfigureModules: false,
   canConfigurePermissions: false,
   canConfigureDiscord: false,
-  canRefreshGuild: false,
-  canInspectOperations: false,
+  canConfigureGuildRefreshSchedule: false,
 };
 
 export async function administrationAvailabilityForGuildie(
@@ -34,20 +31,17 @@ export async function administrationAvailabilityForGuildie(
   const canConfigureModules = authority.operator || authority.capabilities.includes(MODULES_CONFIGURE_CAPABILITY);
   const canConfigurePermissions = authority.operator || authority.capabilities.includes(RAID_PERMISSIONS_CAPABILITY);
   const canConfigureDiscord = authority.capabilities.includes(DISCORD_ADMIN_CAPABILITY);
-  const canRefreshGuild = authority.capabilities.includes(GUILD_REFRESH_CAPABILITY);
-  const canInspectOperations = authority.capabilities.includes(OPERATIONS_INSPECT_CAPABILITY);
+  const canConfigureGuildRefreshSchedule = authority.capabilities.includes(GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY);
   const available = canConfigureModules
     || canConfigurePermissions
     || canConfigureDiscord
-    || canRefreshGuild
-    || canInspectOperations;
+    || canConfigureGuildRefreshSchedule;
 
   return {
     available,
     canConfigureModules,
     canConfigurePermissions,
     canConfigureDiscord,
-    canRefreshGuild,
-    canInspectOperations,
+    canConfigureGuildRefreshSchedule,
   };
 }
