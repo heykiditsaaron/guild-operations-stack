@@ -23,6 +23,7 @@ const migrationFiles = [
   "019_raid_module.sql",
   "020_raid_external_anchor.sql",
   "021_raid_assignment_derived_composition.sql",
+  "022_raid_permission_split.sql",
 ];
 
 for (const migrationFile of migrationFiles) {
