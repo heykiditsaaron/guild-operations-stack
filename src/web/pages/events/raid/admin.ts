@@ -48,19 +48,27 @@ function createForm(): string {
 
 async function raidList(): Promise<string> {
   const raids = await raidsForAdministration();
-  if (raids.length === 0) return `<p>No raids have been created yet.</p>`;
+  if (raids.length === 0) return `<p class="raid-admin-empty">No raids have been created yet.</p>`;
 
   return `<div class="raid-admin-list">${raids.map((raid) => {
     const start = raid.occursAt[0];
-    return `<article class="raid-admin-item">
-      <div><h3>${htmlText(raid.label)}</h3>${raid.description ? `<p>${htmlText(raid.description)}</p>` : ""}</div>
-      <dl>
-        <dt>Starts</dt><dd><time data-unix-time="${start}">${start}</time></dd>
+    const stateLabel = raid.signupsOpen ? "Signups open" : "Upcoming";
+    return `<article class="raid-admin-card${raid.signupsOpen ? " raid-admin-card-open" : ""}">
+      <div class="raid-admin-card-heading">
+        <div class="raid-admin-card-identity">
+          <h2>${htmlText(raid.label)}</h2>
+          <p>Starts <time data-unix-time="${start}">${start}</time></p>
+        </div>
+        <span class="raid-admin-card-state">${stateLabel}</span>
+      </div>
+      ${raid.description ? `<p class="raid-admin-card-description">${htmlText(raid.description)}</p>` : ""}
+      <dl class="raid-admin-card-facts">
         <dt>Eligibility</dt><dd>${htmlText(eligibilityLabel(raid.eligibility))}</dd>
         <dt>Raid size</dt><dd>${raid.raidSize}</dd>
-        <dt>Signups</dt><dd>${raid.signupsOpen ? "Open" : "Closed"}</dd>
       </dl>
-      <a class="button-primary" href="/admin/raid/${encodeURIComponent(raid.raidId)}">Manage raid</a>
+      <div class="raid-admin-card-actions">
+        <a class="button-primary" href="/admin/raid/${encodeURIComponent(raid.raidId)}">Manage</a>
+      </div>
     </article>`;
   }).join("\n")}</div>`;
 }
@@ -76,8 +84,10 @@ export async function registerRaidAdminPage(app: FastifyInstance, assets: AssetR
     const authorized = guildie ? await guildieHasGuildCapability(guildie.guildieId, RAID_CREATE_CAPABILITY) : false;
 
     const body = authorized
-      ? `<section class="admin-section" aria-labelledby="raid-create-heading"><h2 id="raid-create-heading">Create raid</h2>${createForm()}</section>
-        <section class="admin-section" aria-labelledby="raid-existing-heading"><h2 id="raid-existing-heading">Raids</h2>${await raidList()}</section>`
+      ? `<section class="raid-admin-overview" aria-labelledby="page-title">
+          <div class="raid-admin-setup" data-raid-setup hidden>${createForm()}</div>
+          ${await raidList()}
+        </section>`
       : `<section class="admin-unavailable"><h2>Raid administration is not available for this account.</h2></section>`;
 
     const html = renderPage(assets, {
@@ -88,7 +98,9 @@ export async function registerRaidAdminPage(app: FastifyInstance, assets: AssetR
       stylesheets: ["admin.css", "raid-admin.css"],
       scripts: ["admin.js", "raid-admin.js"],
       secondaryNavigation: navigation,
-      header: `<div class="admin-page-header"><h1 id="page-title">Raid</h1><p class="lede">Create raids and operate participation.</p></div>`,
+      header: authorized
+        ? `<div class="admin-page-header-row"><div class="admin-page-header"><h1 id="page-title">Raid</h1><p class="lede">Create raids and operate participation.</p></div><button class="button-primary raid-admin-header-action" type="button" data-toggle-raid-setup>New raid</button></div>`
+        : `<div class="admin-page-header"><h1 id="page-title">Raid</h1><p class="lede">Create raids and operate participation.</p></div>`,
       body,
     });
 
