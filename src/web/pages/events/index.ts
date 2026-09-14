@@ -61,11 +61,10 @@ function isHappeningNow(event: GuildCalendarEvent, nowUnix: number): boolean {
   return start <= nowUnix && nowUnix <= end;
 }
 
-function destinationAvailable(
-  destination: string | null,
+function offeringAvailable(
+  destination: string,
   modules: Map<string, PackagedModuleState>,
 ): boolean {
-  if (!destination) return true;
   const moduleKey = packagedModuleForPath(destination);
   return moduleKey === null || modules.get(moduleKey)?.enabled !== false;
 }
@@ -189,11 +188,9 @@ export async function registerEventsPage(app: FastifyInstance, assets: AssetRegi
       packagedModuleStates(),
     ]);
     const moduleStateByKey = new Map(moduleStates.map((module) => [module.key, module]));
-    const offerings = guildEventOfferings().filter((offering) => destinationAvailable(offering.destination, moduleStateByKey));
+    const offerings = guildEventOfferings().filter((offering) => offeringAvailable(offering.destination, moduleStateByKey));
 
-    const relevant = events
-      .filter((event) => destinationAvailable(event.destination, moduleStateByKey))
-      .filter((event) => occursThrough(event) >= nowUnix);
+    const relevant = events.filter((event) => occursThrough(event) >= nowUnix);
     const happeningNow = relevant.filter((event) => isHappeningNow(event, nowUnix));
     const upcoming = relevant.filter((event) => !isHappeningNow(event, nowUnix));
     const guildCommunity = guild ? `${htmlText(guild.name)}&apos;s community` : "the guild&apos;s community";
