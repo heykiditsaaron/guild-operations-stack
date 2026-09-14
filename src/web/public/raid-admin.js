@@ -295,6 +295,18 @@ function cancelPointerState(state) {
   state.holdTimer = null;
 }
 
+document.addEventListener("selectstart", (event) => {
+  if (!pointerDrag?.started) return;
+  event.preventDefault();
+  const selection = window.getSelection();
+  if (selection) selection.removeAllRanges();
+}, true);
+
+document.addEventListener("contextmenu", (event) => {
+  if (!pointerDrag?.started) return;
+  event.preventDefault();
+}, true);
+
 for (const card of document.querySelectorAll("[data-raid-participant-card]")) {
   if (!(card instanceof HTMLElement)) continue;
   card.draggable = false;
