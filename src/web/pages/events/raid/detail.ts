@@ -172,7 +172,6 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
     ]);
     const assigned = rows.filter((row) => row.assignmentId !== null);
     const available = rows.filter((row) => row.assignmentId === null && !rows.some((candidate) => candidate.applicantId === row.applicantId && candidate.assignmentId !== null));
-    const applicantCount = new Set(rows.map((row) => row.applicantId)).size;
 
     const navigation: SecondaryNavigation = {
       kind: "breadcrumb",
@@ -184,12 +183,10 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
     const armorItems = ARMOR_TRAITS.map((trait) => textDiagnosticItem(armorLabel(trait), coverageCount(assigned, trait))).join("");
 
     const diagnosticsBody = `<dl class="raid-roster-diagnostics">
-      <div><dt>Assigned</dt><dd>${diagnostics.assigned}<span>/${applicantCount}</span></dd></div>
-      <div><dt>Tanks</dt><dd>${diagnostics.tanks}</dd></div>
-      <div><dt>Healers</dt><dd>${diagnostics.healers}</dd></div>
-      <div><dt>Damage</dt><dd>${diagnostics.damage}</dd></div>
-      <div><dt>Melee</dt><dd>${diagnostics.melee}</dd></div>
-      <div><dt>Ranged</dt><dd>${diagnostics.ranged}</dd></div>
+      <div class="raid-comp-tank"><dt><span class="raid-role-icon raid-role-icon-tank" aria-hidden="true"></span>Tank</dt><dd>${diagnostics.tanks}</dd></div>
+      <div class="raid-comp-healer"><dt><span class="raid-role-icon raid-role-icon-healer" aria-hidden="true"></span>Healer</dt><dd>${diagnostics.healers}</dd></div>
+      <div class="raid-comp-melee"><dt><span class="raid-role-icon raid-role-icon-damage" aria-hidden="true"></span>Melee</dt><dd>${diagnostics.melee}</dd></div>
+      <div class="raid-comp-ranged"><dt><span class="raid-role-icon raid-role-icon-damage" aria-hidden="true"></span>Ranged</dt><dd>${diagnostics.ranged}</dd></div>
     </dl>`;
 
     const shelves = `<div class="raid-diagnostic-shelves" data-raid-diagnostics>
