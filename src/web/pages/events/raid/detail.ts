@@ -11,6 +11,12 @@ import {
 } from "../../../../modules/raid/application.js";
 import { raidSignupRows } from "../../../../modules/raid/participation-view.js";
 import type { RaidDifficulty, RaidRole } from "../../../../modules/raid/domain.js";
+import {
+  isRaidBuffTrait,
+  raidBuffIconUrl,
+  raidBuffLabel,
+  specializationIconUrl,
+} from "../../../../wow-iconography.js";
 import { specHasTrait, type WowTrait } from "../../../../wow-traits/registry.js";
 import type { AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage, type SecondaryNavigation } from "../../../render.js";
@@ -20,6 +26,7 @@ type RaidParams = { raidId: string };
 type ToggleBody = { open?: unknown };
 type AssignBody = { signupRowId?: unknown; selectedSpec?: unknown; selectedRole?: unknown };
 type UnassignBody = { signupRowId?: unknown };
+type RaidSignupRowView = Awaited<ReturnType<typeof raidSignupRows>>[number];
 
 const RAID_ROLES: readonly RaidRole[] = ["tank", "healer", "damage"];
 const ROLE_TRAITS: Record<RaidRole, WowTrait> = {
@@ -43,6 +50,10 @@ function capabilityLabel(value: string): string {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
+function armorLabel(value: string): string {
+  return value.replace("armor.", "").replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
 function specsByRole(className: string, willingSpecs: readonly string[], willingRoles: readonly RaidRole[]): Record<RaidRole, string[]> {
   return {
     tank: willingRoles.includes("tank") ? willingSpecs.filter((spec) => specHasTrait(className, spec, ROLE_TRAITS.tank)) : [],
@@ -51,30 +62,50 @@ function specsByRole(className: string, willingSpecs: readonly string[], willing
   };
 }
 
-function signupCard(row: Awaited<ReturnType<typeof raidSignupRows>>[number]): string {
+async function specIcon(className: string, specName: string, classNameValue: string): Promise<string> {
+  const iconUrl = await specializationIconUrl(className, specName);
+  if (!iconUrl) return `<span class="raid-spec-icon-fallback">${htmlText(specName)}</span>`;
+  return `<img class="raid-spec-icon" src="${htmlText(iconUrl)}" alt="" aria-hidden="true" title="${htmlText(`${specName} ${classNameValue}`)}">`;
+}
+
+async function offeredSpecIcons(row: RaidSignupRowView): Promise<string> {
+  if (row.willingSpecs.length === 0) return "";
+  const icons = await Promise.all(row.willingSpecs.map((spec) => specIcon(row.className, spec, row.className)));
+  return `<div class="raid-participant-specs" aria-label="Offered specializations">${icons.join("")}</div>`;
+}
+
+async function signupCard(row: RaidSignupRowView): Promise<string> {
   const roleSpecs = specsByRole(row.className, row.willingSpecs, row.willingRoles);
+  const specs = await offeredSpecIcons(row);
   return `<article class="raid-participant-card" draggable="true" tabindex="0"
     data-raid-participant-card
     data-assigned="false"
     data-signup-row-id="${htmlText(row.signupRowId)}"
     data-role-specs="${htmlText(JSON.stringify(roleSpecs))}">
-    <strong>${htmlText(row.characterName ?? row.className)}</strong>
-    <span>${row.realmName ? `${htmlText(row.realmName)} · ` : ""}${htmlText(row.className)}</span>
-    <small>${row.willingRoles.map((role) => htmlText(roleLabel(role))).join(" · ")}</small>
+    <div class="raid-participant-card-copy">
+      <strong>${htmlText(row.characterName ?? row.className)}</strong>
+      <span>${row.realmName ? `${htmlText(row.realmName)} · ` : ""}${htmlText(row.className)}</span>
+    </div>
+    ${specs}
   </article>`;
 }
 
-function assignedCard(row: Awaited<ReturnType<typeof raidSignupRows>>[number]): string {
+async function assignedCard(row: RaidSignupRowView): Promise<string> {
   const roleSpecs = specsByRole(row.className, row.willingSpecs, row.willingRoles);
+  const selectedSpec = row.selectedSpec ?? "";
+  const icon = selectedSpec ? await specIcon(row.className, selectedSpec, row.className) : "";
   return `<article class="raid-participant-card raid-participant-card-assigned" draggable="true" tabindex="0"
     data-raid-participant-card
     data-assigned="true"
     data-current-role="${htmlText(row.selectedRole ?? "")}"
-    data-current-spec="${htmlText(row.selectedSpec ?? "")}"
+    data-current-spec="${htmlText(selectedSpec)}"
     data-signup-row-id="${htmlText(row.signupRowId)}"
     data-role-specs="${htmlText(JSON.stringify(roleSpecs))}">
-    <strong>${htmlText(row.characterName ?? row.className)}</strong>
-    <span>${htmlText(row.selectedSpec ?? "")} · ${htmlText(roleLabel(row.selectedRole!))}</span>
+    <div class="raid-participant-assigned-icon">${icon}</div>
+    <div class="raid-participant-card-copy">
+      <strong>${htmlText(row.characterName ?? row.className)}</strong>
+      <span>${htmlText(selectedSpec)}</span>
+    </div>
   </article>`;
 }
 
@@ -113,9 +144,28 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
       items: [{ label: "Administration", href: "/admin" }, { label: "Raid", href: "/admin/raid" }, { label: raid.label }],
     };
 
-    const capabilityBody = capabilities.length
-      ? `<ul class="raid-capabilities">${capabilities.map((capability) => `<li>${htmlText(capabilityLabel(capability))}</li>`).join("")}</ul>`
+    const raidBuffs = capabilities.filter(isRaidBuffTrait);
+    const armorTraits = capabilities.filter((capability) => capability.startsWith("armor."));
+    const otherCapabilities = capabilities.filter(
+      (capability) => !capability.startsWith("role.") && !capability.startsWith("armor.") && !isRaidBuffTrait(capability),
+    );
+    const raidBuffItems = await Promise.all(raidBuffs.map(async (trait) => {
+      const label = raidBuffLabel(trait);
+      const iconUrl = await raidBuffIconUrl(trait);
+      return iconUrl
+        ? `<li class="raid-capability-icon" title="${htmlText(label)}"><img src="${htmlText(iconUrl)}" alt=""><span>${htmlText(label)}</span></li>`
+        : `<li>${htmlText(label)}</li>`;
+    }));
+    const capabilityItems = [
+      ...raidBuffItems,
+      ...otherCapabilities.map((capability) => `<li>${htmlText(capabilityLabel(capability))}</li>`),
+    ];
+    const capabilityBody = capabilityItems.length
+      ? `<ul class="raid-capabilities">${capabilityItems.join("")}</ul>`
       : `<p class="raid-scoreboard-empty">No capabilities are currently available from assigned participants.</p>`;
+    const armorTitle = armorTraits.length
+      ? ` title="${htmlText(`Armor represented: ${armorTraits.map(armorLabel).join(" · ")}`)}"`
+      : "";
 
     const diagnosticsBody = `<dl class="raid-roster-diagnostics">
       <div><dt>Assigned</dt><dd>${diagnostics.assigned}<span>/${applicantCount}</span></dd></div>
@@ -125,17 +175,18 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
     </dl>`;
 
     const pool = available.length
-      ? available.map(signupCard).join("")
+      ? (await Promise.all(available.map(signupCard))).join("")
       : `<p class="raid-pool-empty">All applicants are currently assigned.</p>`;
 
-    const lanes = RAID_ROLES.map((role) => {
+    const lanes = (await Promise.all(RAID_ROLES.map(async (role) => {
       const members = assigned.filter((row) => row.selectedRole === role);
+      const cards = (await Promise.all(members.map(assignedCard))).join("");
       return `<section class="raid-role-lane" data-raid-role-drop="${role}">
         <div class="raid-role-lane-heading"><h3>${htmlText(roleLabel(role))}</h3><span>${members.length}</span></div>
-        <div class="raid-role-cards">${members.map(assignedCard).join("")}</div>
+        <div class="raid-role-cards">${cards}</div>
         <button type="button" class="raid-add-slot" data-raid-drop-role="${role}" aria-label="Assign a ${htmlText(roleLabel(role).toLowerCase())}">+</button>
       </section>`;
-    }).join("");
+    }))).join("");
 
     const body = `<section class="raid-title-bar">
         <div>
@@ -147,7 +198,7 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
       <section class="raid-scoreboard" aria-labelledby="raid-scoreboard-heading">
         <h2 id="raid-scoreboard-heading">Scoreboard</h2>
         ${diagnosticsBody}
-        <div class="raid-scoreboard-capabilities"><h3>Available capabilities</h3>${capabilityBody}</div>
+        <div class="raid-scoreboard-capabilities"${armorTitle}><h3>Available capabilities</h3>${capabilityBody}</div>
       </section>
       <section class="raid-workspace">
         <div class="raid-workspace-heading">
