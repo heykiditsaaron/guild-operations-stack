@@ -6,7 +6,7 @@ The authoritative semantic distinction is defined in [`../doctrine/surface-roles
 
 ## Current global administration shell
 
-Administration now has stable global concerns:
+Administration has stable global concerns:
 
 ```text
 Administration
@@ -14,22 +14,19 @@ Administration
 └── Permissions
 ```
 
-The remaining transitional pressure is global rather than module-specific:
+Administration availability is now based on configuration authority rather than privileged operational authority.
 
-- manual guild refresh still lives inside General even though the immediate refresh action is operational;
-- operational inspection still contributes to Administration availability and remains under `/admin/operations`.
-
-Those are migration conditions, not the target information architecture.
+Global operational work that does not belong to a particular activity is exposed separately through `/operations`.
 
 ## Current surface classification
 
-| Surface or action | Current location | Classification | Intended ownership |
+| Surface or action | Current location | Classification | Ownership |
 | --- | --- | --- | --- |
 | Packaged module enablement | `/admin/general` | Administration | `Administration → General` |
 | Automatic guild refresh enablement and cadence | `/admin/general` | Administration | `Administration → General` |
-| Manual guild refresh | `/admin/general` | Operation | Global guild operation entry, location still to be earned |
-| Guild refresh status/result context | `/admin/general` | Operational support | Follow the guild refresh operation or inspection surface |
-| Operational record inspection | `/admin/operations` | Operational inspection | Privileged operational support, not Administration |
+| Manual guild refresh | `/operations` | Operation | Global Operations |
+| Guild refresh status/result context | `/operations` | Operational support | Global Operations |
+| Operational record inspection | `/operations` | Operational inspection | Global Operations |
 | Raid rank permission mapping | `/admin/permissions/raid` | Administration | `Administration → Permissions → Raid` |
 | Create raid | `/events/raid/manage` | Operation | Raid-owned operational surface |
 | List raids for management | `/events/raid/manage` | Operation | Raid-owned operational surface |
@@ -43,8 +40,8 @@ Those are migration conditions, not the target information architecture.
 | Discord application credentials and server association | `/admin/general/discord` | Administration | `Administration → General → Discord` |
 | Discord invite URL | `/admin/general/discord` | Administration | `Administration → General → Discord` |
 | Discord linked-role and rank-role projection policy | `/admin/general/discord/role-maps` | Administration | `Administration → General → Discord` |
-| Read/refresh available Discord roles | `/admin/general/discord/role-maps` | Operation supporting configuration | Remain contextual to Discord configuration; do not define Administration availability |
-| Discord projection reconciliation triggered by policy change | Discord configuration save | Operational consequence of configuration | Configuration remains administrative; reconciliation evidence remains operational |
+| Read/refresh available Discord roles | `/admin/general/discord/role-maps` | Operation supporting configuration | Contextual to Discord configuration |
+| Discord projection reconciliation triggered by policy change | Discord configuration save | Operational consequence of configuration | Contextual consequence of Discord policy change |
 
 Legacy `/admin/raid` redirects to the Raid-owned operational overview. Legacy `/admin/raid/:raidId` redirects to the Raid-owned organizer. Legacy `/admin/raid/permissions` redirects to the global Raid permission editor. Compatibility POST routes remain temporarily for old clients, but current Raid browser flows use the canonical Raid-owned operational routes.
 
@@ -52,13 +49,33 @@ Legacy `/admin/raffle` and `/admin/raffle/:roundId` redirect to the Raffle-owned
 
 Legacy `/admin/discord` and `/admin/discord/role-maps` redirect to their canonical General Administration coordinates. Current Discord browser actions use `/admin/general/discord` directly.
 
-Authorized Raid and Raffle operators discover their operational surfaces contextually from `/events`. Neither module publishes its operational surface as an Administration destination.
+Legacy `/admin/operations` redirects to `/operations`.
+
+Authorized Raid and Raffle operators discover their operational surfaces contextually from `/events`. Global Operations is exposed from the Me menu only when the viewer may perform the manual guild refresh or inspect operational records.
+
+## Global Operations
+
+The global `/operations` surface is concrete rather than framework-driven. It currently exists because two independent global operational needs have been proven:
+
+- manually reconcile guild authority from Blizzard;
+- inspect recorded operational results and exceptions.
+
+It is not a generic event, task, command, or module-operation registry. Module-owned operations remain with their domains.
+
+Automatic guild refresh remains Administration because cadence is durable policy. Manual guild refresh is Operations because it performs the procedure immediately.
+
+Those two meanings now have separate capabilities:
+
+- `guild.refresh` — perform an immediate guild refresh;
+- `guild.refresh.schedule.configure` — configure automatic refresh policy.
+
+They currently seed to the same existing privileged guild ranks, preserving current authority while keeping the concepts independent for future policy changes.
 
 ## Legacy destination registry
 
 The historical `registerModuleAdministrationDestination(...)` registry has been removed.
 
-It encoded the old assumption that privileged module-owned surfaces needed to publish themselves as Administration destinations. Concrete pressure has now resolved the three existing cases without a replacement generic registry:
+It encoded the old assumption that privileged module-owned surfaces needed to publish themselves as Administration destinations. Concrete pressure resolved the three existing cases without a replacement generic registry:
 
 - Raid contributes configurable policy to `Administration → Permissions` while Raid operations remain Raid-owned;
 - Raffle currently contributes only packaged-module enablement to `Administration → General`, while Raffle operations remain Raffle-owned;
@@ -103,16 +120,7 @@ During migration:
 - module-owned domain procedures remain module-owned;
 - participation routes should not absorb privileged operation merely for route symmetry;
 - Administration must not become a generic privileged-action dashboard;
-- operational inspection must not determine Administration availability in the final model;
+- global Operations must not become a generic module-operation registry;
 - module lifecycle changes must not create new dependencies on legacy Calendar machinery;
 - legacy web routes are temporary migration scaffolding rather than durable endpoint contracts and should be deleted once all current callers use canonical routes;
 - application/domain operations must remain endpoint-agnostic so later HTTP contract changes do not become domain migrations.
-
-## Unresolved operational placement
-
-Two global operational concerns deliberately remain unresolved until domain migrations provide more pressure:
-
-1. manual guild refresh entry;
-2. operational inspection entry.
-
-Their semantic classification is settled, but their final navigation location is not. Do not create a global Operations framework solely to house them.
