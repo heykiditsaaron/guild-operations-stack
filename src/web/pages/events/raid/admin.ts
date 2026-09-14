@@ -32,30 +32,15 @@ function eligibilityLabel(value: RaidEligibility): string {
 
 function createForm(): string {
   return `<form class="raid-admin-form" data-raid-create-form>
-    <label>
-      <span>Raid name</span>
-      <input name="label" type="text" required>
-    </label>
-    <label>
-      <span>Description <small>(optional)</small></span>
-      <textarea name="description" rows="3"></textarea>
-    </label>
-    <label>
-      <span>Start time</span>
-      <input name="startsAt" type="datetime-local" required>
-    </label>
-    <label>
-      <span>Eligibility</span>
-      <select name="eligibility" required>
-        <option value="guild_character_member">Guild Character Member</option>
-        <option value="guildie">Guildie</option>
-        <option value="anyone">Anyone</option>
-      </select>
-    </label>
-    <label>
-      <span>Raid size</span>
-      <input name="raidSize" type="number" min="1" max="40" step="1" value="10" required>
-    </label>
+    <label><span>Raid name</span><input name="label" type="text" required></label>
+    <label><span>Description <small>(optional)</small></span><textarea name="description" rows="3"></textarea></label>
+    <label><span>Start time</span><input name="startsAt" type="datetime-local" required></label>
+    <label><span>Eligibility</span><select name="eligibility" required>
+      <option value="guild_character_member">Guild Character Member</option>
+      <option value="guildie">Guildie</option>
+      <option value="anyone">Anyone</option>
+    </select></label>
+    <label><span>Raid size</span><input name="raidSize" type="number" min="1" max="40" step="1" value="10" required></label>
     <button type="submit" class="button-primary">Create raid</button>
     <p data-raid-create-status role="status" aria-live="polite"></p>
   </form>`;
@@ -68,16 +53,14 @@ async function raidList(): Promise<string> {
   return `<div class="raid-admin-list">${raids.map((raid) => {
     const start = raid.occursAt[0];
     return `<article class="raid-admin-item">
-      <div>
-        <h3>${htmlText(raid.label)}</h3>
-        ${raid.description ? `<p>${htmlText(raid.description)}</p>` : ""}
-      </div>
+      <div><h3>${htmlText(raid.label)}</h3>${raid.description ? `<p>${htmlText(raid.description)}</p>` : ""}</div>
       <dl>
         <dt>Starts</dt><dd><time data-unix-time="${start}">${start}</time></dd>
         <dt>Eligibility</dt><dd>${htmlText(eligibilityLabel(raid.eligibility))}</dd>
         <dt>Raid size</dt><dd>${raid.raidSize}</dd>
         <dt>Signups</dt><dd>${raid.signupsOpen ? "Open" : "Closed"}</dd>
       </dl>
+      <a class="button-primary" href="/admin/raid/${encodeURIComponent(raid.raidId)}">Manage raid</a>
     </article>`;
   }).join("\n")}</div>`;
 }
@@ -89,23 +72,12 @@ function validEligibility(value: unknown): value is RaidEligibility {
 export async function registerRaidAdminPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/admin/raid", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, guildie] = await Promise.all([
-      viewerForRequest(sessionToken),
-      authenticatedGuildie(sessionToken),
-    ]);
-    const authorized = guildie
-      ? await guildieHasGuildCapability(guildie.guildieId, RAID_CREATE_CAPABILITY)
-      : false;
+    const [viewer, guildie] = await Promise.all([viewerForRequest(sessionToken), authenticatedGuildie(sessionToken)]);
+    const authorized = guildie ? await guildieHasGuildCapability(guildie.guildieId, RAID_CREATE_CAPABILITY) : false;
 
     const body = authorized
-      ? `<section class="admin-section" aria-labelledby="raid-create-heading">
-          <h2 id="raid-create-heading">Create raid</h2>
-          ${createForm()}
-        </section>
-        <section class="admin-section" aria-labelledby="raid-existing-heading">
-          <h2 id="raid-existing-heading">Raids</h2>
-          ${await raidList()}
-        </section>`
+      ? `<section class="admin-section" aria-labelledby="raid-create-heading"><h2 id="raid-create-heading">Create raid</h2>${createForm()}</section>
+        <section class="admin-section" aria-labelledby="raid-existing-heading"><h2 id="raid-existing-heading">Raids</h2>${await raidList()}</section>`
       : `<section class="admin-unavailable"><h2>Raid administration is not available for this account.</h2></section>`;
 
     const html = renderPage(assets, {
@@ -132,12 +104,8 @@ export async function registerRaidAdminPage(app: FastifyInstance, assets: AssetR
 
     const body = (request.body ?? {}) as RaidCreateRequestBody;
     if (typeof body.label !== "string") return reply.code(400).send({ error: "Raid name is required" });
-    if (body.description !== undefined && body.description !== null && typeof body.description !== "string") {
-      return reply.code(400).send({ error: "Raid description must be text" });
-    }
-    if (!Array.isArray(body.occursAt) || body.occursAt.length !== 1 || typeof body.occursAt[0] !== "number") {
-      return reply.code(400).send({ error: "Raid start time is required" });
-    }
+    if (body.description !== undefined && body.description !== null && typeof body.description !== "string") return reply.code(400).send({ error: "Raid description must be text" });
+    if (!Array.isArray(body.occursAt) || body.occursAt.length !== 1 || typeof body.occursAt[0] !== "number") return reply.code(400).send({ error: "Raid start time is required" });
     if (!validEligibility(body.eligibility)) return reply.code(400).send({ error: "Raid eligibility is invalid" });
     if (typeof body.raidSize !== "number") return reply.code(400).send({ error: "Raid size is required" });
 
