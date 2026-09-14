@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../auth.js";
+import { packagedModuleEnabled } from "../../module-lifecycle.js";
 import { getLiveRaffleRound } from "../../modules/raffle/application.js";
 import { assetUrl, type AssetName, type AssetRegistry } from "../assets.js";
 import { renderPage } from "../render.js";
@@ -36,10 +37,11 @@ function participationPromotions(assets: AssetRegistry, liveRaffle: boolean): st
 
 export async function registerHomePage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/", async (request, reply) => {
-    const [viewer, liveRaffle] = await Promise.all([
+    const [viewer, raffleEnabled] = await Promise.all([
       viewerForRequest(request.cookies[SESSION_COOKIE_NAME]),
-      getLiveRaffleRound(),
+      packagedModuleEnabled("raffle"),
     ]);
+    const liveRaffle = raffleEnabled ? await getLiveRaffleRound() : null;
 
     const stylesheets: AssetName[] = ["home.css"];
     if (liveRaffle) stylesheets.push("home-raffle.css");
