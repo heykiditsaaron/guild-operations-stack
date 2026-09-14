@@ -1,4 +1,4 @@
-function formatRaffleAdminBreadcrumb() {
+function formatRaffleOperationsBreadcrumb() {
   const breadcrumbTime = document.querySelector('nav[aria-label="Administrative breadcrumb"] time[data-local-time-unix]');
   if (!(breadcrumbTime instanceof HTMLTimeElement)) return;
 
@@ -583,5 +583,5 @@ document.addEventListener("click", (event) => {
   if (denyButton instanceof HTMLButtonElement) void denyRaffleClaim(denyButton);
 });
 
-formatRaffleAdminBreadcrumb();
+formatRaffleOperationsBreadcrumb();
 formatRaffleOverview();
