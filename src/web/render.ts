@@ -35,6 +35,7 @@ export type WebViewer =
       authenticated: true;
       administrationAvailable: boolean;
       administrationDestinations: AdministrationNavigationDestination[];
+      operationsAvailable: boolean;
       mainCharacter: {
         characterId: string;
         realmId: string;
@@ -99,6 +100,9 @@ function renderMeControl(viewer: WebViewer, pathname: string): string {
   }
   const label = viewer.mainCharacter?.name ?? "Me";
   const portrait = viewer.mainCharacter?.avatarUrl ? `<img src="${escapeHtml(viewer.mainCharacter.avatarUrl)}" alt="" loading="eager" referrerpolicy="no-referrer">` : userGlyph();
+  const operations = viewer.operationsAvailable
+    ? '<section class="me-menu-section me-administration-section"><a class="me-administration-link" href="/operations"><span>Operations</span><span aria-hidden="true">→</span></a></section>'
+    : "";
   const administration = viewer.administrationAvailable
     ? '<section class="me-menu-section me-administration-section"><a class="me-administration-link" href="/admin"><span>Administration</span><span aria-hidden="true">→</span></a></section>'
     : "";
@@ -108,6 +112,7 @@ function renderMeControl(viewer: WebViewer, pathname: string): string {
     <div class="menu-panel menu-panel-right me-menu-panel">
       <section class="me-menu-section me-character-section">${renderCurrentCharacter(viewer)}</section>
       ${moduleSections}
+      ${operations}
       ${administration}
       <section class="me-menu-section me-session-section"><button type="button" class="session-sign-out-action" data-logout>Sign out</button></section>
     </div>
