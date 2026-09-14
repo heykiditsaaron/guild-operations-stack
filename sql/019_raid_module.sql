@@ -86,8 +86,19 @@ CREATE INDEX IF NOT EXISTS raid_events_occurs_idx
 CREATE INDEX IF NOT EXISTS raid_signup_rows_applicant_idx
   ON raid_signup_rows(raid_id, applicant_id);
 
-CREATE INDEX IF NOT EXISTS raid_assignments_raid_idx
-  ON raid_assignments(raid_id, slot_index);
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+      FROM information_schema.columns
+     WHERE table_schema = current_schema()
+       AND table_name = 'raid_assignments'
+       AND column_name = 'slot_index'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS raid_assignments_raid_idx
+      ON raid_assignments(raid_id, slot_index);
+  END IF;
+END $$;
 
 INSERT INTO guild_rank_capabilities (guild_id, rank_index, capability)
 SELECT guild_id, rank_index, 'raid.create'
