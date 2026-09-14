@@ -1,6 +1,7 @@
 import { specHasTrait, traitsForSpec, type WowTrait } from "../../wow-traits/registry.js";
 
 export type RaidEligibility = "guild_character_member" | "guildie" | "anyone";
+export type RaidDifficulty = "normal" | "heroic" | "mythic";
 export type RaidRole = "tank" | "healer" | "damage";
 
 export type RaidApplicantAnchor =
@@ -23,7 +24,7 @@ export type CreateRaidInput = {
   occursAt: readonly [number] | readonly [number, number];
   tags?: readonly string[];
   eligibility: RaidEligibility;
-  raidSize: number;
+  difficulty: RaidDifficulty;
 };
 
 export type SubmitRaidParticipationRowInput = {
@@ -37,7 +38,6 @@ export type SubmitRaidParticipationRowInput = {
 export type AssignRaidParticipationInput = {
   raidId: string;
   signupRowId: string;
-  slotIndex: number;
   selectedSpec: string;
   selectedRole: RaidRole;
 };
@@ -51,7 +51,6 @@ export function validateCreateRaidInput(input: CreateRaidInput): void {
   if (input.occursAt.length !== 1 && input.occursAt.length !== 2) throw new Error("Raid occurrence must be an instant or range");
   if (!input.occursAt.every((value) => Number.isSafeInteger(value) && value > 0)) throw new Error("Raid occurrence must use positive Unix timestamps");
   if (input.occursAt.length === 2 && input.occursAt[1] < input.occursAt[0]) throw new Error("Raid occurrence end cannot precede start");
-  if (!Number.isInteger(input.raidSize) || input.raidSize < 1 || input.raidSize > 40) throw new Error("Raid size must be between 1 and 40");
 }
 
 export function validateParticipationWillingness(
