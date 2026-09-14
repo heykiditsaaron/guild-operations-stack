@@ -6,6 +6,16 @@ for (const element of document.querySelectorAll("[data-unix-time]")) {
   if (element instanceof HTMLTimeElement) element.dateTime = date.toISOString();
 }
 
+const setup = document.querySelector("[data-raid-setup]");
+const setupToggle = document.querySelector("[data-toggle-raid-setup]");
+if (setup instanceof HTMLElement && setupToggle instanceof HTMLButtonElement) {
+  setupToggle.addEventListener("click", () => {
+    setup.hidden = !setup.hidden;
+    setupToggle.textContent = setup.hidden ? "New raid" : "Close";
+    if (!setup.hidden) setup.querySelector("input")?.focus();
+  });
+}
+
 const createForm = document.querySelector("[data-raid-create-form]");
 const createStatus = document.querySelector("[data-raid-create-status]");
 
