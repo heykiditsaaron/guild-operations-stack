@@ -143,16 +143,16 @@
   font-weight: 850;
 }
 
-/* Available offers and the assembled group share one bounded working surface. */
+/* Available, tanks, healers, and damage share one roster row on wide screens. */
 .raid-organizer-grid {
   display: grid;
-  grid-template-columns: minmax(13rem, 0.7fr) minmax(0, 2.3fr);
-  gap: 0.65rem;
-  align-items: stretch;
+  grid-template-columns: minmax(12rem, 0.9fr) minmax(9.5rem, 0.72fr) minmax(9.5rem, 0.78fr) minmax(18rem, 1.75fr);
+  gap: 0.55rem;
+  align-items: start;
 }
 
 .raid-pool-panel,
-.raid-assignment-board {
+.raid-role-lane {
   min-width: 0;
   padding: 0.55rem;
   border: 1px solid rgba(255, 255, 255, 0.07);
@@ -205,35 +205,28 @@
   width: 100%;
 }
 
-.raid-assignment-board {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: 0.45rem;
-  padding-top: 0.55rem;
+.raid-assignment-board,
+.raid-role-lanes {
+  display: contents;
 }
 
 .raid-assignment-board > h2 {
-  color: #aaa69c;
-  font-size: 0.72rem;
-  font-weight: 850;
-  letter-spacing: 0.055em;
-  text-transform: uppercase;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
-/* Tanks and healers form the compact support column; damage owns roster width. */
-.raid-role-lanes {
+.raid-role-lane {
   display: grid;
-  grid-template-columns: minmax(10.5rem, 0.72fr) minmax(18rem, 1.8fr);
-  grid-template-areas:
-    "tank damage"
-    "healer damage";
-  gap: 0.55rem;
-  align-items: start;
+  align-content: start;
+  gap: 0.45rem;
 }
-
-.raid-role-lane:nth-child(1) { grid-area: tank; }
-.raid-role-lane:nth-child(2) { grid-area: healer; }
-.raid-role-lane:nth-child(3) { grid-area: damage; }
 
 .raid-role-lane:nth-child(3) .raid-role-cards {
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -243,8 +236,52 @@
   min-height: 2.5rem;
 }
 
+.raid-participant-card-assigned {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.raid-assignment-remove {
+  display: inline-grid;
+  place-items: center;
+  align-self: start;
+  width: 1.55rem;
+  height: 1.55rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: #77736b;
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.raid-assignment-remove:hover,
+.raid-assignment-remove:focus-visible {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f1eee6;
+  outline: none;
+}
+
+.raid-assignment-remove:disabled {
+  opacity: 0.45;
+  cursor: wait;
+}
+
 .raid-board-status {
   min-height: 0;
+}
+
+@media (max-width: 64rem) and (min-width: 48.01rem) {
+  .raid-organizer-grid {
+    grid-template-columns: minmax(11rem, 0.9fr) minmax(8.5rem, 0.72fr) minmax(8.5rem, 0.78fr) minmax(15rem, 1.5fr);
+  }
+
+  .raid-role-lane:nth-child(3) .raid-role-cards {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 48rem) {
@@ -329,15 +366,38 @@
 
   .raid-assignment-board {
     display: grid;
+    gap: 0.5rem;
     padding: 0.45rem;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 0.75rem;
+    background: rgba(255, 255, 255, 0.012);
+  }
+
+  .raid-assignment-board > h2 {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 0;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+    border: 0;
+    color: #aaa69c;
+    font-size: 0.72rem;
+    font-weight: 850;
+    letter-spacing: 0.055em;
+    text-transform: uppercase;
   }
 
   .raid-role-lanes {
+    display: grid;
     grid-template-columns: 1fr;
-    grid-template-areas:
-      "tank"
-      "healer"
-      "damage";
+    gap: 0.55rem;
+  }
+
+  .raid-role-lane {
+    padding: 0.55rem;
   }
 
   .raid-role-lane:nth-child(3) .raid-role-cards {
