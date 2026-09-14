@@ -204,8 +204,8 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       title: "General Administration · OH CRIT I Pulled! Guild Operations",
       description: "Configure Guild Operations.",
       viewer,
-      stylesheets: ["admin.css"],
-      scripts: ["admin.js"],
+      stylesheets: ["admin.css", "admin-modules.css"],
+      scripts: ["admin.js", "admin-modules.js"],
       header: `<div class="admin-page-header-row"><div class="admin-page-header"><h1 id="page-title">Administration</h1><p class="lede">Configure Guild Operations and its modules.</p></div>${logUtility}</div>`,
       body,
     });
