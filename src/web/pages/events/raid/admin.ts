@@ -1,10 +1,9 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
 import {
   effectiveGuildAuthority,
   RAID_CREATE_CAPABILITY,
   RAID_MANAGE_CAPABILITY,
-  RAID_PERMISSIONS_CAPABILITY,
 } from "../../../../guild-permissions.js";
 import { raidsForAdministration } from "../../../../modules/raid/admin-view.js";
 import { createRaid } from "../../../../modules/raid/application.js";
@@ -24,8 +23,8 @@ type RaidCreateRequestBody = {
 const navigation: SecondaryNavigation = {
   kind: "breadcrumb",
   items: [
-    { label: "Administration", href: "/admin" },
-    { label: "Raid" },
+    { label: "Events", href: "/events" },
+    { label: "Raid operations" },
   ],
 };
 
@@ -94,42 +93,68 @@ function validDifficulty(value: unknown): value is RaidDifficulty {
   return value === "normal" || value === "heroic" || value === "mythic";
 }
 
+async function createRaidOperation(request: FastifyRequest, reply: FastifyReply) {
+  const sessionToken = request.cookies[SESSION_COOKIE_NAME];
+  const guildie = await authenticatedGuildie(sessionToken);
+  if (!guildie) return reply.code(401).send({ error: "Authentication required" });
+
+  const body = (request.body ?? {}) as RaidCreateRequestBody;
+  if (typeof body.label !== "string") return reply.code(400).send({ error: "Raid name is required" });
+  if (body.description !== undefined && body.description !== null && typeof body.description !== "string") return reply.code(400).send({ error: "Raid description must be text" });
+  if (!Array.isArray(body.occursAt) || body.occursAt.length !== 1 || typeof body.occursAt[0] !== "number") return reply.code(400).send({ error: "Raid start time is required" });
+  if (!validDifficulty(body.difficulty)) return reply.code(400).send({ error: "Raid difficulty is invalid" });
+  if (!validEligibility(body.eligibility)) return reply.code(400).send({ error: "Raid eligibility is invalid" });
+
+  try {
+    const raid = await createRaid(guildie.guildieId, {
+      label: body.label,
+      description: typeof body.description === "string" ? body.description : null,
+      occursAt: [body.occursAt[0]],
+      difficulty: body.difficulty,
+      eligibility: body.eligibility,
+    });
+    return reply.code(201).send({ raid });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Raid could not be created";
+    const statusCode = message.includes("lacks required guild capability") ? 403 : 400;
+    return reply.code(statusCode).send({ error: message });
+  }
+}
+
 export async function registerRaidAdminPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
-  app.get("/admin/raid", async (request, reply) => {
+  app.get("/admin/raid", async (_request, reply) => reply.redirect("/events/raid/manage"));
+
+  app.get("/events/raid/manage", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie] = await Promise.all([viewerForRequest(sessionToken), authenticatedGuildie(sessionToken)]);
     const authority = guildie ? await effectiveGuildAuthority(guildie.guildieId) : null;
     const operator = authority?.operator === true;
     const canCreate = operator || (authority?.capabilities.includes(RAID_CREATE_CAPABILITY) ?? false);
     const canManage = operator || (authority?.capabilities.includes(RAID_MANAGE_CAPABILITY) ?? false);
-    const canPermissions = operator || authority?.capabilities.includes(RAID_PERMISSIONS_CAPABILITY) === true;
-    const authorized = canCreate || canManage || canPermissions;
+    const authorized = canCreate || canManage;
 
     const body = authorized
       ? `<section class="raid-admin-overview" aria-labelledby="page-title">
           ${canCreate ? `<div class="raid-admin-setup" data-raid-setup hidden>${createForm()}</div>` : ""}
           ${await raidList(canManage)}
         </section>`
-      : `<section class="admin-unavailable"><h2>Raid administration is not available for this account.</h2></section>`;
+      : `<section class="admin-unavailable"><h2>Raid operations are not available for this account.</h2></section>`;
 
-    const headerActions = authorized
-      ? `<div class="raid-admin-header-actions">
-          ${canPermissions ? `<a class="button-secondary" href="/admin/raid/permissions">Permissions</a>` : ""}
-          ${canCreate ? `<button class="button-primary raid-admin-header-action" type="button" data-toggle-raid-setup>New raid</button>` : ""}
-        </div>`
+    const headerActions = canCreate
+      ? `<div class="raid-admin-header-actions"><button class="button-primary raid-admin-header-action" type="button" data-toggle-raid-setup>New raid</button></div>`
       : "";
 
     const html = renderPage(assets, {
-      pathname: "/admin/raid",
-      title: "Raid Administration · OH CRIT I Pulled! Guild Operations",
+      pathname: "/events/raid/manage",
+      title: "Raid Operations · OH CRIT I Pulled! Guild Operations",
       description: "Create and operate Guild Operations raids.",
       viewer,
       stylesheets: ["admin.css", "raid-admin.css"],
       scripts: ["admin.js", "raid-admin.js"],
       secondaryNavigation: navigation,
       header: authorized
-        ? `<div class="admin-page-header-row"><div class="admin-page-header"><h1 id="page-title">Raid</h1><p class="lede">Create raids and operate participation.</p></div>${headerActions}</div>`
-        : `<div class="admin-page-header"><h1 id="page-title">Raid</h1><p class="lede">Create raids and operate participation.</p></div>`,
+        ? `<div class="admin-page-header-row"><div class="admin-page-header"><h1 id="page-title">Raid operations</h1><p class="lede">Create raids and operate participation.</p></div>${headerActions}</div>`
+        : `<div class="admin-page-header"><h1 id="page-title">Raid operations</h1><p class="lede">Create raids and operate participation.</p></div>`,
       body,
     });
 
@@ -138,31 +163,6 @@ export async function registerRaidAdminPage(app: FastifyInstance, assets: AssetR
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
 
-  app.post("/admin/raid", async (request, reply) => {
-    const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const guildie = await authenticatedGuildie(sessionToken);
-    if (!guildie) return reply.code(401).send({ error: "Authentication required" });
-
-    const body = (request.body ?? {}) as RaidCreateRequestBody;
-    if (typeof body.label !== "string") return reply.code(400).send({ error: "Raid name is required" });
-    if (body.description !== undefined && body.description !== null && typeof body.description !== "string") return reply.code(400).send({ error: "Raid description must be text" });
-    if (!Array.isArray(body.occursAt) || body.occursAt.length !== 1 || typeof body.occursAt[0] !== "number") return reply.code(400).send({ error: "Raid start time is required" });
-    if (!validDifficulty(body.difficulty)) return reply.code(400).send({ error: "Raid difficulty is invalid" });
-    if (!validEligibility(body.eligibility)) return reply.code(400).send({ error: "Raid eligibility is invalid" });
-
-    try {
-      const raid = await createRaid(guildie.guildieId, {
-        label: body.label,
-        description: typeof body.description === "string" ? body.description : null,
-        occursAt: [body.occursAt[0]],
-        difficulty: body.difficulty,
-        eligibility: body.eligibility,
-      });
-      return reply.code(201).send({ raid });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Raid could not be created";
-      const statusCode = message.includes("lacks required guild capability") ? 403 : 400;
-      return reply.code(statusCode).send({ error: message });
-    }
-  });
+  app.post("/events/raid/manage", createRaidOperation);
+  app.post("/admin/raid", createRaidOperation);
 }
