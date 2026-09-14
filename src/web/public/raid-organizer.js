@@ -3,7 +3,7 @@ const workspaceHeading = document.querySelector(".raid-workspace-heading");
 const adminActions = document.querySelector(".raid-admin-actions");
 const editButton = titleBar?.querySelector(":scope > .button-secondary");
 const organizerGrid = document.querySelector(".raid-organizer-grid");
-const poolTogglePlacement = document.querySelector("[data-raid-pool-toggle]");
+const rosterDiagnostics = document.querySelector(".raid-roster-diagnostics");
 
 if (titleBar instanceof HTMLElement && adminActions instanceof HTMLElement) {
   if (editButton instanceof HTMLElement) adminActions.prepend(editButton);
@@ -18,8 +18,8 @@ if (titleBar instanceof HTMLElement && adminActions instanceof HTMLElement) {
 
 if (workspaceHeading instanceof HTMLElement) workspaceHeading.remove();
 
-if (organizerGrid instanceof HTMLElement && poolTogglePlacement instanceof HTMLButtonElement) {
-  organizerGrid.insertAdjacentElement("beforebegin", poolTogglePlacement);
+if (organizerGrid instanceof HTMLElement && rosterDiagnostics instanceof HTMLElement) {
+  organizerGrid.insertAdjacentElement("beforebegin", rosterDiagnostics);
 }
 
 const diagnosticRoot = document.querySelector("[data-raid-diagnostics]");
