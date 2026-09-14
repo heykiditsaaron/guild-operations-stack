@@ -21,9 +21,9 @@ type PermissionBody = {
 const navigation: SecondaryNavigation = {
   kind: "breadcrumb",
   items: [
-    { label: "Administration", href: "/admin" },
-    { label: "Raid", href: "/admin/raid" },
-    { label: "Permissions" },
+    { label: "Administration", href: "/admin/general" },
+    { label: "Permissions", href: "/admin/permissions" },
+    { label: "Raid" },
   ],
 };
 
@@ -50,7 +50,9 @@ function validUpdates(value: unknown): value is RaidRankPermissionUpdate[] {
 }
 
 export async function registerRaidPermissionsPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
-  app.get("/admin/raid/permissions", async (request, reply) => {
+  app.get("/admin/raid/permissions", async (_request, reply) => reply.redirect("/admin/permissions/raid"));
+
+  app.get("/admin/permissions/raid", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie] = await Promise.all([
       viewerForRequest(sessionToken),
@@ -62,7 +64,7 @@ export async function registerRaidPermissionsPage(app: FastifyInstance, assets: 
 
     if (!guildie || !authorized) {
       const html = renderPage(assets, {
-        pathname: "/admin/raid/permissions",
+        pathname: "/admin/permissions/raid",
         title: "Raid Permissions · OH CRIT I Pulled! Guild Operations",
         viewer,
         stylesheets: ["admin.css", "raid-admin.css", "raid-permissions.css"],
@@ -96,7 +98,7 @@ export async function registerRaidPermissionsPage(app: FastifyInstance, assets: 
     </section>`;
 
     const html = renderPage(assets, {
-      pathname: "/admin/raid/permissions",
+      pathname: "/admin/permissions/raid",
       title: "Raid Permissions · OH CRIT I Pulled! Guild Operations",
       description: "Configure Raid capabilities by current Blizzard guild rank.",
       viewer,
@@ -110,7 +112,7 @@ export async function registerRaidPermissionsPage(app: FastifyInstance, assets: 
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
 
-  app.post("/admin/raid/permissions", async (request, reply) => {
+  const savePermissions = async (request: Parameters<Parameters<FastifyInstance["post"]>[1]>[0], reply: Parameters<Parameters<FastifyInstance["post"]>[1]>[1]) => {
     const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
     if (!guildie) return reply.code(401).send({ error: "Authentication required" });
 
@@ -125,5 +127,8 @@ export async function registerRaidPermissionsPage(app: FastifyInstance, assets: 
       const statusCode = message.includes("lacks required guild capability") ? 403 : 400;
       return reply.code(statusCode).send({ error: message });
     }
-  });
+  };
+
+  app.post("/admin/permissions/raid", savePermissions);
+  app.post("/admin/raid/permissions", savePermissions);
 }
