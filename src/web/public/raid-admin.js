@@ -100,7 +100,7 @@ async function assignParticipant(signupRowId, selectedSpec, selectedRole) {
 }
 
 async function unassignParticipant(signupRowId) {
-  setActionStatus("Unassigning participant…");
+  setActionStatus("Returning participant to the pool…");
   try {
     const response = await fetch(`${window.location.pathname}/unassign`, {
       method: "POST",
@@ -108,10 +108,10 @@ async function unassignParticipant(signupRowId) {
       body: JSON.stringify({ signupRowId }),
     });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error ?? "Participant could not be unassigned");
+    if (!response.ok) throw new Error(payload.error ?? "Participant could not be returned to the pool");
     window.location.reload();
   } catch (error) {
-    setActionStatus(error instanceof Error ? error.message : "Participant could not be unassigned.");
+    setActionStatus(error instanceof Error ? error.message : "Participant could not be returned to the pool.");
   }
 }
 
@@ -150,20 +150,8 @@ if (specCancel instanceof HTMLButtonElement && specDialog instanceof HTMLDialogE
 }
 
 let selectedCard = null;
-let draggedCard = null;
-
-function clearSelectedCard() {
-  if (selectedCard instanceof HTMLElement) selectedCard.classList.remove("raid-participant-card-selected");
-  selectedCard = null;
-}
-
-function selectCard(card) {
-  clearSelectedCard();
-  if (!(card instanceof HTMLElement)) return;
-  selectedCard = card;
-  card.classList.add("raid-participant-card-selected");
-  setActionStatus("Participant selected. Choose a + role slot.");
-}
+let pointerDrag = null;
+let activeDropTarget = null;
 
 function participantRoleSpecs(card, role) {
   if (!(card instanceof HTMLElement)) return [];
@@ -176,10 +164,60 @@ function participantRoleSpecs(card, role) {
   }
 }
 
+function roleForTarget(target) {
+  if (!(target instanceof HTMLElement)) return null;
+  const role = target.dataset.raidRoleDrop ?? target.dataset.raidDropRole;
+  return role === "tank" || role === "healer" || role === "damage" ? role : null;
+}
+
+function clearDropState() {
+  activeDropTarget = null;
+  for (const target of document.querySelectorAll(".raid-drop-active, .raid-drop-available")) {
+    target.classList.remove("raid-drop-active", "raid-drop-available");
+  }
+}
+
+function showAvailableTargets(card) {
+  clearDropState();
+  for (const lane of document.querySelectorAll("[data-raid-role-drop]")) {
+    const role = roleForTarget(lane);
+    if (role && participantRoleSpecs(card, role).length) lane.classList.add("raid-drop-available");
+  }
+  const pool = document.querySelector("[data-raid-pool-drop]");
+  if (pool instanceof HTMLElement && card.dataset.assigned === "true") pool.classList.add("raid-drop-available");
+}
+
+function clearSelectedCard() {
+  if (selectedCard instanceof HTMLElement) selectedCard.classList.remove("raid-participant-card-selected");
+  selectedCard = null;
+  clearDropState();
+}
+
+function selectCard(card) {
+  if (!(card instanceof HTMLElement)) return;
+  if (selectedCard === card) {
+    clearSelectedCard();
+    setActionStatus("");
+    return;
+  }
+  clearSelectedCard();
+  selectedCard = card;
+  card.classList.add("raid-participant-card-selected");
+  showAvailableTargets(card);
+  setActionStatus(card.dataset.assigned === "true"
+    ? "Participant selected. Choose another + role, or tap the participation pool to return them."
+    : "Participant selected. Choose a + role slot.");
+}
+
 function assignCardToRole(card, role) {
   if (!(card instanceof HTMLElement)) return;
   const signupRowId = card.dataset.signupRowId;
   if (!signupRowId) return;
+  if (card.dataset.assigned === "true" && card.dataset.currentRole === role) {
+    clearSelectedCard();
+    setActionStatus("Participant is already assigned to that role.");
+    return;
+  }
   const specs = participantRoleSpecs(card, role);
   if (!specs.length) {
     setActionStatus(`That participation offer cannot be assigned as ${role === "damage" ? "Damage" : role}.`);
@@ -189,92 +227,143 @@ function assignCardToRole(card, role) {
   chooseSpec(signupRowId, role, specs);
 }
 
+function targetAtPoint(card, x, y) {
+  const element = document.elementFromPoint(x, y);
+  if (!(element instanceof Element)) return null;
+
+  const lane = element.closest("[data-raid-role-drop]");
+  if (lane instanceof HTMLElement) {
+    const role = roleForTarget(lane);
+    if (role && participantRoleSpecs(card, role).length) return lane;
+  }
+
+  const pool = element.closest("[data-raid-pool-drop]");
+  if (pool instanceof HTMLElement && card.dataset.assigned === "true") return pool;
+  return null;
+}
+
+function markActiveTarget(target) {
+  if (activeDropTarget === target) return;
+  if (activeDropTarget instanceof HTMLElement) activeDropTarget.classList.remove("raid-drop-active");
+  activeDropTarget = target;
+  if (activeDropTarget instanceof HTMLElement) activeDropTarget.classList.add("raid-drop-active");
+}
+
+function startPointerDrag(state, event) {
+  state.started = true;
+  clearSelectedCard();
+  state.card.classList.add("raid-participant-card-dragging");
+  showAvailableTargets(state.card);
+
+  const rect = state.card.getBoundingClientRect();
+  state.offsetX = event.clientX - rect.left;
+  state.offsetY = event.clientY - rect.top;
+  const ghost = state.card.cloneNode(true);
+  ghost.removeAttribute("id");
+  ghost.removeAttribute("tabindex");
+  ghost.classList.add("raid-drag-ghost");
+  ghost.style.width = `${rect.width}px`;
+  document.body.append(ghost);
+  state.ghost = ghost;
+}
+
+function positionPointerGhost(state, event) {
+  if (!(state.ghost instanceof HTMLElement)) return;
+  state.ghost.style.left = `${event.clientX - state.offsetX}px`;
+  state.ghost.style.top = `${event.clientY - state.offsetY}px`;
+}
+
+function finishPointerDrag(state, event) {
+  const target = targetAtPoint(state.card, event.clientX, event.clientY);
+  state.ghost?.remove();
+  state.card.classList.remove("raid-participant-card-dragging");
+  clearDropState();
+
+  if (!(target instanceof HTMLElement)) return;
+  const role = roleForTarget(target);
+  if (role) {
+    assignCardToRole(state.card, role);
+    return;
+  }
+
+  if (target.matches("[data-raid-pool-drop]") && state.card.dataset.assigned === "true") {
+    const signupRowId = state.card.dataset.signupRowId;
+    if (signupRowId) void unassignParticipant(signupRowId);
+  }
+}
+
 for (const card of document.querySelectorAll("[data-raid-participant-card]")) {
   if (!(card instanceof HTMLElement)) continue;
-  card.addEventListener("click", () => selectCard(card));
+  card.draggable = false;
+
+  card.addEventListener("pointerdown", (event) => {
+    if (!event.isPrimary || event.button !== 0) return;
+    pointerDrag = {
+      card,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      started: false,
+      ghost: null,
+      offsetX: 0,
+      offsetY: 0,
+    };
+    card.setPointerCapture(event.pointerId);
+  });
+
+  card.addEventListener("pointermove", (event) => {
+    const state = pointerDrag;
+    if (!state || state.card !== card || state.pointerId !== event.pointerId) return;
+    const distance = Math.hypot(event.clientX - state.startX, event.clientY - state.startY);
+    if (!state.started && distance >= 7) startPointerDrag(state, event);
+    if (!state.started) return;
+    event.preventDefault();
+    positionPointerGhost(state, event);
+    markActiveTarget(targetAtPoint(card, event.clientX, event.clientY));
+  });
+
+  card.addEventListener("pointerup", (event) => {
+    const state = pointerDrag;
+    if (!state || state.card !== card || state.pointerId !== event.pointerId) return;
+    pointerDrag = null;
+    if (card.hasPointerCapture(event.pointerId)) card.releasePointerCapture(event.pointerId);
+    if (state.started) finishPointerDrag(state, event);
+    else selectCard(card);
+  });
+
+  card.addEventListener("pointercancel", (event) => {
+    const state = pointerDrag;
+    if (!state || state.card !== card || state.pointerId !== event.pointerId) return;
+    pointerDrag = null;
+    state.ghost?.remove();
+    card.classList.remove("raid-participant-card-dragging");
+    clearDropState();
+  });
+
   card.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
     selectCard(card);
   });
-  card.addEventListener("dragstart", (event) => {
-    draggedCard = card;
-    clearSelectedCard();
-    card.classList.add("raid-participant-card-dragging");
-    if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = "move";
-      event.dataTransfer.setData("text/plain", card.dataset.signupRowId ?? "");
-    }
-  });
-  card.addEventListener("dragend", () => {
-    card.classList.remove("raid-participant-card-dragging");
-    draggedCard = null;
-    for (const target of document.querySelectorAll(".raid-drop-active")) target.classList.remove("raid-drop-active");
-  });
 }
 
 for (const target of document.querySelectorAll("[data-raid-drop-role]")) {
   if (!(target instanceof HTMLButtonElement)) continue;
-  const role = target.dataset.raidDropRole;
-  if (role !== "tank" && role !== "healer" && role !== "damage") continue;
-
+  const role = roleForTarget(target);
+  if (!role) continue;
   target.addEventListener("click", () => {
     if (selectedCard instanceof HTMLElement) assignCardToRole(selectedCard, role);
     else setActionStatus("Select a participation card first, then choose a + role slot.");
-  });
-  target.addEventListener("dragover", (event) => {
-    if (!(draggedCard instanceof HTMLElement) || !draggedCard.matches("[data-raid-participant-card]")) return;
-    event.preventDefault();
-    target.classList.add("raid-drop-active");
-    if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
-  });
-  target.addEventListener("dragleave", () => target.classList.remove("raid-drop-active"));
-  target.addEventListener("drop", (event) => {
-    event.preventDefault();
-    target.classList.remove("raid-drop-active");
-    if (draggedCard instanceof HTMLElement && draggedCard.matches("[data-raid-participant-card]")) assignCardToRole(draggedCard, role);
-  });
-}
-
-for (const card of document.querySelectorAll("[data-raid-assigned-card]")) {
-  if (!(card instanceof HTMLElement)) continue;
-  card.addEventListener("dragstart", (event) => {
-    draggedCard = card;
-    card.classList.add("raid-participant-card-dragging");
-    if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = "move";
-      event.dataTransfer.setData("text/plain", card.dataset.signupRowId ?? "");
-    }
-  });
-  card.addEventListener("dragend", () => {
-    card.classList.remove("raid-participant-card-dragging");
-    draggedCard = null;
   });
 }
 
 const poolDrop = document.querySelector("[data-raid-pool-drop]");
 if (poolDrop instanceof HTMLElement) {
-  poolDrop.addEventListener("dragover", (event) => {
-    if (!(draggedCard instanceof HTMLElement) || !draggedCard.matches("[data-raid-assigned-card]")) return;
-    event.preventDefault();
-    poolDrop.classList.add("raid-drop-active");
-    if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
-  });
-  poolDrop.addEventListener("dragleave", () => poolDrop.classList.remove("raid-drop-active"));
-  poolDrop.addEventListener("drop", (event) => {
-    event.preventDefault();
-    poolDrop.classList.remove("raid-drop-active");
-    if (!(draggedCard instanceof HTMLElement) || !draggedCard.matches("[data-raid-assigned-card]")) return;
-    const signupRowId = draggedCard.dataset.signupRowId;
-    if (signupRowId) void unassignParticipant(signupRowId);
-  });
-}
-
-for (const button of document.querySelectorAll("[data-raid-unassign]")) {
-  if (!(button instanceof HTMLButtonElement)) continue;
-  button.addEventListener("click", (event) => {
-    event.stopPropagation();
-    const signupRowId = button.dataset.signupRowId;
+  poolDrop.addEventListener("click", (event) => {
+    if (!(selectedCard instanceof HTMLElement) || selectedCard.dataset.assigned !== "true") return;
+    if (event.target instanceof Element && event.target.closest("[data-raid-participant-card]")) return;
+    const signupRowId = selectedCard.dataset.signupRowId;
+    clearSelectedCard();
     if (signupRowId) void unassignParticipant(signupRowId);
   });
 }
