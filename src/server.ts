@@ -1,11 +1,12 @@
 import cookie from "@fastify/cookie";
-import Fastify from "fastify";
+import Fastify, { type FastifyInstance } from "fastify";
 import { registerApiV1Routes } from "./api-v1-routes.js";
 import { config } from "./config.js";
 import { pool } from "./db.js";
 import { registerAuthRoutes } from "./auth.js";
 import { registerGuildRoutes } from "./guild-routes.js";
 import { startGuildRefreshScheduler } from "./guild-refresh-scheduler.js";
+import { packagedModuleEnabled, type PackagedModuleKey } from "./module-lifecycle.js";
 import { registerDiscordModule, registerDiscordModuleAdministration } from "./modules/discord/module.js";
 import { registerRaidAdministrationDestination } from "./modules/raid/administration.js";
 import { registerRaffleAdministrationDestination } from "./modules/raffle/administration.js";
@@ -47,6 +48,20 @@ app.get("/health", async () => {
   return { status: "ok" };
 });
 
+async function registerEnabledModule(
+  parent: FastifyInstance,
+  moduleKey: PackagedModuleKey,
+  register: (moduleApp: FastifyInstance) => Promise<void>,
+): Promise<void> {
+  await parent.register(async (moduleApp) => {
+    moduleApp.addHook("preHandler", async (_request, reply) => {
+      if (await packagedModuleEnabled(moduleKey)) return;
+      return reply.code(404).send({ error: "module_disabled", module: moduleKey });
+    });
+    await register(moduleApp);
+  });
+}
+
 const webAssets = await loadAssetRegistry();
 await registerAssetRoutes(app, webAssets);
 await registerHomePage(app, webAssets);
@@ -55,23 +70,29 @@ await registerEventsPage(app, webAssets);
 await registerAdminPage(app, webAssets);
 await registerOperationsAdminPage(app, webAssets);
 await registerDiscordModule(app, webAssets);
-await registerRaidAdminPage(app, webAssets);
-await registerRaidAdminDetailPage(app, webAssets);
 await registerRaidPermissionsPage(app, webAssets);
-await registerRaidPage(app, webAssets);
-await registerRafflePage(app, webAssets);
-await registerRaffleEntryPage(app, webAssets);
-await registerRaffleClaimsPage(app, webAssets);
-await registerRaffleHistoryPage(app, webAssets);
-await registerRaffleRulesPage(app, webAssets);
-await registerRaffleRoundPage(app, webAssets);
-await registerRaffleAdminPage(app, webAssets);
+
+await registerEnabledModule(app, "raid", async (raidApp) => {
+  await registerRaidAdminPage(raidApp, webAssets);
+  await registerRaidAdminDetailPage(raidApp, webAssets);
+  await registerRaidPage(raidApp, webAssets);
+});
+
+await registerEnabledModule(app, "raffle", async (raffleApp) => {
+  await registerRafflePage(raffleApp, webAssets);
+  await registerRaffleEntryPage(raffleApp, webAssets);
+  await registerRaffleClaimsPage(raffleApp, webAssets);
+  await registerRaffleHistoryPage(raffleApp, webAssets);
+  await registerRaffleRulesPage(raffleApp, webAssets);
+  await registerRaffleRoundPage(raffleApp, webAssets);
+  await registerRaffleAdminPage(raffleApp, webAssets);
+  await registerRaffleRoutes(raffleApp);
+  await registerRaffleApiV1Routes(raffleApp);
+});
 
 await registerAuthRoutes(app);
 await registerGuildRoutes(app);
-await registerRaffleRoutes(app);
 await registerApiV1Routes(app);
-await registerRaffleApiV1Routes(app);
 
 let stopGuildRefreshScheduler: (() => void) | null = null;
 
