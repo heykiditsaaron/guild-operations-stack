@@ -150,7 +150,7 @@ export async function registerRaidAdminPage(app: FastifyInstance, assets: AssetR
       description: "Create and operate Guild Operations raids.",
       viewer,
       stylesheets: ["admin.css", "raid-admin.css"],
-      scripts: ["admin.js", "raid-admin.js"],
+      scripts: ["admin.js", "raid-create.js"],
       secondaryNavigation: navigation,
       header: authorized
         ? `<div class="admin-page-header-row"><div class="admin-page-header"><h1 id="page-title">Raid operations</h1><p class="lede">Create raids and operate participation.</p></div>${headerActions}</div>`
