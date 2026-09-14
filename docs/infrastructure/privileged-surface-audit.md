@@ -17,7 +17,7 @@ Administration
 The shell is still transitional in two ways:
 
 - manual guild refresh and operational inspection can still contribute to Administration availability;
-- legacy module administration destinations remain for modules whose privileged surfaces have not yet been separated.
+- the Discord packaged module still publishes its legacy module administration destination while its configuration surface is being aligned.
 
 Those are migration conditions, not the target information architecture.
 
@@ -34,11 +34,11 @@ Those are migration conditions, not the target information architecture.
 | Create raid | `/events/raid/manage` | Operation | Raid-owned operational surface |
 | List raids for management | `/events/raid/manage` | Operation | Raid-owned operational surface |
 | Manage raid participation/composition | `/events/raid/manage/:raidId` | Operation | Raid-owned operational surface |
-| Create raffle round | `/admin/raffle` | Operation | Raffle-owned operational surface |
-| Edit listed raffle round | `/admin/raffle/:roundId` | Operation | Raffle-owned operational surface |
-| Open raffle round | `/admin/raffle` and round management | Operation | Raffle-owned operational surface |
-| Adjudicate raffle claims | `/admin/raffle/:roundId` | Operation | Raffle-owned operational surface |
-| Draw or cancel raffle round | `/admin/raffle` and round management | Operation | Raffle-owned operational surface |
+| Create raffle round | `/events/raffle/manage` | Operation | Raffle-owned operational surface |
+| Edit listed raffle round | `/events/raffle/manage/:roundId` | Operation | Raffle-owned operational surface |
+| Open raffle round | `/events/raffle/manage` and round management | Operation | Raffle-owned operational surface |
+| Adjudicate raffle claims | `/events/raffle/manage/:roundId` | Operation | Raffle-owned operational surface |
+| Draw or cancel raffle round | `/events/raffle/manage` and round management | Operation | Raffle-owned operational surface |
 | Discord module enablement | `/admin/general` | Administration | `Administration → General → Modules` |
 | Discord application credentials and server association | `/admin/discord` | Administration | `Administration → General → Discord` |
 | Discord invite URL | `/admin/discord` | Administration | `Administration → General → Discord` |
@@ -48,20 +48,21 @@ Those are migration conditions, not the target information architecture.
 
 Legacy `/admin/raid` redirects to the Raid-owned operational overview. Legacy `/admin/raid/:raidId` redirects to the Raid-owned organizer. Legacy `/admin/raid/permissions` redirects to the global Raid permission editor. Compatibility POST routes remain temporarily for old clients, but current Raid browser flows use the canonical Raid-owned operational routes.
 
-Authorized Raid creators/managers discover Raid operations contextually from `/events`; Raid operations are no longer published as an Administration destination.
+Legacy `/admin/raffle` and `/admin/raffle/:roundId` now redirect to the Raffle-owned operational surfaces. The previous `/events/raffle/admin` aliases also redirect to the same canonical operational coordinates. Current Raffle browser navigation uses `/events/raffle/manage...` directly.
+
+Authorized Raid and Raffle operators discover their operational surfaces contextually from `/events`. Neither module publishes its operational surface as an Administration destination.
 
 ## Existing registration model
 
 Modules historically published an administrative destination through `registerModuleAdministrationDestination(...)`.
 
-Raid no longer publishes its operational surface through this registry. Raid permission administration is recognized directly as a global Administration concern instead.
+Raid and Raffle no longer publish operational surfaces through this registry. Raid permission administration is recognized directly as a global Administration concern instead.
 
-Remaining legacy registrations are:
+The only remaining legacy registration is:
 
-- Raffle → `/admin/raffle`;
 - Discord → `/admin/discord`.
 
-These registrations remain only while their current surfaces are separated. Do not add new entries or replace this registry with a speculative generalized contribution framework.
+That registration remains while Discord configuration and operational actions are separated. Do not add new entries or replace this registry with a speculative generalized contribution framework.
 
 ## Administration target
 
@@ -101,7 +102,8 @@ During migration:
 - participation routes should not absorb privileged operation merely for route symmetry;
 - Administration must not become a generic privileged-action dashboard;
 - operational inspection must not determine Administration availability in the final model;
-- module lifecycle changes must not create new dependencies on legacy Calendar machinery.
+- module lifecycle changes must not create new dependencies on legacy Calendar machinery;
+- legacy web routes are temporary migration scaffolding rather than durable endpoint contracts and should be deleted once all current callers use canonical routes.
 
 ## Unresolved operational placement
 
