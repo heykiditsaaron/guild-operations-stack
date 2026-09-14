@@ -1,3 +1,37 @@
+.admin-tabs {
+  display: flex;
+  gap: 0.35rem;
+  max-width: 54rem;
+  margin: 0 0 2rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-tabs a {
+  padding: 0.55rem 0.85rem;
+  border-radius: 0.55rem;
+  color: #aaa69c;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.admin-tabs a:hover,
+.admin-tabs a:focus-visible {
+  color: #e8c986;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.admin-tabs a[aria-current="page"] {
+  color: #f0ede5;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.admin-empty-state {
+  margin: 0;
+  color: #aaa69c;
+}
+
 .admin-page-header-row {
   display: flex;
   justify-content: space-between;
