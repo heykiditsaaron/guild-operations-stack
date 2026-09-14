@@ -306,12 +306,13 @@ export async function raidRosterDiagnostics(raidId: string): Promise<RaidRosterD
     diagnostics.assigned += 1;
     if (row.selected_role === "tank") diagnostics.tanks += 1;
     if (row.selected_role === "healer") diagnostics.healers += 1;
-    if (row.selected_role === "damage") diagnostics.damage += 1;
-
-    const className = row.class_name ?? row.declared_class;
-    const position = className ? positionForSpec(className, row.selected_spec) : null;
-    if (position === "melee") diagnostics.melee += 1;
-    if (position === "ranged") diagnostics.ranged += 1;
+    if (row.selected_role === "damage") {
+      diagnostics.damage += 1;
+      const className = row.class_name ?? row.declared_class;
+      const position = className ? positionForSpec(className, row.selected_spec) : null;
+      if (position === "melee") diagnostics.melee += 1;
+      if (position === "ranged") diagnostics.ranged += 1;
+    }
     return diagnostics;
   }, {
     assigned: 0,
