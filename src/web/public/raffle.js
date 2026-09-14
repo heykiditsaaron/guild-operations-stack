@@ -305,7 +305,7 @@ async function activateRaffleRound(button) {
       window.alert(result.message || result.error || "Unable to open raffle.");
       return;
     }
-    window.location.assign("/admin/raffle");
+    window.location.assign("/events/raffle/manage");
   } catch {
     window.alert("Unable to open raffle.");
   } finally {
@@ -343,7 +343,7 @@ async function winningRaffleClaim(roundId, winningClaimId) {
 function showRaffleDrawResult(round, winnerClaim) {
   const main = document.querySelector(".app-main");
   if (!(main instanceof HTMLElement)) {
-    window.location.assign("/admin/raffle");
+    window.location.assign("/events/raffle/manage");
     return;
   }
 
@@ -356,7 +356,7 @@ function showRaffleDrawResult(round, winnerClaim) {
       <h2 id="raffle-result-heading">No participation</h2>
       <p class="raffle-section-note">The draw completed with no approved entry population, so no winner was selected.</p>
       <div class="raffle-management-controls">
-        <a class="raffle-action raffle-action-primary" href="/admin/raffle">Return to raffle administration</a>
+        <a class="raffle-action raffle-action-primary" href="/events/raffle/manage">Return to raffle operations</a>
         <a class="raffle-action raffle-action-secondary" href="/events/raffle/history">View raffle history ↗</a>
       </div>
     </section>`;
@@ -375,7 +375,7 @@ function showRaffleDrawResult(round, winnerClaim) {
       <dt>Prize</dt><dd>${prize}</dd>
     </dl>
     <div class="raffle-management-controls">
-      <a class="raffle-action raffle-action-primary" href="/admin/raffle">Return to raffle administration</a>
+      <a class="raffle-action raffle-action-primary" href="/events/raffle/manage">Return to raffle operations</a>
       <a class="raffle-action raffle-action-secondary" href="/events/raffle/history">View raffle history ↗</a>
     </div>
   </section>`;
@@ -422,7 +422,7 @@ async function cancelRaffleRound(button) {
       window.alert(result.message || result.error || "Unable to cancel raffle round.");
       return;
     }
-    window.location.assign("/admin/raffle");
+    window.location.assign("/events/raffle/manage");
   } catch {
     window.alert("Unable to cancel raffle round.");
   } finally {
