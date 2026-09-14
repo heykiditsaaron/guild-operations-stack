@@ -3,7 +3,6 @@ import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
 import { GuildCapabilityDeniedError, RAID_MANAGE_CAPABILITY, guildieHasGuildCapabilityOrOperator } from "../../../../guild-permissions.js";
 import {
   assignRaidParticipation,
-  assignedRaidCapabilities,
   raidEventFacts,
   raidRosterDiagnostics,
   setRaidSignupsOpen,
@@ -16,8 +15,9 @@ import {
   raidBuffIconUrl,
   raidBuffLabel,
   specializationIconUrl,
+  type RaidBuffTrait,
 } from "../../../../wow-iconography.js";
-import { specHasTrait, type WowTrait } from "../../../../wow-traits/registry.js";
+import { allWowTraits, specHasTrait, traitsForSpec, type WowTrait } from "../../../../wow-traits/registry.js";
 import type { AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage, type SecondaryNavigation } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
@@ -34,6 +34,9 @@ const ROLE_TRAITS: Record<RaidRole, WowTrait> = {
   healer: "role.healer",
   damage: "role.damage",
 };
+const RAID_BUFF_TRAITS = allWowTraits().filter(isRaidBuffTrait);
+const UTILITY_TRAITS = allWowTraits().filter((trait) => trait.startsWith("effect.") || trait.startsWith("dispel.") || trait.startsWith("control."));
+const ARMOR_TRAITS: readonly WowTrait[] = ["armor.cloth", "armor.leather", "armor.mail", "armor.plate"];
 
 function roleLabel(role: RaidRole): string {
   return role === "damage" ? "Damage" : role === "healer" ? "Healer" : "Tank";
@@ -50,7 +53,7 @@ function capabilityLabel(value: string): string {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
-function armorLabel(value: string): string {
+function armorLabel(value: WowTrait): string {
   return value.replace("armor.", "").replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
@@ -62,21 +65,28 @@ function specsByRole(className: string, willingSpecs: readonly string[], willing
   };
 }
 
+function coverageCount(rows: readonly RaidSignupRowView[], trait: WowTrait): number {
+  return rows.reduce((count, row) => {
+    if (!row.selectedSpec) return count;
+    return traitsForSpec(row.className, row.selectedSpec).includes(trait) ? count + 1 : count;
+  }, 0);
+}
+
 async function specIcon(className: string, specName: string, classNameValue: string): Promise<string> {
   const iconUrl = await specializationIconUrl(className, specName);
   if (!iconUrl) return `<span class="raid-spec-icon-fallback">${htmlText(specName)}</span>`;
   return `<img class="raid-spec-icon" src="${htmlText(iconUrl)}" alt="" aria-hidden="true" title="${htmlText(`${specName} ${classNameValue}`)}">`;
 }
 
-async function offeredSpecIcons(row: RaidSignupRowView): Promise<string> {
-  if (row.willingSpecs.length === 0) return "";
-  const icons = await Promise.all(row.willingSpecs.map((spec) => specIcon(row.className, spec, row.className)));
-  return `<div class="raid-participant-specs" aria-label="Offered specializations">${icons.join("")}</div>`;
+function offeredRoleIcons(row: RaidSignupRowView): string {
+  const roleSpecs = specsByRole(row.className, row.willingSpecs, row.willingRoles);
+  const roles = RAID_ROLES.filter((role) => roleSpecs[role].length > 0);
+  if (!roles.length) return "";
+  return `<div class="raid-participant-roles" aria-label="Offered roles">${roles.map((role) => `<span class="raid-role-icon raid-role-icon-${role}" role="img" aria-label="${htmlText(roleLabel(role))}" title="${htmlText(roleLabel(role))}"></span>`).join("")}</div>`;
 }
 
 async function signupCard(row: RaidSignupRowView): Promise<string> {
   const roleSpecs = specsByRole(row.className, row.willingSpecs, row.willingRoles);
-  const specs = await offeredSpecIcons(row);
   return `<article class="raid-participant-card" draggable="true" tabindex="0"
     data-raid-participant-card
     data-assigned="false"
@@ -86,7 +96,7 @@ async function signupCard(row: RaidSignupRowView): Promise<string> {
       <strong>${htmlText(row.characterName ?? row.className)}</strong>
       <span>${row.realmName ? `${htmlText(row.realmName)} · ` : ""}${htmlText(row.className)}</span>
     </div>
-    ${specs}
+    ${offeredRoleIcons(row)}
   </article>`;
 }
 
@@ -97,7 +107,7 @@ async function assignedCard(row: RaidSignupRowView): Promise<string> {
   return `<article class="raid-participant-card raid-participant-card-assigned" draggable="true" tabindex="0"
     data-raid-participant-card
     data-assigned="true"
-    data-current-role="${htmlText(row.selectedRole ?? "")}"
+    data-current-role="${htmlText(row.selectedRole ?? "")}">
     data-current-spec="${htmlText(selectedSpec)}"
     data-signup-row-id="${htmlText(row.signupRowId)}"
     data-role-specs="${htmlText(JSON.stringify(roleSpecs))}">
@@ -107,6 +117,27 @@ async function assignedCard(row: RaidSignupRowView): Promise<string> {
       <span>${htmlText(selectedSpec)}</span>
     </div>
   </article>`;
+}
+
+async function raidBuffDiagnosticItem(trait: RaidBuffTrait, assigned: readonly RaidSignupRowView[]): Promise<string> {
+  const label = raidBuffLabel(trait);
+  const iconUrl = await raidBuffIconUrl(trait);
+  const count = coverageCount(assigned, trait);
+  const icon = iconUrl
+    ? `<img class="raid-diagnostic-icon" src="${htmlText(iconUrl)}" alt="" aria-hidden="true">`
+    : `<span class="raid-diagnostic-icon-placeholder" aria-hidden="true"></span>`;
+  return `<li class="raid-diagnostic-item" data-count="${count}">${icon}<span class="raid-diagnostic-label">${htmlText(label)}</span><strong class="raid-diagnostic-count">${count}</strong></li>`;
+}
+
+function textDiagnosticItem(label: string, count: number): string {
+  return `<li class="raid-diagnostic-item" data-count="${count}"><span class="raid-diagnostic-label">${htmlText(label)}</span><strong class="raid-diagnostic-count">${count}</strong></li>`;
+}
+
+function diagnosticPanel(id: string, label: string, body: string): string {
+  return `<section class="raid-diagnostic-panel" id="${id}" data-raid-shelf-panel data-open="false" aria-label="${htmlText(label)}">
+    <div class="raid-diagnostic-panel-header"><h3>${htmlText(label)}</h3><button type="button" class="raid-diagnostic-close" data-raid-shelf-close aria-label="Close ${htmlText(label)}">×</button></div>
+    <ul class="raid-diagnostic-list">${body}</ul>
+  </section>`;
 }
 
 function raidActionStatusCode(error: unknown): 400 | 403 {
@@ -134,9 +165,8 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
     const raid = await raidEventFacts(request.params.raidId);
     if (!raid) return reply.code(404).send({ error: "Raid not found" });
 
-    const [rows, capabilities, diagnostics] = await Promise.all([
+    const [rows, diagnostics] = await Promise.all([
       raidSignupRows(raid.raidId),
-      assignedRaidCapabilities(raid.raidId),
       raidRosterDiagnostics(raid.raidId),
     ]);
     const assigned = rows.filter((row) => row.assignmentId !== null);
@@ -148,28 +178,9 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
       items: [{ label: "Administration", href: "/admin" }, { label: "Raid", href: "/admin/raid" }, { label: raid.label }],
     };
 
-    const raidBuffs = capabilities.filter(isRaidBuffTrait);
-    const armorTraits = capabilities.filter((capability) => capability.startsWith("armor."));
-    const otherCapabilities = capabilities.filter(
-      (capability) => !capability.startsWith("role.") && !capability.startsWith("armor.") && !isRaidBuffTrait(capability),
-    );
-    const raidBuffItems = await Promise.all(raidBuffs.map(async (trait) => {
-      const label = raidBuffLabel(trait);
-      const iconUrl = await raidBuffIconUrl(trait);
-      return iconUrl
-        ? `<li class="raid-capability-icon" title="${htmlText(label)}"><img src="${htmlText(iconUrl)}" alt=""><span>${htmlText(label)}</span></li>`
-        : `<li>${htmlText(label)}</li>`;
-    }));
-    const capabilityItems = [
-      ...raidBuffItems,
-      ...otherCapabilities.map((capability) => `<li>${htmlText(capabilityLabel(capability))}</li>`),
-    ];
-    const capabilityBody = capabilityItems.length
-      ? `<ul class="raid-capabilities">${capabilityItems.join("")}</ul>`
-      : `<p class="raid-scoreboard-empty">No capabilities are currently available from assigned participants.</p>`;
-    const armorTitle = armorTraits.length
-      ? ` title="${htmlText(`Armor represented: ${armorTraits.map(armorLabel).join(" · ")}`)}"`
-      : "";
+    const raidBuffItems = (await Promise.all(RAID_BUFF_TRAITS.map((trait) => raidBuffDiagnosticItem(trait, assigned)))).join("");
+    const utilityItems = UTILITY_TRAITS.map((trait) => textDiagnosticItem(capabilityLabel(trait), coverageCount(assigned, trait))).join("");
+    const armorItems = ARMOR_TRAITS.map((trait) => textDiagnosticItem(armorLabel(trait), coverageCount(assigned, trait))).join("");
 
     const diagnosticsBody = `<dl class="raid-roster-diagnostics">
       <div><dt>Assigned</dt><dd>${diagnostics.assigned}<span>/${applicantCount}</span></dd></div>
@@ -177,6 +188,19 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
       <div><dt>Healers</dt><dd>${diagnostics.healers}</dd></div>
       <div><dt>Damage</dt><dd>${diagnostics.damage}</dd></div>
     </dl>`;
+
+    const shelves = `<div class="raid-diagnostic-shelves" data-raid-diagnostics>
+      <div class="raid-diagnostic-tabs" aria-label="Raid diagnostics">
+        <button type="button" class="raid-diagnostic-tab" data-raid-shelf-toggle aria-expanded="false" aria-controls="raid-buffs-panel">Raid buffs</button>
+        <button type="button" class="raid-diagnostic-tab" data-raid-shelf-toggle aria-expanded="false" aria-controls="raid-utility-panel">Utility</button>
+        <button type="button" class="raid-diagnostic-tab" data-raid-shelf-toggle aria-expanded="false" aria-controls="raid-armor-panel">Armor</button>
+      </div>
+      <div class="raid-diagnostic-panels">
+        ${diagnosticPanel("raid-buffs-panel", "Raid buffs", raidBuffItems)}
+        ${diagnosticPanel("raid-utility-panel", "Utility", utilityItems)}
+        ${diagnosticPanel("raid-armor-panel", "Armor", armorItems)}
+      </div>
+    </div>`;
 
     const pool = available.length
       ? (await Promise.all(available.map(signupCard))).join("")
@@ -202,22 +226,28 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
       <section class="raid-scoreboard" aria-labelledby="raid-scoreboard-heading">
         <h2 id="raid-scoreboard-heading">Scoreboard</h2>
         ${diagnosticsBody}
-        <div class="raid-scoreboard-capabilities"${armorTitle}><h3>Available capabilities</h3>${capabilityBody}</div>
+        ${shelves}
       </section>
       <section class="raid-workspace">
         <div class="raid-workspace-heading">
-          <div><h2>Participation pool</h2><p>Drag cards between the pool and raid roles. Tap a card to use the + controls instead.</p></div>
+          <div><h2>Raid organizer</h2><p>Build the raid group from participation offers. Drag cards between the applicant pool and raid roles.</p></div>
           <div class="raid-admin-actions">
             <button type="button" class="button-primary" data-raid-signups-toggle data-open="${raid.signupsOpen ? "false" : "true"}">${raid.signupsOpen ? "Close signups" : "Open signups"}</button>
             <a class="button-secondary" href="/events/raid/${encodeURIComponent(raid.raidId)}">View signup page ↗</a>
           </div>
         </div>
-        <div class="raid-signup-pool" data-raid-pool-drop>${pool}</div>
         <p class="raid-board-status" data-raid-action-status role="status" aria-live="polite"></p>
-        <div class="raid-assignment-board">
-          <h2>Raid group</h2>
-          <div class="raid-role-lanes">${lanes}</div>
+        <div class="raid-organizer-grid">
+          <section class="raid-pool-panel" data-raid-pool-panel data-open="false" id="raid-applicant-pool-panel">
+            <div class="raid-pool-panel-header"><h2>Participation pool</h2><span>${available.length} available</span><button type="button" class="raid-pool-close" data-raid-pool-close aria-label="Close participation pool">×</button></div>
+            <div class="raid-signup-pool" data-raid-pool-drop>${pool}</div>
+          </section>
+          <div class="raid-assignment-board">
+            <h2>Raid group</h2>
+            <div class="raid-role-lanes">${lanes}</div>
+          </div>
         </div>
+        <button type="button" class="raid-pool-toggle" data-raid-pool-toggle data-raid-pool-drop aria-expanded="false" aria-controls="raid-applicant-pool-panel"><span>Applicants</span><span>${available.length}</span></button>
       </section>
       <dialog class="raid-spec-dialog" data-raid-spec-dialog>
         <form method="dialog">
@@ -233,8 +263,8 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
       title: `${raid.label} · Raid Administration · OH CRIT I Pulled! Guild Operations`,
       description: raid.description ?? "Raid administration.",
       viewer,
-      stylesheets: ["admin.css", "raid-admin.css", "raid-iconography.css"],
-      scripts: ["admin.js", "raid-admin.js"],
+      stylesheets: ["admin.css", "raid-admin.css", "raid-iconography.css", "raid-organizer.css"],
+      scripts: ["admin.js", "raid-admin.js", "raid-organizer.js"],
       secondaryNavigation: navigation,
       header: "",
       body,
