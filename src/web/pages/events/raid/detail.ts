@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
-import { GuildCapabilityDeniedError, RAID_MANAGE_CAPABILITY, guildieHasGuildCapability } from "../../../../guild-permissions.js";
+import { GuildCapabilityDeniedError, RAID_MANAGE_CAPABILITY, guildieHasGuildCapabilityOrOperator } from "../../../../guild-permissions.js";
 import {
   assignRaidParticipation,
   assignedRaidCapabilities,
@@ -117,7 +117,7 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
   app.get<{ Params: RaidParams }>("/admin/raid/:raidId", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie] = await Promise.all([viewerForRequest(sessionToken), authenticatedGuildie(sessionToken)]);
-    const authorized = guildie ? await guildieHasGuildCapability(guildie.guildieId, RAID_MANAGE_CAPABILITY) : false;
+    const authorized = guildie ? await guildieHasGuildCapabilityOrOperator(guildie.guildieId, RAID_MANAGE_CAPABILITY) : false;
     if (!guildie || !authorized) {
       const html = renderPage(assets, {
         pathname: request.url,
