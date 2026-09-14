@@ -1,6 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { guildState } from "../../../application-state.js";
-import { SESSION_COOKIE_NAME } from "../../../auth.js";
+import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../auth.js";
+import {
+  RAID_CREATE_CAPABILITY,
+  RAID_MANAGE_CAPABILITY,
+  effectiveGuildAuthority,
+} from "../../../guild-permissions.js";
 import {
   discoverableGuildCalendarEvents,
   type GuildCalendarEvent,
@@ -181,22 +186,35 @@ function renderCalendar(
 export async function registerEventsPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/events", async (request, reply) => {
     const nowUnix = Math.floor(Date.now() / 1000);
-    const [viewer, events, guild, moduleStates] = await Promise.all([
-      viewerForRequest(request.cookies[SESSION_COOKIE_NAME]),
+    const sessionToken = request.cookies[SESSION_COOKIE_NAME];
+    const [viewer, guildie, events, guild, moduleStates] = await Promise.all([
+      viewerForRequest(sessionToken),
+      authenticatedGuildie(sessionToken),
       discoverableGuildCalendarEvents(),
       guildState(),
       packagedModuleStates(),
     ]);
+    const authority = guildie ? await effectiveGuildAuthority(guildie.guildieId) : null;
     const moduleStateByKey = new Map(moduleStates.map((module) => [module.key, module]));
     const offerings = guildEventOfferings().filter((offering) => offeringAvailable(offering.destination, moduleStateByKey));
+    const raidEnabled = moduleStateByKey.get("raid")?.enabled !== false;
+    const canOperateRaid = raidEnabled && Boolean(
+      authority?.operator
+      || authority?.capabilities.includes(RAID_CREATE_CAPABILITY)
+      || authority?.capabilities.includes(RAID_MANAGE_CAPABILITY),
+    );
 
     const relevant = events.filter((event) => occursThrough(event) >= nowUnix);
     const happeningNow = relevant.filter((event) => isHappeningNow(event, nowUnix));
     const upcoming = relevant.filter((event) => !isHappeningNow(event, nowUnix));
     const guildCommunity = guild ? `${htmlText(guild.name)}&apos;s community` : "the guild&apos;s community";
+    const operationalEntry = canOperateRaid
+      ? `<div class="events-operator-actions"><a class="button button-secondary" href="/events/raid/manage">Manage raids</a></div>`
+      : "";
 
     const body = `
       <div class="events-shell">
+        ${operationalEntry}
         ${renderOfferings(offerings, assets)}
         ${renderCalendar(happeningNow, upcoming)}
       </div>`;
