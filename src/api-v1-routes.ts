@@ -210,8 +210,8 @@ export async function registerApiV1Routes(app: FastifyInstance): Promise<void> {
       const event = await createExternallyManagedGuildCalendarEvent({
         title,
         occursAt,
-        destination: optionalText(body.destination),
         category: optionalText(body.category),
+        destination: optionalText(body.destination),
       });
       return reply.code(201).send(calendarEventRepresentation(event));
     } catch (error) {
@@ -229,17 +229,26 @@ export async function registerApiV1Routes(app: FastifyInstance): Promise<void> {
     const body = request.body as Record<string, unknown> | null;
     if (!body || Array.isArray(body)) return reply.code(400).send({ error: "invalid_calendar_event" });
 
-    const occursAt = body.occurs_at === undefined ? undefined : parseOccursAt(body.occurs_at);
-    const title = body.title === undefined ? undefined : requiredTitle(body.title);
-    if (body.occurs_at !== undefined && !occursAt) return reply.code(400).send({ error: "invalid_calendar_event" });
-    if (body.title !== undefined && !title) return reply.code(400).send({ error: "invalid_calendar_event" });
+    const hasTitle = Object.hasOwn(body, "title");
+    const hasOccursAt = Object.hasOwn(body, "occurs_at");
+    const hasCategory = Object.hasOwn(body, "category");
+    const hasDestination = Object.hasOwn(body, "destination");
+    if (!hasTitle && !hasOccursAt && !hasCategory && !hasDestination) {
+      return reply.code(400).send({ error: "invalid_calendar_event" });
+    }
+
+    const title = hasTitle ? requiredTitle(body.title) : undefined;
+    const occursAt = hasOccursAt ? parseOccursAt(body.occurs_at) : undefined;
+    if ((hasTitle && !title) || (hasOccursAt && !occursAt)) {
+      return reply.code(400).send({ error: "invalid_calendar_event" });
+    }
 
     try {
       const event = await updateExternallyManagedGuildCalendarEvent(eventId, {
-        title,
-        occursAt,
-        destination: optionalText(body.destination),
-        category: optionalText(body.category),
+        title: title === null ? undefined : title,
+        occursAt: occursAt === null ? undefined : occursAt,
+        category: hasCategory ? optionalText(body.category) : undefined,
+        destination: hasDestination ? optionalText(body.destination) : undefined,
       });
       return reply.send(calendarEventRepresentation(event));
     } catch (error) {
