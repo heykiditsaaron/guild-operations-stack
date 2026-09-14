@@ -4,6 +4,7 @@ import { config, type Region } from "./config.js";
 import { pool, withTransaction } from "./db.js";
 import {
   GUILD_REFRESH_CAPABILITY,
+  GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY,
   OPERATIONS_INSPECT_CAPABILITY,
 } from "./guild-permissions.js";
 import { publishGuildRefreshObservation } from "./guild-refresh-observers.js";
@@ -126,6 +127,7 @@ async function ensureObservedRankDefinition(client: PoolClient, guildId: string,
   if (rankIndex === 0 || rankIndex === 1 || rankIndex === 2) {
     for (const capability of [
       GUILD_REFRESH_CAPABILITY,
+      GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY,
       OPERATIONS_INSPECT_CAPABILITY,
     ]) {
       await client.query(
