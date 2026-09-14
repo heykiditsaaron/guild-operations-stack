@@ -61,32 +61,22 @@ function administrationSection(
   </section>`;
 }
 
-function moduleConfigurationDestination(module: PackagedModuleState): string {
-  if (module.key === "discord") {
-    return `<a class="module-lifecycle-configure" href="/admin/discord">Configure</a>`;
-  }
-  return "";
-}
-
 function renderModuleLifecycle(modules: PackagedModuleState[]): string {
-  return `<div class="module-lifecycle-list" data-module-lifecycle-list>
-    ${modules.map((module) => `<article class="module-lifecycle-card" data-module-lifecycle-card data-module-key="${htmlText(module.key)}">
-      <div class="module-lifecycle-copy">
-        <div class="module-lifecycle-heading">
-          <h3>${htmlText(module.label)}</h3>
-          <span class="module-lifecycle-availability">Included</span>
-        </div>
-        <p>${module.enabled ? "Available to Guild Operations." : "Installed but not available to participation or operations."}</p>
-        ${moduleConfigurationDestination(module)}
+  return `<div class="admin-module-list">${modules.map((module) => `<article class="admin-module" data-module-key="${module.key}">
+    <div class="admin-module-copy">
+      <div class="admin-module-heading">
+        <h3>${htmlText(module.label)}</h3>
+        <span class="admin-module-availability">Available</span>
       </div>
-      <label class="switch module-lifecycle-toggle">
-        <input type="checkbox" data-module-enabled${module.enabled ? " checked" : ""}>
-        <span class="switch-control" aria-hidden="true"></span>
-        <span data-module-enabled-label>${module.enabled ? "On" : "Off"}</span>
-      </label>
-      <p class="module-lifecycle-feedback" data-module-lifecycle-feedback role="status" aria-live="polite"></p>
-    </article>`).join("\n")}
-  </div>`;
+      <p>${module.enabled ? "Enabled for Guild Operations." : "Installed but disabled."}</p>
+    </div>
+    <label class="switch admin-module-toggle">
+      <input type="checkbox" data-module-enabled${module.enabled ? " checked" : ""}>
+      <span class="switch-control" aria-hidden="true"></span>
+      <span data-module-switch-label>${module.enabled ? "On" : "Off"}</span>
+    </label>
+    <p class="admin-module-feedback" data-module-feedback role="status" aria-live="polite"></p>
+  </article>`).join("\n")}</div>`;
 }
 
 function renderGuildRefresh(
@@ -256,7 +246,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       ? `<div class="admin-destinations">${destination(
           "Raid",
           "Map current Blizzard guild ranks to Raid creation and management capabilities.",
-          "/admin/raid/permissions",
+          "/admin/permissions/raid",
         )}</div>`
       : `<p class="admin-empty-state">No configurable permission policies are available for this account.</p>`;
 
