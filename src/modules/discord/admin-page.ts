@@ -30,7 +30,9 @@ function htmlText(value: string): string {
 }
 
 export async function registerDiscordAdminPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
-  app.get("/admin/discord", async (request, reply) => {
+  app.get("/admin/discord", async (_request, reply) => reply.redirect("/admin/general/discord"));
+
+  app.get("/admin/general/discord", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie] = await Promise.all([
       viewerForRequest(sessionToken),
@@ -79,9 +81,9 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       </section>
 
       <section class="admin-section">
-        <a class="admin-destination" href="/admin/discord/role-maps">
+        <a class="admin-destination" href="/admin/general/discord/role-maps">
           <span class="admin-destination-title">Role Maps</span>
-          <span class="admin-destination-description">Manage Discord roles.</span>
+          <span class="admin-destination-description">Configure Discord role projection policy.</span>
           <span class="admin-destination-arrow" aria-hidden="true">→</span>
         </a>
       </section>
@@ -91,8 +93,8 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       .header("Cache-Control", "no-cache")
       .type("text/html; charset=utf-8")
       .send(renderPage(assets, {
-        pathname: "/admin/discord",
-        title: "Discord administration · OH CRIT I Pulled! Guild Operations",
+        pathname: "/admin/general/discord",
+        title: "Discord configuration · OH CRIT I Pulled! Guild Operations",
         description: "Configure the packaged Discord integration.",
         viewer,
         stylesheets: ["admin.css"],
@@ -101,6 +103,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
           kind: "breadcrumb",
           items: [
             { label: "Administration", href: "/admin/general" },
+            { label: "General", href: "/admin/general" },
             { label: "Discord" },
           ],
         },
@@ -109,7 +112,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       }));
   });
 
-  app.post("/admin/discord", async (request, reply) => {
+  const updateDiscordConfiguration = async (request: Parameters<Parameters<FastifyInstance["post"]>[1]>[0], reply: Parameters<Parameters<FastifyInstance["post"]>[1]>[1]) => {
     const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
     if (!guildie) return reply.code(401).send({ error: "not_authenticated" });
     if (!await guildieHasGuildCapability(guildie.guildieId, DISCORD_ADMIN_CAPABILITY)) {
@@ -191,5 +194,8 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       }
       throw error;
     }
-  });
+  };
+
+  app.post("/admin/general/discord", updateDiscordConfiguration);
+  app.post("/admin/discord", updateDiscordConfiguration);
 }
