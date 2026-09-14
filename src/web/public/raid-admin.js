@@ -246,6 +246,8 @@ function startPointerDrag(state, event) {
     clearTimeout(state.holdTimer);
     state.holdTimer = null;
   }
+  const selection = window.getSelection();
+  if (selection) selection.removeAllRanges();
   state.started = true;
   clearSelectedCard();
   state.card.classList.add("raid-participant-card-dragging");
@@ -321,6 +323,7 @@ for (const card of document.querySelectorAll("[data-raid-participant-card]")) {
     };
     pointerDrag = state;
     if (event.pointerType === "touch") {
+      event.preventDefault();
       card.setPointerCapture(event.pointerId);
       state.holdTimer = window.setTimeout(() => {
         if (pointerDrag !== state || state.cancelled || state.started) return;
