@@ -8,8 +8,6 @@ for (const element of document.querySelectorAll("[data-unix-time]")) {
 
 const moduleForm = document.querySelector("[data-discord-module-form]");
 if (moduleForm instanceof HTMLFormElement) {
-  const enabled = moduleForm.querySelector("[data-discord-module-enabled]");
-  const switchLabel = moduleForm.querySelector("[data-discord-module-switch-label]");
   const clientId = moduleForm.querySelector("[data-discord-client-id]");
   const clientSecret = moduleForm.querySelector("[data-discord-client-secret]");
   const removeClientSecret = moduleForm.querySelector("[data-discord-client-secret-remove]");
@@ -20,13 +18,9 @@ if (moduleForm instanceof HTMLFormElement) {
   const save = moduleForm.querySelector("[data-discord-module-save]");
   const feedback = moduleForm.querySelector("[data-discord-module-feedback]");
 
-  if (enabled instanceof HTMLInputElement && switchLabel) {
-    enabled.addEventListener("change", () => { switchLabel.textContent = enabled.checked ? "On" : "Off"; });
-  }
-
   moduleForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (!(enabled instanceof HTMLInputElement) || !(clientId instanceof HTMLInputElement) || !(clientSecret instanceof HTMLInputElement) || !(removeClientSecret instanceof HTMLInputElement) || !(guildId instanceof HTMLInputElement) || !(botToken instanceof HTMLInputElement) || !(removeBotToken instanceof HTMLInputElement) || !(inviteUrl instanceof HTMLInputElement) || !(save instanceof HTMLButtonElement) || !(feedback instanceof HTMLElement)) return;
+    if (!(clientId instanceof HTMLInputElement) || !(clientSecret instanceof HTMLInputElement) || !(removeClientSecret instanceof HTMLInputElement) || !(guildId instanceof HTMLInputElement) || !(botToken instanceof HTMLInputElement) || !(removeBotToken instanceof HTMLInputElement) || !(inviteUrl instanceof HTMLInputElement) || !(save instanceof HTMLButtonElement) || !(feedback instanceof HTMLElement)) return;
 
     save.disabled = true;
     feedback.textContent = "Saving Discord configuration…";
@@ -36,7 +30,6 @@ if (moduleForm instanceof HTMLFormElement) {
         headers: { Accept: "application/json", "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "discord_module.update",
-          enabled: enabled.checked,
           clientId: clientId.value,
           clientSecret: clientSecret.value || undefined,
           removeClientSecret: removeClientSecret.checked,
