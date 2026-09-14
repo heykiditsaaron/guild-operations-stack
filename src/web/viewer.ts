@@ -31,7 +31,9 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
     authenticated: true,
     modulePresentation,
     administrationAvailable: administration.available,
-    administrationDestinations: administration.navigationDestinations,
+    administrationDestinations: administration.available
+      ? [{ label: "Guild Operations", href: "/admin" }]
+      : [],
     mainCharacter: state.selectedMain
       ? {
           characterId: state.selectedMain.characterId,
