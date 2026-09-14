@@ -297,6 +297,11 @@ for (const card of document.querySelectorAll("[data-raid-participant-card]")) {
   if (!(card instanceof HTMLElement)) continue;
   card.draggable = false;
 
+  if (card.closest(".raid-signup-pool")) {
+    card.addEventListener("selectstart", (event) => event.preventDefault());
+    card.addEventListener("contextmenu", (event) => event.preventDefault());
+  }
+
   card.addEventListener("pointerdown", (event) => {
     if (!event.isPrimary || event.button !== 0) return;
     const state = {
