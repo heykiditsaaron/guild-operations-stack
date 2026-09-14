@@ -11,6 +11,7 @@ import {
 } from "../../../../modules/raid/application.js";
 import { raidSignupRows } from "../../../../modules/raid/participation-view.js";
 import type { RaidDifficulty, RaidRole } from "../../../../modules/raid/domain.js";
+import { specHasTrait, type WowTrait } from "../../../../wow-traits/registry.js";
 import type { AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage, type SecondaryNavigation } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
@@ -19,6 +20,13 @@ type RaidParams = { raidId: string };
 type ToggleBody = { open?: unknown };
 type AssignBody = { signupRowId?: unknown; selectedSpec?: unknown; selectedRole?: unknown };
 type UnassignBody = { signupRowId?: unknown };
+
+const RAID_ROLES: readonly RaidRole[] = ["tank", "healer", "damage"];
+const ROLE_TRAITS: Record<RaidRole, WowTrait> = {
+  tank: "role.tank",
+  healer: "role.healer",
+  damage: "role.damage",
+};
 
 function roleLabel(role: RaidRole): string {
   return role === "damage" ? "Damage" : role === "healer" ? "Healer" : "Tank";
@@ -35,8 +43,34 @@ function capabilityLabel(value: string): string {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
-function option(value: string, label = value): string {
-  return `<option value="${htmlText(value)}">${htmlText(label)}</option>`;
+function specsByRole(className: string, willingSpecs: readonly string[], willingRoles: readonly RaidRole[]): Record<RaidRole, string[]> {
+  return {
+    tank: willingRoles.includes("tank") ? willingSpecs.filter((spec) => specHasTrait(className, spec, ROLE_TRAITS.tank)) : [],
+    healer: willingRoles.includes("healer") ? willingSpecs.filter((spec) => specHasTrait(className, spec, ROLE_TRAITS.healer)) : [],
+    damage: willingRoles.includes("damage") ? willingSpecs.filter((spec) => specHasTrait(className, spec, ROLE_TRAITS.damage)) : [],
+  };
+}
+
+function signupCard(row: Awaited<ReturnType<typeof raidSignupRows>>[number]): string {
+  const roleSpecs = specsByRole(row.className, row.willingSpecs, row.willingRoles);
+  return `<article class="raid-participant-card" draggable="true" tabindex="0"
+    data-raid-participant-card
+    data-signup-row-id="${htmlText(row.signupRowId)}"
+    data-role-specs="${htmlText(JSON.stringify(roleSpecs))}">
+    <strong>${htmlText(row.characterName ?? row.className)}</strong>
+    <span>${row.realmName ? `${htmlText(row.realmName)} · ` : ""}${htmlText(row.className)}</span>
+    <small>${row.willingRoles.map((role) => htmlText(roleLabel(role))).join(" · ")}</small>
+  </article>`;
+}
+
+function assignedCard(row: Awaited<ReturnType<typeof raidSignupRows>>[number]): string {
+  return `<article class="raid-participant-card raid-participant-card-assigned" draggable="true" tabindex="0"
+    data-raid-assigned-card
+    data-signup-row-id="${htmlText(row.signupRowId)}">
+    <strong>${htmlText(row.characterName ?? row.className)}</strong>
+    <span>${htmlText(row.selectedSpec ?? "")} · ${htmlText(roleLabel(row.selectedRole!))}</span>
+    <button type="button" class="raid-card-remove" data-raid-unassign data-signup-row-id="${htmlText(row.signupRowId)}" aria-label="Unassign ${htmlText(row.characterName ?? row.className)}">×</button>
+  </article>`;
 }
 
 export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
@@ -73,45 +107,65 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
       items: [{ label: "Administration", href: "/admin" }, { label: "Raid", href: "/admin/raid" }, { label: raid.label }],
     };
 
-    const roster = assigned.length
-      ? `<ul class="raid-roster">${assigned.map((row) => `<li><strong>${htmlText(roleLabel(row.selectedRole!))}</strong><span>${htmlText(row.characterName ?? row.className)} · ${htmlText(row.selectedSpec ?? "")}</span><button type="button" data-raid-unassign data-signup-row-id="${htmlText(row.signupRowId)}">Unassign</button></li>`).join("")}</ul>`
-      : `<p>No participants have been assigned yet.</p>`;
-
-    const pool = available.length
-      ? `<div class="raid-signup-pool">${available.map((row) => `<article class="raid-signup-row">
-          <div><h3>${htmlText(row.characterName ?? row.className)}</h3><p>${row.realmName ? `${htmlText(row.realmName)} · ` : ""}${htmlText(row.className)}</p><p>Willing specs: ${row.willingSpecs.map(htmlText).join(", ")}</p><p>Willing roles: ${row.willingRoles.map((role) => htmlText(roleLabel(role))).join(", ")}</p></div>
-          <form data-raid-assign data-signup-row-id="${htmlText(row.signupRowId)}">
-            <label><span>Spec</span><select name="selectedSpec" required>${row.willingSpecs.map((spec) => option(spec)).join("")}</select></label>
-            <label><span>Role</span><select name="selectedRole" required>${row.willingRoles.map((role) => option(role, roleLabel(role))).join("")}</select></label>
-            <button type="submit" class="button-primary">Assign</button>
-            <p data-raid-action-status role="status" aria-live="polite"></p>
-          </form>
-        </article>`).join("")}</div>`
-      : `<p>No unassigned participation rows are available.</p>`;
-
     const capabilityBody = capabilities.length
       ? `<ul class="raid-capabilities">${capabilities.map((capability) => `<li>${htmlText(capabilityLabel(capability))}</li>`).join("")}</ul>`
-      : `<p>No capabilities are currently available from assigned participants.</p>`;
+      : `<p class="raid-scoreboard-empty">No capabilities are currently available from assigned participants.</p>`;
 
     const diagnosticsBody = `<dl class="raid-roster-diagnostics">
-      <dt>Assigned</dt><dd>${diagnostics.assigned}</dd>
-      <dt>Tanks</dt><dd>${diagnostics.tanks}</dd>
-      <dt>Healers</dt><dd>${diagnostics.healers}</dd>
-      <dt>Damage</dt><dd>${diagnostics.damage}</dd>
+      <div><dt>Assigned</dt><dd>${diagnostics.assigned}</dd></div>
+      <div><dt>Tanks</dt><dd>${diagnostics.tanks}</dd></div>
+      <div><dt>Healers</dt><dd>${diagnostics.healers}</dd></div>
+      <div><dt>Damage</dt><dd>${diagnostics.damage}</dd></div>
     </dl>`;
 
-    const body = `<section class="admin-section raid-admin-summary">
-        <div class="raid-admin-actions">
-          <button type="button" class="button-primary" data-raid-signups-toggle data-open="${raid.signupsOpen ? "false" : "true"}">${raid.signupsOpen ? "Close signups" : "Open signups"}</button>
-          <a class="button-secondary" href="/events/raid/${encodeURIComponent(raid.raidId)}">View signup page ↗</a>
+    const pool = available.length
+      ? available.map(signupCard).join("")
+      : `<p class="raid-pool-empty">No unassigned participation rows are available.</p>`;
+
+    const lanes = RAID_ROLES.map((role) => {
+      const members = assigned.filter((row) => row.selectedRole === role);
+      return `<section class="raid-role-lane" data-raid-role-lane="${role}">
+        <div class="raid-role-lane-heading"><h3>${htmlText(roleLabel(role))}</h3><span>${members.length}</span></div>
+        <div class="raid-role-cards">${members.map(assignedCard).join("")}</div>
+        <button type="button" class="raid-add-slot" data-raid-drop-role="${role}" aria-label="Assign a ${htmlText(roleLabel(role).toLowerCase())}">+</button>
+      </section>`;
+    }).join("");
+
+    const body = `<section class="raid-title-bar">
+        <div>
+          <h1>${htmlText(raid.label)}</h1>
+          <p><time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${htmlText(difficultyLabel(raid.difficulty))} · Signups ${raid.signupsOpen ? "open" : "closed"}</p>
         </div>
-        <dl><dt>Starts</dt><dd><time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time></dd><dt>Difficulty</dt><dd>${htmlText(difficultyLabel(raid.difficulty))}</dd><dt>Signups</dt><dd>${raid.signupsOpen ? "Open" : "Closed"}</dd></dl>
-        <p data-raid-action-status role="status" aria-live="polite"></p>
+        <button type="button" class="button-secondary" disabled title="Raid metadata editing will be added later">Edit</button>
       </section>
-      <section class="admin-section"><h2>Roster diagnostic</h2>${diagnosticsBody}</section>
-      <section class="admin-section"><h2>Assigned roster</h2>${roster}</section>
-      <section class="admin-section"><h2>Available capabilities</h2>${capabilityBody}</section>
-      <section class="admin-section"><h2>Participation pool</h2>${pool}</section>`;
+      <section class="raid-scoreboard" aria-labelledby="raid-scoreboard-heading">
+        <h2 id="raid-scoreboard-heading">Scoreboard</h2>
+        ${diagnosticsBody}
+        <div class="raid-scoreboard-capabilities"><h3>Available capabilities</h3>${capabilityBody}</div>
+      </section>
+      <section class="raid-workspace">
+        <div class="raid-workspace-heading">
+          <div><h2>Participation pool</h2><p>Drag a signup onto a role, or select a card and then choose a + slot.</p></div>
+          <div class="raid-admin-actions">
+            <button type="button" class="button-primary" data-raid-signups-toggle data-open="${raid.signupsOpen ? "false" : "true"}">${raid.signupsOpen ? "Close signups" : "Open signups"}</button>
+            <a class="button-secondary" href="/events/raid/${encodeURIComponent(raid.raidId)}">View signup page ↗</a>
+          </div>
+        </div>
+        <div class="raid-signup-pool" data-raid-pool-drop>${pool}</div>
+        <p class="raid-board-status" data-raid-action-status role="status" aria-live="polite"></p>
+        <div class="raid-assignment-board">
+          <h2>Raid group</h2>
+          <div class="raid-role-lanes">${lanes}</div>
+        </div>
+      </section>
+      <dialog class="raid-spec-dialog" data-raid-spec-dialog>
+        <form method="dialog">
+          <h2>Choose specialization</h2>
+          <p data-raid-spec-dialog-copy></p>
+          <div data-raid-spec-options></div>
+          <button type="button" class="button-secondary" data-raid-spec-cancel>Cancel</button>
+        </form>
+      </dialog>`;
 
     const html = renderPage(assets, {
       pathname: request.url,
@@ -121,7 +175,6 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
       stylesheets: ["admin.css", "raid-admin.css"],
       scripts: ["admin.js", "raid-admin.js"],
       secondaryNavigation: navigation,
-      header: `<div class="admin-page-header"><h1>${htmlText(raid.label)}</h1><p class="lede">Operate signups and construct the raid roster.</p></div>`,
       body,
     });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
