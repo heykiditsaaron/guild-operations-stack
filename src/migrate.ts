@@ -22,6 +22,7 @@ const migrationFiles = [
   "018_remove_group_coordinator.sql",
   "019_raid_module.sql",
   "020_raid_external_anchor.sql",
+  "021_raid_assignment_derived_composition.sql",
 ];
 
 for (const migrationFile of migrationFiles) {
