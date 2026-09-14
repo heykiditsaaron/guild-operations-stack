@@ -14,10 +14,10 @@ Administration
 └── Permissions
 ```
 
-The shell is still transitional in two ways:
+The remaining transitional pressure is global rather than module-specific:
 
-- manual guild refresh and operational inspection can still contribute to Administration availability;
-- the Discord packaged module still publishes its legacy module administration destination while its configuration surface is being aligned.
+- manual guild refresh still lives inside General even though the immediate refresh action is operational;
+- operational inspection still contributes to Administration availability and remains under `/admin/operations`.
 
 Those are migration conditions, not the target information architecture.
 
@@ -40,29 +40,31 @@ Those are migration conditions, not the target information architecture.
 | Adjudicate raffle claims | `/events/raffle/manage/:roundId` | Operation | Raffle-owned operational surface |
 | Draw or cancel raffle round | `/events/raffle/manage` and round management | Operation | Raffle-owned operational surface |
 | Discord module enablement | `/admin/general` | Administration | `Administration → General → Modules` |
-| Discord application credentials and server association | `/admin/discord` | Administration | `Administration → General → Discord` |
-| Discord invite URL | `/admin/discord` | Administration | `Administration → General → Discord` |
-| Discord linked-role and rank-role projection policy | `/admin/discord/role-maps` | Administration | `Administration → General → Discord` |
-| Read/refresh available Discord roles | `/admin/discord/role-maps` | Operation supporting configuration | Remain contextual to Discord configuration or operation; do not define Administration availability |
-| Discord projection reconciliation triggered by policy change | `/admin/discord` | Operational consequence of configuration | Configuration remains administrative; reconciliation evidence remains operational |
+| Discord application credentials and server association | `/admin/general/discord` | Administration | `Administration → General → Discord` |
+| Discord invite URL | `/admin/general/discord` | Administration | `Administration → General → Discord` |
+| Discord linked-role and rank-role projection policy | `/admin/general/discord/role-maps` | Administration | `Administration → General → Discord` |
+| Read/refresh available Discord roles | `/admin/general/discord/role-maps` | Operation supporting configuration | Remain contextual to Discord configuration; do not define Administration availability |
+| Discord projection reconciliation triggered by policy change | Discord configuration save | Operational consequence of configuration | Configuration remains administrative; reconciliation evidence remains operational |
 
 Legacy `/admin/raid` redirects to the Raid-owned operational overview. Legacy `/admin/raid/:raidId` redirects to the Raid-owned organizer. Legacy `/admin/raid/permissions` redirects to the global Raid permission editor. Compatibility POST routes remain temporarily for old clients, but current Raid browser flows use the canonical Raid-owned operational routes.
 
 Legacy `/admin/raffle` and `/admin/raffle/:roundId` redirect to the Raffle-owned operational surfaces. The previous `/events/raffle/admin` aliases also redirect to the same canonical operational coordinates. Current Raffle browser navigation uses `/events/raffle/manage...` directly.
 
+Legacy `/admin/discord` and `/admin/discord/role-maps` redirect to their canonical General Administration coordinates. Current Discord browser actions use `/admin/general/discord` directly.
+
 Authorized Raid and Raffle operators discover their operational surfaces contextually from `/events`. Neither module publishes its operational surface as an Administration destination.
 
-## Existing registration model
+## Legacy destination registry
 
-Modules historically published an administrative destination through `registerModuleAdministrationDestination(...)`.
+The historical `registerModuleAdministrationDestination(...)` registry has been removed.
 
-Raid and Raffle no longer publish operational surfaces through this registry. Raid permission administration is recognized directly as a global Administration concern instead.
+It encoded the old assumption that privileged module-owned surfaces needed to publish themselves as Administration destinations. Concrete pressure has now resolved the three existing cases without a replacement generic registry:
 
-The only remaining legacy registration is:
+- Raid contributes configurable policy to `Administration → Permissions` while Raid operations remain Raid-owned;
+- Raffle currently contributes only packaged-module enablement to `Administration → General`, while Raffle operations remain Raffle-owned;
+- Discord contributes durable configuration to `Administration → General`.
 
-- Discord → `/admin/discord`.
-
-That registration remains while Discord configuration and operational actions are separated. Do not add new entries or replace this registry with a speculative generalized contribution framework.
+Do not recreate a generic module-administration destination or contribution framework unless multiple future features prove a concrete shared contract that cannot remain explicit.
 
 ## Administration target
 
