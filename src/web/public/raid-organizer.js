@@ -1,13 +1,4 @@
 const diagnosticRoot = document.querySelector("[data-raid-diagnostics]");
-const scoreboard = document.querySelector(".raid-scoreboard");
-const workspace = document.querySelector(".raid-workspace");
-
-// The roster is the organizer's primary working object. Diagnostics describe the
-// roster, so keep them immediately after the assignment workspace rather than
-// between the event heading and the work itself.
-if (scoreboard instanceof HTMLElement && workspace instanceof HTMLElement) {
-  workspace.insertAdjacentElement("afterend", scoreboard);
-}
 
 function closeDiagnosticShelves() {
   if (!(diagnosticRoot instanceof HTMLElement)) return;
@@ -112,4 +103,36 @@ if (poolPanel instanceof HTMLElement && poolToggle instanceof HTMLButtonElement)
 
   window.addEventListener("pointerup", restorePoolAfterPointer, true);
   window.addEventListener("pointercancel", restorePoolAfterPointer, true);
+}
+
+for (const button of document.querySelectorAll("[data-raid-unassign]")) {
+  if (!(button instanceof HTMLButtonElement)) continue;
+
+  button.addEventListener("pointerdown", (event) => {
+    event.stopPropagation();
+  });
+
+  button.addEventListener("click", async (event) => {
+    event.stopPropagation();
+    const card = button.closest("[data-raid-participant-card]");
+    if (!(card instanceof HTMLElement)) return;
+    const signupRowId = card.dataset.signupRowId;
+    if (!signupRowId) return;
+
+    button.disabled = true;
+    try {
+      const response = await fetch(`${window.location.pathname}/unassign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ signupRowId }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error ?? "Participant could not be returned to available participants");
+      window.location.reload();
+    } catch (error) {
+      button.disabled = false;
+      const status = document.querySelector("[data-raid-action-status]");
+      if (status instanceof HTMLElement) status.textContent = error instanceof Error ? error.message : "Participant could not be returned to available participants.";
+    }
+  });
 }
