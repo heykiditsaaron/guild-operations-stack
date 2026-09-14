@@ -33,7 +33,7 @@ Those are migration conditions, not the target information architecture.
 | Raid rank permission mapping | `/admin/permissions/raid` | Administration | `Administration → Permissions → Raid` |
 | Create raid | `/events/raid/manage` | Operation | Raid-owned operational surface |
 | List raids for management | `/events/raid/manage` | Operation | Raid-owned operational surface |
-| Manage raid participation/composition | `/admin/raid/:raidId` | Operation | Raid-owned operational surface; route migration still pending |
+| Manage raid participation/composition | `/events/raid/manage/:raidId` | Operation | Raid-owned operational surface |
 | Create raffle round | `/admin/raffle` | Operation | Raffle-owned operational surface |
 | Edit listed raffle round | `/admin/raffle/:roundId` | Operation | Raffle-owned operational surface |
 | Open raffle round | `/admin/raffle` and round management | Operation | Raffle-owned operational surface |
@@ -46,7 +46,7 @@ Those are migration conditions, not the target information architecture.
 | Read/refresh available Discord roles | `/admin/discord/role-maps` | Operation supporting configuration | Remain contextual to Discord configuration or operation; do not define Administration availability |
 | Discord projection reconciliation triggered by policy change | `/admin/discord` | Operational consequence of configuration | Configuration remains administrative; reconciliation evidence remains operational |
 
-Legacy `/admin/raid` now redirects to the Raid-owned operational overview. Legacy `/admin/raid/permissions` redirects to the global Raid permission editor. Compatibility POST routes remain temporarily while existing browser scripts are migrated.
+Legacy `/admin/raid` redirects to the Raid-owned operational overview. Legacy `/admin/raid/:raidId` redirects to the Raid-owned organizer. Legacy `/admin/raid/permissions` redirects to the global Raid permission editor. Compatibility POST routes remain temporarily for old clients, but current Raid browser flows use the canonical Raid-owned operational routes.
 
 Authorized Raid creators/managers discover Raid operations contextually from `/events`; Raid operations are no longer published as an Administration destination.
 
