@@ -229,7 +229,7 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
       title: `${raid.label} · Raid Administration · OH CRIT I Pulled! Guild Operations`,
       description: raid.description ?? "Raid administration.",
       viewer,
-      stylesheets: ["admin.css", "raid-admin.css"],
+      stylesheets: ["admin.css", "raid-admin.css", "raid-iconography.css"],
       scripts: ["admin.js", "raid-admin.js"],
       secondaryNavigation: navigation,
       header: "",
