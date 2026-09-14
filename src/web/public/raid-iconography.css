@@ -1,0 +1,105 @@
+.raid-capabilities {
+  align-items: center;
+}
+
+.raid-capabilities .raid-capability-icon {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 0.3rem;
+}
+
+.raid-capability-icon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.raid-capability-icon span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.raid-participant-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 0.42rem;
+}
+
+.raid-participant-card-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.12rem;
+}
+
+.raid-participant-card-copy strong,
+.raid-participant-card-copy span {
+  min-width: 0;
+}
+
+.raid-participant-specs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.16rem;
+  max-width: 3.2rem;
+}
+
+.raid-spec-icon {
+  display: block;
+  width: 1.4rem;
+  height: 1.4rem;
+  flex: none;
+  border-radius: 0.22rem;
+  object-fit: cover;
+}
+
+.raid-spec-icon-fallback {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.4rem;
+  padding: 0.15rem 0.28rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.28rem;
+  color: #aaa69c;
+  font-size: 0.58rem;
+  line-height: 1;
+}
+
+.raid-participant-card-assigned {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.raid-participant-assigned-icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+}
+
+.raid-participant-assigned-icon .raid-spec-icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.3rem;
+}
+
+.raid-participant-assigned-icon .raid-spec-icon-fallback {
+  width: 2rem;
+  height: 2rem;
+  justify-content: center;
+  padding: 0.15rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
