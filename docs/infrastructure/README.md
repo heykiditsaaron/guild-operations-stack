@@ -22,5 +22,6 @@ Use these documents when implementing against an existing facility, operating it
 
 - [`web-rendering.md`](web-rendering.md) — shared rendering, shell, controls, navigation, origin, and asset behavior.
 - [`operational-inspection.md`](operational-inspection.md) — publishing and inspecting durable administrative operation evidence.
+- [`privileged-surface-audit.md`](privileged-surface-audit.md) — current privileged web surface classification and migration ownership across participation, operations, and administration.
 
 Infrastructure documents may repeat a doctrinal constraint briefly when required for safe use, but the authoritative design reasoning belongs in [`../doctrine/`](../doctrine/).
