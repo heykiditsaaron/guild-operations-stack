@@ -27,7 +27,6 @@ if (createForm instanceof HTMLFormElement) {
     const data = new FormData(createForm);
     const startsAt = String(data.get("startsAt") ?? "");
     const startDate = new Date(startsAt);
-    const raidSize = Number(data.get("raidSize"));
 
     if (!startsAt || !Number.isFinite(startDate.getTime())) {
       createStatus.textContent = "Choose a valid raid start time.";
@@ -44,8 +43,8 @@ if (createForm instanceof HTMLFormElement) {
           label: String(data.get("label") ?? ""),
           description: String(data.get("description") ?? ""),
           occursAt: [Math.floor(startDate.getTime() / 1000)],
+          difficulty: String(data.get("difficulty") ?? ""),
           eligibility: String(data.get("eligibility") ?? ""),
-          raidSize,
         }),
       });
 
@@ -93,7 +92,6 @@ for (const form of document.querySelectorAll("[data-raid-assign]")) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           signupRowId: form.dataset.signupRowId,
-          slotIndex: Number(data.get("slotIndex")),
           selectedSpec: String(data.get("selectedSpec") ?? ""),
           selectedRole: String(data.get("selectedRole") ?? ""),
         }),
@@ -110,12 +108,13 @@ for (const form of document.querySelectorAll("[data-raid-assign]")) {
 for (const button of document.querySelectorAll("[data-raid-unassign]")) {
   if (!(button instanceof HTMLButtonElement)) continue;
   button.addEventListener("click", async () => {
-    const slotIndex = Number(button.dataset.slotIndex);
+    const signupRowId = button.dataset.signupRowId;
+    if (!signupRowId) return;
     try {
       const response = await fetch(`${window.location.pathname}/unassign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slotIndex }),
+        body: JSON.stringify({ signupRowId }),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? "Participant could not be unassigned");
