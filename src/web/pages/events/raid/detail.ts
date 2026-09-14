@@ -5,22 +5,27 @@ import {
   assignRaidParticipation,
   assignedRaidCapabilities,
   raidEventFacts,
+  raidRosterDiagnostics,
   setRaidSignupsOpen,
-  unassignRaidSlot,
+  unassignRaidParticipation,
 } from "../../../../modules/raid/application.js";
 import { raidSignupRows } from "../../../../modules/raid/participation-view.js";
-import type { RaidRole } from "../../../../modules/raid/domain.js";
+import type { RaidDifficulty, RaidRole } from "../../../../modules/raid/domain.js";
 import type { AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage, type SecondaryNavigation } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
 
 type RaidParams = { raidId: string };
 type ToggleBody = { open?: unknown };
-type AssignBody = { signupRowId?: unknown; slotIndex?: unknown; selectedSpec?: unknown; selectedRole?: unknown };
-type UnassignBody = { slotIndex?: unknown };
+type AssignBody = { signupRowId?: unknown; selectedSpec?: unknown; selectedRole?: unknown };
+type UnassignBody = { signupRowId?: unknown };
 
 function roleLabel(role: RaidRole): string {
   return role === "damage" ? "Damage" : role === "healer" ? "Healer" : "Tank";
+}
+
+function difficultyLabel(value: RaidDifficulty): string {
+  return value[0].toUpperCase() + value.slice(1);
 }
 
 function capabilityLabel(value: string): string {
@@ -55,12 +60,13 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
     const raid = await raidEventFacts(request.params.raidId);
     if (!raid) return reply.code(404).send({ error: "Raid not found" });
 
-    const [rows, capabilities] = await Promise.all([
+    const [rows, capabilities, diagnostics] = await Promise.all([
       raidSignupRows(raid.raidId),
       assignedRaidCapabilities(raid.raidId),
+      raidRosterDiagnostics(raid.raidId),
     ]);
-    const assigned = rows.filter((row) => row.assignedSlotIndex !== null).sort((a, b) => (a.assignedSlotIndex ?? 0) - (b.assignedSlotIndex ?? 0));
-    const available = rows.filter((row) => row.assignedSlotIndex === null && !rows.some((candidate) => candidate.applicantId === row.applicantId && candidate.assignedSlotIndex !== null));
+    const assigned = rows.filter((row) => row.assignmentId !== null);
+    const available = rows.filter((row) => row.assignmentId === null && !rows.some((candidate) => candidate.applicantId === row.applicantId && candidate.assignmentId !== null));
 
     const navigation: SecondaryNavigation = {
       kind: "breadcrumb",
@@ -68,14 +74,13 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
     };
 
     const roster = assigned.length
-      ? `<ol class="raid-roster">${assigned.map((row) => `<li><strong>Slot ${row.assignedSlotIndex}</strong><span>${htmlText(row.characterName ?? row.className)} · ${htmlText(row.selectedSpec ?? "")} ${htmlText(roleLabel(row.selectedRole!))}</span><button type="button" data-raid-unassign data-slot-index="${row.assignedSlotIndex}">Unassign</button></li>`).join("")}</ol>`
+      ? `<ul class="raid-roster">${assigned.map((row) => `<li><strong>${htmlText(roleLabel(row.selectedRole!))}</strong><span>${htmlText(row.characterName ?? row.className)} · ${htmlText(row.selectedSpec ?? "")}</span><button type="button" data-raid-unassign data-signup-row-id="${htmlText(row.signupRowId)}">Unassign</button></li>`).join("")}</ul>`
       : `<p>No participants have been assigned yet.</p>`;
 
     const pool = available.length
       ? `<div class="raid-signup-pool">${available.map((row) => `<article class="raid-signup-row">
           <div><h3>${htmlText(row.characterName ?? row.className)}</h3><p>${row.realmName ? `${htmlText(row.realmName)} · ` : ""}${htmlText(row.className)}</p><p>Willing specs: ${row.willingSpecs.map(htmlText).join(", ")}</p><p>Willing roles: ${row.willingRoles.map((role) => htmlText(roleLabel(role))).join(", ")}</p></div>
           <form data-raid-assign data-signup-row-id="${htmlText(row.signupRowId)}">
-            <label><span>Slot</span><input name="slotIndex" type="number" min="1" max="${raid.raidSize}" required></label>
             <label><span>Spec</span><select name="selectedSpec" required>${row.willingSpecs.map((spec) => option(spec)).join("")}</select></label>
             <label><span>Role</span><select name="selectedRole" required>${row.willingRoles.map((role) => option(role, roleLabel(role))).join("")}</select></label>
             <button type="submit" class="button-primary">Assign</button>
@@ -88,14 +93,22 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
       ? `<ul class="raid-capabilities">${capabilities.map((capability) => `<li>${htmlText(capabilityLabel(capability))}</li>`).join("")}</ul>`
       : `<p>No capabilities are currently available from assigned participants.</p>`;
 
+    const diagnosticsBody = `<dl class="raid-roster-diagnostics">
+      <dt>Assigned</dt><dd>${diagnostics.assigned}</dd>
+      <dt>Tanks</dt><dd>${diagnostics.tanks}</dd>
+      <dt>Healers</dt><dd>${diagnostics.healers}</dd>
+      <dt>Damage</dt><dd>${diagnostics.damage}</dd>
+    </dl>`;
+
     const body = `<section class="admin-section raid-admin-summary">
         <div class="raid-admin-actions">
           <button type="button" class="button-primary" data-raid-signups-toggle data-open="${raid.signupsOpen ? "false" : "true"}">${raid.signupsOpen ? "Close signups" : "Open signups"}</button>
           <a class="button-secondary" href="/events/raid/${encodeURIComponent(raid.raidId)}">View signup page ↗</a>
         </div>
-        <dl><dt>Starts</dt><dd><time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time></dd><dt>Raid size</dt><dd>${raid.raidSize}</dd><dt>Signups</dt><dd>${raid.signupsOpen ? "Open" : "Closed"}</dd></dl>
+        <dl><dt>Starts</dt><dd><time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time></dd><dt>Difficulty</dt><dd>${htmlText(difficultyLabel(raid.difficulty))}</dd><dt>Signups</dt><dd>${raid.signupsOpen ? "Open" : "Closed"}</dd></dl>
         <p data-raid-action-status role="status" aria-live="polite"></p>
       </section>
+      <section class="admin-section"><h2>Roster diagnostic</h2>${diagnosticsBody}</section>
       <section class="admin-section"><h2>Assigned roster</h2>${roster}</section>
       <section class="admin-section"><h2>Available capabilities</h2>${capabilityBody}</section>
       <section class="admin-section"><h2>Participation pool</h2>${pool}</section>`;
@@ -130,14 +143,13 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
     const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
     if (!guildie) return reply.code(401).send({ error: "Authentication required" });
     const body = request.body ?? {};
-    if (typeof body.signupRowId !== "string" || typeof body.slotIndex !== "number" || typeof body.selectedSpec !== "string" || (body.selectedRole !== "tank" && body.selectedRole !== "healer" && body.selectedRole !== "damage")) {
+    if (typeof body.signupRowId !== "string" || typeof body.selectedSpec !== "string" || (body.selectedRole !== "tank" && body.selectedRole !== "healer" && body.selectedRole !== "damage")) {
       return reply.code(400).send({ error: "Assignment is incomplete" });
     }
     try {
       const assignmentId = await assignRaidParticipation(guildie.guildieId, {
         raidId: request.params.raidId,
         signupRowId: body.signupRowId,
-        slotIndex: body.slotIndex,
         selectedSpec: body.selectedSpec,
         selectedRole: body.selectedRole,
       });
@@ -150,9 +162,9 @@ export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: 
   app.post<{ Params: RaidParams; Body: UnassignBody }>("/admin/raid/:raidId/unassign", async (request, reply) => {
     const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
     if (!guildie) return reply.code(401).send({ error: "Authentication required" });
-    if (typeof request.body?.slotIndex !== "number") return reply.code(400).send({ error: "Slot is required" });
+    if (typeof request.body?.signupRowId !== "string") return reply.code(400).send({ error: "Participation row is required" });
     try {
-      await unassignRaidSlot(guildie.guildieId, request.params.raidId, request.body.slotIndex);
+      await unassignRaidParticipation(guildie.guildieId, request.params.raidId, request.body.signupRowId);
       return { ok: true };
     } catch (error) {
       return reply.code(400).send({ error: error instanceof Error ? error.message : "Participant could not be unassigned" });
