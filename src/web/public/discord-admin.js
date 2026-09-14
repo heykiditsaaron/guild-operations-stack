@@ -6,6 +6,8 @@ for (const element of document.querySelectorAll("[data-unix-time]")) {
   if (element instanceof HTMLTimeElement) element.dateTime = date.toISOString();
 }
 
+const discordAdministrationEndpoint = "/admin/general/discord";
+
 const moduleForm = document.querySelector("[data-discord-module-form]");
 if (moduleForm instanceof HTMLFormElement) {
   const clientId = moduleForm.querySelector("[data-discord-client-id]");
@@ -25,7 +27,7 @@ if (moduleForm instanceof HTMLFormElement) {
     save.disabled = true;
     feedback.textContent = "Saving Discord configuration…";
     try {
-      const response = await fetch("/admin/discord", {
+      const response = await fetch(discordAdministrationEndpoint, {
         method: "POST",
         headers: { Accept: "application/json", "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -69,7 +71,7 @@ if (discordForm instanceof HTMLFormElement && linkedMappingEnabled instanceof HT
     discordRefreshRoles.disabled = true;
     discordFeedback.textContent = "Refreshing Discord roles…";
     try {
-      const response = await fetch("/admin/discord", {
+      const response = await fetch(discordAdministrationEndpoint, {
         method: "POST",
         headers: { Accept: "application/json", "Content-Type": "application/json" },
         body: JSON.stringify({ action: "discord_roles.refresh" }),
@@ -119,7 +121,7 @@ if (discordForm instanceof HTMLFormElement && linkedMappingEnabled instanceof HT
       ? "Saving Discord settings and reconciling enabled role maps…"
       : "Saving Discord settings…";
     try {
-      const response = await fetch("/admin/discord", {
+      const response = await fetch(discordAdministrationEndpoint, {
         method: "POST",
         headers: { Accept: "application/json", "Content-Type": "application/json" },
         body: JSON.stringify({
