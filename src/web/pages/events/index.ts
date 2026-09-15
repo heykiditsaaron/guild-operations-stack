@@ -6,10 +6,11 @@ import {
   RAID_MANAGE_CAPABILITY,
   effectiveGuildAuthority,
 } from "../../../guild-permissions.js";
-import {
-  discoverableGuildCalendarEvents,
-  type GuildCalendarEvent,
-} from "../../../guild-events/calendar/registry.js";
+import type {
+  GuildEventOccurrence,
+  GuildEventPublication,
+} from "../../../guild-events/publication/contract.js";
+import { publishedGuildEvents } from "../../../guild-events/publication/registry.js";
 import {
   guildEventOfferings,
   type GuildEventOffering,
@@ -24,10 +25,9 @@ import { assetUrl, type AssetName, type AssetRegistry } from "../../assets.js";
 import { htmlText, renderPage } from "../../render.js";
 import { viewerForRequest } from "../../viewer.js";
 
-type EventPresentation = {
-  title: string;
-  category: string;
-  destination: string | null;
+type CalendarOccurrence = {
+  publication: GuildEventPublication;
+  occursAt: GuildEventOccurrence;
 };
 
 function humanize(value: string): string {
@@ -38,33 +38,31 @@ function humanize(value: string): string {
     .join(" ");
 }
 
-function presentationFor(event: GuildCalendarEvent): EventPresentation {
-  return {
-    title: event.title,
-    category: event.category ? humanize(event.category) : "Guild Event",
-    destination: event.destination,
-  };
-}
-
 function localTime(unixSeconds: number): string {
   const instant = new Date(unixSeconds * 1000).toISOString();
   return `<time datetime="${instant}" data-local-time-unix="${unixSeconds}" data-local-time-date-style="full">${instant}</time>`;
 }
 
-function eventTime(event: GuildCalendarEvent): string {
-  const [start, end] = event.occursAt;
+function eventTime(occurrence: GuildEventOccurrence): string {
+  const [start, end] = occurrence;
   if (end === undefined) return localTime(start);
   return `${localTime(start)}<span class="events-time-separator" aria-hidden="true">→</span>${localTime(end)}`;
 }
 
-function occursThrough(event: GuildCalendarEvent): number {
-  return event.occursAt.length === 2 ? event.occursAt[1] : event.occursAt[0];
+function occursThrough(occurrence: GuildEventOccurrence): number {
+  return occurrence.length === 2 ? occurrence[1] : occurrence[0];
 }
 
-function isHappeningNow(event: GuildCalendarEvent, nowUnix: number): boolean {
-  const [start, end] = event.occursAt;
+function isHappeningNow(occurrence: GuildEventOccurrence, nowUnix: number): boolean {
+  const [start, end] = occurrence;
   if (end === undefined) return start === nowUnix;
   return start <= nowUnix && nowUnix <= end;
+}
+
+function calendarOccurrences(publications: readonly GuildEventPublication[]): CalendarOccurrence[] {
+  return publications
+    .flatMap((publication) => publication.occursAt.map((occursAt) => ({ publication, occursAt })))
+    .sort((left, right) => left.occursAt[0] - right.occursAt[0]);
 }
 
 function offeringAvailable(
@@ -119,30 +117,36 @@ function renderOfferings(offerings: readonly GuildEventOffering[], assets: Asset
     </section>`;
 }
 
-function renderEventItem(event: GuildCalendarEvent): string {
-  const presentation = presentationFor(event);
-  const title = htmlText(presentation.title);
-  const category = htmlText(presentation.category);
-  const destination = presentation.destination ? htmlText(presentation.destination) : null;
+function renderEventItem(item: CalendarOccurrence): string {
+  const { publication, occursAt } = item;
+  const title = htmlText(publication.label);
+  const category = htmlText(publication.category ? humanize(publication.category) : "Guild Event");
+  const interaction = publication.interactions[0] ?? null;
+  const destination = interaction ? htmlText(interaction.destination) : null;
+  const actionLabel = interaction ? htmlText(interaction.label) : null;
+  const description = publication.description
+    ? `<p class="events-item-description">${htmlText(publication.description)}</p>`
+    : "";
   const content = `
       <div class="events-item-copy">
         <p class="events-item-category">${category}</p>
         <h3>${title}</h3>
-        <div class="events-item-time">${eventTime(event)}</div>
+        ${description}
+        <div class="events-item-time">${eventTime(occursAt)}</div>
       </div>
-      ${destination ? '<span class="events-item-action">View event <span aria-hidden="true">→</span></span>' : ""}`;
+      ${destination ? `<span class="events-item-action">${actionLabel} <span aria-hidden="true">→</span></span>` : ""}`;
 
   if (!destination) {
     return `<article class="events-item">${content}</article>`;
   }
 
-  return `<a class="events-item events-item-link" href="${destination}" aria-label="View ${title}">${content}</a>`;
+  return `<a class="events-item events-item-link" href="${destination}" aria-label="${actionLabel}: ${title}">${content}</a>`;
 }
 
 function renderSection(
   id: string,
   title: string,
-  events: GuildCalendarEvent[],
+  events: CalendarOccurrence[],
   state: "live" | "upcoming",
 ): string {
   if (!events.length) return "";
@@ -166,8 +170,8 @@ function emptyCalendarState(): string {
 }
 
 function renderCalendar(
-  happeningNow: GuildCalendarEvent[],
-  upcoming: GuildCalendarEvent[],
+  happeningNow: CalendarOccurrence[],
+  upcoming: CalendarOccurrence[],
 ): string {
   const calendarBody = happeningNow.length || upcoming.length
     ? `
@@ -188,10 +192,10 @@ export async function registerEventsPage(app: FastifyInstance, assets: AssetRegi
   app.get("/events", async (request, reply) => {
     const nowUnix = Math.floor(Date.now() / 1000);
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, guildie, events, guild, moduleStates] = await Promise.all([
+    const [viewer, guildie, publications, guild, moduleStates] = await Promise.all([
       viewerForRequest(sessionToken),
       authenticatedGuildie(sessionToken),
-      discoverableGuildCalendarEvents(),
+      publishedGuildEvents(),
       guildState(),
       packagedModuleStates(),
     ]);
@@ -212,9 +216,9 @@ export async function registerEventsPage(app: FastifyInstance, assets: AssetRegi
     );
     const canOperateRaffle = raffleEnabled && canAdministerRaffle;
 
-    const relevant = events.filter((event) => occursThrough(event) >= nowUnix);
-    const happeningNow = relevant.filter((event) => isHappeningNow(event, nowUnix));
-    const upcoming = relevant.filter((event) => !isHappeningNow(event, nowUnix));
+    const relevant = calendarOccurrences(publications).filter((event) => occursThrough(event.occursAt) >= nowUnix);
+    const happeningNow = relevant.filter((event) => isHappeningNow(event.occursAt, nowUnix));
+    const upcoming = relevant.filter((event) => !isHappeningNow(event.occursAt, nowUnix));
     const guildCommunity = guild ? `${htmlText(guild.name)}&apos;s community` : "the guild&apos;s community";
     const operationalEntries = [
       canOperateRaid ? `<a class="button button-secondary" href="/events/raid/manage">Manage raids</a>` : "",
