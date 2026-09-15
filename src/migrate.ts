@@ -30,6 +30,7 @@ const migrationFiles = [
   "026_global_permission_administration.sql",
   "027_guild_event_publications.sql",
   "028_raid_definition_operations.sql",
+  "029_raid_participation_withdrawal.sql",
 ];
 
 for (const migrationFile of migrationFiles) {
