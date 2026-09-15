@@ -82,7 +82,7 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
       secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Events", href: "/events" }, { label: "Raid operations", href: "/events/raid/manage" }, { label: raid.label }] },
       header: "",
       body: `<section class="raid-title-bar"><div><h1>${htmlText(raid.label)}</h1><p><time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time>${cancelled ? " · Cancelled" : ""}</p></div></section>
-        <nav class="raid-admin-actions" aria-label="Raid management mode"><a class="button-secondary" href="${basePath}">Assign</a><a class="button-primary" href="${basePath}/definition" aria-current="page">Edit</a></nav>
+        <nav class="raid-admin-actions" aria-label="Raid management mode"><a class="button-secondary" href="${basePath}?mode=assign">Assign</a><a class="button-primary" href="${basePath}/definition" aria-current="page">Edit</a></nav>
         <section class="raid-admin-setup">${edit}${cancellation}<p data-raid-definition-status role="status" aria-live="polite"></p></section>`,
     });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
