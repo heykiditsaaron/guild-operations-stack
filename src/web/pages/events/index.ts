@@ -21,7 +21,7 @@ import {
   packagedModuleStates,
   type PackagedModuleState,
 } from "../../../module-lifecycle.js";
-import { raffleGuildieCanAdminister } from "../../../modules/raffle/authorization.js";
+import { raffleGuildieCanOperate } from "../../../modules/raffle/authorization.js";
 import { assetUrl, type AssetName, type AssetRegistry } from "../../assets.js";
 import { htmlText, renderPage } from "../../render.js";
 import { viewerForRequest } from "../../viewer.js";
@@ -205,7 +205,7 @@ export async function registerEventsPage(app: FastifyInstance, assets: AssetRegi
           guildieHasGuildCapability(guildie.guildieId, RAID_MODIFY_CAPABILITY),
           guildieHasGuildCapability(guildie.guildieId, RAID_STAGE_CAPABILITY),
           guildieHasGuildCapability(guildie.guildieId, RAID_ASSIGN_CAPABILITY),
-          raffleGuildieCanAdminister(guildie.guildieId),
+          raffleGuildieCanOperate(guildie.guildieId),
         ])
       : [false, false, false, false];
     const moduleStateByKey = new Map(moduleStates.map((module) => [module.key, module]));
