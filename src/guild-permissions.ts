@@ -14,10 +14,6 @@ export const RAID_MODIFY_CAPABILITY = "raid.modify";
 export const RAID_STAGE_CAPABILITY = "raid.stage";
 export const RAID_ASSIGN_CAPABILITY = "raid.assign";
 
-// Transitional aliases for presentation code while authority enforcement uses the new table.
-export const RAID_CREATE_CAPABILITY = RAID_MODIFY_CAPABILITY;
-export const RAID_MANAGE_CAPABILITY = RAID_STAGE_CAPABILITY;
-
 export const RAFFLE_PERMISSIONS_CAPABILITY = "raffle.permissions";
 export const RAFFLE_MODIFY_CAPABILITY = "raffle.modify";
 export const RAFFLE_STAGE_CAPABILITY = "raffle.stage";
