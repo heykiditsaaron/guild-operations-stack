@@ -15,15 +15,35 @@ function decodedList(value) {
   }
 }
 
-function renderChoices(container, name, values) {
-  container.querySelectorAll("label").forEach((label) => label.remove());
+function decodedRecord(value) {
+  try {
+    const parsed = JSON.parse(decodeURIComponent(value ?? ""));
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function renderSpecChoices(container, values, icons) {
+  container.replaceChildren();
   for (const value of values) {
     const label = document.createElement("label");
-    label.className = "raid-offer-choice";
+    label.className = "raid-spec-choice";
+
     const input = document.createElement("input");
     input.type = "checkbox";
-    input.name = name;
+    input.name = "spec";
     input.value = value;
+
+    const iconUrl = typeof icons[value] === "string" ? icons[value] : null;
+    if (iconUrl) {
+      const icon = document.createElement("img");
+      icon.src = iconUrl;
+      icon.alt = "";
+      icon.loading = "lazy";
+      label.append(icon);
+    }
+
     const text = document.createElement("span");
     text.textContent = value;
     label.append(input, text);
@@ -36,13 +56,15 @@ for (const form of document.querySelectorAll("[data-raid-signup-form]")) {
 
   const selector = form.querySelector("[data-raid-participation-choice]");
   const editor = form.querySelector("[data-raid-offer-editor]");
-  const specsFieldset = form.querySelector("[data-raid-specs]");
+  const identity = form.querySelector("[data-raid-offer-identity]");
+  const specChoices = form.querySelector("[data-raid-spec-choices]");
   const status = form.querySelector("[data-raid-signup-status]");
 
   if (
     !(selector instanceof HTMLSelectElement)
     || !(editor instanceof HTMLElement)
-    || !(specsFieldset instanceof HTMLFieldSetElement)
+    || !(identity instanceof HTMLElement)
+    || !(specChoices instanceof HTMLElement)
     || !(status instanceof HTMLElement)
   ) continue;
 
@@ -53,7 +75,11 @@ for (const form of document.querySelectorAll("[data-raid-signup-form]")) {
       return;
     }
 
-    renderChoices(specsFieldset, "spec", decodedList(option.dataset.specs));
+    const displayName = option.dataset.displayName ?? option.dataset.className ?? "Participation offer";
+    const realmName = option.dataset.realmName;
+    const className = option.dataset.className;
+    identity.textContent = [displayName, realmName, className && className !== displayName ? className : null].filter(Boolean).join(" · ");
+    renderSpecChoices(specChoices, decodedList(option.dataset.specs), decodedRecord(option.dataset.specIcons));
     status.textContent = "";
     editor.hidden = false;
   };
