@@ -31,6 +31,12 @@ if (createForm instanceof HTMLFormElement) {
       return;
     }
 
+    const requirements = [];
+    const minimumItemLevel = String(data.get("minimumItemLevel") ?? "").trim();
+    const enchantsAndGems = String(data.get("enchantsAndGems") ?? "").trim();
+    if (minimumItemLevel) requirements.push({ label: "Minimum item level", value: minimumItemLevel });
+    if (enchantsAndGems) requirements.push({ label: "Enchants & gems", value: enchantsAndGems });
+
     createStatus.textContent = "Creating raid…";
     try {
       const response = await fetch("/events/raid/manage", {
@@ -42,6 +48,7 @@ if (createForm instanceof HTMLFormElement) {
           occursAt: [Math.floor(startDate.getTime() / 1000)],
           difficulty: String(data.get("difficulty") ?? ""),
           eligibility: String(data.get("eligibility") ?? ""),
+          requirements,
         }),
       });
       const payload = await response.json().catch(() => ({}));
