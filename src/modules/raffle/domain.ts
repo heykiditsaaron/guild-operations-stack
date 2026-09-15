@@ -2,7 +2,6 @@ import { randomInt } from "node:crypto";
 import type { PoolClient } from "pg";
 import { config } from "../../config.js";
 import { pool, withTransaction } from "../../db.js";
-import { requireRaffleAdmin } from "./authorization.js";
 
 export const RAFFLE_CLAIM_CUTOFF_SECONDS = 60 * 60;
 
@@ -253,7 +252,6 @@ export async function createRaffleRound(
   termsInput: RaffleRoundTerms,
   client: PoolClient | null = null,
 ): Promise<RaffleRound> {
-  await requireRaffleAdmin(actorGuildieId);
   const terms = validateTerms(termsInput);
   const createdAtUnix = unixNow();
   const executor = client ?? pool;
@@ -284,7 +282,6 @@ export async function updateRaffleRound(
   termsInput: RaffleRoundTerms,
   client: PoolClient | null = null,
 ): Promise<RaffleRound> {
-  await requireRaffleAdmin(actorGuildieId);
   const terms = validateTerms(termsInput);
   return withOptionalTransaction(client, async (transactionClient) => {
     const round = await lockedRound(transactionClient, roundId);
@@ -325,7 +322,6 @@ export async function activateRaffleRound(
   roundId: string,
   client: PoolClient | null = null,
 ): Promise<RaffleRound> {
-  await requireRaffleAdmin(actorGuildieId);
   return withOptionalTransaction(client, async (transactionClient) => {
     const round = await lockedRound(transactionClient, roundId);
     if (round.status !== "listed") {
@@ -348,7 +344,6 @@ export async function cancelRaffleRound(
   roundId: string,
   client: PoolClient | null = null,
 ): Promise<RaffleRound> {
-  await requireRaffleAdmin(actorGuildieId);
   return withOptionalTransaction(client, async (transactionClient) => {
     const round = await lockedRound(transactionClient, roundId);
     if (round.status !== "listed" && round.status !== "live") {
@@ -473,7 +468,6 @@ export async function cancelOwnRaffleClaim(claimantGuildieId: string, claimId: s
 }
 
 export async function approveRaffleClaim(actorGuildieId: string, claimId: string): Promise<void> {
-  await requireRaffleAdmin(actorGuildieId);
   await withTransaction(async (client) => {
     const claim = await lockedClaim(client, claimId);
     if (claim.round_status !== "live") {
@@ -499,7 +493,6 @@ export async function denyRaffleClaim(
   claimId: string,
   reasonInput: string,
 ): Promise<void> {
-  await requireRaffleAdmin(actorGuildieId);
   const reason = reasonInput.trim();
   if (!reason) {
     throw new RaffleRuleError("denial_reason_required", "A denial reason is required", 400);
@@ -531,7 +524,6 @@ export async function drawRaffleRound(
   roundId: string,
   client: PoolClient | null = null,
 ): Promise<RaffleRound> {
-  await requireRaffleAdmin(actorGuildieId);
   return withOptionalTransaction(client, async (transactionClient) => {
     const round = await lockedRound(transactionClient, roundId);
     if (round.status !== "live") {
