@@ -20,6 +20,7 @@ import { registerOperationsAdminPage } from "./web/pages/operations.js";
 import { registerEventsPage } from "./web/pages/events/index.js";
 import { registerRaidAdminPage } from "./web/pages/events/raid/admin.js";
 import { registerRaidAdminDetailPage } from "./web/pages/events/raid/detail.js";
+import { registerRaidDefinitionPage } from "./web/pages/events/raid/definition.js";
 import { registerRaidPage } from "./web/pages/events/raid/index.js";
 import { registerRaffleAdminPage } from "./web/pages/events/raffle/admin.js";
 import { registerRaffleClaimsPage } from "./web/pages/events/raffle/claims.js";
@@ -30,42 +31,6 @@ import { registerRaffleRoundPage } from "./web/pages/events/raffle/round.js";
 import { registerRaffleRulesPage } from "./web/pages/events/raffle/rules.js";
 import { registerHomePage } from "./web/pages/home.js";
 import { registerSiteInformationPages } from "./web/pages/site-information.js";
-
-const app = Fastify({ logger: true, disableRequestLogging: true });
-await app.register(cookie);
-registerGlobalGuildCapabilityDefinitions();
-registerRaidCapabilityDefinitions();
-registerRaffleCapabilityDefinitions();
-registerDiscordModuleAdministration();
-registerGuildCapabilityPolicyObserver();
-registerRaffleGuildEventOffering();
-app.get("/health", async () => { await pool.query("SELECT 1"); return { status: "ok" }; });
-
-async function registerEnabledModule(parent: FastifyInstance, moduleKey: PackagedModuleKey, register: (moduleApp: FastifyInstance) => Promise<void>): Promise<void> {
-  await parent.register(async (moduleApp) => {
-    moduleApp.addHook("preHandler", async (_request, reply) => { if (await packagedModuleEnabled(moduleKey)) return; return reply.code(404).send({ error: "module_disabled", module: moduleKey }); });
-    await register(moduleApp);
-  });
-}
-
-const webAssets = await loadAssetRegistry();
-await registerAssetRoutes(app, webAssets);
-await registerHomePage(app, webAssets);
-await registerSiteInformationPages(app, webAssets);
-await registerEventsPage(app, webAssets);
-await registerAdminPage(app, webAssets);
-await registerOperationsAdminPage(app, webAssets);
-await registerDiscordModule(app, webAssets);
-await registerEnabledModule(app, "raid", async (raidApp) => { await registerRaidAdminPage(raidApp, webAssets); await registerRaidAdminDetailPage(raidApp, webAssets); await registerRaidPage(raidApp, webAssets); });
-await registerEnabledModule(app, "raffle", async (raffleApp) => {
-  await registerRafflePage(raffleApp, webAssets); await registerRaffleEntryPage(raffleApp, webAssets); await registerRaffleClaimsPage(raffleApp, webAssets); await registerRaffleHistoryPage(raffleApp, webAssets); await registerRaffleRulesPage(raffleApp, webAssets); await registerRaffleRoundPage(raffleApp, webAssets); await registerRaffleAdminPage(raffleApp, webAssets); await registerRaffleRoutes(raffleApp); await registerRaffleApiV1Routes(raffleApp);
-});
-await registerAuthRoutes(app);
-await registerGuildRoutes(app);
-await registerApiV1Routes(app);
-let stopGuildRefreshScheduler: (() => void) | null = null;
-const shutdown = async (): Promise<void> => { stopGuildRefreshScheduler?.(); await app.close(); await pool.end(); };
-process.on("SIGINT", () => void shutdown());
-process.on("SIGTERM", () => void shutdown());
-await app.listen({ host: "0.0.0.0", port: config.port });
-stopGuildRefreshScheduler = startGuildRefreshScheduler(app.log);
+const app=Fastify({logger:true,disableRequestLogging:true});await app.register(cookie);registerGlobalGuildCapabilityDefinitions();registerRaidCapabilityDefinitions();registerRaffleCapabilityDefinitions();registerDiscordModuleAdministration();registerGuildCapabilityPolicyObserver();registerRaffleGuildEventOffering();app.get("/health",async()=>{await pool.query("SELECT 1");return{status:"ok"};});
+async function registerEnabledModule(parent:FastifyInstance,moduleKey:PackagedModuleKey,register:(moduleApp:FastifyInstance)=>Promise<void>):Promise<void>{await parent.register(async(moduleApp)=>{moduleApp.addHook("preHandler",async(_request,reply)=>{if(await packagedModuleEnabled(moduleKey))return;return reply.code(404).send({error:"module_disabled",module:moduleKey});});await register(moduleApp);});}
+const webAssets=await loadAssetRegistry();await registerAssetRoutes(app,webAssets);await registerHomePage(app,webAssets);await registerSiteInformationPages(app,webAssets);await registerEventsPage(app,webAssets);await registerAdminPage(app,webAssets);await registerOperationsAdminPage(app,webAssets);await registerDiscordModule(app,webAssets);await registerEnabledModule(app,"raid",async(raidApp)=>{await registerRaidAdminPage(raidApp,webAssets);await registerRaidAdminDetailPage(raidApp,webAssets);await registerRaidDefinitionPage(raidApp,webAssets);await registerRaidPage(raidApp,webAssets);});await registerEnabledModule(app,"raffle",async(raffleApp)=>{await registerRafflePage(raffleApp,webAssets);await registerRaffleEntryPage(raffleApp,webAssets);await registerRaffleClaimsPage(raffleApp,webAssets);await registerRaffleHistoryPage(raffleApp,webAssets);await registerRaffleRulesPage(raffleApp,webAssets);await registerRaffleRoundPage(raffleApp,webAssets);await registerRaffleAdminPage(raffleApp,webAssets);await registerRaffleRoutes(raffleApp);await registerRaffleApiV1Routes(raffleApp);});await registerAuthRoutes(app);await registerGuildRoutes(app);await registerApiV1Routes(app);let stopGuildRefreshScheduler:(()=>void)|null=null;const shutdown=async():Promise<void>=>{stopGuildRefreshScheduler?.();await app.close();await pool.end();};process.on("SIGINT",()=>void shutdown());process.on("SIGTERM",()=>void shutdown());await app.listen({host:"0.0.0.0",port:config.port});stopGuildRefreshScheduler=startGuildRefreshScheduler(app.log);
