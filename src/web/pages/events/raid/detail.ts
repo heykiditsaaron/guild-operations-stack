@@ -3,6 +3,7 @@ import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
 import {
   GuildCapabilityDeniedError,
   RAID_ASSIGN_CAPABILITY,
+  RAID_MODIFY_CAPABILITY,
   RAID_STAGE_CAPABILITY,
   guildieHasGuildCapabilityOrOperator,
 } from "../../../../guild-permissions.js";
@@ -157,13 +158,15 @@ async function renderRaidOrganizer(
 ) {
   const sessionToken = request.cookies[SESSION_COOKIE_NAME];
   const [viewer, guildie] = await Promise.all([viewerForRequest(sessionToken), authenticatedGuildie(sessionToken)]);
-  const [canStage, canAssign] = guildie
+  const [canModify, canStage, canAssign] = guildie
     ? await Promise.all([
+        guildieHasGuildCapabilityOrOperator(guildie.guildieId, RAID_MODIFY_CAPABILITY),
         guildieHasGuildCapabilityOrOperator(guildie.guildieId, RAID_STAGE_CAPABILITY),
         guildieHasGuildCapabilityOrOperator(guildie.guildieId, RAID_ASSIGN_CAPABILITY),
       ])
-    : [false, false];
-  const authorized = canStage || canAssign;
+    : [false, false, false];
+  const canUseAssign = canStage || canAssign;
+  const authorized = canModify || canUseAssign;
   if (!guildie || !authorized) {
     const html = renderPage(assets, {
       pathname: request.url,
@@ -175,6 +178,9 @@ async function renderRaidOrganizer(
       body: `<section class="admin-unavailable"><h2>Raid operations are not available for this account.</h2></section>`,
     });
     return reply.code(guildie ? 403 : 401).header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
+  }
+  if (!canUseAssign && canModify) {
+    return reply.redirect(`/events/raid/manage/${encodeURIComponent(request.params.raidId)}/definition`);
   }
 
   const raid = await raidEventFacts(request.params.raidId);
@@ -248,6 +254,7 @@ async function renderRaidOrganizer(
     </section>`
     : `<section class="raid-workspace">${diagnosticsBody}</section>`;
 
+  const basePath = `/events/raid/manage/${encodeURIComponent(raid.raidId)}`;
   const body = `<section class="raid-title-bar">
       <div>
         <h1>${htmlText(raid.label)}</h1>
@@ -258,6 +265,7 @@ async function renderRaidOrganizer(
         <a class="button-secondary" href="/events/raid/${encodeURIComponent(raid.raidId)}">View signup page ↗</a>
       </div>
     </section>
+    <nav class="raid-admin-actions" aria-label="Raid management mode"><a class="button-primary" href="${basePath}" aria-current="page">Assign</a>${canModify || canStage ? `<a class="button-secondary" href="${basePath}/definition">Edit</a>` : ""}</nav>
     ${assignmentWorkspace}
     <section class="raid-scoreboard" aria-labelledby="raid-scoreboard-heading">
       <h2 id="raid-scoreboard-heading">Raid diagnostics</h2>
