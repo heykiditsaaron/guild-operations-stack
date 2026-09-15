@@ -1,9 +1,9 @@
 import {
   GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY,
   MODULES_CONFIGURE_CAPABILITY,
-  RAID_PERMISSIONS_CAPABILITY,
   effectiveGuildAuthority,
 } from "../guild-permissions.js";
+import { canAdministerGuildPermissions } from "../guild-capability-policy.js";
 import { DISCORD_ADMIN_CAPABILITY } from "../modules/discord/authorization.js";
 
 export type AdministrationAvailability = {
@@ -29,7 +29,7 @@ export async function administrationAvailabilityForGuildie(
   if (!authority) return unavailableAdministration;
 
   const canConfigureModules = authority.operator || authority.capabilities.includes(MODULES_CONFIGURE_CAPABILITY);
-  const canConfigurePermissions = authority.operator || authority.capabilities.includes(RAID_PERMISSIONS_CAPABILITY);
+  const canConfigurePermissions = await canAdministerGuildPermissions(guildieId);
   const canConfigureDiscord = authority.capabilities.includes(DISCORD_ADMIN_CAPABILITY);
   const canConfigureGuildRefreshSchedule = authority.capabilities.includes(GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY);
   const available = canConfigureModules

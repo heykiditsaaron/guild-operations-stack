@@ -4,6 +4,7 @@ import { registerApiV1Routes } from "./api-v1-routes.js";
 import { config } from "./config.js";
 import { pool } from "./db.js";
 import { registerAuthRoutes } from "./auth.js";
+import { registerGlobalGuildCapabilityDefinitions, registerGuildCapabilityPolicyObserver } from "./guild-capability-policy.js";
 import { registerGuildRoutes } from "./guild-routes.js";
 import { startGuildRefreshScheduler } from "./guild-refresh-scheduler.js";
 import { packagedModuleEnabled, type PackagedModuleKey } from "./module-lifecycle.js";
@@ -12,6 +13,7 @@ import { registerRaffleApiV1Routes } from "./modules/raffle/api-v1-routes.js";
 import { reconcileRaffleCalendarListingDestinations } from "./modules/raffle/calendar-listing.js";
 import { registerRaffleGuildEventOffering } from "./modules/raffle/offering.js";
 import { registerRaffleRoutes } from "./modules/raffle/routes.js";
+import { registerRaidCapabilityDefinitions } from "./modules/raid/permissions.js";
 import { loadAssetRegistry, registerAssetRoutes } from "./web/assets.js";
 import { registerAdminPage } from "./web/pages/admin.js";
 import { registerOperationsAdminPage } from "./web/pages/operations.js";
@@ -19,7 +21,6 @@ import { registerEventsPage } from "./web/pages/events/index.js";
 import { registerRaidAdminPage } from "./web/pages/events/raid/admin.js";
 import { registerRaidAdminDetailPage } from "./web/pages/events/raid/detail.js";
 import { registerRaidPage } from "./web/pages/events/raid/index.js";
-import { registerRaidPermissionsPage } from "./web/pages/events/raid/permissions.js";
 import { registerRaffleAdminPage } from "./web/pages/events/raffle/admin.js";
 import { registerRaffleClaimsPage } from "./web/pages/events/raffle/claims.js";
 import { registerRaffleEntryPage } from "./web/pages/events/raffle/enter.js";
@@ -30,30 +31,19 @@ import { registerRaffleRulesPage } from "./web/pages/events/raffle/rules.js";
 import { registerHomePage } from "./web/pages/home.js";
 import { registerSiteInformationPages } from "./web/pages/site-information.js";
 
-const app = Fastify({
-  logger: true,
-  disableRequestLogging: true,
-});
+const app = Fastify({ logger: true, disableRequestLogging: true });
 await app.register(cookie);
+registerGlobalGuildCapabilityDefinitions();
+registerRaidCapabilityDefinitions();
 registerDiscordModuleAdministration();
+registerGuildCapabilityPolicyObserver();
 registerRaffleGuildEventOffering();
 await reconcileRaffleCalendarListingDestinations();
+app.get("/health", async () => { await pool.query("SELECT 1"); return { status: "ok" }; });
 
-app.get("/health", async () => {
-  await pool.query("SELECT 1");
-  return { status: "ok" };
-});
-
-async function registerEnabledModule(
-  parent: FastifyInstance,
-  moduleKey: PackagedModuleKey,
-  register: (moduleApp: FastifyInstance) => Promise<void>,
-): Promise<void> {
+async function registerEnabledModule(parent: FastifyInstance, moduleKey: PackagedModuleKey, register: (moduleApp: FastifyInstance) => Promise<void>): Promise<void> {
   await parent.register(async (moduleApp) => {
-    moduleApp.addHook("preHandler", async (_request, reply) => {
-      if (await packagedModuleEnabled(moduleKey)) return;
-      return reply.code(404).send({ error: "module_disabled", module: moduleKey });
-    });
+    moduleApp.addHook("preHandler", async (_request, reply) => { if (await packagedModuleEnabled(moduleKey)) return; return reply.code(404).send({ error: "module_disabled", module: moduleKey }); });
     await register(moduleApp);
   });
 }
@@ -66,40 +56,16 @@ await registerEventsPage(app, webAssets);
 await registerAdminPage(app, webAssets);
 await registerOperationsAdminPage(app, webAssets);
 await registerDiscordModule(app, webAssets);
-await registerRaidPermissionsPage(app, webAssets);
-
-await registerEnabledModule(app, "raid", async (raidApp) => {
-  await registerRaidAdminPage(raidApp, webAssets);
-  await registerRaidAdminDetailPage(raidApp, webAssets);
-  await registerRaidPage(raidApp, webAssets);
-});
-
+await registerEnabledModule(app, "raid", async (raidApp) => { await registerRaidAdminPage(raidApp, webAssets); await registerRaidAdminDetailPage(raidApp, webAssets); await registerRaidPage(raidApp, webAssets); });
 await registerEnabledModule(app, "raffle", async (raffleApp) => {
-  await registerRafflePage(raffleApp, webAssets);
-  await registerRaffleEntryPage(raffleApp, webAssets);
-  await registerRaffleClaimsPage(raffleApp, webAssets);
-  await registerRaffleHistoryPage(raffleApp, webAssets);
-  await registerRaffleRulesPage(raffleApp, webAssets);
-  await registerRaffleRoundPage(raffleApp, webAssets);
-  await registerRaffleAdminPage(raffleApp, webAssets);
-  await registerRaffleRoutes(raffleApp);
-  await registerRaffleApiV1Routes(raffleApp);
+  await registerRafflePage(raffleApp, webAssets); await registerRaffleEntryPage(raffleApp, webAssets); await registerRaffleClaimsPage(raffleApp, webAssets); await registerRaffleHistoryPage(raffleApp, webAssets); await registerRaffleRulesPage(raffleApp, webAssets); await registerRaffleRoundPage(raffleApp, webAssets); await registerRaffleAdminPage(raffleApp, webAssets); await registerRaffleRoutes(raffleApp); await registerRaffleApiV1Routes(raffleApp);
 });
-
 await registerAuthRoutes(app);
 await registerGuildRoutes(app);
 await registerApiV1Routes(app);
-
 let stopGuildRefreshScheduler: (() => void) | null = null;
-
-const shutdown = async (): Promise<void> => {
-  stopGuildRefreshScheduler?.();
-  await app.close();
-  await pool.end();
-};
-
+const shutdown = async (): Promise<void> => { stopGuildRefreshScheduler?.(); await app.close(); await pool.end(); };
 process.on("SIGINT", () => void shutdown());
 process.on("SIGTERM", () => void shutdown());
-
 await app.listen({ host: "0.0.0.0", port: config.port });
 stopGuildRefreshScheduler = startGuildRefreshScheduler(app.log);
