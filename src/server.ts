@@ -11,6 +11,7 @@ import { packagedModuleEnabled, type PackagedModuleKey } from "./module-lifecycl
 import { registerDiscordModule, registerDiscordModuleAdministration } from "./modules/discord/module.js";
 import { registerRaffleApiV1Routes } from "./modules/raffle/api-v1-routes.js";
 import { registerRaffleGuildEventOffering } from "./modules/raffle/offering.js";
+import { registerRaffleCapabilityDefinitions } from "./modules/raffle/permissions.js";
 import { registerRaffleRoutes } from "./modules/raffle/routes.js";
 import { registerRaidCapabilityDefinitions } from "./modules/raid/permissions.js";
 import { loadAssetRegistry, registerAssetRoutes } from "./web/assets.js";
@@ -34,6 +35,7 @@ const app = Fastify({ logger: true, disableRequestLogging: true });
 await app.register(cookie);
 registerGlobalGuildCapabilityDefinitions();
 registerRaidCapabilityDefinitions();
+registerRaffleCapabilityDefinitions();
 registerDiscordModuleAdministration();
 registerGuildCapabilityPolicyObserver();
 registerRaffleGuildEventOffering();
