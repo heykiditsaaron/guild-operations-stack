@@ -51,6 +51,12 @@ export type SubmitRaidParticipationRowInput = {
   willingSpecs: readonly string[];
 };
 
+export type WithdrawRaidParticipationRowInput = {
+  raidId: string;
+  signupRowId: string;
+  applicantAnchor: RaidApplicantAnchor;
+};
+
 export type AssignRaidParticipationInput = {
   raidId: string;
   signupRowId: string;
