@@ -1,8 +1,49 @@
 .raid-participation,
 .raid-my-offers,
-.raid-signup-state {
+.raid-signup-state,
+.raid-requirements {
   display: grid;
   gap: 1rem;
+}
+
+.raid-requirements {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--border-subtle, #2a2a2f);
+  border-radius: 1rem;
+  background: var(--surface-raised, #141419);
+}
+
+.raid-requirements h2,
+.raid-requirements p {
+  margin: 0;
+}
+
+.raid-requirements dl {
+  display: grid;
+  gap: .75rem;
+  margin: 0;
+}
+
+.raid-requirements dl > div {
+  display: grid;
+  grid-template-columns: minmax(10rem, 1fr) 2fr;
+  gap: 1rem;
+  align-items: baseline;
+}
+
+.raid-requirements dt {
+  font-weight: 700;
+}
+
+.raid-requirements dd {
+  margin: 0;
+}
+
+.raid-cancelled {
+  padding: 1rem;
+  border: 1px solid var(--border-subtle, #2a2a2f);
+  border-radius: 1rem;
 }
 
 .raid-offer-form {
@@ -63,4 +104,11 @@
   border-radius: 1rem;
   padding: 1rem;
   background: var(--surface-raised, #141419);
+}
+
+@media (max-width: 40rem) {
+  .raid-requirements dl > div {
+    grid-template-columns: 1fr;
+    gap: .2rem;
+  }
 }
