@@ -8,9 +8,17 @@ export const GUILD_REFRESH_CAPABILITY = "guild.refresh";
 export const GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY = "guild.refresh.schedule.configure";
 export const MODULES_CONFIGURE_CAPABILITY = "modules.configure";
 export const OPERATIONS_INSPECT_CAPABILITY = "operations.inspect";
-export const RAID_CREATE_CAPABILITY = "raid.create";
-export const RAID_MANAGE_CAPABILITY = "raid.manage";
+
 export const RAID_PERMISSIONS_CAPABILITY = "raid.permissions";
+export const RAID_MODIFY_CAPABILITY = "raid.modify";
+export const RAID_STAGE_CAPABILITY = "raid.stage";
+export const RAID_ASSIGN_CAPABILITY = "raid.assign";
+
+export const RAFFLE_PERMISSIONS_CAPABILITY = "raffle.permissions";
+export const RAFFLE_MODIFY_CAPABILITY = "raffle.modify";
+export const RAFFLE_STAGE_CAPABILITY = "raffle.stage";
+export const RAFFLE_CLAIMS_CAPABILITY = "raffle.claims";
+export const RAFFLE_DRAW_CAPABILITY = "raffle.draw";
 
 export type EffectiveGuildAuthority = {
   guildieId: string;
