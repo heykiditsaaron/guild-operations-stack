@@ -15,22 +15,17 @@ function decodedList(value) {
   }
 }
 
-function renderCheckboxes(container, name, values) {
+function renderChoices(container, name, values) {
   container.querySelectorAll("label").forEach((label) => label.remove());
   for (const value of values) {
     const label = document.createElement("label");
+    label.className = "raid-offer-choice";
     const input = document.createElement("input");
     input.type = "checkbox";
     input.name = name;
     input.value = value;
     const text = document.createElement("span");
-    text.textContent = value === "damage"
-      ? "Damage"
-      : value === "healer"
-        ? "Healer"
-        : value === "tank"
-          ? "Tank"
-          : value;
+    text.textContent = value;
     label.append(input, text);
     container.append(label);
   }
@@ -41,17 +36,13 @@ for (const form of document.querySelectorAll("[data-raid-signup-form]")) {
 
   const selector = form.querySelector("[data-raid-participation-choice]");
   const editor = form.querySelector("[data-raid-offer-editor]");
-  const identity = form.querySelector("[data-raid-offer-identity]");
   const specsFieldset = form.querySelector("[data-raid-specs]");
-  const rolesFieldset = form.querySelector("[data-raid-roles]");
   const status = form.querySelector("[data-raid-signup-status]");
 
   if (
     !(selector instanceof HTMLSelectElement)
     || !(editor instanceof HTMLElement)
-    || !(identity instanceof HTMLElement)
     || !(specsFieldset instanceof HTMLFieldSetElement)
-    || !(rolesFieldset instanceof HTMLFieldSetElement)
     || !(status instanceof HTMLElement)
   ) continue;
 
@@ -59,17 +50,10 @@ for (const form of document.querySelectorAll("[data-raid-signup-form]")) {
     const option = selector.selectedOptions[0];
     if (!(option instanceof HTMLOptionElement) || !option.value) {
       editor.hidden = true;
-      identity.textContent = "";
       return;
     }
 
-    const className = option.dataset.className ?? "";
-    const kind = option.dataset.kind;
-    identity.textContent = kind === "class"
-      ? `Class declaration · ${className}`
-      : `${option.textContent ?? "Character"}`;
-    renderCheckboxes(specsFieldset, "spec", decodedList(option.dataset.specs));
-    renderCheckboxes(rolesFieldset, "role", decodedList(option.dataset.roles));
+    renderChoices(specsFieldset, "spec", decodedList(option.dataset.specs));
     status.textContent = "";
     editor.hidden = false;
   };
@@ -87,19 +71,13 @@ for (const form of document.querySelectorAll("[data-raid-signup-form]")) {
     const specs = [...form.querySelectorAll('input[name="spec"]:checked')]
       .filter((input) => input instanceof HTMLInputElement)
       .map((input) => input.value);
-    const roles = [...form.querySelectorAll('input[name="role"]:checked')]
-      .filter((input) => input instanceof HTMLInputElement)
-      .map((input) => input.value);
 
-    if (specs.length === 0 || roles.length === 0) {
-      status.textContent = "Choose at least one specialization and one role.";
+    if (specs.length === 0) {
+      status.textContent = "Choose at least one specialization.";
       return;
     }
 
-    const body = {
-      willingSpecs: specs,
-      willingRoles: roles,
-    };
+    const body = { willingSpecs: specs };
 
     if (option.dataset.kind === "class") {
       body.declaredClass = option.dataset.className;
