@@ -2,9 +2,10 @@ import type { FastifyInstance } from "fastify";
 import { guildState } from "../../../application-state.js";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../auth.js";
 import {
-  RAID_CREATE_CAPABILITY,
-  RAID_MANAGE_CAPABILITY,
-  effectiveGuildAuthority,
+  RAID_ASSIGN_CAPABILITY,
+  RAID_MODIFY_CAPABILITY,
+  RAID_STAGE_CAPABILITY,
+  guildieHasGuildCapability,
 } from "../../../guild-permissions.js";
 import type {
   GuildEventOccurrence,
@@ -199,21 +200,19 @@ export async function registerEventsPage(app: FastifyInstance, assets: AssetRegi
       guildState(),
       packagedModuleStates(),
     ]);
-    const [authority, canAdministerRaffle] = guildie
+    const [canModifyRaid, canStageRaid, canAssignRaid, canAdministerRaffle] = guildie
       ? await Promise.all([
-          effectiveGuildAuthority(guildie.guildieId),
+          guildieHasGuildCapability(guildie.guildieId, RAID_MODIFY_CAPABILITY),
+          guildieHasGuildCapability(guildie.guildieId, RAID_STAGE_CAPABILITY),
+          guildieHasGuildCapability(guildie.guildieId, RAID_ASSIGN_CAPABILITY),
           raffleGuildieCanAdminister(guildie.guildieId),
         ])
-      : [null, false];
+      : [false, false, false, false];
     const moduleStateByKey = new Map(moduleStates.map((module) => [module.key, module]));
     const offerings = guildEventOfferings().filter((offering) => offeringAvailable(offering.destination, moduleStateByKey));
     const raidEnabled = moduleStateByKey.get("raid")?.enabled !== false;
     const raffleEnabled = moduleStateByKey.get("raffle")?.enabled !== false;
-    const canOperateRaid = raidEnabled && Boolean(
-      authority?.operator
-      || authority?.capabilities.includes(RAID_CREATE_CAPABILITY)
-      || authority?.capabilities.includes(RAID_MANAGE_CAPABILITY),
-    );
+    const canOperateRaid = raidEnabled && (canModifyRaid || canStageRaid || canAssignRaid);
     const canOperateRaffle = raffleEnabled && canAdministerRaffle;
 
     const relevant = calendarOccurrences(publications).filter((event) => occursThrough(event.occursAt) >= nowUnix);
