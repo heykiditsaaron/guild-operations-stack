@@ -1,4 +1,8 @@
-export type GuildEventOccursAt = readonly [number] | readonly [number, number];
+export type UnixTimestamp = number;
+
+export type GuildEventOccurrence =
+  | readonly [UnixTimestamp]
+  | readonly [UnixTimestamp, UnixTimestamp];
 
 export type GuildEventInteraction = {
   kind: string;
@@ -8,22 +12,22 @@ export type GuildEventInteraction = {
 
 export type GuildEventPublicationInput = {
   publicationId: string;
-  title: string;
+  label: string;
+  occursAt: readonly GuildEventOccurrence[];
   description?: string | null;
-  occursAt: GuildEventOccursAt;
-  category: string;
+  category?: string | null;
   tags?: readonly string[];
   interactions?: readonly GuildEventInteraction[];
 };
 
 export type GuildEventPublication = {
   publicationId: string;
-  title: string;
+  label: string;
+  occursAt: GuildEventOccurrence[];
   description: string | null;
-  occursAt: GuildEventOccursAt;
-  category: string;
+  category: string | null;
   tags: string[];
   interactions: GuildEventInteraction[];
-  publishedAtUnix: number;
-  updatedAtUnix: number;
+  publishedAtUnix: UnixTimestamp;
+  updatedAtUnix: UnixTimestamp;
 };
