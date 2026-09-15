@@ -23,7 +23,7 @@ import {
   type RaidBuffTrait,
 } from "../../../../wow-iconography.js";
 import { allWowTraits, specHasTrait, traitsForSpec, type WowTrait } from "../../../../wow-traits/registry.js";
-import type { AssetRegistry } from "../../../assets.js";
+import type { AssetName, AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage, type SecondaryNavigation } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
 
@@ -272,13 +272,16 @@ async function renderRaidOrganizer(
       </form>
     </dialog>` : ""}`;
 
+  const scripts: AssetName[] = ["admin.js", "raid-admin.js"];
+  if (canAssign) scripts.push("raid-organizer.js");
+
   const html = renderPage(assets, {
     pathname: request.url,
     title: `${raid.label} · Raid Operations · OH CRIT I Pulled! Guild Operations`,
     description: raid.description ?? "Raid operations.",
     viewer,
     stylesheets: ["admin.css", "raid-admin.css", "raid-iconography.css", "raid-organizer.css"],
-    scripts: ["admin.js", "raid-admin.js", ...(canAssign ? ["raid-organizer.js"] : [])],
+    scripts,
     secondaryNavigation: navigation,
     header: "",
     body,
