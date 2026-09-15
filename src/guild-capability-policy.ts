@@ -8,6 +8,7 @@ import {
   OPERATIONS_INSPECT_CAPABILITY,
   type GuildCapability,
   effectiveGuildAuthority,
+  guildieHasGuildCapability,
 } from "./guild-permissions.js";
 import { registerGuildRefreshObserver } from "./guild-refresh-observers.js";
 import { isConfiguredOperator } from "./operator-authority.js";
@@ -51,10 +52,23 @@ export function registerGuildCapabilityPolicyObserver(): void {
 }
 export function registeredGuildCapabilityDefinitions(): GuildCapabilityDefinition[] { return [...definitions.values()]; }
 
-export async function canAdministerGuildPermissions(guildieId: string, guildId: string = config.guild.id): Promise<boolean> {
+async function hasGlobalPermissionAdministration(guildieId: string, guildId: string): Promise<boolean> {
   if (isConfiguredOperator(guildieId)) return true;
   const authority = await effectiveGuildAuthority(guildieId, guildId);
   return authority?.rankIndex === 0;
+}
+
+async function canAdministerCapabilityDefinition(guildieId: string, definition: GuildCapabilityDefinition, guildId: string): Promise<boolean> {
+  if (await hasGlobalPermissionAdministration(guildieId, guildId)) return true;
+  if (definition.namespace === "global") return false;
+  return guildieHasGuildCapability(guildieId, `${definition.namespace}.permissions`, guildId);
+}
+
+export async function canAdministerGuildPermissions(guildieId: string, guildId: string = config.guild.id): Promise<boolean> {
+  if (await hasGlobalPermissionAdministration(guildieId, guildId)) return true;
+  const namespaces = [...new Set(registeredGuildCapabilityDefinitions().map((definition) => definition.namespace).filter((namespace) => namespace !== "global"))];
+  const checks = await Promise.all(namespaces.map((namespace) => guildieHasGuildCapability(guildieId, `${namespace}.permissions`, guildId)));
+  return checks.some(Boolean);
 }
 export async function requireGuildPermissionAdministration(guildieId: string, guildId: string = config.guild.id): Promise<void> {
   if (!await canAdministerGuildPermissions(guildieId, guildId)) throw new Error("Guildie cannot administer guild permissions");
@@ -103,6 +117,17 @@ export async function guildCapabilityPolicies(guildId: string = config.guild.id)
   };
 }
 
+export async function guildCapabilityPoliciesForActor(guildieId: string, guildId: string = config.guild.id): Promise<GuildCapabilityPolicySet> {
+  const policies = await guildCapabilityPolicies(guildId);
+  if (await hasGlobalPermissionAdministration(guildieId, guildId)) return policies;
+  const allowedNamespaces = new Set<string>();
+  for (const capability of policies.capabilities) {
+    if (capability.namespace === "global" || allowedNamespaces.has(capability.namespace)) continue;
+    if (await guildieHasGuildCapability(guildieId, `${capability.namespace}.permissions`, guildId)) allowedNamespaces.add(capability.namespace);
+  }
+  return { ranks: policies.ranks, capabilities: policies.capabilities.filter((capability) => allowedNamespaces.has(capability.namespace)) };
+}
+
 export async function permittedGuildRanksForCapability(capability: GuildCapability, guildId: string = config.guild.id): Promise<number[]> {
   await ensureGuildCapabilityPolicies(guildId);
   const result = await pool.query<{ permitted_ranks: number[] }>(`SELECT permitted_ranks FROM guild_capability_policy_configuration WHERE guild_id = $1 AND capability = $2`, [guildId, capability]);
@@ -110,8 +135,9 @@ export async function permittedGuildRanksForCapability(capability: GuildCapabili
 }
 
 export async function setGuildCapabilityPermittedRanks(actorGuildieId: string, capability: GuildCapability, permittedRanks: readonly number[], guildId: string = config.guild.id): Promise<number[]> {
-  await requireGuildPermissionAdministration(actorGuildieId, guildId);
-  if (!definitions.has(capability)) throw new Error("Unknown configurable guild capability");
+  const definition = definitions.get(capability);
+  if (!definition) throw new Error("Unknown configurable guild capability");
+  if (!await canAdministerCapabilityDefinition(actorGuildieId, definition, guildId)) throw new Error("Guildie cannot administer guild permissions");
   if (permittedRanks.some((rankIndex) => !Number.isInteger(rankIndex) || rankIndex < 0)) throw new Error("Guild permission rank is invalid");
   const normalized = configurableRanks(permittedRanks);
   await withTransaction(async (client) => {
