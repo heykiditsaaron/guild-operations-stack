@@ -11,22 +11,16 @@ export type RaidAdministrationEvent = {
   eligibility: RaidEligibility;
   difficulty: RaidDifficulty;
   signupsOpen: boolean;
+  cancelledAtUnix: number | null;
 };
 
 export async function raidsForAdministration(): Promise<RaidAdministrationEvent[]> {
   const result = await pool.query<{
-    raid_id: string;
-    label: string;
-    description: string | null;
-    occurs_start_unix: string;
-    occurs_end_unix: string | null;
-    tags: string[];
-    eligibility: RaidEligibility;
-    difficulty: RaidDifficulty;
-    signups_open: boolean;
+    raid_id: string; label: string; description: string | null; occurs_start_unix: string; occurs_end_unix: string | null;
+    tags: string[]; eligibility: RaidEligibility; difficulty: RaidDifficulty; signups_open: boolean; cancelled_at_unix: string | null;
   }>(
     `SELECT raid_id, label, description, occurs_start_unix, occurs_end_unix,
-            tags, eligibility, difficulty, signups_open
+            tags, eligibility, difficulty, signups_open, cancelled_at_unix
        FROM raid_events
       WHERE guild_id = $1
       ORDER BY occurs_start_unix ASC, created_at_unix ASC`,
@@ -37,14 +31,9 @@ export async function raidsForAdministration(): Promise<RaidAdministrationEvent[
     const start = Number(row.occurs_start_unix);
     const end = row.occurs_end_unix === null ? null : Number(row.occurs_end_unix);
     return {
-      raidId: row.raid_id,
-      label: row.label,
-      description: row.description,
-      occursAt: end === null ? [start] : [start, end],
-      tags: row.tags,
-      eligibility: row.eligibility,
-      difficulty: row.difficulty,
-      signupsOpen: row.signups_open,
+      raidId: row.raid_id, label: row.label, description: row.description, occursAt: end === null ? [start] : [start, end], tags: row.tags,
+      eligibility: row.eligibility, difficulty: row.difficulty, signupsOpen: row.signups_open,
+      cancelledAtUnix: row.cancelled_at_unix === null ? null : Number(row.cancelled_at_unix),
     };
   });
 }
