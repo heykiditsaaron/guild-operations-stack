@@ -10,6 +10,7 @@ for (const element of document.querySelectorAll("[data-raid-definition-start]"))
 const form = document.querySelector("[data-raid-definition-form]");
 const status = document.querySelector("[data-raid-definition-status]");
 function setStatus(message) { if (status instanceof HTMLElement) status.textContent = message; }
+function manageBasePath() { return window.location.pathname.replace(/\/definition\/?$/, ""); }
 
 if (form instanceof HTMLFormElement) {
   form.addEventListener("submit", async (event) => {
@@ -25,7 +26,7 @@ if (form instanceof HTMLFormElement) {
     if (enchantsAndGems) requirements.push({ label: "Enchants & gems", value: enchantsAndGems });
     setStatus("Saving raid…");
     try {
-      const response = await fetch(`${window.location.pathname}/definition`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ label:String(data.get("label")??""), description:String(data.get("description")??""), occursAt:[Math.floor(startDate.getTime()/1000)], difficulty:String(data.get("difficulty")??""), eligibility:String(data.get("eligibility")??""), requirements }) });
+      const response = await fetch(`${manageBasePath()}/definition`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ label:String(data.get("label")??""), description:String(data.get("description")??""), occursAt:[Math.floor(startDate.getTime()/1000)], difficulty:String(data.get("difficulty")??""), eligibility:String(data.get("eligibility")??""), requirements }) });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? "Raid could not be saved");
       window.location.reload();
@@ -39,7 +40,7 @@ if (cancel instanceof HTMLButtonElement) {
     if (!window.confirm("Cancel this raid? Its participation history will be preserved, but it will be withdrawn from the calendar.")) return;
     setStatus("Cancelling raid…");
     try {
-      const response = await fetch(`${window.location.pathname}/cancel`, { method: "POST" });
+      const response = await fetch(`${manageBasePath()}/cancel`, { method: "POST" });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? "Raid could not be cancelled");
       window.location.reload();
