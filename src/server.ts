@@ -10,7 +10,6 @@ import { startGuildRefreshScheduler } from "./guild-refresh-scheduler.js";
 import { packagedModuleEnabled, type PackagedModuleKey } from "./module-lifecycle.js";
 import { registerDiscordModule, registerDiscordModuleAdministration } from "./modules/discord/module.js";
 import { registerRaffleApiV1Routes } from "./modules/raffle/api-v1-routes.js";
-import { reconcileRaffleCalendarListingDestinations } from "./modules/raffle/calendar-listing.js";
 import { registerRaffleGuildEventOffering } from "./modules/raffle/offering.js";
 import { registerRaffleRoutes } from "./modules/raffle/routes.js";
 import { registerRaidCapabilityDefinitions } from "./modules/raid/permissions.js";
@@ -38,7 +37,6 @@ registerRaidCapabilityDefinitions();
 registerDiscordModuleAdministration();
 registerGuildCapabilityPolicyObserver();
 registerRaffleGuildEventOffering();
-await reconcileRaffleCalendarListingDestinations();
 app.get("/health", async () => { await pool.query("SELECT 1"); return { status: "ok" }; });
 
 async function registerEnabledModule(parent: FastifyInstance, moduleKey: PackagedModuleKey, register: (moduleApp: FastifyInstance) => Promise<void>): Promise<void> {
