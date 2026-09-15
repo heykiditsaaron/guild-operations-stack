@@ -131,6 +131,7 @@ export async function raidSignupRows(raidId: string): Promise<RaidSignupRowView[
       AND wcp.character_id = rr.character_id
      LEFT JOIN raid_assignments ras ON ras.signup_row_id = rr.signup_row_id
      WHERE rr.raid_id = $1
+       AND rr.withdrawn_at_unix IS NULL
      ORDER BY rr.created_at_unix ASC, rr.signup_row_id ASC`,
     [raidId],
   );
