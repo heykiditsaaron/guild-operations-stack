@@ -1,0 +1,171 @@
+.permission-administration {
+  width: min(100%, 54rem);
+}
+
+.permission-intro h2,
+.permission-intro p {
+  margin: 0;
+}
+
+.permission-intro p {
+  margin-top: 0.35rem;
+  color: #aaa69c;
+}
+
+.permission-operator-notice {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(124, 198, 141, 0.22);
+  border-radius: 0.65rem;
+  background: rgba(124, 198, 141, 0.04);
+  color: #b9dfc1 !important;
+}
+
+.permission-index {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 1.5rem 0 0;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.permission-index a {
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #c9c5ba;
+  font-size: 0.82rem;
+  text-decoration: none;
+}
+
+.permission-index a:hover,
+.permission-index a:focus-visible {
+  color: #e8c986;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.permission-namespaces {
+  display: grid;
+  gap: 2rem;
+  margin-top: 1.5rem;
+}
+
+.permission-namespace {
+  scroll-margin-top: 1rem;
+}
+
+.permission-namespace h2 {
+  margin: 0 0 0.75rem;
+  color: #c9c5ba;
+  font-size: 1rem;
+}
+
+.permission-capabilities {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.8rem;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.permission-capability + .permission-capability {
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.permission-capability details > summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.9rem 1rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.permission-capability details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.permission-capability details > summary::after {
+  content: "Edit";
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: end;
+  color: #e8c986;
+  font-size: 0.78rem;
+}
+
+.permission-capability details[open] > summary::after {
+  content: "Close";
+}
+
+.permission-capability-copy {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.permission-capability-copy small,
+.permission-capability-summary,
+.permission-rank-option small,
+.permission-capability-actions p {
+  color: #aaa69c;
+  font-size: 0.82rem;
+}
+
+.permission-capability-summary {
+  max-width: 18rem;
+  text-align: right;
+}
+
+.permission-capability-editor {
+  padding: 0 1rem 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.permission-rank-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.45rem;
+  padding: 0.9rem 0;
+}
+
+.permission-rank-option {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.55rem;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.permission-rank-option span {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.permission-rank-option strong {
+  font-size: 0.88rem;
+}
+
+.permission-capability-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.permission-capability-actions p {
+  margin: 0;
+}
+
+@media (max-width: 42rem) {
+  .permission-capability details > summary {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .permission-capability-summary {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+  .permission-capability details > summary::after {
+    grid-row: 1;
+  }
+}
