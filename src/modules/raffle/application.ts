@@ -1,6 +1,13 @@
 import { config } from "../../config.js";
 import { pool, withTransaction } from "../../db.js";
 import {
+  RAFFLE_CLAIMS_CAPABILITY,
+  RAFFLE_DRAW_CAPABILITY,
+  RAFFLE_MODIFY_CAPABILITY,
+  RAFFLE_STAGE_CAPABILITY,
+  requireGuildCapabilityOrOperator,
+} from "../../guild-permissions.js";
+import {
   RaffleRuleError,
   activateRaffleRound as activateRaffleRoundDomain,
   approveRaffleClaim as approveRaffleClaimDomain,
@@ -34,25 +41,30 @@ function isSingleLiveRoundViolation(error: unknown): boolean {
 }
 
 export async function createRaffleRound(actorGuildieId: string, terms: RaffleRoundTerms): Promise<RaffleRound> {
+  await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_MODIFY_CAPABILITY);
   return withTransaction(async (client) => { const round = await createRaffleRoundDomain(actorGuildieId, terms, client); await establishRaffleEventPublication(round, client); return round; });
 }
 export async function updateRaffleRound(actorGuildieId: string, roundId: string, terms: RaffleRoundTerms): Promise<RaffleRound> {
+  await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_MODIFY_CAPABILITY);
   return withTransaction(async (client) => { const round = await updateRaffleRoundDomain(actorGuildieId, roundId, terms, client); await establishRaffleEventPublication(round, client); return round; });
 }
 export async function activateRaffleRound(actorGuildieId: string, roundId: string): Promise<RaffleRound> {
+  await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_STAGE_CAPABILITY);
   try { return await withTransaction(async (client) => { const round = await activateRaffleRoundDomain(actorGuildieId, roundId, client); await establishRaffleEventPublication(round, client); return round; }); }
   catch (error) { if (isSingleLiveRoundViolation(error)) throw new RaffleRuleError("active_round_exists", "Another raffle round is already live for the guild"); throw error; }
 }
 export async function cancelRaffleRound(actorGuildieId: string, roundId: string): Promise<RaffleRound> {
+  await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_STAGE_CAPABILITY);
   return withTransaction(async (client) => { const round = await cancelRaffleRoundDomain(actorGuildieId, roundId, client); await establishRaffleEventPublication(round, client); return round; });
 }
 export async function submitRaffleClaim(claimantGuildieId: string, roundId: string, realmId: string, characterId: string, requestedEntryCount: number): Promise<RaffleClaim> {
   return submitRaffleClaimDomain(claimantGuildieId, roundId, realmId, characterId, requestedEntryCount);
 }
 export async function cancelOwnRaffleClaim(claimantGuildieId: string, claimId: string): Promise<void> { await cancelOwnRaffleClaimDomain(claimantGuildieId, claimId); }
-export async function approveRaffleClaim(actorGuildieId: string, claimId: string): Promise<void> { await approveRaffleClaimDomain(actorGuildieId, claimId); }
-export async function denyRaffleClaim(actorGuildieId: string, claimId: string, reasonInput: string): Promise<void> { await denyRaffleClaimDomain(actorGuildieId, claimId, reasonInput); }
+export async function approveRaffleClaim(actorGuildieId: string, claimId: string): Promise<void> { await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_CLAIMS_CAPABILITY); await approveRaffleClaimDomain(actorGuildieId, claimId); }
+export async function denyRaffleClaim(actorGuildieId: string, claimId: string, reasonInput: string): Promise<void> { await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_CLAIMS_CAPABILITY); await denyRaffleClaimDomain(actorGuildieId, claimId, reasonInput); }
 export async function drawRaffleRound(actorGuildieId: string, roundId: string): Promise<RaffleRound> {
+  await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_DRAW_CAPABILITY);
   const round = await withTransaction(async (client) => { const concluded = await drawRaffleRoundDomain(actorGuildieId, roundId, client); await establishRaffleEventPublication(concluded, client); return concluded; });
   if (round.conclusion === "drawn" && !round.winningClaimId) {
     console.error(`[raffle] drawn raffle round ${round.roundId} is missing its winning claim`);
