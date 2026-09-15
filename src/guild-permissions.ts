@@ -71,12 +71,17 @@ export async function effectiveGuildAuthority(
   };
 }
 
+function hasInherentGuildCapability(authority: EffectiveGuildAuthority | null, guildieId: string): boolean {
+  return isConfiguredOperator(guildieId) || authority?.rankIndex === 0;
+}
+
 export async function guildieHasGuildCapability(
   guildieId: string,
   capability: GuildCapability,
   guildId: string = config.guild.id,
 ): Promise<boolean> {
   const authority = await effectiveGuildAuthority(guildieId, guildId);
+  if (hasInherentGuildCapability(authority, guildieId)) return true;
   return authority?.capabilities.includes(capability) ?? false;
 }
 
@@ -85,7 +90,6 @@ export async function guildieHasGuildCapabilityOrOperator(
   capability: GuildCapability,
   guildId: string = config.guild.id,
 ): Promise<boolean> {
-  if (isConfiguredOperator(guildieId)) return true;
   return guildieHasGuildCapability(guildieId, capability, guildId);
 }
 
@@ -95,6 +99,11 @@ export async function requireGuildCapability(
   guildId: string = config.guild.id,
 ): Promise<EffectiveGuildAuthority> {
   const authority = await effectiveGuildAuthority(guildieId, guildId);
+
+  if (hasInherentGuildCapability(authority, guildieId)) {
+    if (authority) return authority;
+    throw new GuildCapabilityDeniedError(guildId, capability);
+  }
 
   if (!authority || !authority.capabilities.includes(capability)) {
     throw new GuildCapabilityDeniedError(guildId, capability);
