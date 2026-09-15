@@ -7,11 +7,108 @@ import type { AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
 
-type RaidParams={raidId:string};
-type DefinitionBody={label?:unknown;description?:unknown;occursAt?:unknown;eligibility?:unknown;difficulty?:unknown;requirements?:unknown};
-function validEligibility(v:unknown):v is RaidEligibility{return v==="guild_character_member"||v==="guildie"||v==="anyone";}function validDifficulty(v:unknown):v is RaidDifficulty{return v==="normal"||v==="heroic"||v==="mythic";}function validRequirements(v:unknown):v is RaidRequirement[]{return Array.isArray(v)&&v.every(i=>i!==null&&typeof i==="object"&&typeof(i as Record<string,unknown>).label==="string"&&typeof(i as Record<string,unknown>).value==="string");}function status(error:unknown):400|403{return error instanceof GuildCapabilityDeniedError?403:400;}function selected(actual:string,value:string):string{return actual===value?" selected":"";}
-export async function registerRaidDefinitionPage(app:FastifyInstance,assets:AssetRegistry):Promise<void>{
- app.get<{Params:RaidParams}>("/events/raid/manage/:raidId/definition",async(request,reply)=>{const token=request.cookies[SESSION_COOKIE_NAME];const [viewer,guildie,raid]=await Promise.all([viewerForRequest(token),authenticatedGuildie(token),raidEventFacts(request.params.raidId)]);if(!raid)return reply.code(404).send({error:"Raid not found"});const [canModify,canStage]=guildie?await Promise.all([guildieHasGuildCapabilityOrOperator(guildie.guildieId,RAID_MODIFY_CAPABILITY),guildieHasGuildCapabilityOrOperator(guildie.guildieId,RAID_STAGE_CAPABILITY)]):[false,false];if(!guildie||!canModify)return reply.code(guildie?403:401).send({error:"Raid modification is not available for this account"});const min=raid.requirements.find(r=>r.label==="Minimum item level")?.value??"";const enchants=raid.requirements.find(r=>r.label==="Enchants & gems")?.value??"";const cancellation=canStage&&raid.cancelledAtUnix===null?`<section class="raid-admin-danger"><h2>Cancel raid</h2><p>Cancellation preserves this raid and its participation history while withdrawing it from the calendar.</p><button type="button" class="button-secondary" data-raid-cancel>Cancel raid</button></section>`:raid.cancelledAtUnix!==null?`<section class="raid-admin-danger"><h2>Raid cancelled</h2><p>This raid is preserved for history and can no longer be modified.</p></section>`:"";const html=renderPage(assets,{pathname:request.url,title:`Edit ${raid.label} · Raid Operations · OH CRIT I Pulled! Guild Operations`,viewer,stylesheets:["admin.css","raid-admin.css"],scripts:["admin.js","raid-definition.js"],secondaryNavigation:{kind:"breadcrumb",items:[{label:"Events",href:"/events"},{label:"Raid operations",href:"/events/raid/manage"},{label:raid.label,href:`/events/raid/manage/${encodeURIComponent(raid.raidId)}`},{label:"Edit"}]},header:`<div class="admin-page-header"><h1>Edit raid</h1><p class="lede">Change the persisted raid definition.</p></div>`,body:`${raid.cancelledAtUnix===null?`<form class="raid-admin-form" data-raid-definition-form><label><span>Raid name</span><input name="label" type="text" value="${htmlText(raid.label)}" required></label><label><span>Description <small>(optional)</small></span><textarea name="description" rows="3">${htmlText(raid.description??"")}</textarea></label><label><span>Start time</span><input name="startsAt" type="datetime-local" data-raid-definition-start="${raid.occursAt[0]}" required></label><label><span>Difficulty</span><select name="difficulty"><option value="normal"${selected(raid.difficulty,"normal")}>Normal</option><option value="heroic"${selected(raid.difficulty,"heroic")}>Heroic</option><option value="mythic"${selected(raid.difficulty,"mythic")}>Mythic</option></select></label><label><span>Who can apply</span><select name="eligibility"><option value="guild_character_member"${selected(raid.eligibility,"guild_character_member")}>Guild Character Member</option><option value="guildie"${selected(raid.eligibility,"guildie")}>Guildie</option><option value="anyone"${selected(raid.eligibility,"anyone")}>Anyone</option></select></label><fieldset><legend>Readiness requirements</legend><p>These expectations are presented to participants and are not mechanically checked.</p><label><span>Minimum item level <small>(optional)</small></span><input name="minimumItemLevel" type="number" min="1" step="1" value="${htmlText(min)}"></label><label><span>Enchants &amp; gems</span><select name="enchantsAndGems"><option value=""${selected(enchants,"")}>No stated requirement</option><option value="Required"${selected(enchants,"Required")}>Required</option><option value="Preferred"${selected(enchants,"Preferred")}>Preferred</option><option value="Not required"${selected(enchants,"Not required")}>Not required</option></select></label></fieldset><button type="submit" class="button-primary">Save changes</button><p data-raid-definition-status role="status" aria-live="polite"></p></form>`:""}${cancellation}<p data-raid-definition-status role="status" aria-live="polite"></p>`});return reply.header("Cache-Control","no-cache").type("text/html; charset=utf-8").send(html);});
- app.post<{Params:RaidParams;Body:DefinitionBody}>("/events/raid/manage/:raidId/definition",async(request,reply)=>{const guildie=await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);if(!guildie)return reply.code(401).send({error:"Authentication required"});const b=request.body??{};if(typeof b.label!=="string"||typeof b.description!=="string"||!Array.isArray(b.occursAt)||b.occursAt.length!==1||typeof b.occursAt[0]!=="number"||!validDifficulty(b.difficulty)||!validEligibility(b.eligibility)||!validRequirements(b.requirements))return reply.code(400).send({error:"Raid definition is invalid"});try{return{raid:await modifyRaid(guildie.guildieId,request.params.raidId,{label:b.label,description:b.description,occursAt:[b.occursAt[0]],difficulty:b.difficulty,eligibility:b.eligibility,requirements:b.requirements})};}catch(error){return reply.code(status(error)).send({error:error instanceof Error?error.message:"Raid could not be modified"});}});
- app.post<{Params:RaidParams}>("/events/raid/manage/:raidId/cancel",async(request,reply)=>{const guildie=await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);if(!guildie)return reply.code(401).send({error:"Authentication required"});try{return{raid:await cancelRaid(guildie.guildieId,request.params.raidId)};}catch(error){return reply.code(status(error)).send({error:error instanceof Error?error.message:"Raid could not be cancelled"});}});
+type RaidParams = { raidId: string };
+type DefinitionBody = { label?: unknown; description?: unknown; occursAt?: unknown; eligibility?: unknown; difficulty?: unknown; requirements?: unknown };
+
+function validEligibility(value: unknown): value is RaidEligibility {
+  return value === "guild_character_member" || value === "guildie" || value === "anyone";
+}
+
+function validDifficulty(value: unknown): value is RaidDifficulty {
+  return value === "normal" || value === "heroic" || value === "mythic";
+}
+
+function validRequirements(value: unknown): value is RaidRequirement[] {
+  return Array.isArray(value) && value.every((item) => item !== null && typeof item === "object" && typeof (item as Record<string, unknown>).label === "string" && typeof (item as Record<string, unknown>).value === "string");
+}
+
+function status(error: unknown): 400 | 403 {
+  return error instanceof GuildCapabilityDeniedError ? 403 : 400;
+}
+
+function selected(actual: string, value: string): string {
+  return actual === value ? " selected" : "";
+}
+
+export async function registerRaidDefinitionPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
+  app.get<{ Params: RaidParams }>("/events/raid/manage/:raidId/definition", async (request, reply) => {
+    const token = request.cookies[SESSION_COOKIE_NAME];
+    const [viewer, guildie, raid] = await Promise.all([
+      viewerForRequest(token),
+      authenticatedGuildie(token),
+      raidEventFacts(request.params.raidId),
+    ]);
+    if (!raid) return reply.code(404).send({ error: "Raid not found" });
+
+    const [canModify, canStage] = guildie
+      ? await Promise.all([
+          guildieHasGuildCapabilityOrOperator(guildie.guildieId, RAID_MODIFY_CAPABILITY),
+          guildieHasGuildCapabilityOrOperator(guildie.guildieId, RAID_STAGE_CAPABILITY),
+        ])
+      : [false, false];
+    if (!guildie || (!canModify && !canStage)) {
+      return reply.code(guildie ? 403 : 401).send({ error: "Raid definition is not available for this account" });
+    }
+
+    const basePath = `/events/raid/manage/${encodeURIComponent(raid.raidId)}`;
+    const min = raid.requirements.find((requirement) => requirement.label === "Minimum item level")?.value ?? "";
+    const enchants = raid.requirements.find((requirement) => requirement.label === "Enchants & gems")?.value ?? "";
+    const cancelled = raid.cancelledAtUnix !== null;
+
+    const definition = canModify && !cancelled
+      ? `<form class="raid-admin-form" data-raid-definition-form>
+          <label><span>Raid name</span><input name="label" type="text" value="${htmlText(raid.label)}" required></label>
+          <label><span>Description <small>(optional)</small></span><textarea name="description" rows="3">${htmlText(raid.description ?? "")}</textarea></label>
+          <label><span>Start time</span><input name="startsAt" type="datetime-local" data-raid-definition-start="${raid.occursAt[0]}" required></label>
+          <label><span>Difficulty</span><select name="difficulty"><option value="normal"${selected(raid.difficulty, "normal")}>Normal</option><option value="heroic"${selected(raid.difficulty, "heroic")}>Heroic</option><option value="mythic"${selected(raid.difficulty, "mythic")}>Mythic</option></select></label>
+          <label><span>Who can apply</span><select name="eligibility"><option value="guild_character_member"${selected(raid.eligibility, "guild_character_member")}>Guild Character Member</option><option value="guildie"${selected(raid.eligibility, "guildie")}>Guildie</option><option value="anyone"${selected(raid.eligibility, "anyone")}>Anyone</option></select></label>
+          <fieldset><legend>Readiness requirements</legend><p>These expectations are presented to participants and are not mechanically checked.</p><label><span>Minimum item level <small>(optional)</small></span><input name="minimumItemLevel" type="number" min="1" step="1" value="${htmlText(min)}"></label><label><span>Enchants &amp; gems</span><select name="enchantsAndGems"><option value=""${selected(enchants, "")}>No stated requirement</option><option value="Required"${selected(enchants, "Required")}>Required</option><option value="Preferred"${selected(enchants, "Preferred")}>Preferred</option><option value="Not required"${selected(enchants, "Not required")}>Not required</option></select></label></fieldset>
+          <button type="submit" class="button-primary">Save changes</button>
+        </form>`
+      : `<section class="raid-admin-form"><p>${cancelled ? "This raid is cancelled. Its definition is preserved for history." : "You can inspect this raid definition, but you cannot modify it."}</p><dl class="raid-admin-card-facts"><dt>Name</dt><dd>${htmlText(raid.label)}</dd><dt>Difficulty</dt><dd>${htmlText(raid.difficulty)}</dd><dt>Eligibility</dt><dd>${htmlText(raid.eligibility)}</dd></dl></section>`;
+
+    const cancellation = canStage && !cancelled
+      ? `<section class="raid-admin-danger"><h2>Cancel raid</h2><p>Cancellation preserves this raid and its participation history while withdrawing it from the calendar.</p><button type="button" class="button-secondary" data-raid-cancel>Cancel raid</button></section>`
+      : cancelled
+        ? `<section class="raid-admin-danger"><h2>Raid cancelled</h2><p>This raid is preserved for history and can no longer be modified.</p></section>`
+        : "";
+
+    const html = renderPage(assets, {
+      pathname: request.url,
+      title: `${raid.label} · Raid Operations · OH CRIT I Pulled! Guild Operations`,
+      viewer,
+      stylesheets: ["admin.css", "raid-admin.css"],
+      scripts: ["admin.js", "raid-definition.js"],
+      secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Events", href: "/events" }, { label: "Raid operations", href: "/events/raid/manage" }, { label: raid.label }] },
+      header: "",
+      body: `<section class="raid-title-bar"><div><h1>${htmlText(raid.label)}</h1><p><time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time>${cancelled ? " · Cancelled" : ""}</p></div></section>
+        <nav class="raid-admin-actions" aria-label="Raid management mode"><a class="button-secondary" href="${basePath}">Operation</a><a class="button-primary" href="${basePath}/definition" aria-current="page">Definition</a></nav>
+        <section class="raid-admin-setup">${definition}${cancellation}<p data-raid-definition-status role="status" aria-live="polite"></p></section>`,
+    });
+    return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
+  });
+
+  app.post<{ Params: RaidParams; Body: DefinitionBody }>("/events/raid/manage/:raidId/definition", async (request, reply) => {
+    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
+    if (!guildie) return reply.code(401).send({ error: "Authentication required" });
+    const body = request.body ?? {};
+    if (typeof body.label !== "string" || typeof body.description !== "string" || !Array.isArray(body.occursAt) || body.occursAt.length !== 1 || typeof body.occursAt[0] !== "number" || !validDifficulty(body.difficulty) || !validEligibility(body.eligibility) || !validRequirements(body.requirements)) {
+      return reply.code(400).send({ error: "Raid definition is invalid" });
+    }
+    try {
+      return { raid: await modifyRaid(guildie.guildieId, request.params.raidId, { label: body.label, description: body.description, occursAt: [body.occursAt[0]], difficulty: body.difficulty, eligibility: body.eligibility, requirements: body.requirements }) };
+    } catch (error) {
+      return reply.code(status(error)).send({ error: error instanceof Error ? error.message : "Raid could not be modified" });
+    }
+  });
+
+  app.post<{ Params: RaidParams }>("/events/raid/manage/:raidId/cancel", async (request, reply) => {
+    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
+    if (!guildie) return reply.code(401).send({ error: "Authentication required" });
+    try {
+      return { raid: await cancelRaid(guildie.guildieId, request.params.raidId) };
+    } catch (error) {
+      return reply.code(status(error)).send({ error: error instanceof Error ? error.message : "Raid could not be cancelled" });
+    }
+  });
 }
