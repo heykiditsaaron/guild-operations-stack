@@ -1,9 +1,10 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
 import {
-  effectiveGuildAuthority,
-  RAID_CREATE_CAPABILITY,
-  RAID_MANAGE_CAPABILITY,
+  RAID_ASSIGN_CAPABILITY,
+  RAID_MODIFY_CAPABILITY,
+  RAID_STAGE_CAPABILITY,
+  guildieHasGuildCapability,
 } from "../../../../guild-permissions.js";
 import { raidsForAdministration } from "../../../../modules/raid/admin-view.js";
 import { createRaid } from "../../../../modules/raid/application.js";
@@ -58,7 +59,7 @@ function createForm(): string {
   </form>`;
 }
 
-async function raidList(canManage: boolean): Promise<string> {
+async function raidList(canOperateExisting: boolean): Promise<string> {
   const raids = await raidsForAdministration();
   if (raids.length === 0) return `<p class="raid-admin-empty">No raids have been created yet.</p>`;
 
@@ -78,7 +79,7 @@ async function raidList(canManage: boolean): Promise<string> {
         <dt>Difficulty</dt><dd>${htmlText(difficultyLabel(raid.difficulty))}</dd>
         <dt>Eligibility</dt><dd>${htmlText(eligibilityLabel(raid.eligibility))}</dd>
       </dl>
-      ${canManage ? `<div class="raid-admin-card-actions">
+      ${canOperateExisting ? `<div class="raid-admin-card-actions">
         <a class="button-primary" href="/events/raid/manage/${encodeURIComponent(raid.raidId)}">Manage</a>
       </div>` : ""}
     </article>`;
@@ -127,20 +128,24 @@ export async function registerRaidAdminPage(app: FastifyInstance, assets: AssetR
   app.get("/events/raid/manage", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie] = await Promise.all([viewerForRequest(sessionToken), authenticatedGuildie(sessionToken)]);
-    const authority = guildie ? await effectiveGuildAuthority(guildie.guildieId) : null;
-    const operator = authority?.operator === true;
-    const canCreate = operator || (authority?.capabilities.includes(RAID_CREATE_CAPABILITY) ?? false);
-    const canManage = operator || (authority?.capabilities.includes(RAID_MANAGE_CAPABILITY) ?? false);
-    const authorized = canCreate || canManage;
+    const [canModify, canStage, canAssign] = guildie
+      ? await Promise.all([
+          guildieHasGuildCapability(guildie.guildieId, RAID_MODIFY_CAPABILITY),
+          guildieHasGuildCapability(guildie.guildieId, RAID_STAGE_CAPABILITY),
+          guildieHasGuildCapability(guildie.guildieId, RAID_ASSIGN_CAPABILITY),
+        ])
+      : [false, false, false];
+    const canOperateExisting = canStage || canAssign;
+    const authorized = canModify || canOperateExisting;
 
     const body = authorized
       ? `<section class="raid-admin-overview" aria-labelledby="page-title">
-          ${canCreate ? `<div class="raid-admin-setup" data-raid-setup hidden>${createForm()}</div>` : ""}
-          ${await raidList(canManage)}
+          ${canModify ? `<div class="raid-admin-setup" data-raid-setup hidden>${createForm()}</div>` : ""}
+          ${await raidList(canOperateExisting)}
         </section>`
       : `<section class="admin-unavailable"><h2>Raid operations are not available for this account.</h2></section>`;
 
-    const headerActions = canCreate
+    const headerActions = canModify
       ? `<div class="raid-admin-header-actions"><button class="button-primary raid-admin-header-action" type="button" data-toggle-raid-setup>New raid</button></div>`
       : "";
 
