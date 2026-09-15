@@ -101,7 +101,6 @@ export async function raidSignupRows(raidId: string): Promise<RaidSignupRowView[
     class_name: string | null;
     declared_class: string | null;
     willing_specs: string[];
-    willing_roles: RaidRole[];
     assignment_id: string | null;
     selected_spec: string | null;
     selected_role: RaidRole | null;
@@ -117,7 +116,6 @@ export async function raidSignupRows(raidId: string): Promise<RaidSignupRowView[
        wcp.class_name,
        rr.declared_class,
        rr.willing_specs,
-       rr.willing_roles,
        ras.assignment_id,
        ras.selected_spec,
        ras.selected_role
@@ -137,21 +135,24 @@ export async function raidSignupRows(raidId: string): Promise<RaidSignupRowView[
     [raidId],
   );
 
-  return result.rows.map((row) => ({
-    signupRowId: row.signup_row_id,
-    applicantId: row.applicant_id,
-    anchorKind: row.anchor_kind,
-    anchorValue: row.anchor_value,
-    resolvedGuildieId: row.resolved_guildie_id,
-    characterName: row.character_name,
-    realmName: row.realm_name,
-    className: row.class_name ?? row.declared_class ?? "Unknown",
-    willingSpecs: row.willing_specs,
-    willingRoles: row.willing_roles,
-    assignmentId: row.assignment_id,
-    selectedSpec: row.selected_spec,
-    selectedRole: row.selected_role,
-  }));
+  return result.rows.map((row) => {
+    const className = row.class_name ?? row.declared_class ?? "Unknown";
+    return {
+      signupRowId: row.signup_row_id,
+      applicantId: row.applicant_id,
+      anchorKind: row.anchor_kind,
+      anchorValue: row.anchor_value,
+      resolvedGuildieId: row.resolved_guildie_id,
+      characterName: row.character_name,
+      realmName: row.realm_name,
+      className,
+      willingSpecs: row.willing_specs,
+      willingRoles: className === "Unknown" ? [] : rolesForSpecs(className, row.willing_specs),
+      assignmentId: row.assignment_id,
+      selectedSpec: row.selected_spec,
+      selectedRole: row.selected_role,
+    };
+  });
 }
 
 export async function raidSignupRowsForGuildie(raidId: string, guildieId: string): Promise<RaidSignupRowView[]> {
