@@ -1,6 +1,11 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
-import { GuildCapabilityDeniedError, RAID_MANAGE_CAPABILITY, guildieHasGuildCapabilityOrOperator } from "../../../../guild-permissions.js";
+import {
+  GuildCapabilityDeniedError,
+  RAID_ASSIGN_CAPABILITY,
+  RAID_STAGE_CAPABILITY,
+  guildieHasGuildCapabilityOrOperator,
+} from "../../../../guild-permissions.js";
 import {
   assignRaidParticipation,
   raidEventFacts,
@@ -152,7 +157,13 @@ async function renderRaidOrganizer(
 ) {
   const sessionToken = request.cookies[SESSION_COOKIE_NAME];
   const [viewer, guildie] = await Promise.all([viewerForRequest(sessionToken), authenticatedGuildie(sessionToken)]);
-  const authorized = guildie ? await guildieHasGuildCapabilityOrOperator(guildie.guildieId, RAID_MANAGE_CAPABILITY) : false;
+  const [canStage, canAssign] = guildie
+    ? await Promise.all([
+        guildieHasGuildCapabilityOrOperator(guildie.guildieId, RAID_STAGE_CAPABILITY),
+        guildieHasGuildCapabilityOrOperator(guildie.guildieId, RAID_ASSIGN_CAPABILITY),
+      ])
+    : [false, false];
+  const authorized = canStage || canAssign;
   if (!guildie || !authorized) {
     const html = renderPage(assets, {
       pathname: request.url,
@@ -161,7 +172,7 @@ async function renderRaidOrganizer(
       stylesheets: ["admin.css", "raid-admin.css"],
       secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Events", href: "/events" }, { label: "Raid operations", href: "/events/raid/manage" }, { label: "Unavailable" }] },
       header: `<div class="admin-page-header"><h1>Raid</h1></div>`,
-      body: `<section class="admin-unavailable"><h2>Raid management is not available for this account.</h2></section>`,
+      body: `<section class="admin-unavailable"><h2>Raid operations are not available for this account.</h2></section>`,
     });
     return reply.code(guildie ? 403 : 401).header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   }
@@ -219,18 +230,8 @@ async function renderRaidOrganizer(
     </section>`;
   }))).join("");
 
-  const body = `<section class="raid-title-bar">
-      <div>
-        <h1>${htmlText(raid.label)}</h1>
-        <p><time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${htmlText(difficultyLabel(raid.difficulty))} · Signups ${raid.signupsOpen ? "open" : "closed"}</p>
-      </div>
-      <div class="raid-admin-actions">
-        <button type="button" class="button-secondary" disabled title="Raid metadata editing will be added later">Edit</button>
-        <button type="button" class="button-primary" data-raid-signups-toggle data-open="${raid.signupsOpen ? "false" : "true"}">${raid.signupsOpen ? "Close signups" : "Open signups"}</button>
-        <a class="button-secondary" href="/events/raid/${encodeURIComponent(raid.raidId)}">View signup page ↗</a>
-      </div>
-    </section>
-    <section class="raid-workspace">
+  const assignmentWorkspace = canAssign
+    ? `<section class="raid-workspace">
       <p class="raid-board-status" data-raid-action-status role="status" aria-live="polite"></p>
       ${diagnosticsBody}
       <div class="raid-organizer-grid">
@@ -244,19 +245,32 @@ async function renderRaidOrganizer(
         </div>
       </div>
       <button type="button" class="raid-pool-toggle" data-raid-pool-toggle data-raid-pool-drop aria-expanded="false" aria-controls="raid-applicant-pool-panel"><span>Available</span><span>${available.length}</span></button>
+    </section>`
+    : `<section class="raid-workspace">${diagnosticsBody}</section>`;
+
+  const body = `<section class="raid-title-bar">
+      <div>
+        <h1>${htmlText(raid.label)}</h1>
+        <p><time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${htmlText(difficultyLabel(raid.difficulty))} · Signups ${raid.signupsOpen ? "open" : "closed"}</p>
+      </div>
+      <div class="raid-admin-actions">
+        ${canStage ? `<button type="button" class="button-primary" data-raid-signups-toggle data-open="${raid.signupsOpen ? "false" : "true"}">${raid.signupsOpen ? "Close signups" : "Open signups"}</button>` : ""}
+        <a class="button-secondary" href="/events/raid/${encodeURIComponent(raid.raidId)}">View signup page ↗</a>
+      </div>
     </section>
+    ${assignmentWorkspace}
     <section class="raid-scoreboard" aria-labelledby="raid-scoreboard-heading">
       <h2 id="raid-scoreboard-heading">Raid diagnostics</h2>
       ${shelves}
     </section>
-    <dialog class="raid-spec-dialog" data-raid-spec-dialog>
+    ${canAssign ? `<dialog class="raid-spec-dialog" data-raid-spec-dialog>
       <form method="dialog">
         <h2>Choose specialization</h2>
         <p data-raid-spec-dialog-copy></p>
         <div data-raid-spec-options></div>
         <button type="button" class="button-secondary" data-raid-spec-cancel>Cancel</button>
       </form>
-    </dialog>`;
+    </dialog>` : ""}`;
 
   const html = renderPage(assets, {
     pathname: request.url,
@@ -264,7 +278,7 @@ async function renderRaidOrganizer(
     description: raid.description ?? "Raid operations.",
     viewer,
     stylesheets: ["admin.css", "raid-admin.css", "raid-iconography.css", "raid-organizer.css"],
-    scripts: ["admin.js", "raid-admin.js", "raid-organizer.js"],
+    scripts: ["admin.js", "raid-admin.js", ...(canAssign ? ["raid-organizer.js"] : [])],
     secondaryNavigation: navigation,
     header: "",
     body,
