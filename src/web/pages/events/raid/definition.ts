@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
 import { GuildCapabilityDeniedError, RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILITY, guildieHasGuildCapabilityOrOperator } from "../../../../guild-permissions.js";
 import { cancelRaid, modifyRaid, raidEventFacts } from "../../../../modules/raid/application.js";
@@ -28,6 +28,10 @@ function status(error: unknown): 400 | 403 {
 
 function selected(actual: string, value: string): string {
   return actual === value ? " selected" : "";
+}
+
+function difficultyLabel(value: RaidDifficulty): string {
+  return value[0].toUpperCase() + value.slice(1);
 }
 
 export async function registerRaidDefinitionPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
@@ -76,13 +80,22 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
     const html = renderPage(assets, {
       pathname: request.url,
       title: `${raid.label} · Raid Operations · OH CRIT I Pulled! Guild Operations`,
+      description: raid.description ?? "Raid operations.",
       viewer,
       stylesheets: ["admin.css", "raid-admin.css"],
       scripts: ["admin.js", "raid-definition.js"],
       secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Events", href: "/events" }, { label: "Raid operations", href: "/events/raid/manage" }, { label: raid.label }] },
       header: "",
-      body: `<section class="raid-title-bar"><div><h1>${htmlText(raid.label)}</h1><p><time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time>${cancelled ? " · Cancelled" : ""}</p></div></section>
-        <nav class="raid-admin-actions" aria-label="Raid management mode"><a class="button-secondary" href="${basePath}?mode=assign">Assign</a><a class="button-primary" href="${basePath}/definition" aria-current="page">Edit</a></nav>
+      body: `<section class="raid-title-bar">
+          <div>
+            <h1>${htmlText(raid.label)}</h1>
+            <p><time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${htmlText(difficultyLabel(raid.difficulty))} · Signups ${raid.signupsOpen ? "open" : "closed"}${cancelled ? " · Cancelled" : ""}</p>
+          </div>
+          <div class="raid-admin-actions">
+            <a class="button-secondary" href="/events/raid/${encodeURIComponent(raid.raidId)}">View signup page ↗</a>
+          </div>
+        </section>
+        <nav class="raid-admin-actions" aria-label="Raid management mode"><a class="button-secondary" href="${basePath}">Assign</a><a class="button-primary" href="${basePath}/definition" aria-current="page">Edit</a></nav>
         <section class="raid-admin-setup">${edit}${cancellation}<p data-raid-definition-status role="status" aria-live="polite"></p></section>`,
     });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
