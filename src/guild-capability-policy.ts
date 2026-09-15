@@ -31,16 +31,16 @@ export function registerGuildCapabilityDefinitions(contributed: readonly GuildCa
   for (const definition of contributed) {
     const existing = definitions.get(definition.key);
     if (existing && JSON.stringify(existing) !== JSON.stringify(definition)) throw new Error(`Guild capability definition already registered: ${definition.key}`);
-    definitions.set(definition.key, { ...definition });
+    definitions.set(definition.key, { ...definition, defaultPermittedRanks: definition.defaultPermittedRanks?.filter((rankIndex) => rankIndex !== 0) });
   }
 }
 
 export function registerGlobalGuildCapabilityDefinitions(): void {
   registerGuildCapabilityDefinitions([
-    { key: GUILD_REFRESH_CAPABILITY, namespace: "global", namespaceLabel: "Global", label: "Refresh guild", description: "Perform an immediate reconciliation of current guild membership and rank authority from Blizzard.", defaultPermittedRanks: [0, 1, 2] },
-    { key: GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY, namespace: "global", namespaceLabel: "Global", label: "Configure guild refresh schedule", description: "Configure automatic guild synchronization policy.", defaultPermittedRanks: [0, 1, 2] },
-    { key: MODULES_CONFIGURE_CAPABILITY, namespace: "global", namespaceLabel: "Global", label: "Configure modules", description: "Enable or disable installed Guild Operations modules.", defaultPermittedRanks: [0] },
-    { key: OPERATIONS_INSPECT_CAPABILITY, namespace: "global", namespaceLabel: "Global", label: "Inspect operations", description: "Inspect operational history and recorded failures.", defaultPermittedRanks: [0, 1, 2] },
+    { key: GUILD_REFRESH_CAPABILITY, namespace: "global", namespaceLabel: "Global", label: "Refresh guild", description: "Perform an immediate reconciliation of current guild membership and rank authority from Blizzard.", defaultPermittedRanks: [1, 2] },
+    { key: GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY, namespace: "global", namespaceLabel: "Global", label: "Configure guild refresh schedule", description: "Configure automatic guild synchronization policy.", defaultPermittedRanks: [1, 2] },
+    { key: MODULES_CONFIGURE_CAPABILITY, namespace: "global", namespaceLabel: "Global", label: "Configure modules", description: "Enable or disable installed Guild Operations modules.", defaultPermittedRanks: [] },
+    { key: OPERATIONS_INSPECT_CAPABILITY, namespace: "global", namespaceLabel: "Global", label: "Inspect operations", description: "Inspect operational history and recorded failures.", defaultPermittedRanks: [1, 2] },
   ]);
 }
 
@@ -60,9 +60,13 @@ export async function requireGuildPermissionAdministration(guildieId: string, gu
   if (!await canAdministerGuildPermissions(guildieId, guildId)) throw new Error("Guildie cannot administer guild permissions");
 }
 
+function configurableRanks(permittedRanks: readonly number[]): number[] {
+  return [...new Set(permittedRanks.filter((rankIndex) => rankIndex !== 0))].sort((a, b) => a - b);
+}
+
 async function replaceCapabilityProjection(client: PoolClient, guildId: string, capability: string, permittedRanks: readonly number[]): Promise<void> {
   await client.query(`DELETE FROM guild_rank_capabilities WHERE guild_id = $1 AND capability = $2`, [guildId, capability]);
-  for (const rankIndex of permittedRanks) await client.query(`INSERT INTO guild_rank_capabilities (guild_id, rank_index, capability) VALUES ($1, $2, $3) ON CONFLICT (guild_id, rank_index, capability) DO NOTHING`, [guildId, rankIndex, capability]);
+  for (const rankIndex of configurableRanks(permittedRanks)) await client.query(`INSERT INTO guild_rank_capabilities (guild_id, rank_index, capability) VALUES ($1, $2, $3) ON CONFLICT (guild_id, rank_index, capability) DO NOTHING`, [guildId, rankIndex, capability]);
 }
 
 export async function ensureGuildCapabilityPolicies(guildId: string = config.guild.id): Promise<void> {
@@ -77,9 +81,10 @@ export async function ensureGuildCapabilityPolicies(guildId: string = config.gui
       if (!permittedRanks) {
         const existing = await client.query<{ rank_index: number }>(`SELECT rank_index FROM guild_rank_capabilities WHERE guild_id = $1 AND capability = $2 ORDER BY rank_index`, [guildId, definition.key]);
         permittedRanks = existing.rows.length > 0 ? existing.rows.map((row) => row.rank_index) : [...(definition.defaultPermittedRanks ?? [])].filter((rankIndex) => knownRanks.has(rankIndex));
-        await client.query(`INSERT INTO guild_capability_policy_configuration (guild_id, capability, permitted_ranks) VALUES ($1, $2, $3::integer[]) ON CONFLICT (guild_id, capability) DO NOTHING`, [guildId, definition.key, permittedRanks]);
       }
-      await replaceCapabilityProjection(client, guildId, definition.key, permittedRanks.filter((rankIndex) => knownRanks.has(rankIndex)));
+      permittedRanks = configurableRanks(permittedRanks).filter((rankIndex) => knownRanks.has(rankIndex));
+      await client.query(`INSERT INTO guild_capability_policy_configuration (guild_id, capability, permitted_ranks, updated_at) VALUES ($1, $2, $3::integer[], now()) ON CONFLICT (guild_id, capability) DO UPDATE SET permitted_ranks = EXCLUDED.permitted_ranks, updated_at = CASE WHEN guild_capability_policy_configuration.permitted_ranks IS DISTINCT FROM EXCLUDED.permitted_ranks THEN now() ELSE guild_capability_policy_configuration.updated_at END`, [guildId, definition.key, permittedRanks]);
+      await replaceCapabilityProjection(client, guildId, definition.key, permittedRanks);
     }
   });
 }
@@ -91,7 +96,7 @@ export async function guildCapabilityPolicies(guildId: string = config.guild.id)
     pool.query<{ rank_index: number; display_name: string | null; active: boolean }>(`SELECT rank_index, display_name, active FROM guild_rank_definitions WHERE guild_id = $1 ORDER BY rank_index`, [guildId]),
     pool.query<{ capability: string; permitted_ranks: number[] }>(`SELECT capability, permitted_ranks FROM guild_capability_policy_configuration WHERE guild_id = $1 AND capability = ANY($2::text[])`, [guildId, capabilityDefinitions.map((definition) => definition.key)]),
   ]);
-  const configured = new Map(policiesResult.rows.map((row) => [row.capability, row.permitted_ranks]));
+  const configured = new Map(policiesResult.rows.map((row) => [row.capability, configurableRanks(row.permitted_ranks)]));
   return {
     ranks: ranksResult.rows.map((rank) => ({ rankIndex: rank.rank_index, displayName: rank.display_name ?? `Rank ${rank.rank_index}`, active: rank.active })),
     capabilities: capabilityDefinitions.map(({ defaultPermittedRanks: _defaults, ...definition }) => ({ ...definition, permittedRanks: configured.get(definition.key) ?? [] })),
@@ -101,14 +106,14 @@ export async function guildCapabilityPolicies(guildId: string = config.guild.id)
 export async function permittedGuildRanksForCapability(capability: GuildCapability, guildId: string = config.guild.id): Promise<number[]> {
   await ensureGuildCapabilityPolicies(guildId);
   const result = await pool.query<{ permitted_ranks: number[] }>(`SELECT permitted_ranks FROM guild_capability_policy_configuration WHERE guild_id = $1 AND capability = $2`, [guildId, capability]);
-  return result.rows[0]?.permitted_ranks ?? [];
+  return configurableRanks(result.rows[0]?.permitted_ranks ?? []);
 }
 
 export async function setGuildCapabilityPermittedRanks(actorGuildieId: string, capability: GuildCapability, permittedRanks: readonly number[], guildId: string = config.guild.id): Promise<number[]> {
   await requireGuildPermissionAdministration(actorGuildieId, guildId);
   if (!definitions.has(capability)) throw new Error("Unknown configurable guild capability");
-  const normalized = [...new Set(permittedRanks)].sort((a, b) => a - b);
-  if (normalized.some((rankIndex) => !Number.isInteger(rankIndex) || rankIndex < 0)) throw new Error("Guild permission rank is invalid");
+  if (permittedRanks.some((rankIndex) => !Number.isInteger(rankIndex) || rankIndex < 0)) throw new Error("Guild permission rank is invalid");
+  const normalized = configurableRanks(permittedRanks);
   await withTransaction(async (client) => {
     const rankResult = await client.query<{ rank_index: number }>(`SELECT rank_index FROM guild_rank_definitions WHERE guild_id = $1`, [guildId]);
     const knownRanks = new Set(rankResult.rows.map((row) => row.rank_index));
