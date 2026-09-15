@@ -59,22 +59,29 @@ function administrationSection(
   </section>`;
 }
 
-function renderModuleLifecycle(modules: PackagedModuleState[]): string {
-  return `<div class="admin-module-list">${modules.map((module) => `<article class="admin-module" data-module-key="${module.key}">
-    <div class="admin-module-copy">
-      <div class="admin-module-heading">
-        <h3>${htmlText(module.label)}</h3>
-        <span class="admin-module-availability">Available</span>
+function renderModuleLifecycle(modules: PackagedModuleState[], canConfigureDiscord: boolean): string {
+  return `<div class="module-lifecycle-list">${modules.map((module) => {
+    const configurationAction = module.key === "discord" && canConfigureDiscord
+      ? `<a class="module-lifecycle-configure" href="/admin/general/discord">Configure integration <span aria-hidden="true">→</span></a>`
+      : "";
+
+    return `<article class="module-lifecycle-card" data-module-key="${module.key}">
+      <div class="module-lifecycle-copy">
+        <div class="module-lifecycle-heading">
+          <h3>${htmlText(module.label)}</h3>
+          <span class="module-lifecycle-availability">Available</span>
+        </div>
+        <p>${module.enabled ? "Enabled for Guild Operations." : "Installed but disabled."}</p>
+        ${configurationAction}
       </div>
-      <p>${module.enabled ? "Enabled for Guild Operations." : "Installed but disabled."}</p>
-    </div>
-    <label class="switch admin-module-toggle">
-      <input type="checkbox" data-module-enabled${module.enabled ? " checked" : ""}>
-      <span class="switch-control" aria-hidden="true"></span>
-      <span data-module-switch-label>${module.enabled ? "On" : "Off"}</span>
-    </label>
-    <p class="admin-module-feedback" data-module-feedback role="status" aria-live="polite"></p>
-  </article>`).join("\n")}</div>`;
+      <label class="switch module-lifecycle-toggle">
+        <input type="checkbox" data-module-enabled${module.enabled ? " checked" : ""}>
+        <span class="switch-control" aria-hidden="true"></span>
+        <span data-module-switch-label>${module.enabled ? "On" : "Off"}</span>
+      </label>
+      <p class="module-lifecycle-feedback" data-module-feedback role="status" aria-live="polite"></p>
+    </article>`;
+  }).join("\n")}</div>`;
 }
 
 function renderGuildRefreshSchedule(schedule: GuildRefreshSchedule): string {
@@ -134,7 +141,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
           "modules",
           "modules-heading",
           "Modules",
-          `${renderModuleLifecycle(modulesState)}<p class="admin-section-note">Enablement controls whether an installed module participates in Guild Operations. Acquisition or entitlement is a separate concern and is not implemented here.</p>`,
+          `${renderModuleLifecycle(modulesState, administration?.canConfigureDiscord === true)}<p class="admin-section-note">Enablement controls whether an installed module participates in Guild Operations. Acquisition or entitlement is a separate concern and is not implemented here.</p>`,
         )
       : "";
 
@@ -142,21 +149,8 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       ? administrationSection("guild-settings", "guild-settings-heading", "Guild settings", renderGuildRefreshSchedule(refreshSchedule))
       : "";
 
-    const discordSettings = administration?.canConfigureDiscord
-      ? administrationSection(
-          "discord-settings",
-          "discord-settings-heading",
-          "Discord",
-          `<div class="admin-destinations">${destination(
-            "Discord integration",
-            "Configure application credentials, server association, invite URL, and managed role policy.",
-            "/admin/general/discord",
-          )}</div>`,
-        )
-      : "";
-
     const content = hasAdministration
-      ? `<div class="admin-sections">${moduleLifecycle}${guildSettings}${discordSettings}</div>`
+      ? `<div class="admin-sections">${moduleLifecycle}${guildSettings}</div>`
       : `<section class="admin-unavailable" aria-labelledby="admin-unavailable-heading"><h2 id="admin-unavailable-heading">Administration is not available for this account.</h2></section>`;
     const body = `${administrationTabs("general")}${content}`;
 
