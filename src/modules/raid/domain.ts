@@ -49,7 +49,6 @@ export type SubmitRaidParticipationRowInput = {
   applicantAnchor: RaidApplicantAnchor;
   participationKey: RaidParticipationKey;
   willingSpecs: readonly string[];
-  willingRoles: readonly RaidRole[];
 };
 
 export type AssignRaidParticipationInput = {
@@ -96,15 +95,9 @@ export function validateModifyRaidInput(input: ModifyRaidInput): void {
   if (input.requirements !== undefined) validateRequirements(input.requirements);
 }
 
-export function validateParticipationWillingness(
-  className: string,
-  specs: readonly string[],
-  roles: readonly RaidRole[],
-): void {
+export function rolesForParticipationSpecs(className: string, specs: readonly string[]): RaidRole[] {
   const normalizedSpecs = normalizedStrings(specs);
-  const normalizedRoles = [...new Set(roles)];
   if (!normalizedSpecs.length) throw new Error("At least one willing specialization is required");
-  if (!normalizedRoles.length) throw new Error("At least one willing role is required");
 
   for (const spec of normalizedSpecs) {
     const traits = traitsForSpec(className, spec);
@@ -116,22 +109,22 @@ export function validateParticipationWillingness(
     healer: "role.healer",
     damage: "role.damage",
   };
+  return (["tank", "healer", "damage"] as const).filter((role) =>
+    normalizedSpecs.some((spec) => specHasTrait(className, spec, roleTrait[role])),
+  );
+}
 
-  for (const role of normalizedRoles) {
-    if (!normalizedSpecs.some((spec) => specHasTrait(className, spec, roleTrait[role]))) {
-      throw new Error(`Offered role ${role} is not supported by the offered specializations`);
-    }
-  }
+export function validateParticipationWillingness(className: string, specs: readonly string[]): void {
+  rolesForParticipationSpecs(className, specs);
 }
 
 export function validateSelectedConfiguration(
   className: string,
   willingSpecs: readonly string[],
-  willingRoles: readonly RaidRole[],
   selectedSpec: string,
   selectedRole: RaidRole,
 ): void {
   if (!willingSpecs.includes(selectedSpec)) throw new Error("Selected specialization was not offered by the applicant");
-  if (!willingRoles.includes(selectedRole)) throw new Error("Selected role was not offered by the applicant");
-  validateParticipationWillingness(className, [selectedSpec], [selectedRole]);
+  const selectedRoles = rolesForParticipationSpecs(className, [selectedSpec]);
+  if (!selectedRoles.includes(selectedRole)) throw new Error("Selected role is not supported by the selected specialization");
 }
