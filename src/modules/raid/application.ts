@@ -29,7 +29,7 @@ export type RaidRosterDiagnostics = { assigned:number; tanks:number; healers:num
 
 function raidDestination(raidId:string):string { return `/events/raid/${encodeURIComponent(raidId)}`; }
 async function publishRaid(raid:RaidEventFacts, client:any):Promise<void> {
-  await establishGuildEventPublication({ publicationId:raid.raidId, title:raid.label, description:raid.description, occursAt:raid.occursAt,
+  await establishGuildEventPublication({ publicationId:raid.raidId, label:raid.label, description:raid.description, occursAt:[raid.occursAt],
     category:"raid", tags:raid.tags, interactions:[{ kind:raid.signupsOpen?"participate":"view", label:raid.signupsOpen?"View raid / sign up":"View raid", destination:raidDestination(raid.raidId) }] }, client);
 }
 async function resolveApplicantGuildie(anchor:RaidApplicantAnchor):Promise<string|null>{ if(anchor.kind!=="guildie")return null; const r=await pool.query<{guildie_id:string}>("SELECT guildie_id FROM guildies WHERE guildie_id = $1",[anchor.value]); return r.rows[0]?.guildie_id??null; }
