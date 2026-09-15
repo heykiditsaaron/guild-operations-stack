@@ -47,7 +47,7 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
         ])
       : [false, false];
     if (!guildie || (!canModify && !canStage)) {
-      return reply.code(guildie ? 403 : 401).send({ error: "Raid definition is not available for this account" });
+      return reply.code(guildie ? 403 : 401).send({ error: "Raid editing is not available for this account" });
     }
 
     const basePath = `/events/raid/manage/${encodeURIComponent(raid.raidId)}`;
@@ -55,7 +55,7 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
     const enchants = raid.requirements.find((requirement) => requirement.label === "Enchants & gems")?.value ?? "";
     const cancelled = raid.cancelledAtUnix !== null;
 
-    const definition = canModify && !cancelled
+    const edit = canModify && !cancelled
       ? `<form class="raid-admin-form" data-raid-definition-form>
           <label><span>Raid name</span><input name="label" type="text" value="${htmlText(raid.label)}" required></label>
           <label><span>Description <small>(optional)</small></span><textarea name="description" rows="3">${htmlText(raid.description ?? "")}</textarea></label>
@@ -65,12 +65,12 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
           <fieldset><legend>Readiness requirements</legend><p>These expectations are presented to participants and are not mechanically checked.</p><label><span>Minimum item level <small>(optional)</small></span><input name="minimumItemLevel" type="number" min="1" step="1" value="${htmlText(min)}"></label><label><span>Enchants &amp; gems</span><select name="enchantsAndGems"><option value=""${selected(enchants, "")}>No stated requirement</option><option value="Required"${selected(enchants, "Required")}>Required</option><option value="Preferred"${selected(enchants, "Preferred")}>Preferred</option><option value="Not required"${selected(enchants, "Not required")}>Not required</option></select></label></fieldset>
           <button type="submit" class="button-primary">Save changes</button>
         </form>`
-      : `<section class="raid-admin-form"><p>${cancelled ? "This raid is cancelled. Its definition is preserved for history." : "You can inspect this raid definition, but you cannot modify it."}</p><dl class="raid-admin-card-facts"><dt>Name</dt><dd>${htmlText(raid.label)}</dd><dt>Difficulty</dt><dd>${htmlText(raid.difficulty)}</dd><dt>Eligibility</dt><dd>${htmlText(raid.eligibility)}</dd></dl></section>`;
+      : `<section class="raid-admin-form"><p>${cancelled ? "This raid is cancelled. Its settings are preserved for history." : "You can inspect this raid, but you cannot edit it."}</p><dl class="raid-admin-card-facts"><dt>Name</dt><dd>${htmlText(raid.label)}</dd><dt>Difficulty</dt><dd>${htmlText(raid.difficulty)}</dd><dt>Eligibility</dt><dd>${htmlText(raid.eligibility)}</dd></dl></section>`;
 
     const cancellation = canStage && !cancelled
       ? `<section class="raid-admin-danger"><h2>Cancel raid</h2><p>Cancellation preserves this raid and its participation history while withdrawing it from the calendar.</p><button type="button" class="button-secondary" data-raid-cancel>Cancel raid</button></section>`
       : cancelled
-        ? `<section class="raid-admin-danger"><h2>Raid cancelled</h2><p>This raid is preserved for history and can no longer be modified.</p></section>`
+        ? `<section class="raid-admin-danger"><h2>Raid cancelled</h2><p>This raid is preserved for history and can no longer be edited.</p></section>`
         : "";
 
     const html = renderPage(assets, {
@@ -82,8 +82,8 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
       secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Events", href: "/events" }, { label: "Raid operations", href: "/events/raid/manage" }, { label: raid.label }] },
       header: "",
       body: `<section class="raid-title-bar"><div><h1>${htmlText(raid.label)}</h1><p><time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time>${cancelled ? " · Cancelled" : ""}</p></div></section>
-        <nav class="raid-admin-actions" aria-label="Raid management mode"><a class="button-secondary" href="${basePath}">Operation</a><a class="button-primary" href="${basePath}/definition" aria-current="page">Definition</a></nav>
-        <section class="raid-admin-setup">${definition}${cancellation}<p data-raid-definition-status role="status" aria-live="polite"></p></section>`,
+        <nav class="raid-admin-actions" aria-label="Raid management mode"><a class="button-secondary" href="${basePath}">Assign</a><a class="button-primary" href="${basePath}/definition" aria-current="page">Edit</a></nav>
+        <section class="raid-admin-setup">${edit}${cancellation}<p data-raid-definition-status role="status" aria-live="polite"></p></section>`,
     });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
