@@ -78,16 +78,17 @@ function renderGuildRefreshSchedule(schedule: GuildRefreshSchedule): string {
 }
 
 function rankSummary(policy: GuildCapabilityPolicySet["capabilities"][number], ranks: GuildCapabilityPolicySet["ranks"]): string {
-  if (policy.permittedRanks.length === 0) return "No guild ranks";
+  const guildMaster = ranks.find((rank) => rank.rankIndex === 0)?.displayName ?? "Rank 0";
   const names = policy.permittedRanks.map((rankIndex) => ranks.find((rank) => rank.rankIndex === rankIndex)?.displayName ?? `Rank ${rankIndex}`);
-  return names.length <= 3 ? names.join(", ") : `${names.slice(0, 2).join(", ")} + ${names.length - 2} more`;
+  const effectiveNames = [guildMaster, ...names];
+  return effectiveNames.length <= 3 ? effectiveNames.join(", ") : `${effectiveNames.slice(0, 2).join(", ")} + ${effectiveNames.length - 2} more`;
 }
 
 function renderPermissionCapability(policy: GuildCapabilityPolicySet["capabilities"][number], ranks: GuildCapabilityPolicySet["ranks"]): string {
-  const checkboxes = ranks.map((rank) => `<label class="permission-rank-option"><input type="checkbox" value="${rank.rankIndex}"${policy.permittedRanks.includes(rank.rankIndex) ? " checked" : ""}><span><strong>${htmlText(rank.displayName)}</strong><small>Rank ${rank.rankIndex}${rank.active ? "" : " · inactive"}</small></span></label>`).join("\n");
+  const checkboxes = ranks.filter((rank) => rank.rankIndex !== 0).map((rank) => `<label class="permission-rank-option"><input type="checkbox" value="${rank.rankIndex}"${policy.permittedRanks.includes(rank.rankIndex) ? " checked" : ""}><span><strong>${htmlText(rank.displayName)}</strong><small>Rank ${rank.rankIndex}${rank.active ? "" : " · inactive"}</small></span></label>`).join("\n");
   return `<article class="permission-capability" data-permission-capability="${htmlText(policy.key)}">
     <details><summary><span class="permission-capability-copy"><strong>${htmlText(policy.label)}</strong>${policy.description ? `<small>${htmlText(policy.description)}</small>` : ""}</span><span class="permission-capability-summary" data-permission-summary>${htmlText(rankSummary(policy, ranks))}</span></summary>
-      <form class="permission-capability-editor" data-permission-form><div class="permission-rank-options">${checkboxes}</div><div class="permission-capability-actions"><button type="submit" class="button-primary">Save</button><p data-permission-status role="status" aria-live="polite"></p></div></form>
+      <form class="permission-capability-editor" data-permission-form><p class="permission-inherent-authority"><strong>Guild Master</strong> · Rank 0 · inherent</p><div class="permission-rank-options">${checkboxes}</div><div class="permission-capability-actions"><button type="submit" class="button-primary">Save</button><p data-permission-status role="status" aria-live="polite"></p></div></form>
     </details>
   </article>`;
 }
@@ -141,7 +142,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     const policies = authorized ? await guildCapabilityPolicies() : null;
     const operator = guildie ? isConfiguredOperator(guildie.guildieId) : false;
     const content = authorized && policies
-      ? `<section class="permission-administration" aria-labelledby="permission-heading"><div class="permission-intro"><h2 id="permission-heading">Capability access</h2><p>Choose which current Blizzard guild ranks receive each Guild Operations capability. Permission administration itself is reserved to Guild Master rank 0.</p>${operator ? `<p class="permission-operator-notice"><strong>Operator override active.</strong> This access is independent of your current guild rank.</p>` : ""}</div>${renderPermissionPolicies(policies)}</section>`
+      ? `<section class="permission-administration" aria-labelledby="permission-heading"><div class="permission-intro"><h2 id="permission-heading">Capability access</h2><p>Choose which current Blizzard guild ranks receive each Guild Operations capability in addition to Guild Master rank 0. Rank 0 and configured operator overrides are inherently capable and are not configurable here.</p>${operator ? `<p class="permission-operator-notice"><strong>Operator override active.</strong> This access is independent of your current guild rank.</p>` : ""}</div>${renderPermissionPolicies(policies)}</section>`
       : `<section class="admin-unavailable" aria-labelledby="admin-unavailable-heading"><h2 id="admin-unavailable-heading">Permission administration is not available for this account.</h2></section>`;
     const html = renderPage(assets, { pathname: "/admin/permissions", title: "Permissions Administration · OH CRIT I Pulled! Guild Operations", description: "Configure Guild Operations permission policy.", viewer, stylesheets: ["admin.css", "admin-permissions.css"], scripts: ["admin-permissions.js"], header: `<div class="admin-page-header"><h1 id="page-title">Administration</h1><p class="lede">Configure who may use Guild Operations capabilities.</p></div>`, body: `${administrationTabs("permissions")}${content}` });
     if (!authorized) return reply.code(guildie ? 403 : 401).header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
