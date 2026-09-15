@@ -13,68 +13,11 @@ export type AssetName =
   | "raffle.css" | "raffle-admin.css" | "raffle-admin-overview.css" | "raffle-winner.css" | "raffle-round.css"
   | "raffle.js" | "raffle-entry.js" | "raffle-public.js"
   | "raid.css" | "raid.js" | "raid-admin.css" | "raid-iconography.css" | "raid-organizer.css"
-  | "raid-admin.js" | "raid-create.js" | "raid-organizer.js"
+  | "raid-admin.js" | "raid-create.js" | "raid-organizer.js" | "raid-definition.js"
   | "images/raffle/gold-sack.png";
 
 type WebAsset = { name: AssetName; contentType: string; body: Buffer; pathname: string; url: string };
-
 const assetDefinitions: Array<{ name: AssetName; contentType: string }> = [
-  { name: "app.css", contentType: "text/css; charset=utf-8" },
-  { name: "footer.css", contentType: "text/css; charset=utf-8" },
-  { name: "me.css", contentType: "text/css; charset=utf-8" },
-  { name: "navigation-shelves.css", contentType: "text/css; charset=utf-8" },
-  { name: "home.css", contentType: "text/css; charset=utf-8" },
-  { name: "home-raffle.css", contentType: "text/css; charset=utf-8" },
-  { name: "events.css", contentType: "text/css; charset=utf-8" },
-  { name: "site-information.css", contentType: "text/css; charset=utf-8" },
-  { name: "admin.css", contentType: "text/css; charset=utf-8" },
-  { name: "admin-modules.css", contentType: "text/css; charset=utf-8" },
-  { name: "admin-permissions.css", contentType: "text/css; charset=utf-8" },
-  { name: "raffle.css", contentType: "text/css; charset=utf-8" },
-  { name: "raffle-admin.css", contentType: "text/css; charset=utf-8" },
-  { name: "raffle-admin-overview.css", contentType: "text/css; charset=utf-8" },
-  { name: "raffle-winner.css", contentType: "text/css; charset=utf-8" },
-  { name: "raffle-round.css", contentType: "text/css; charset=utf-8" },
-  { name: "raid.css", contentType: "text/css; charset=utf-8" },
-  { name: "raid-admin.css", contentType: "text/css; charset=utf-8" },
-  { name: "raid-iconography.css", contentType: "text/css; charset=utf-8" },
-  { name: "raid-organizer.css", contentType: "text/css; charset=utf-8" },
-  { name: "app.js", contentType: "text/javascript; charset=utf-8" },
-  { name: "navigation-shelves.js", contentType: "text/javascript; charset=utf-8" },
-  { name: "admin.js", contentType: "text/javascript; charset=utf-8" },
-  { name: "admin-modules.js", contentType: "text/javascript; charset=utf-8" },
-  { name: "admin-permissions.js", contentType: "text/javascript; charset=utf-8" },
-  { name: "discord-admin.js", contentType: "text/javascript; charset=utf-8" },
-  { name: "operations.js", contentType: "text/javascript; charset=utf-8" },
-  { name: "raffle.js", contentType: "text/javascript; charset=utf-8" },
-  { name: "raffle-entry.js", contentType: "text/javascript; charset=utf-8" },
-  { name: "raffle-public.js", contentType: "text/javascript; charset=utf-8" },
-  { name: "raid.js", contentType: "text/javascript; charset=utf-8" },
-  { name: "raid-admin.js", contentType: "text/javascript; charset=utf-8" },
-  { name: "raid-create.js", contentType: "text/javascript; charset=utf-8" },
-  { name: "raid-organizer.js", contentType: "text/javascript; charset=utf-8" },
-  { name: "images/raffle/gold-sack.png", contentType: "image/png" },
+  { name:"app.css",contentType:"text/css; charset=utf-8"},{name:"footer.css",contentType:"text/css; charset=utf-8"},{name:"me.css",contentType:"text/css; charset=utf-8"},{name:"navigation-shelves.css",contentType:"text/css; charset=utf-8"},{name:"home.css",contentType:"text/css; charset=utf-8"},{name:"home-raffle.css",contentType:"text/css; charset=utf-8"},{name:"events.css",contentType:"text/css; charset=utf-8"},{name:"site-information.css",contentType:"text/css; charset=utf-8"},{name:"admin.css",contentType:"text/css; charset=utf-8"},{name:"admin-modules.css",contentType:"text/css; charset=utf-8"},{name:"admin-permissions.css",contentType:"text/css; charset=utf-8"},{name:"raffle.css",contentType:"text/css; charset=utf-8"},{name:"raffle-admin.css",contentType:"text/css; charset=utf-8"},{name:"raffle-admin-overview.css",contentType:"text/css; charset=utf-8"},{name:"raffle-winner.css",contentType:"text/css; charset=utf-8"},{name:"raffle-round.css",contentType:"text/css; charset=utf-8"},{name:"raid.css",contentType:"text/css; charset=utf-8"},{name:"raid-admin.css",contentType:"text/css; charset=utf-8"},{name:"raid-iconography.css",contentType:"text/css; charset=utf-8"},{name:"raid-organizer.css",contentType:"text/css; charset=utf-8"},{name:"app.js",contentType:"text/javascript; charset=utf-8"},{name:"navigation-shelves.js",contentType:"text/javascript; charset=utf-8"},{name:"admin.js",contentType:"text/javascript; charset=utf-8"},{name:"admin-modules.js",contentType:"text/javascript; charset=utf-8"},{name:"admin-permissions.js",contentType:"text/javascript; charset=utf-8"},{name:"discord-admin.js",contentType:"text/javascript; charset=utf-8"},{name:"operations.js",contentType:"text/javascript; charset=utf-8"},{name:"raffle.js",contentType:"text/javascript; charset=utf-8"},{name:"raffle-entry.js",contentType:"text/javascript; charset=utf-8"},{name:"raffle-public.js",contentType:"text/javascript; charset=utf-8"},{name:"raid.js",contentType:"text/javascript; charset=utf-8"},{name:"raid-admin.js",contentType:"text/javascript; charset=utf-8"},{name:"raid-create.js",contentType:"text/javascript; charset=utf-8"},{name:"raid-organizer.js",contentType:"text/javascript; charset=utf-8"},{name:"raid-definition.js",contentType:"text/javascript; charset=utf-8"},{name:"images/raffle/gold-sack.png",contentType:"image/png"},
 ];
-
-function fingerprint(body: Buffer): string { return createHash("sha256").update(body).digest("hex").slice(0, 12); }
-export type AssetRegistry = ReadonlyMap<AssetName, WebAsset>;
-export async function loadAssetRegistry(): Promise<AssetRegistry> {
-  const entries = await Promise.all(assetDefinitions.map(async ({ name, contentType }) => {
-    const sourceUrl = new URL(`./public/${name}`, import.meta.url);
-    const body = await readFile(fileURLToPath(sourceUrl));
-    const extensionIndex = name.lastIndexOf(".");
-    const basename = name.slice(0, extensionIndex);
-    const extension = name.slice(extensionIndex);
-    const pathname = `/assets/${basename}.${fingerprint(body)}${extension}`;
-    return [name, { name, contentType, body, pathname, url: new URL(pathname, config.appOrigin).toString() }] as const;
-  }));
-  return new Map(entries);
-}
-export function assetUrl(assets: AssetRegistry, name: AssetName): string {
-  const asset = assets.get(name);
-  if (!asset) throw new Error(`Unknown web asset: ${name}`);
-  return asset.url;
-}
-export async function registerAssetRoutes(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
-  for (const asset of assets.values()) app.get(asset.pathname, async (_request, reply) => reply.header("Cache-Control", "public, max-age=31536000, immutable").type(asset.contentType).send(asset.body));
-}
+function fingerprint(body:Buffer):string{return createHash("sha256").update(body).digest("hex").slice(0,12);}export type AssetRegistry=ReadonlyMap<AssetName,WebAsset>;export async function loadAssetRegistry():Promise<AssetRegistry>{const entries=await Promise.all(assetDefinitions.map(async({name,contentType})=>{const sourceUrl=new URL(`./public/${name}`,import.meta.url);const body=await readFile(fileURLToPath(sourceUrl));const extensionIndex=name.lastIndexOf(".");const basename=name.slice(0,extensionIndex);const extension=name.slice(extensionIndex);const pathname=`/assets/${basename}.${fingerprint(body)}${extension}`;return[name,{name,contentType,body,pathname,url:new URL(pathname,config.appOrigin).toString()}] as const;}));return new Map(entries);}export function assetUrl(assets:AssetRegistry,name:AssetName):string{const asset=assets.get(name);if(!asset)throw new Error(`Unknown web asset: ${name}`);return asset.url;}export async function registerAssetRoutes(app:FastifyInstance,assets:AssetRegistry):Promise<void>{for(const asset of assets.values())app.get(asset.pathname,async(_request,reply)=>reply.header("Cache-Control","public, max-age=31536000, immutable").type(asset.contentType).send(asset.body));}
