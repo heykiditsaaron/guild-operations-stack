@@ -130,3 +130,23 @@ for (const form of document.querySelectorAll("[data-raid-signup-form]")) {
     }
   });
 }
+
+for (const button of document.querySelectorAll("[data-raid-withdraw-offer]")) {
+  if (!(button instanceof HTMLButtonElement)) continue;
+  button.addEventListener("click", async () => {
+    const signupRowId = button.dataset.raidWithdrawOffer;
+    if (!signupRowId) return;
+    button.disabled = true;
+    button.textContent = "Withdrawing…";
+    try {
+      const response = await fetch(`${window.location.pathname}/signup/${encodeURIComponent(signupRowId)}/withdraw`, { method: "POST" });
+      const payload = response.status === 204 ? {} : await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error ?? "Participation offer could not be withdrawn");
+      window.location.reload();
+    } catch (error) {
+      button.disabled = false;
+      button.textContent = "Withdraw";
+      window.alert(error instanceof Error ? error.message : "Participation offer could not be withdrawn.");
+    }
+  });
+}
