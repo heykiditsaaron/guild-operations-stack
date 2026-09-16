@@ -24,6 +24,13 @@ function decodedRecord(value) {
   }
 }
 
+function raidMutationBase() {
+  const suffix = "/participation";
+  return window.location.pathname.endsWith(suffix)
+    ? window.location.pathname.slice(0, -suffix.length)
+    : window.location.pathname;
+}
+
 function renderSpecChoices(container, values, icons) {
   container.replaceChildren();
   for (const value of values) {
@@ -117,7 +124,7 @@ for (const form of document.querySelectorAll("[data-raid-signup-form]")) {
 
     status.textContent = "Submitting participation…";
     try {
-      const response = await fetch(`${window.location.pathname}/signup`, {
+      const response = await fetch(`${raidMutationBase()}/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -139,7 +146,7 @@ for (const button of document.querySelectorAll("[data-raid-withdraw-offer]")) {
     button.disabled = true;
     button.textContent = "Withdrawing…";
     try {
-      const response = await fetch(`${window.location.pathname}/signup/${encodeURIComponent(signupRowId)}/withdraw`, { method: "POST" });
+      const response = await fetch(`${raidMutationBase()}/signup/${encodeURIComponent(signupRowId)}/withdraw`, { method: "POST" });
       const payload = response.status === 204 ? {} : await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? "Participation offer could not be withdrawn");
       window.location.reload();
