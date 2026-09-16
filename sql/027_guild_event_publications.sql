@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS guild_event_publications (
   description text,
   category text,
   tags text[] NOT NULL DEFAULT ARRAY[]::text[],
-  interactions jsonb NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(interactions) = 'array'),
+  destinations jsonb NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(destinations) = 'array'),
   published boolean NOT NULL DEFAULT true,
   published_at_unix bigint NOT NULL DEFAULT (extract(epoch FROM now())::bigint),
   updated_at_unix bigint NOT NULL DEFAULT (extract(epoch FROM now())::bigint)
