@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
 import { GuildCapabilityDeniedError, RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILITY, guildieHasGuildCapabilityOrOperator } from "../../../../guild-permissions.js";
-import { cancelRaid, modifyRaid, raidEventFacts } from "../../../../modules/raid/application.js";
+import { cancelRaid, modifyRaid, raidEventFacts, raidOccurrenceDestinations } from "../../../../modules/raid/application.js";
 import type { RaidDifficulty, RaidEligibility, RaidRequirement } from "../../../../modules/raid/domain.js";
 import type { AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage } from "../../../render.js";
@@ -54,7 +54,10 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
       return reply.code(guildie ? 403 : 401).send({ error: "Raid editing is not available for this account" });
     }
 
-    const basePath = `/events/raid/manage/${encodeURIComponent(raid.raidId)}`;
+    const destinations = raidOccurrenceDestinations(raid.raidId);
+    const publicDestination = destinations.find((destination) => destination.kind === "public");
+    const operateDestination = destinations.find((destination) => destination.kind === "operate");
+    const basePath = operateDestination?.href ?? `/events/raid/manage/${encodeURIComponent(raid.raidId)}`;
     const min = raid.requirements.find((requirement) => requirement.label === "Minimum item level")?.value ?? "";
     const enchants = raid.requirements.find((requirement) => requirement.label === "Enchants & gems")?.value ?? "";
     const cancelled = raid.cancelledAtUnix !== null;
@@ -92,10 +95,10 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
             <p><time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${htmlText(difficultyLabel(raid.difficulty))} · Signups ${raid.signupsOpen ? "open" : "closed"}${cancelled ? " · Cancelled" : ""}</p>
           </div>
           <div class="raid-admin-actions">
-            <a class="button-secondary" href="/events/raid/${encodeURIComponent(raid.raidId)}">View signup page ↗</a>
+            ${publicDestination ? `<a class="button-secondary" href="${htmlText(publicDestination.href)}">${htmlText(publicDestination.label)} ↗</a>` : ""}
           </div>
         </section>
-        <nav class="raid-admin-actions" aria-label="Raid management mode"><a class="button-secondary" href="${basePath}">Assign</a><a class="button-primary" href="${basePath}/definition" aria-current="page">Edit</a></nav>
+        <nav class="raid-admin-actions" aria-label="Raid management mode"><a class="button-secondary" href="${htmlText(basePath)}">Assign</a><a class="button-primary" href="${htmlText(basePath)}/definition" aria-current="page">Edit</a></nav>
         <section class="raid-admin-setup">${edit}${cancellation}<p data-raid-definition-status role="status" aria-live="polite"></p></section>`,
     });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
