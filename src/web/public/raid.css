@@ -6,6 +6,42 @@
   gap: 1rem;
 }
 
+.raid-occurrence-header {
+  display: grid;
+  gap: .8rem;
+}
+
+.raid-occurrence-header h1,
+.raid-occurrence-header .lede,
+.raid-occurrence-meta {
+  margin: 0;
+}
+
+.raid-occurrence-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  align-items: baseline;
+}
+
+.raid-event-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  margin-top: .35rem;
+}
+
+.raid-event-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: .65rem 1rem;
+  border-radius: .7rem;
+  text-decoration: none;
+  font-weight: 700;
+}
+
 .raid-requirements {
   margin-bottom: 1.5rem;
   padding: 1rem;
@@ -158,6 +194,15 @@
 }
 
 @media (max-width: 40rem) {
+  .raid-event-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .raid-event-actions a {
+    width: 100%;
+  }
+
   .raid-requirements dl > div {
     grid-template-columns: 1fr;
     gap: .2rem;
