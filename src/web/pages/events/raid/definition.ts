@@ -2,17 +2,13 @@ import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
 import { GuildCapabilityDeniedError, RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILITY, guildieHasGuildCapabilityOrOperator } from "../../../../guild-permissions.js";
 import { cancelRaid, modifyRaid, raidEventFacts, raidHasOccurred, raidOccurrenceDestinations } from "../../../../modules/raid/application.js";
-import { RAID_DESCRIPTION_MAX_LENGTH, RAID_LABEL_MAX_LENGTH, type RaidDifficulty, type RaidEligibility, type RaidRequirement } from "../../../../modules/raid/domain.js";
+import { RAID_DESCRIPTION_MAX_LENGTH, RAID_LABEL_MAX_LENGTH, type RaidDifficulty, type RaidRequirement } from "../../../../modules/raid/domain.js";
 import type { AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
 
 type RaidParams = { raidId: string };
-type DefinitionBody = { label?: unknown; description?: unknown; occursAt?: unknown; eligibility?: unknown; difficulty?: unknown; requirements?: unknown };
-
-function validEligibility(value: unknown): value is RaidEligibility {
-  return value === "guild_character_member" || value === "guildie" || value === "anyone";
-}
+type DefinitionBody = { label?: unknown; description?: unknown; occursAt?: unknown; difficulty?: unknown; requirements?: unknown };
 
 function validDifficulty(value: unknown): value is RaidDifficulty {
   return value === "normal" || value === "heroic" || value === "mythic";
@@ -69,7 +65,6 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
           <label><span>Description <small>(optional)</small></span><textarea name="description" rows="3" maxlength="${RAID_DESCRIPTION_MAX_LENGTH}">${htmlText(raid.description ?? "")}</textarea></label>
           <label><span>Start time</span><input name="startsAt" type="datetime-local" data-raid-definition-start="${raid.occursAt[0]}" required></label>
           <label><span>Difficulty</span><select name="difficulty"><option value="normal"${selected(raid.difficulty, "normal")}>Normal</option><option value="heroic"${selected(raid.difficulty, "heroic")}>Heroic</option><option value="mythic"${selected(raid.difficulty, "mythic")}>Mythic</option></select></label>
-          <label><span>Who can apply</span><select name="eligibility"><option value="guild_character_member"${selected(raid.eligibility, "guild_character_member")}>Guild Character Member</option><option value="guildie"${selected(raid.eligibility, "guildie")}>Guildie</option><option value="anyone"${selected(raid.eligibility, "anyone")}>Anyone</option></select></label>
           <fieldset><legend>Readiness requirements</legend><p>These expectations are presented to participants and are not mechanically checked.</p><label><span>Minimum item level <small>(optional)</small></span><input name="minimumItemLevel" type="number" min="1" step="1" value="${htmlText(min)}"></label><label><span>Enchants &amp; gems</span><select name="enchantsAndGems"><option value=""${selected(enchants, "")}>No stated requirement</option><option value="Required"${selected(enchants, "Required")}>Required</option><option value="Preferred"${selected(enchants, "Preferred")}>Preferred</option><option value="Not required"${selected(enchants, "Not required")}>Not required</option></select></label></fieldset>
           <button type="submit" class="button-primary">Save changes</button>
         </form>`
@@ -107,11 +102,11 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
     const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
     if (!guildie) return reply.code(401).send({ error: "Authentication required" });
     const body = request.body ?? {};
-    if (typeof body.label !== "string" || typeof body.description !== "string" || !Array.isArray(body.occursAt) || body.occursAt.length !== 1 || typeof body.occursAt[0] !== "number" || !validDifficulty(body.difficulty) || !validEligibility(body.eligibility) || !validRequirements(body.requirements)) {
+    if (typeof body.label !== "string" || typeof body.description !== "string" || !Array.isArray(body.occursAt) || body.occursAt.length !== 1 || typeof body.occursAt[0] !== "number" || !validDifficulty(body.difficulty) || !validRequirements(body.requirements)) {
       return reply.code(400).send({ error: "Raid definition is invalid" });
     }
     try {
-      return { raid: await modifyRaid(guildie.guildieId, request.params.raidId, { label: body.label, description: body.description, occursAt: [body.occursAt[0]], difficulty: body.difficulty, eligibility: body.eligibility, requirements: body.requirements }) };
+      return { raid: await modifyRaid(guildie.guildieId, request.params.raidId, { label: body.label, description: body.description, occursAt: [body.occursAt[0]], difficulty: body.difficulty, requirements: body.requirements }) };
     } catch (error) {
       return reply.code(status(error)).send({ error: error instanceof Error ? error.message : "Raid could not be modified" });
     }
