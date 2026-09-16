@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
 import { GuildCapabilityDeniedError, RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILITY, guildieHasGuildCapabilityOrOperator } from "../../../../guild-permissions.js";
 import { cancelRaid, modifyRaid, raidEventFacts, raidHasOccurred, raidOccurrenceDestinations } from "../../../../modules/raid/application.js";
-import type { RaidDifficulty, RaidEligibility, RaidRequirement } from "../../../../modules/raid/domain.js";
+import { RAID_DESCRIPTION_MAX_LENGTH, RAID_LABEL_MAX_LENGTH, type RaidDifficulty, type RaidEligibility, type RaidRequirement } from "../../../../modules/raid/domain.js";
 import type { AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
@@ -65,8 +65,8 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
 
     const edit = canModify && !historical
       ? `<form class="raid-admin-form" data-raid-definition-form>
-          <label><span>Raid name</span><input name="label" type="text" value="${htmlText(raid.label)}" required></label>
-          <label><span>Description <small>(optional)</small></span><textarea name="description" rows="3">${htmlText(raid.description ?? "")}</textarea></label>
+          <label><span>Raid name</span><input name="label" type="text" value="${htmlText(raid.label)}" maxlength="${RAID_LABEL_MAX_LENGTH}" required></label>
+          <label><span>Description <small>(optional)</small></span><textarea name="description" rows="3" maxlength="${RAID_DESCRIPTION_MAX_LENGTH}">${htmlText(raid.description ?? "")}</textarea></label>
           <label><span>Start time</span><input name="startsAt" type="datetime-local" data-raid-definition-start="${raid.occursAt[0]}" required></label>
           <label><span>Difficulty</span><select name="difficulty"><option value="normal"${selected(raid.difficulty, "normal")}>Normal</option><option value="heroic"${selected(raid.difficulty, "heroic")}>Heroic</option><option value="mythic"${selected(raid.difficulty, "mythic")}>Mythic</option></select></label>
           <label><span>Who can apply</span><select name="eligibility"><option value="guild_character_member"${selected(raid.eligibility, "guild_character_member")}>Guild Character Member</option><option value="guildie"${selected(raid.eligibility, "guildie")}>Guildie</option><option value="anyone"${selected(raid.eligibility, "anyone")}>Anyone</option></select></label>
