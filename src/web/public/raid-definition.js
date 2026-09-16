@@ -37,13 +37,13 @@ if (form instanceof HTMLFormElement) {
 const cancel = document.querySelector("[data-raid-cancel]");
 if (cancel instanceof HTMLButtonElement) {
   cancel.addEventListener("click", async () => {
-    if (!window.confirm("Cancel this raid? Its participation history will be preserved, but it will be withdrawn from the calendar.")) return;
+    if (!window.confirm("Cancel this raid? This permanently removes the raid, its participation, and its assignments.")) return;
     setStatus("Cancelling raid…");
     try {
       const response = await fetch(`${manageBasePath()}/cancel`, { method: "POST" });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? "Raid could not be cancelled");
-      window.location.reload();
+      window.location.assign("/events/raid/manage");
     } catch (error) { setStatus(error instanceof Error ? error.message : "Raid could not be cancelled."); }
   });
 }
