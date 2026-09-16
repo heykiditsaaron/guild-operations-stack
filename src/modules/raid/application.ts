@@ -101,10 +101,9 @@ export async function modifyRaid(actorGuildieId:string,raidId:string,input:Modif
   validateModifyRaidInput(input); await requireGuildCapabilityOrOperator(actorGuildieId,RAID_MODIFY_CAPABILITY);
   return withTransaction(async client=>{
     const current=await raidEventFacts(raidId,client); if(!current)throw new Error("Raid not found"); requireUpcomingRaid(current);
-    if(input.eligibility!==undefined&&input.eligibility!==current.eligibility){const p=await client.query("SELECT 1 FROM raid_signup_rows WHERE raid_id=$1 LIMIT 1",[raidId]);if(p.rowCount)throw new Error("Raid eligibility cannot change after participation exists");}
     const occurs=input.occursAt??current.occursAt; requireFutureOccurrence(occurs);
-    await client.query(`UPDATE raid_events SET label=$2,description=$3,occurs_start_unix=$4,occurs_end_unix=$5,tags=$6,eligibility=$7,difficulty=$8,updated_at_unix=extract(epoch FROM now())::bigint WHERE raid_id=$1`,[
-      raidId,input.label?.trim()??current.label,input.description===undefined?current.description:(input.description?.trim()||null),occurs[0],occurs.length===2?occurs[1]:null,input.tags===undefined?current.tags:normalizedStrings(input.tags),input.eligibility??current.eligibility,input.difficulty??current.difficulty]);
+    await client.query(`UPDATE raid_events SET label=$2,description=$3,occurs_start_unix=$4,occurs_end_unix=$5,tags=$6,difficulty=$7,updated_at_unix=extract(epoch FROM now())::bigint WHERE raid_id=$1`,[
+      raidId,input.label?.trim()??current.label,input.description===undefined?current.description:(input.description?.trim()||null),occurs[0],occurs.length===2?occurs[1]:null,input.tags===undefined?current.tags:normalizedStrings(input.tags),input.difficulty??current.difficulty]);
     if(input.requirements!==undefined)await replaceRaidRequirements(client,raidId,input.requirements);
     await recordRaidAction(client,raidId,"modified",actorGuildieId);
     const facts=await raidEventFacts(raidId,client); if(!facts)throw new Error("Raid not found"); await publishRaid(facts,client); return facts;
