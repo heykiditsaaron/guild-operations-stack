@@ -6,44 +6,79 @@
   gap: 1rem;
 }
 
-.raid-occurrence-header {
+.raid-listing {
   display: grid;
+  gap: 1.5rem;
+  max-width: 48rem;
+}
+
+.raid-listing-header {
+  display: grid;
+  justify-items: start;
   gap: .8rem;
 }
 
-.raid-occurrence-header h1,
-.raid-occurrence-header .lede,
-.raid-occurrence-meta {
+.raid-listing-header h1,
+.raid-listing-header .lede,
+.raid-listing-time {
   margin: 0;
 }
 
-.raid-occurrence-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .35rem;
-  align-items: baseline;
+.raid-difficulty,
+.raid-listing-status {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin: 0;
+  padding: .2rem .55rem;
+  border: 1px solid var(--border-subtle, #2a2a2f);
+  border-radius: .45rem;
+  font-size: .9rem;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
-.raid-event-actions {
+.raid-listing-time {
   display: flex;
   flex-wrap: wrap;
-  gap: .75rem;
-  margin-top: .35rem;
+  gap: .65rem;
+  align-items: center;
 }
 
-.raid-event-actions a {
+.raid-listing-status {
+  font-size: .8rem;
+}
+
+.raid-listing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+}
+
+.raid-listing-actions a {
+  min-height: 2.75rem;
+}
+
+.raid-listing-signup {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 2.75rem;
-  padding: .65rem 1rem;
+  padding: .65rem 1.25rem;
   border-radius: .7rem;
   text-decoration: none;
   font-weight: 700;
 }
 
+.raid-listing-manage {
+  display: inline-flex;
+  align-items: center;
+  padding: .65rem .25rem;
+  font-weight: 700;
+}
+
 .raid-requirements {
-  margin-bottom: 1.5rem;
+  margin: 0;
   padding: 1rem;
   border: 1px solid var(--border-subtle, #2a2a2f);
   border-radius: 1rem;
@@ -194,13 +229,8 @@
 }
 
 @media (max-width: 40rem) {
-  .raid-event-actions {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-
-  .raid-event-actions a {
-    width: 100%;
+  .raid-listing-actions {
+    gap: .75rem;
   }
 
   .raid-requirements dl > div {
