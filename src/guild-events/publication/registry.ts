@@ -15,7 +15,8 @@ function normalize(input: GuildEventPublicationInput) {
   if (!publicationId || !label) throw new Error("Publication id and label are required");
   if (!input.occursAt.length) throw new Error("A publication requires at least one occurrence");
   const occursAt = input.occursAt.map(normalizeOccurrence);
-  const destinations: GuildEventDestination[] = (input.destinations ?? []).map((value) => ({ kind: value.kind.trim(), label: value.label.trim(), href: value.href.trim() }));
+  const destinationInput = input.destinations ?? input.interactions?.map((value) => ({ kind: value.kind, label: value.label, href: value.destination })) ?? [];
+  const destinations: GuildEventDestination[] = destinationInput.map((value) => ({ kind: value.kind.trim(), label: value.label.trim(), href: value.href.trim() }));
   if (destinations.some((value) => !value.kind || !value.label || !value.href)) throw new Error("Publication destinations require kind, label, and href");
   return { publicationId, label, occursAt, description: input.description?.trim() || null, category: input.category?.trim() || null,
     tags: [...new Set((input.tags ?? []).map((tag) => tag.trim()).filter(Boolean))], destinations };
