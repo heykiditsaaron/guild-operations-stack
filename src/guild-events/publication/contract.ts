@@ -4,10 +4,10 @@ export type GuildEventOccurrence =
   | readonly [UnixTimestamp]
   | readonly [UnixTimestamp, UnixTimestamp];
 
-export type GuildEventInteraction = {
+export type GuildEventDestination = {
   kind: string;
   label: string;
-  destination: string;
+  href: string;
 };
 
 export type GuildEventPublicationInput = {
@@ -17,7 +17,7 @@ export type GuildEventPublicationInput = {
   description?: string | null;
   category?: string | null;
   tags?: readonly string[];
-  interactions?: readonly GuildEventInteraction[];
+  destinations?: readonly GuildEventDestination[];
 };
 
 export type GuildEventPublication = {
@@ -27,7 +27,7 @@ export type GuildEventPublication = {
   description: string | null;
   category: string | null;
   tags: string[];
-  interactions: GuildEventInteraction[];
+  destinations: GuildEventDestination[];
   publishedAtUnix: UnixTimestamp;
   updatedAtUnix: UnixTimestamp;
 };
