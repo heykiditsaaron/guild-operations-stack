@@ -51,7 +51,7 @@ export type RaidRosterDiagnostics = { assigned:number; tanks:number; healers:num
 type RaidAction = "created" | "modified" | "signups_opened" | "signups_closed" | "cancelled" | "assigned" | "unassigned";
 
 function raidPublicDestination(raidId:string):string { return `/events/raid/${encodeURIComponent(raidId)}`; }
-function raidParticipationDestination(raidId:string):string { return `/events/raid/${encodeURIComponent(raidId)}#participation`; }
+function raidParticipationDestination(raidId:string):string { return `/events/raid/${encodeURIComponent(raidId)}/participation`; }
 function raidManageDestination(raidId:string):string { return `/events/raid/manage/${encodeURIComponent(raidId)}`; }
 export function raidOccurrenceDestinations(raidId:string):readonly GuildEventDestination[] {
   return [
