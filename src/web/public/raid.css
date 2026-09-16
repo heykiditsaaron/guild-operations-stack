@@ -19,8 +19,25 @@
 }
 
 .raid-listing-header h1,
-.raid-listing-header .lede,
 .raid-listing-time {
+  margin: 0;
+}
+
+.raid-listing-title {
+  overflow-wrap: anywhere;
+}
+
+.raid-listing-title-long {
+  font-size: clamp(2rem, 7vw, 3.25rem);
+  line-height: 1.02;
+}
+
+.raid-listing-description {
+  display: grid;
+  gap: .8rem;
+}
+
+.raid-listing-description p {
   margin: 0;
 }
 
@@ -260,6 +277,11 @@
 }
 
 @media (max-width: 40rem) {
+  .raid-listing-title-long {
+    font-size: clamp(1.9rem, 9vw, 2.5rem);
+    line-height: 1.05;
+  }
+
   .raid-listing-actions {
     gap: .75rem;
   }
