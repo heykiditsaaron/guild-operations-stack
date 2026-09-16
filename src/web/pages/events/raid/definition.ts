@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
 import { GuildCapabilityDeniedError, RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILITY, guildieHasGuildCapabilityOrOperator } from "../../../../guild-permissions.js";
 import { cancelRaid, modifyRaid, raidEventFacts, raidHasOccurred, raidOccurrenceDestinations } from "../../../../modules/raid/application.js";
-import { RAID_DESCRIPTION_MAX_LENGTH, RAID_LABEL_MAX_LENGTH, type RaidDifficulty, type RaidRequirement } from "../../../../modules/raid/domain.js";
+import { RAID_DESCRIPTION_MAX_LENGTH, RAID_LABEL_MAX_LENGTH, type RaidDifficulty, type RaidEligibility, type RaidRequirement } from "../../../../modules/raid/domain.js";
 import type { AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
@@ -28,6 +28,12 @@ function selected(actual: string, value: string): string {
 
 function difficultyLabel(value: RaidDifficulty): string {
   return value[0].toUpperCase() + value.slice(1);
+}
+
+function eligibilityLabel(value: RaidEligibility): string {
+  if (value === "guild_character_member") return "Guild Character Member";
+  if (value === "guildie") return "Guildie";
+  return "Anyone";
 }
 
 export async function registerRaidDefinitionPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
@@ -65,10 +71,11 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
           <label><span>Description <small>(optional)</small></span><textarea name="description" rows="3" maxlength="${RAID_DESCRIPTION_MAX_LENGTH}">${htmlText(raid.description ?? "")}</textarea></label>
           <label><span>Start time</span><input name="startsAt" type="datetime-local" data-raid-definition-start="${raid.occursAt[0]}" required></label>
           <label><span>Difficulty</span><select name="difficulty"><option value="normal"${selected(raid.difficulty, "normal")}>Normal</option><option value="heroic"${selected(raid.difficulty, "heroic")}>Heroic</option><option value="mythic"${selected(raid.difficulty, "mythic")}>Mythic</option></select></label>
+          <div class="raid-admin-card-facts"><dt>Who can apply</dt><dd>${htmlText(eligibilityLabel(raid.eligibility))}</dd></div>
           <fieldset><legend>Readiness requirements</legend><p>These expectations are presented to participants and are not mechanically checked.</p><label><span>Minimum item level <small>(optional)</small></span><input name="minimumItemLevel" type="number" min="1" step="1" value="${htmlText(min)}"></label><label><span>Enchants &amp; gems</span><select name="enchantsAndGems"><option value=""${selected(enchants, "")}>No stated requirement</option><option value="Required"${selected(enchants, "Required")}>Required</option><option value="Preferred"${selected(enchants, "Preferred")}>Preferred</option><option value="Not required"${selected(enchants, "Not required")}>Not required</option></select></label></fieldset>
           <button type="submit" class="button-primary">Save changes</button>
         </form>`
-      : `<section class="raid-admin-form"><p>${historical ? "This raid has occurred. Its definition is preserved as history." : "You can inspect this raid, but you cannot edit it."}</p><dl class="raid-admin-card-facts"><dt>Name</dt><dd>${htmlText(raid.label)}</dd><dt>Difficulty</dt><dd>${htmlText(raid.difficulty)}</dd><dt>Eligibility</dt><dd>${htmlText(raid.eligibility)}</dd></dl></section>`;
+      : `<section class="raid-admin-form"><p>${historical ? "This raid has occurred. Its definition is preserved as history." : "You can inspect this raid, but you cannot edit it."}</p><dl class="raid-admin-card-facts"><dt>Name</dt><dd>${htmlText(raid.label)}</dd><dt>Difficulty</dt><dd>${htmlText(difficultyLabel(raid.difficulty))}</dd><dt>Who can apply</dt><dd>${htmlText(eligibilityLabel(raid.eligibility))}</dd></dl></section>`;
 
     const cancellation = canStage && !historical
       ? `<section class="raid-admin-danger"><h2>Cancel raid</h2><p>Cancellation permanently removes this raid, including its participation and assignments.</p><button type="button" class="button-secondary" data-raid-cancel>Cancel raid</button></section>`
