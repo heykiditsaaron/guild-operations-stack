@@ -10,6 +10,12 @@ export type GuildEventDestination = {
   href: string;
 };
 
+type LegacyGuildEventInteraction = {
+  kind: string;
+  label: string;
+  destination: string;
+};
+
 export type GuildEventPublicationInput = {
   publicationId: string;
   label: string;
@@ -18,6 +24,7 @@ export type GuildEventPublicationInput = {
   category?: string | null;
   tags?: readonly string[];
   destinations?: readonly GuildEventDestination[];
+  interactions?: readonly LegacyGuildEventInteraction[];
 };
 
 export type GuildEventPublication = {
