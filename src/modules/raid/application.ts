@@ -50,7 +50,7 @@ export type RaidRosterDiagnostics = { assigned:number; tanks:number; healers:num
 type RaidAction = "created" | "modified" | "signups_opened" | "signups_closed" | "cancelled" | "assigned" | "unassigned";
 
 function raidDestination(raidId:string):string { return `/events/raid/${encodeURIComponent(raidId)}`; }
-function raidManageDestination(raidId:string):string { return `/events/raid/${encodeURIComponent(raidId)}/manage`; }
+function raidManageDestination(raidId:string):string { return `/events/raid/manage/${encodeURIComponent(raidId)}`; }
 async function publishRaid(raid:RaidEventFacts, client:PoolClient):Promise<void> {
   await establishGuildEventPublication({ publicationId:raid.raidId, label:raid.label, description:raid.description, occursAt:[raid.occursAt],
     category:"raid", tags:raid.tags, destinations:[
