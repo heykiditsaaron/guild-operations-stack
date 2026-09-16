@@ -111,6 +111,37 @@
   margin: 0;
 }
 
+.raid-assignment-summary {
+  display: grid;
+  gap: .75rem;
+  padding-top: .25rem;
+}
+
+.raid-assignment-summary h2 {
+  margin: 0;
+}
+
+.raid-assignment-summary dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .75rem;
+  margin: 0;
+}
+
+.raid-assignment-summary dl > div {
+  display: grid;
+  gap: .15rem;
+}
+
+.raid-assignment-summary dt {
+  font-weight: 700;
+}
+
+.raid-assignment-summary dd {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
 .raid-cancelled {
   padding: 1rem;
   border: 1px solid var(--border-subtle, #2a2a2f);
@@ -236,6 +267,16 @@
   .raid-requirements dl > div {
     grid-template-columns: 1fr;
     gap: .2rem;
+  }
+
+  .raid-assignment-summary dl {
+    grid-template-columns: 1fr;
+    gap: .5rem;
+  }
+
+  .raid-assignment-summary dl > div {
+    grid-template-columns: 1fr auto;
+    align-items: baseline;
   }
 
   .raid-spec-choices {
