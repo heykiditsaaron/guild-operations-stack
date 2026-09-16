@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
 import { GuildCapabilityDeniedError, RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILITY, guildieHasGuildCapabilityOrOperator } from "../../../../guild-permissions.js";
-import { cancelRaid, modifyRaid, raidEventFacts, raidOccurrenceDestinations } from "../../../../modules/raid/application.js";
+import { cancelRaid, modifyRaid, raidEventFacts, raidHasOccurred, raidOccurrenceDestinations } from "../../../../modules/raid/application.js";
 import type { RaidDifficulty, RaidEligibility, RaidRequirement } from "../../../../modules/raid/domain.js";
 import type { AssetRegistry } from "../../../assets.js";
 import { htmlText, renderPage } from "../../../render.js";
@@ -61,9 +61,9 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
     const basePath = operateDestination.href;
     const min = raid.requirements.find((requirement) => requirement.label === "Minimum item level")?.value ?? "";
     const enchants = raid.requirements.find((requirement) => requirement.label === "Enchants & gems")?.value ?? "";
-    const cancelled = raid.cancelledAtUnix !== null;
+    const historical = raidHasOccurred(raid);
 
-    const edit = canModify && !cancelled
+    const edit = canModify && !historical
       ? `<form class="raid-admin-form" data-raid-definition-form>
           <label><span>Raid name</span><input name="label" type="text" value="${htmlText(raid.label)}" required></label>
           <label><span>Description <small>(optional)</small></span><textarea name="description" rows="3">${htmlText(raid.description ?? "")}</textarea></label>
@@ -73,13 +73,11 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
           <fieldset><legend>Readiness requirements</legend><p>These expectations are presented to participants and are not mechanically checked.</p><label><span>Minimum item level <small>(optional)</small></span><input name="minimumItemLevel" type="number" min="1" step="1" value="${htmlText(min)}"></label><label><span>Enchants &amp; gems</span><select name="enchantsAndGems"><option value=""${selected(enchants, "")}>No stated requirement</option><option value="Required"${selected(enchants, "Required")}>Required</option><option value="Preferred"${selected(enchants, "Preferred")}>Preferred</option><option value="Not required"${selected(enchants, "Not required")}>Not required</option></select></label></fieldset>
           <button type="submit" class="button-primary">Save changes</button>
         </form>`
-      : `<section class="raid-admin-form"><p>${cancelled ? "This raid is cancelled. Its settings are preserved for history." : "You can inspect this raid, but you cannot edit it."}</p><dl class="raid-admin-card-facts"><dt>Name</dt><dd>${htmlText(raid.label)}</dd><dt>Difficulty</dt><dd>${htmlText(raid.difficulty)}</dd><dt>Eligibility</dt><dd>${htmlText(raid.eligibility)}</dd></dl></section>`;
+      : `<section class="raid-admin-form"><p>${historical ? "This raid has occurred. Its definition is preserved as history." : "You can inspect this raid, but you cannot edit it."}</p><dl class="raid-admin-card-facts"><dt>Name</dt><dd>${htmlText(raid.label)}</dd><dt>Difficulty</dt><dd>${htmlText(raid.difficulty)}</dd><dt>Eligibility</dt><dd>${htmlText(raid.eligibility)}</dd></dl></section>`;
 
-    const cancellation = canStage && !cancelled
-      ? `<section class="raid-admin-danger"><h2>Cancel raid</h2><p>Cancellation preserves this raid and its participation history while withdrawing it from the calendar.</p><button type="button" class="button-secondary" data-raid-cancel>Cancel raid</button></section>`
-      : cancelled
-        ? `<section class="raid-admin-danger"><h2>Raid cancelled</h2><p>This raid is preserved for history and can no longer be edited.</p></section>`
-        : "";
+    const cancellation = canStage && !historical
+      ? `<section class="raid-admin-danger"><h2>Cancel raid</h2><p>Cancellation permanently removes this raid, including its participation and assignments.</p><button type="button" class="button-secondary" data-raid-cancel>Cancel raid</button></section>`
+      : "";
 
     const html = renderPage(assets, {
       pathname: request.url,
@@ -93,7 +91,7 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
       body: `<section class="raid-title-bar">
           <div>
             <h1>${htmlText(raid.label)}</h1>
-            <p><time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${htmlText(difficultyLabel(raid.difficulty))} · Signups ${raid.signupsOpen ? "open" : "closed"}${cancelled ? " · Cancelled" : ""}</p>
+            <p><time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${htmlText(difficultyLabel(raid.difficulty))}${historical ? " · Historical" : ""}</p>
           </div>
           <div class="raid-admin-actions">
             ${publicDestination ? `<a class="button-secondary" href="${htmlText(publicDestination.href)}">${htmlText(publicDestination.label)} ↗</a>` : ""}
@@ -123,7 +121,8 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
     const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
     if (!guildie) return reply.code(401).send({ error: "Authentication required" });
     try {
-      return { raid: await cancelRaid(guildie.guildieId, request.params.raidId) };
+      await cancelRaid(guildie.guildieId, request.params.raidId);
+      return { ok: true };
     } catch (error) {
       return reply.code(status(error)).send({ error: error instanceof Error ? error.message : "Raid could not be cancelled" });
     }
