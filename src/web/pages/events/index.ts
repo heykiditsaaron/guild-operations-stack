@@ -122,9 +122,9 @@ function renderEventItem(item: CalendarOccurrence): string {
   const { publication, occursAt } = item;
   const title = htmlText(publication.label);
   const category = htmlText(publication.category ? humanize(publication.category) : "Guild Event");
-  const interaction = publication.interactions[0] ?? null;
-  const destination = interaction ? htmlText(interaction.destination) : null;
-  const actionLabel = interaction ? htmlText(interaction.label) : null;
+  const destination = publication.destinations[0] ?? null;
+  const href = destination ? htmlText(destination.href) : null;
+  const actionLabel = destination ? htmlText(destination.label) : null;
   const description = publication.description
     ? `<p class="events-item-description">${htmlText(publication.description)}</p>`
     : "";
@@ -135,13 +135,13 @@ function renderEventItem(item: CalendarOccurrence): string {
         ${description}
         <div class="events-item-time">${eventTime(occursAt)}</div>
       </div>
-      ${destination ? `<span class="events-item-action">${actionLabel} <span aria-hidden="true">→</span></span>` : ""}`;
+      ${href ? `<span class="events-item-action">${actionLabel} <span aria-hidden="true">→</span></span>` : ""}`;
 
-  if (!destination) {
+  if (!href) {
     return `<article class="events-item">${content}</article>`;
   }
 
-  return `<a class="events-item events-item-link" href="${destination}" aria-label="${actionLabel}: ${title}">${content}</a>`;
+  return `<a class="events-item events-item-link" href="${href}" aria-label="${actionLabel}: ${title}">${content}</a>`;
 }
 
 function renderSection(
