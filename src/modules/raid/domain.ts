@@ -42,7 +42,6 @@ export type ModifyRaidInput = {
   description?: string | null;
   occursAt?: RaidOccurrence;
   tags?: readonly string[];
-  eligibility?: RaidEligibility;
   difficulty?: RaidDifficulty;
   requirements?: readonly RaidRequirement[];
 };
