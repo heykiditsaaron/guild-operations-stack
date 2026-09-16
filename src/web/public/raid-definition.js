@@ -26,7 +26,7 @@ if (form instanceof HTMLFormElement) {
     if (enchantsAndGems) requirements.push({ label: "Enchants & gems", value: enchantsAndGems });
     setStatus("Saving raid…");
     try {
-      const response = await fetch(`${manageBasePath()}/definition`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ label:String(data.get("label")??""), description:String(data.get("description")??""), occursAt:[Math.floor(startDate.getTime()/1000)], difficulty:String(data.get("difficulty")??""), eligibility:String(data.get("eligibility")??""), requirements }) });
+      const response = await fetch(`${manageBasePath()}/definition`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ label:String(data.get("label")??""), description:String(data.get("description")??""), occursAt:[Math.floor(startDate.getTime()/1000)], difficulty:String(data.get("difficulty")??""), requirements }) });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? "Raid could not be saved");
       window.location.reload();
