@@ -4,6 +4,7 @@ import { config } from "../../config.js";
 import { controlledCharactersForGuildie } from "../../controlled-characters.js";
 import { pool, withTransaction } from "../../db.js";
 import { establishGuildEventPublication, withdrawGuildEventPublication } from "../../guild-events/publication/registry.js";
+import type { GuildEventDestination } from "../../guild-events/publication/contract.js";
 import {
   effectiveGuildAuthority,
   RAID_ASSIGN_CAPABILITY,
@@ -49,14 +50,19 @@ export type RaidRosterDiagnostics = { assigned:number; tanks:number; healers:num
 
 type RaidAction = "created" | "modified" | "signups_opened" | "signups_closed" | "cancelled" | "assigned" | "unassigned";
 
-function raidDestination(raidId:string):string { return `/events/raid/${encodeURIComponent(raidId)}`; }
+function raidPublicDestination(raidId:string):string { return `/events/raid/${encodeURIComponent(raidId)}`; }
+function raidParticipationDestination(raidId:string):string { return `/events/raid/${encodeURIComponent(raidId)}#participation`; }
 function raidManageDestination(raidId:string):string { return `/events/raid/manage/${encodeURIComponent(raidId)}`; }
+export function raidOccurrenceDestinations(raidId:string):readonly GuildEventDestination[] {
+  return [
+    { kind:"public", label:"View raid", href:raidPublicDestination(raidId) },
+    { kind:"participate", label:"Signups", href:raidParticipationDestination(raidId) },
+    { kind:"operate", label:"Manage raid", href:raidManageDestination(raidId) },
+  ];
+}
 async function publishRaid(raid:RaidEventFacts, client:PoolClient):Promise<void> {
   await establishGuildEventPublication({ publicationId:raid.raidId, label:raid.label, description:raid.description, occursAt:[raid.occursAt],
-    category:"raid", tags:raid.tags, destinations:[
-      { kind:raid.signupsOpen?"participate":"view", label:raid.signupsOpen?"View raid / sign up":"View raid", href:raidDestination(raid.raidId) },
-      { kind:"operate", label:"Manage raid", href:raidManageDestination(raid.raidId) },
-    ] }, client);
+    category:"raid", tags:raid.tags, destinations:raidOccurrenceDestinations(raid.raidId) }, client);
 }
 async function recordRaidAction(client:PoolClient,raidId:string,action:RaidAction,actorGuildieId:string):Promise<void>{
   await client.query("INSERT INTO raid_action_history (raid_id,action,actor_guildie_id) VALUES ($1,$2,$3)",[raidId,action,actorGuildieId]);
