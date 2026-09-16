@@ -31,10 +31,10 @@ export async function establishRaffleEventPublication(round: RaffleRound, client
     description,
     category: RAFFLE_GUILD_EVENT_CATEGORY,
     tags: ["raffle", round.prizeKind],
-    interactions: [{
+    destinations: [{
       kind: round.status === "live" ? "participate" : "view",
       label: round.status === "live" ? "View raffle / enter" : "View raffle",
-      destination: raffleRoundDestination(round.roundId),
+      href: raffleRoundDestination(round.roundId),
     }],
   }, client);
 }
