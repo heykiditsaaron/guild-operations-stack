@@ -57,7 +57,8 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
     const destinations = raidOccurrenceDestinations(raid.raidId);
     const publicDestination = destinations.find((destination) => destination.kind === "public");
     const operateDestination = destinations.find((destination) => destination.kind === "operate");
-    const basePath = operateDestination?.href ?? `/events/raid/manage/${encodeURIComponent(raid.raidId)}`;
+    if (!operateDestination) throw new Error("Raid operate destination is not configured");
+    const basePath = operateDestination.href;
     const min = raid.requirements.find((requirement) => requirement.label === "Minimum item level")?.value ?? "";
     const enchants = raid.requirements.find((requirement) => requirement.label === "Enchants & gems")?.value ?? "";
     const cancelled = raid.cancelledAtUnix !== null;
