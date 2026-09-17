@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../../../auth.js";
+import { raffleRoundDestinations } from "../../../../modules/raffle/destinations.js";
 import {
   raffleClaimCutoffUnix,
   raffleClaimsAreOpen,
@@ -26,6 +27,10 @@ function overviewFromFacts(facts: RaffleRoundFacts | null): RaffleOverview | nul
         approvedEntryCount: facts.metrics.approvedEntryCount,
       }
     : null;
+}
+
+function destinationHref(round: Pick<RaffleRound, "roundId" | "status">, kind: string): string | null {
+  return raffleRoundDestinations(round).find((destination) => destination.kind === kind)?.href ?? null;
 }
 
 function localTime(unixSeconds: number): string {
@@ -75,6 +80,7 @@ function recentWinnerBody(round: RaffleHistoryRound | null): string {
   const avatar = round.winnerAvatarUrl
     ? `<img class="raffle-recent-winner-avatar" src="${htmlText(round.winnerAvatarUrl)}" alt="" aria-hidden="true">`
     : "";
+  const publicDestination = destinationHref({ roundId: round.roundId, status: "concluded" }, "public");
 
   return `<section class="raffle-workspace raffle-recent-winner" aria-labelledby="raffle-recent-winner-title">
     ${avatar}
@@ -82,7 +88,7 @@ function recentWinnerBody(round: RaffleHistoryRound | null): string {
     <h2 id="raffle-recent-winner-title">${htmlText(round.winnerCharacterName)}</h2>
     <p class="raffle-status-copy">${context}</p>
     ${prize ? `<p class="raffle-status-copy"><strong>${htmlText(prize)}</strong></p>` : ""}
-    <p><a class="raffle-back-link" href="/events/raffle/${encodeURIComponent(round.roundId)}">Inspect this round →</a></p>
+    ${publicDestination ? `<p><a class="raffle-back-link" href="${htmlText(publicDestination)}">Inspect this round →</a></p>` : ""}
   </section>`;
 }
 
@@ -93,6 +99,8 @@ function activeRaffleBody(round: RaffleOverview, assets: AssetRegistry, recentWi
   const prizeValue = round.prizeKind === "gold" && prize !== null
     ? `${formatGold(prize)} gold`
     : htmlText(round.prizeDescription ?? round.prizeKind);
+  const participateDestination = destinationHref(round, "participate");
+  const publicDestination = destinationHref(round, "public");
 
   return `
     <div class="raffle-public-shell">
@@ -124,9 +132,9 @@ function activeRaffleBody(round: RaffleOverview, assets: AssetRegistry, recentWi
             </div>
 
             <div class="raffle-actions" aria-label="Raffle actions">
-              ${claimsOpen ? '<a class="raffle-action" data-raffle-entry-action href="/events/raffle/enter">Enter to win</a>' : ""}
+              ${claimsOpen && participateDestination ? `<a class="raffle-action" data-raffle-entry-action href="${htmlText(participateDestination)}">Enter to win</a>` : ""}
               <a class="raffle-action raffle-action-secondary" href="/events/raffle/claims">View claims</a>
-              <a class="raffle-action raffle-action-secondary" href="/events/raffle/${encodeURIComponent(round.roundId)}">Inspect round</a>
+              ${publicDestination ? `<a class="raffle-action raffle-action-secondary" href="${htmlText(publicDestination)}">Inspect round</a>` : ""}
             </div>
           </div>
         </section>
@@ -138,8 +146,9 @@ function activeRaffleBody(round: RaffleOverview, assets: AssetRegistry, recentWi
 }
 
 function standingRaffleBody(listedRound: RaffleOverview | null, recentWinner: RaffleHistoryRound | null): string {
-  const upcoming = listedRound
-    ? `<a class="raffle-reference-link raffle-upcoming-record" href="/events/raffle/${encodeURIComponent(listedRound.roundId)}">
+  const publicDestination = listedRound ? destinationHref(listedRound, "public") : null;
+  const upcoming = listedRound && publicDestination
+    ? `<a class="raffle-reference-link raffle-upcoming-record" href="${htmlText(publicDestination)}">
         <span>
           <span class="raffle-reference-title">An upcoming raffle has been announced</span>
           <span class="raffle-status-copy">Inspect its prize, entry price, and drawing time.</span>
