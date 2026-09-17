@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../../../auth.js";
+import { raffleRoundDestinations } from "../../../../modules/raffle/destinations.js";
 import { raffleClaimsAreOpen } from "../../../../modules/raffle/domain.js";
 import {
   rafflePublicRound,
@@ -159,15 +160,17 @@ function claimLedger(round: RafflePublicRound): string {
 
 function participationLink(round: RafflePublicRound): string {
   if (round.status !== "live") return "";
+  const destination = raffleRoundDestinations(round).find((candidate) => candidate.kind === "participate");
+  if (!destination) return "";
   const label = raffleClaimsAreOpen(round.drawingAtUnix) ? "Participate in this raffle" : "View current raffle";
-  return `<div class="raffle-actions"><a class="raffle-action" href="/events/raffle">${htmlText(label)}</a></div>`;
+  return `<div class="raffle-actions"><a class="raffle-action" href="${htmlText(destination.href)}">${htmlText(label)}</a></div>`;
 }
 
 function roundBody(round: RafflePublicRound): string {
   const intro = round.status === "listed"
     ? "This announced round is available for inspection before participation opens."
     : round.status === "live"
-      ? "This is the current public record of the live round. Participation remains on the Raffle homepage."
+      ? "This is the current public record of the live round. Participation is available through the established Raffle participation surface."
       : "This concluded round is preserved as a durable public record.";
   const statusClass = round.status === "live" ? "raffle-live-kicker" : "raffle-plaque-label";
 
