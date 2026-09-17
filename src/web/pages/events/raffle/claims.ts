@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
+import { raffleRoundDestinations } from "../../../../modules/raffle/destinations.js";
 import { raffleClaimsForMember, type RaffleMemberClaim } from "../../../../modules/raffle/member-view.js";
 import { liveRaffleRoundFacts } from "../../../../modules/raffle/queries.js";
 import type { AssetRegistry } from "../../../assets.js";
@@ -50,6 +51,9 @@ export async function registerRaffleClaimsPage(app: FastifyInstance, assets: Ass
       liveRaffleRoundFacts(),
     ]);
     const liveRaffle = liveFacts?.round ?? null;
+    const participateDestination = liveRaffle
+      ? raffleRoundDestinations(liveRaffle).find((destination) => destination.kind === "participate")
+      : null;
 
     let body: string;
     if (!liveRaffle) {
@@ -65,7 +69,7 @@ export async function registerRaffleClaimsPage(app: FastifyInstance, assets: Ass
       body = `<section class="raffle-workspace" aria-labelledby="raffle-claims-title">
         <div class="raffle-claims-toolbar">
           <h2 id="raffle-claims-title">Your claims</h2>
-          <a class="raffle-action raffle-action-secondary raffle-claims-new" href="/events/raffle/enter">Enter new claim</a>
+          ${participateDestination ? `<a class="raffle-action raffle-action-secondary raffle-claims-new" href="${htmlText(participateDestination.href)}">Enter new claim</a>` : ""}
         </div>
         ${claimsList(claims)}
       </section>`;
