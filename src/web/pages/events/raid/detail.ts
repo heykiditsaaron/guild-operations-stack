@@ -227,11 +227,8 @@ async function unassignParticipant(request: FastifyRequest<{ Params: RaidParams;
   }
 }
 
-export async function registerRaidAdminDetailPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
-  app.get<{ Params: RaidParams }>("/admin/raid/:raidId", async (request, reply) => reply.redirect(`/events/raid/manage/${encodeURIComponent(request.params.raidId)}`));
+export async function registerRaidOperationDetailPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get<{ Params: RaidParams }>("/events/raid/manage/:raidId", async (request, reply) => renderRaidOrganizer(request, reply, assets));
   app.post<{ Params: RaidParams; Body: AssignBody }>("/events/raid/manage/:raidId/assign", assignParticipant);
   app.post<{ Params: RaidParams; Body: UnassignBody }>("/events/raid/manage/:raidId/unassign", unassignParticipant);
-  app.post<{ Params: RaidParams; Body: AssignBody }>("/admin/raid/:raidId/assign", assignParticipant);
-  app.post<{ Params: RaidParams; Body: UnassignBody }>("/admin/raid/:raidId/unassign", unassignParticipant);
 }
