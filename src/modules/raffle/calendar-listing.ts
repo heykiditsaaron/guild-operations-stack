@@ -3,15 +3,18 @@ import {
   establishGuildEventPublication,
   withdrawGuildEventPublication,
 } from "../../guild-events/publication/registry.js";
+import { raffleRoundDestinations } from "./destinations.js";
 import type { RaffleRound } from "./domain.js";
 
 export const RAFFLE_GUILD_EVENT_LABEL = "Guild Raffle";
 export const RAFFLE_GUILD_EVENT_CATEGORY = "raffle";
 
-export function raffleRoundDestination(roundId: string): string {
-  return `/events/raffle/${encodeURIComponent(roundId)}`;
-}
-
+/**
+ * Compatibility projection into the current shared event-publication registry.
+ * Raffle owns the round, lifecycle, temporal facts, and destinations; this
+ * adapter only translates those established facts for current event discovery.
+ * It is intentionally not a Raffle domain boundary or Calendar architecture.
+ */
 export async function establishRaffleEventPublication(round: RaffleRound, client: PoolClient | null = null): Promise<void> {
   if (round.status === "concluded" && round.conclusion === "operator_cancelled") {
     await withdrawGuildEventPublication(round.roundId, client);
@@ -31,10 +34,6 @@ export async function establishRaffleEventPublication(round: RaffleRound, client
     description,
     category: RAFFLE_GUILD_EVENT_CATEGORY,
     tags: ["raffle", round.prizeKind],
-    destinations: [{
-      kind: round.status === "live" ? "participate" : "view",
-      label: round.status === "live" ? "View raffle / enter" : "View raffle",
-      href: raffleRoundDestination(round.roundId),
-    }],
+    destinations: raffleRoundDestinations(round),
   }, client);
 }
