@@ -1,82 +1,57 @@
 # Raffle
 
-Raffle is a concrete Guild Operations participation module for operating the guild raffle. The module registers an enduring Guild Event Offering so the shared Events shell can promote Raffle even when no round is currently live or scheduled. Individual raffle rounds may separately contribute temporal occurrences to the shared Guild Event Calendar; the raffle module itself is not contained by Guild Events, the Offering registry, or the calendar.
+Raffle is a concrete Guild Operations participation module for operating the guild raffle. It registers an enduring Guild Event Offering so the Events surface can promote the activity even when no round is live or scheduled. Concrete rounds separately expose temporal and destination facts to current shared event discovery.
 
-It is deliberately modeled as a raffle-specific domain rather than as an instance of a generic event, workflow, participation, notification, or audit framework.
+Raffle is deliberately modeled as a raffle-specific domain rather than as an instance of a generic event, workflow, participation, lifecycle, notification, or audit framework.
 
 ## Purpose
 
-The raffle converts a guild member's promissory claim into trusted participation after an authorized human attendant verifies the corresponding World of Warcraft guild-bank deposit.
+The raffle converts a Guildie's promissory claim into trusted participation after an authorized human attendant verifies the corresponding World of Warcraft guild-bank deposit.
 
 Guild Operations cannot independently observe sufficient guild-bank history to make that judgment. The attendant remains authoritative for whether the promise was fulfilled. Guild Operations owns the procedure, authorization, persistence, deterministic drawing population, drawing, and historical reconstruction around that judgment.
 
-Auditability is a primary value of the raffle module. Operational truth that has been established must remain stable enough for human operators to resolve discrepancies, refunds, and other real-world follow-up against a non-moving target.
+Auditability is a primary value. Operational truth that has been established remains stable enough for human operators to resolve discrepancies, refunds, and other real-world follow-up against a non-moving target.
 
 ## Authority
 
-Blizzard remains authoritative for:
+Blizzard remains authoritative for current Character guild membership, current Character guild rank, and which WoW Characters a Guildie controls.
 
-- current Character guild membership;
-- current Character guild rank;
-- which WoW Characters a Guildie currently controls.
+The participating Guildie is authoritative for initiating a claim, selecting the controlled guild Character through which the promised deposit is made, choosing the requested entry count, and cancelling their own unresolved claim.
 
-The Guildie is authoritative for:
+Human Raffle operators remain authoritative for the judgments and procedures assigned to their capabilities. Raffle contributes these capability definitions to the global Guild Operations permission system:
 
-- initiating a claim;
-- selecting the controlled guild Character through which the promised deposit is made;
-- requested entry count;
-- cancelling their own unresolved claim.
+- `raffle.modify` — create rounds and change mutable persisted round definition;
+- `raffle.stage` — activate or administratively cancel rounds;
+- `raffle.claims` — inspect and adjudicate submitted claims;
+- `raffle.draw` — perform the manual draw.
 
-A raffle administrator is authoritative for:
+Guild Master rank 0 and the configured environment operator override are inherently permitted by global capability machinery. Additional rank grants are configured through global Permissions. Raffle does not own a separate `raffle.admin` super-capability and possession of one Raffle capability does not imply possession of another.
 
-- configuring and establishing rounds;
-- making a claim approval or denial judgment after observing the WoW guild-bank ledger;
-- supplying the reason for a denial;
-- opening a listed round for participation;
-- manually drawing or administratively cancelling a round.
+Consequential authority is enforced by the Raffle application operation that performs the action. Aggregate capability checks may be used to decide whether an operational surface should be presented, but they are not mutation authority.
 
-Guild Operations is authoritative for:
+Guild Operations is authoritative for the durable claim and round records, capability evaluation, deterministic construction of the ephemeral drawing population from approved claims, enforcement of draw preconditions, and execution and preservation of the manual draw result.
 
-- which operations current authority permits;
-- the durable claim and round records;
-- deterministic construction of the ephemeral drawing population from approved claims;
-- enforcement of draw preconditions;
-- execution and preservation of the manual draw result.
+## Application boundary
 
-Raffle owns the `raffle.admin` authorization policy because it governs raffle-specific procedure. The current guild policy grants that module capability to Guildies whose globally derived effective Blizzard rank is 0, 1, or 2. Raffle consumes globally authoritative Guildie, Character-control, roster, and rank facts as inputs; it does not own, duplicate, or reinterpret those facts as raffle state.
+Raffle's application operations are the authoritative procedural boundary for transports and interfaces. HTTP routes, web pages, REST adapters, Discord, and future integrations must consume established Raffle operations and query facts rather than independently implementing Raffle procedure.
 
-Raffle code authorizes against the module-owned `raffle.admin` policy rather than provisioning raffle authority through the global `guild_rank_capabilities` machinery or scattering numeric rank comparisons through the module.
+Current privileged application operations enforce their exact capability. Participant-owned claim submission and self-cancellation instead enforce Raffle participation rules and ownership in the domain.
+
+The versioned `/api/v1/raffle` adapter is intentionally read-only. A machine credential does not manufacture a Guildie actor, claim ownership, or the human authority required for Raffle judgments.
 
 ## Round
 
-A round is the bounded raffle drawing cycle.
+A round is the bounded raffle drawing cycle. Its operating terms are intentionally small: round ID, optional title, drawing deadline as a Unix instant, entry price in gold, prize kind, winner percentage for a gold prize, and descriptive prize text for item or other prizes.
 
-Its operating terms are intentionally small:
+The drawing deadline establishes the expected resolution time but does not automatically mutate lifecycle state or initiate a draw. New claim submission closes exactly one hour before that deadline so operators have a dedicated adjudication window. Interfaces derive human-readable time from persisted Unix values.
 
-- round ID;
-- optional round title for recognition;
-- drawing deadline as a timezone-neutral Unix instant;
-- entry price in gold;
-- prize kind;
-- winner percentage when the prize kind is gold;
-- prize description when the prize kind is item or other.
-
-The configured drawing deadline establishes the raffle's expected resolution time but does not automatically mutate lifecycle state or initiate a draw. New claim submission closes exactly one hour before that deadline so raffle administrators have a dedicated adjudication window for pending claims. Interfaces derive human-readable times from persisted Unix values and express them in the viewer's local timezone when possible.
-
-### Establishment and lifecycle
+### Lifecycle
 
 Creating a round is an operation, not a durable lifecycle state. Once configuration is confirmed, the round is established as `listed`.
 
-A listed round is already a real guild raffle occurrence:
-
-- it is discoverable as upcoming;
-- its terms remain editable;
-- it may be administratively cancelled;
-- it is not yet open for participation.
+A listed round is a real guild raffle occurrence. It is discoverable as upcoming, its terms remain editable, it may be cancelled, and it is not yet open for participation.
 
 When participation opens, the round becomes `live`. Once live, its operating terms are fixed so claims preserve the terms under which they were made. At most one round may be live for the guild at a time.
-
-A round has exactly three lifecycle states:
 
 ```text
 listed
@@ -85,31 +60,19 @@ listed
   └─────────> concluded
 ```
 
-`concluded` means raffle procedure has ended. How it ended is recorded separately as the conclusion.
-
-A concluded round has exactly one conclusion:
+`concluded` means Raffle procedure has ended. How it ended is recorded separately:
 
 - `drawn` — a valid drawing population existed and the manual draw selected a winner;
-- `operator_cancelled` — an authorized raffle administrator deliberately terminated the round;
-- `no_participation` — normal draw resolution found no approved drawing population to select from.
+- `operator_cancelled` — an authorized operator deliberately terminated the round;
+- `no_participation` — normal draw resolution found no approved drawing population.
 
-The distinction is deliberate:
+Status answers where the raffle is in its lifecycle. Conclusion answers how it ended. Creation, drawing, and cancellation are operations, not lifecycle states.
 
-```text
-status
-    → where is this raffle in its lifecycle?
+### Temporal truth and current event discovery
 
-conclusion
-    → how did the raffle end?
-```
+Raffle scheduling is operated by humans. Scheduled time represents the best established expectation until observed operational boundaries become known.
 
-Drawing, cancellation, and creation are operations. They are not lifecycle states.
-
-### Temporal truth and Guild Event Calendar
-
-Raffle scheduling is operated by humans, not by a deterministic automation system. Scheduled time therefore represents the best established expectation until actual operational boundaries become known.
-
-For a raffle round contributed to the Guild Event Calendar, `guild_event_occurs_at` expresses the best currently established temporal truth of the ceremony and may change as better truth becomes available:
+The Raffle-owned temporal projection currently expresses:
 
 ```text
 listed
@@ -122,88 +85,59 @@ concluded after going live
     → [live_at_unix, concluded_at_unix]
 ```
 
-A scheduled boundary is not considered false merely because it may later move; it is the best available truth while the boundary remains future or estimated. Once the raffle establishes an observed boundary, that observed Unix value supersedes the estimate in the Guild Event Calendar Listing.
+The current `calendar-listing.ts` integration is a compatibility projection from Raffle truth into the shared event-publication registry. It is not Raffle lifecycle ownership and it is not the future Calendar architecture. Raffle establishes its round facts and destinations; the adapter translates those facts for current discovery.
 
-Each calendar Listing points at the durable public record for that exact raffle round at `/events/raffle/:roundId`. The destination therefore remains meaningful as the same round moves from an inspectable upcoming preview to a live record and finally to concluded history.
+Operator cancellation withdraws the current event publication because the intended occurrence is no longer discoverable. The canonical Raffle round remains durable. Publication withdrawal never means deletion or reversal of Raffle truth.
 
-Operator cancellation withdraws the Guild Event Calendar Listing because it revokes the occurrence from calendar discovery before intended resolution. The canonical raffle-round record remains available; withdrawing the calendar listing does not erase the fact that the guild established and operated the round.
+## Concrete round destinations
+
+Raffle owns where one concrete round can be viewed, participated in, and operated. Shared discovery may project these destinations but does not invent them.
+
+The durable public destination is `/events/raffle/:roundId`. While a round is live, the participation destination is `/events/raffle/enter`. The concrete operational destination for a non-concluded round is `/events/raffle/manage/:roundId`.
+
+Destination presence describes a meaningful interaction surface; it does not grant authority to use that surface. A listed round therefore exposes its public and operational meanings, a live round additionally exposes participation, and a concluded round retains only its durable public meaning.
+
+Current Events presentation uses the first destination as its primary interaction. Raffle therefore leads a live publication toward participation and a non-live publication toward its public record. This ordering is Raffle presentation metadata, not Calendar procedure.
 
 ## Claim
 
-A claim is a durable promissory record.
-
-It means, approximately:
+A claim is a durable promissory record. It means approximately:
 
 > This Guildie, acting through this controlled guild Character, intends to deposit the gold corresponding to this many entries for this round.
 
 A claim is not evidence that the deposit occurred and does not itself establish drawing weight.
 
-A claim records:
+A claim records its round, claimant Guildie, specific controlled WoW Character, requested entry count, promised gold derived from the round's entry price, creation time, and optional terminal resolution.
 
-- claim ID;
-- round ID;
-- claimant Guildie;
-- specific controlled WoW Character;
-- requested entry count;
-- promised gold value derived from the round's entry price at submission;
-- creation Unix time;
-- optional terminal resolution.
+The claimant Guildie and participating Character remain explicit relationships. Neither is replaced by a generic Subject coordinate.
 
-The persisted relationships are deliberately explicit:
+A Guildie may create multiple claims in the same round, including through the same Character, while claim submission remains open. A claim requesting ten entries is one durable claim with requested entry count ten, not ten persisted entry records.
 
-```text
-claimant_guildie_id
-    → which Guildie owns/authorized the claim
-
-character_record_id
-    → which WoW guild Character participates through the claim
-```
-
-Neither relationship is represented by a generic Subject coordinate. `Subject` is contextual language only.
-
-A Guildie may create multiple claims in the same round, including multiple claims using the same Character, while claim submission remains open. Each claim remains one durable record regardless of requested count. A claim requesting ten entries is one claim with requested entry count ten, not ten persisted entry records.
-
-Claim admission closes one hour before the drawing deadline. This cutoff prevents new promises from arriving during the final adjudication window while leaving existing unresolved claims available for attendant approval or denial.
-
-Claims are not rewritten to correct their original meaning. An unresolved claimant may cancel their own claim and create another one while claim submission remains open. The original cancelled claim remains historical truth.
+Claim admission closes one hour before the drawing deadline. An unresolved claimant may cancel their own claim and create another while submission remains open. The original cancelled claim remains historical truth.
 
 ### Claim resolution
 
 An unresolved claim may end in exactly one of three ways:
 
-- `approved`: explicit approving Guildie and approval Unix time;
-- `denied`: explicit denying Guildie, denial Unix time, and mandatory reason;
-- `cancelled`: explicit claimant Guildie and cancellation Unix time.
+- `approved` — approving Guildie and approval Unix time;
+- `denied` — denying Guildie, denial Unix time, and mandatory reason;
+- `cancelled` — claimant Guildie and cancellation Unix time.
 
-Approval is the boundary where a claim begins contributing immutable drawing weight. The approved claim's requested entry count becomes the number of equal positions it contributes when the selection population is constructed. Once approved, the claim cannot be cancelled, reduced, edited, or otherwise withdrawn from that population.
+Approval is the boundary where a claim begins contributing immutable drawing weight. Once approved, the requested entry count cannot be cancelled, reduced, edited, or withdrawn from the population.
 
-Pending claims establish no drawing weight. A denial and a cancellation contribute no drawing weight but remain durable records.
+Pending claims establish no drawing weight. Denied and cancelled claims contribute no drawing weight but remain durable records.
 
-The parent round concluding does not rewrite claim resolution state. In particular, operator cancellation leaves approved, denied, cancelled, and unresolved claims exactly as they existed at the moment of cancellation.
+The parent round concluding does not rewrite claim resolution state. Operator cancellation leaves approved, denied, cancelled, and unresolved claims exactly as they existed at cancellation.
 
-## Drawing population
+## Drawing population and draw
 
-Entries are not durable raffle objects. They are ephemeral equal-weight positions derived from approved claims for winner selection.
+Entries are ephemeral equal-weight positions derived from approved claims for winner selection. They are not durable Raffle objects.
 
-An approved claim contributes its requested entry count as equal positions in the drawing population. If Claim A was approved for five entries and Claim B for two, the conceptual population is:
+An approved claim contributes its requested entry count as equal positions. The population is reconstructed deterministically from approved claims ordered by claim creation time and claim ID.
 
-```text
-[A, A, A, A, A, B, B]
-```
+Draws are always manual and are refused while any unresolved claims remain. Every pending promise must first receive human attention so a draw cannot silently exclude unresolved real-world activity.
 
-Every position has exactly one equal chance of selection. There is no member-level weighting model hidden behind the draw.
-
-The population is reconstructed deterministically from approved claims ordered by claim creation time and claim ID. Those individual positions have no independent behavior, authority, lifecycle, persistence record, or historical significance. Outside winner selection, the durable claims already contain the participation truth.
-
-Once a claim is approved, its drawing weight is immutable. Selection positions cannot be withdrawn from the population even though unresolved claims may still be cancelled before resolution.
-
-## Drawing
-
-Draws are always manual.
-
-A draw is refused while any unresolved claims remain. This is a deliberate audit failsafe: every pending promise must first receive operated human attention so the draw cannot silently exclude unresolved real-world activity.
-
-When no unresolved claims remain, the draw derives the authoritative selection population from approved claims:
+When no unresolved claims remain:
 
 ```text
 drawing population > 0
@@ -214,50 +148,21 @@ drawing population = 0
     → conclusion = no_participation
 ```
 
-`no_participation` is not cancellation. The raffle procedure successfully reached its resolution point and found no approved drawing population to act upon. Claims may have existed, been denied, or been cancelled; those facts are irrelevant to the drawing unless they established approved drawing weight.
+`no_participation` is normal resolution, not cancellation.
 
-A drawn round preserves enough result evidence to reconstruct the selection:
+A drawn round preserves total drawing population size, selected index, winning claim ID, concluding Guildie, and conclusion time. Combined with immutable approved claims and deterministic population ordering, these facts reconstruct the selection.
 
-- total drawing population size;
-- selected index;
-- winning claim ID;
-- concluding Guildie administrator;
-- conclusion Unix time.
+## Cancellation and audit preservation
 
-Combined with the immutable approved claims and deterministic population ordering, those facts are sufficient to reconstruct why the selected position resolves to the winning claim. The public round record does not need to expose this selection machinery merely to establish transparency; it exposes the durable claims, final eligible population size, winner, and winnings instead.
+Raffle cancellation is deliberately durable. It is not modeled after Raid cancellation.
 
-## Conclusion and audit preservation
+`operator_cancelled` concludes the Raffle round and preserves its evidence. It may occur while unresolved claims exist. Cancellation does not resolve pending claims, revoke approved claims, remove drawing weight, alter denied or claimant-cancelled claims, rewrite terms, or manufacture refund state.
 
-Every conclusion preserves the raffle's pre-conclusion operational state for auditability. Conclusion appends terminal truth; it does not reconcile, normalize, or clean up the evidence that existed immediately beforehand.
+This preservation gives human operators a stable record against which refunds, discrepancies, and other guild procedures can be resolved outside Raffle machinery.
 
-For every concluded round, the lifecycle operation establishes at minimum:
-
-```text
-status = concluded
-conclusion = <drawn | operator_cancelled | no_participation>
-concluded_at_unix = <unix>
-```
-
-Additional draw-result facts are appended only for `drawn`.
-
-`operator_cancelled` is intentionally different from normal draw resolution. It may conclude a round while unresolved claims still exist. The entire raffle machinery state remains untouched except for the conclusion facts required to establish that the round ended.
-
-Therefore operator cancellation does not:
-
-- resolve pending claims;
-- revoke approved claims;
-- remove approved drawing weight;
-- alter denied or claimant-cancelled claims;
-- rewrite round terms;
-- manufacture refund state.
-
-The preserved state gives human operators a non-moving target against which they can resolve refunds, discrepancies, and other guild procedures outside the raffle machinery.
-
-This preservation rule also applies to `drawn` and `no_participation`: drawing consumes a deterministic projection of established claim truth but does not mutate the claims or drawing basis it consumed.
+The same preservation principle applies to normal draw resolution: drawing consumes a deterministic projection of established claim truth but does not mutate the claims that established it.
 
 ## Prize model
-
-Prize kind is declarable raffle state.
 
 For a gold raffle:
 
@@ -269,52 +174,29 @@ guild share = pot - winner share
 
 Only approved claims contribute to the pot or prize projection.
 
-For item and other raffles, the configured prize is descriptive text rather than a calculated share of the gold pot. Entry price remains denominated in WoW gold regardless of prize kind.
+For item and other raffles, the configured prize is descriptive text. Entry price remains denominated in WoW gold regardless of prize kind.
 
-## Historical behavior
+## Historical and public behavior
 
-Claims do not disappear when a round concludes. They remain ordinary historical records.
+Claims do not disappear when a round concludes. There is no archive flag or cleanup procedure that rewrites participation history. Raffle state is evidence, not a convenience model.
 
-Their operational activity is determined by the lifecycle of their round. There is no separate archive flag and no cleanup procedure that rewrites participation history.
+Every established round has one durable read-only public record at `/events/raffle/:roundId`. The same route follows the round through listed preview, live inspection, and concluded history.
 
-Raffle state is evidence, not a convenience model. Once operational truth has been established, later lifecycle actions must not rewrite it merely to make terminal state look tidy.
+A concluded drawn record exposes the winner, actual winnings, final eligible population size, and one row per durable claim. Operator-cancelled rounds may visibly retain unresolved claims because that evidence is specifically useful for later follow-up. The public record does not infer refund completion or other state Raffle does not own.
 
-The raffle intentionally derives as much as possible from a small set of authoritative facts. The same state used to operate the raffle therefore preserves the history required to inspect it later.
-
-## Public round records
-
-Every established raffle round has one durable, read-only public destination:
-
-```text
-/events/raffle/:roundId
-```
-
-The route follows the same round through its lifecycle rather than creating separate preview, live, and archive objects:
-
-```text
-listed
-    → inspectable preview
-
-live
-    → inspectable current round record
-
-concluded
-    → durable public record
-```
-
-The record exists for transparency, not interaction. It may link a viewer toward the current participation surface while a round is live, but it does not submit claims, cancel claims, adjudicate claims, edit terms, draw, cancel the round, or perform other raffle operations.
-
-A concluded drawn record exposes the recorded winner, actual winnings, final eligible drawing-population size, and a literal one-row-per-claim ledger. Each claim row presents the participating Character, requested entry count, promised gold, claim time, recorded resolution status, and resolution time where one exists. Denied claims may also present their recorded denial reason.
-
-A normally drawn round cannot contain unresolved claims because draw preconditions prohibit it. An operator-cancelled round may contain unresolved claims, and those unresolved rows remain visible exactly because cancellation is the conclusion most likely to require later refund or discrepancy scrutiny. The record does not infer or manufacture refund completion state that Raffle does not own.
-
-The public record intentionally does not enumerate synthetic entry rows or expose the random-selection implementation merely to appear more detailed. Approved claim counts and requested entry counts are sufficient to reconstruct the eligible population; individual entries are only the transient equal-weight positions used by winner selection.
+The record does not enumerate synthetic entry rows or expose random-selection implementation merely to appear more detailed. Approved claims and their requested entry counts already preserve the authoritative drawing basis.
 
 ## Surface boundary
 
-The raffle domain owns raffle meaning. Interfaces own expression of that meaning.
+Raffle's surfaces have distinct roles over the same backend truth.
 
-The raffle module exposes the enduring Guild Event Offering:
+Participation/public surfaces include `/events/raffle` as the standing Raffle activity surface, `/events/raffle/enter` for live claim submission, `/events/raffle/claims` for a member's claims, `/events/raffle/:roundId` for a concrete durable round record, `/events/raffle/history` for concluded-round discovery, and `/events/raffle/rules` for standing rules.
+
+Operational surfaces live under `/events/raffle/manage` and `/events/raffle/manage/:roundId`. They project the exact capabilities available to the current operator: modify, stage, claim adjudication, and draw. Operations are not Administration merely because they are privileged.
+
+Administration owns module enablement/configuration and delegated capability policy through the global Administration and Permissions surfaces. Raffle does not maintain a parallel administration hierarchy for ordinary round operation.
+
+The enduring Guild Event Offering remains separate from concrete round lifecycle:
 
 ```text
 id          → raffle
@@ -323,28 +205,14 @@ tagline     → Take your shot at the pot.
 destination → /events/raffle
 ```
 
-That Offering exists independently of raffle-round lifecycle. The Events shell may promote Raffle even when no round is live or scheduled. The Offering does not explain raffle procedure; `/events/raffle` remains the module-owned engagement and participation surface.
+That Offering answers whether Raffle is an activity the guild offers. A concrete round publication answers when a particular raffle occurrence exists. Neither owns Raffle procedure.
 
-Current participant-facing web surfaces are:
+Discord and other integrations remain interaction surfaces over the same backend truth. They do not become independent owners of Raffle state.
 
-- `/events/raffle` — Raffle homepage; when a round is live it optimizes immediate participation and claim access, and otherwise provides a standing engagement surface rather than duplicating the Guild Event Calendar;
-- `/events/raffle/:roundId` — durable read-only record for one exact raffle round, from upcoming preview through concluded history;
-- `/events/raffle/history` — index of concluded rounds linking to their durable records;
-- `/events/raffle/rules` — standing guild raffle rules and regulations.
+## Relationship to Raid
 
-The resulting presentation rule is:
+Raid and Raffle now demonstrate a coherent module architecture: each module owns its domain truth, application operations, explicit capabilities, authority enforcement, concrete destinations, and presentation facts while shared surfaces project those facts.
 
-> Raffle optimizes the present for participation while preserving every round for inspection.
+They do **not** establish a shared lifecycle or participation framework. Raid is occurrence-driven and may treat cancellation as removal; Raffle has explicit listed/live/concluded state, a claim-admission window, human adjudication, manual resolution, and durable cancellation evidence. Those differences are domain truth, not architectural debt.
 
-Raffle administration is a distinct privileged projection over the same raffle truth:
-
-- `/admin/raffle` — listed and live raffle administration work;
-- `/admin/raffle/:roundId` — detailed raffle management, claim adjudication, manual draw, and administrative ledger.
-
-The former `/events/raffle/admin/*` paths are compatibility redirects rather than a second canonical administrative hierarchy. Raffle administration remains authorized through the module-owned `raffle.admin` capability.
-
-The administration root intentionally excludes concluded raffles because terminal rounds no longer represent active officer work. Their durable records remain available through the ordinary public raffle history projection.
-
-Raffle is not permanently promoted in primary navigation. A live raffle may additionally be promoted from the home surface; that home promotion is lifecycle-sensitive and separate from the enduring Guild Event Offering.
-
-Discord and other integrations remain interaction surfaces over the same backend truth. They do not become independent owners of raffle state.
+Two modules are enough to establish useful vocabulary and pressure-test boundaries. They are not, by themselves, justification for extracting generic event, participation, lifecycle, destination, or audit machinery beyond the shared contracts already earned.
