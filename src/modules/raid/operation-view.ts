@@ -2,7 +2,7 @@ import { config } from "../../config.js";
 import { pool } from "../../db.js";
 import type { RaidDifficulty, RaidEligibility } from "./domain.js";
 
-export type RaidAdministrationEvent = {
+export type RaidOperationEvent = {
   raidId: string;
   label: string;
   description: string | null;
@@ -12,7 +12,7 @@ export type RaidAdministrationEvent = {
   difficulty: RaidDifficulty;
 };
 
-export async function raidsForAdministration(): Promise<RaidAdministrationEvent[]> {
+export async function raidsForOperation(): Promise<RaidOperationEvent[]> {
   const result = await pool.query<{
     raid_id: string; label: string; description: string | null; occurs_start_unix: string; occurs_end_unix: string | null;
     tags: string[]; eligibility: RaidEligibility; difficulty: RaidDifficulty;
