@@ -1,6 +1,6 @@
 # Raid
 
-Raid is Guild Operations' first complete participation-event archetype. It establishes one concrete module's authority, lifecycle, participation, operation, and presentation without turning those choices into generic event machinery.
+Raid is one of Guild Operations' first complete participation-event reference modules. Together with Raffle, it demonstrates how a concrete module owns its authority, lifecycle, participation, operation, and presentation without turning those choices into generic event machinery.
 
 ## Event identity
 
@@ -34,42 +34,46 @@ Raid lifecycle is occurrence-driven:
 ```text
 Raid created
 │
-├── immediately accepting participation
+├── immediately accepting participation commitments
 │   ├── definition may be modified by authorized operators
-│   ├── participation offers may be created or withdrawn
-│   └── assignments may be operated
+│   ├── signup commitments may be created or withdrawn
+│   └── assignments may establish roster participation
 │
 ├── occursAt arrives
 │
 └── historical Raid
     ├── definition preserved
-    ├── participation preserved
+    ├── signup commitments preserved
     └── assignments preserved
 ```
 
-There is no independent Raid signup window or persisted open/closed signup stage. The Raid's existence before occurrence is the participation window.
+There is no independent Raid signup window or persisted open/closed signup stage. The Raid's existence before occurrence is the commitment window.
 
 At or after `occursAt`, history is derived from time rather than written as a lifecycle transition. No scheduler or background transition is required. Historical Raids are read-only.
 
-Before occurrence, cancellation is destructive. Cancelling removes the Raid and its dependent participation and assignments and withdraws its event publication. A cancelled Raid does not survive as Raid history.
+Before occurrence, cancellation is destructive. Cancelling removes the Raid and its dependent signup commitments and assignments and withdraws its event publication. A cancelled Raid does not survive as Raid history.
 
 The Raid Operations page therefore separates upcoming operational work from surviving historical Raids. Historical presentation is intentionally minimal until a concrete Raid feature earns richer history such as outcomes, logs, attendance, or analytics.
 
-## Participation
+## Participation commitment
 
-A Raid participation offer is a participant's declaration of what they could bring to the Raid.
+A Raid signup is a participation commitment: the applicant's declaration that they intend to participate and what they are willing to bring if selected.
 
-A participant supplies an applicant identity plus either a controlled eligible character or, when the Raid permits anyone, a declared class, and the specializations they are willing to play.
+An applicant supplies an identity plus either a controlled eligible character or, when the Raid permits anyone, a declared class, and the specializations they are willing to play.
 
-The participant does not declare a Raid role directly. Raid derives willing roles from the class and specialization trait index. An assignment can only use a role supported by the selected specialization.
+The applicant does not declare a Raid role directly. Raid derives willing roles from the class and specialization trait index. An assignment can only use a role supported by a specialization the applicant offered.
 
-An applicant may have multiple active participation offers. The public listing's signup count is the number of distinct applicants with at least one active offer, not the number of offer rows.
+An applicant may have multiple active signup commitments. The public listing's signup count is the number of distinct applicants with at least one active commitment, not the number of signup rows.
 
-Before occurrence, a participant owns withdrawal of their own offer. If that offer is assigned, withdrawal removes the assignment transactionally rather than silently transferring it to another offer.
+Before occurrence, an applicant owns withdrawal of their own commitment. If that commitment has been assigned, withdrawal removes the assignment transactionally rather than silently transferring it to another signup.
 
-## Assignment
+A signup is evidence of intent, not evidence that the applicant attended the Raid. Guild Operations must not reinterpret signup or assignment as observed attendance merely because those facts are available before occurrence.
 
-Assignment is operator-owned Raid work. Operators assign from active participation offers and select a specialization and compatible Raid role.
+## Assignment and established participation
+
+Assignment is operator-owned Raid work. An operator accepts and organizes an active signup commitment into the intended Raid roster by selecting a specialization and compatible Raid role from what the applicant offered.
+
+Assignment therefore establishes the Raid's planned participation configuration. It does not mechanically cause the human activity to occur and does not prove later attendance. Actual Raid participation is only observable after the fact if a future Raid capability establishes legitimate attendance evidence.
 
 The Raid listing summarizes only the current assigned composition: Tanks, Healers, and Damage. It does not expose assignment mutation controls, capacity targets, roster diagnostics, or participant identities.
 
@@ -78,7 +82,7 @@ The Raid listing summarizes only the current assigned composition: Tanks, Healer
 Each Raid declares navigable destinations for its concrete surfaces:
 
 - `public` — the Raid event listing;
-- `participate` — Raid participation; and
+- `participate` — Raid signup commitments; and
 - `operate` — Raid management.
 
 Destinations describe where a surface exists. Their presence does not grant authority to use it; authorization remains enforced by the relevant application operation and surface.
@@ -87,10 +91,10 @@ The public listing is the canonical public expression of one Raid event. It pres
 
 Management has two human-facing modes:
 
-- **Assign** for participation and group assignment work;
+- **Assign** for commitment handling and roster assignment work;
 - **Edit** for the mutable Raid definition and destructive cancellation when authorized.
 
-Historical Raid surfaces preserve the established facts and participation but do not permit mutation.
+Historical Raid surfaces preserve the established facts, signup commitments, and assignments but do not permit mutation.
 
 ## Presentation
 
@@ -102,6 +106,14 @@ Raid descriptions remain plain persisted text. The listing supports paragraph br
 
 Raid behavior belongs to Raid application operations. HTTP routes and web surfaces adapt representations into those operations rather than reimplementing lifecycle or authority rules.
 
-Current consequential operations include creation, modification, cancellation, participation submission and withdrawal, assignment, and unassignment. Read models support the public listing, participation surface, assignment operation, and Raid Operations overview.
+Current consequential operations include creation, modification, cancellation, signup commitment submission and withdrawal, assignment, and unassignment. Read models support the public listing, participation surface, assignment operation, and Raid Operations overview.
 
-This module is a reference implementation for pressure-testing later modules, not a mandate that every module share Raid's lifecycle. In particular, participation windows, cancellation semantics, history, eligibility, and assignment are module behaviors unless repeated concrete modules prove a narrower shared abstraction is warranted.
+## Relationship to other participation events
+
+Raid and Raffle are paired reference implementations for Guild Operations participation-event modules. Both currently demonstrate a participant-authored commitment followed by operator-owned establishment, but the meaning and procedure remain module-owned: Raid operators organize a commitment into an intended roster, while Raffle operators verify a promised payment and establish drawing weight.
+
+Their execution then diverges. Raid is a human activity Guild Operations cannot mechanically enforce; Raffle can mechanically consume established drawing weight during its draw. Neither commitment nor Raid assignment should be promoted into evidence of actual attendance without an authority-bearing observation that establishes it.
+
+Other participation events need not contain the same stages. In Hidden in Plain Sight, for example, a submission can be both the participation commitment and the participation itself, with later adjudication determining success rather than whether participation occurred.
+
+These examples establish useful vocabulary, not a shared participation workflow. Participation windows, cancellation semantics, history, eligibility, assignment, adjudication, execution, and evidence remain module behaviors unless repeated concrete modules prove a narrower shared abstraction is warranted.
