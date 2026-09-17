@@ -1,7 +1,7 @@
 import type { RaffleRound } from "./domain.js";
 import { raffleRoundFactsForAdministration } from "./queries.js";
 
-export type RaffleAdministrationRound = RaffleRound & {
+export type RaffleOperationRound = RaffleRound & {
   claimCount: number;
   pendingClaimCount: number;
   approvedClaimCount: number;
@@ -10,7 +10,7 @@ export type RaffleAdministrationRound = RaffleRound & {
   approvedEntryCount: number;
 };
 
-export async function raffleRoundsForAdministration(): Promise<RaffleAdministrationRound[]> {
+export async function raffleRoundsForOperation(): Promise<RaffleOperationRound[]> {
   const rounds = await raffleRoundFactsForAdministration();
   return rounds.map(({ round, metrics }) => ({
     ...round,
