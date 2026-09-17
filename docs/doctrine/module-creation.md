@@ -18,7 +18,7 @@ A module owns application operations for the behavior it establishes. Web routes
 
 An adapter may translate representation, choose presentation language, and enforce surface-specific concerns, but it should not reconstruct module lifecycle, mutation rules, or authority that belongs to the application operation.
 
-Raid is the first complete reference implementation of this shape. Its current concrete contract is documented in [`../features/raid.md`](../features/raid.md). Treat it as a source of proven distinctions to pressure-test against, not as a generic event superclass that later modules must imitate.
+Raid and Raffle are the first paired reference implementations of this shape. Their concrete contracts are documented in [`../features/raid.md`](../features/raid.md) and [`../raffle.md`](../raffle.md). Treat their common boundaries as proven vocabulary to pressure-test against and their differences as evidence of module ownership, not as a generic event superclass or workflow that later modules must imitate.
 
 ## Shared projections
 
@@ -56,11 +56,17 @@ Do not introduce a generic module administration registry, event lifecycle frame
 
 ## Participation behavior
 
-Participation vocabulary may be shared when it describes the same human action, but participation procedure remains module-owned unless repeated modules prove otherwise.
+Participation is module-defined. A participation event establishes what member action constitutes participation, what authority governs any intermediate organization or judgment, and what evidence Guild Operations can legitimately preserve.
 
-A **participation offer** is a member's declaration of intent to participate in an activity. Its module-specific shape can differ substantially. The existence of that vocabulary does not establish a generic participation table, window, state machine, or authorization contract.
+A **participation commitment** is a participant-authored expression of intent to participate. The participant is authoritative for making that commitment, but the commitment does not automatically prove that later participation occurred. A module may require further human or mechanical procedure before the commitment establishes participation, or the commitment itself may be the act of participation.
 
-In particular, participation windows are module behavior. Raid accepts participation from creation until occurrence because that is coherent for Raid. A module such as Raffle may need an independently meaningful participation window. Neither behavior should be generalized merely to make the modules look alike.
+Raid and Raffle demonstrate the first shape without sharing a workflow. A Raid signup is a commitment describing what an applicant is willing to bring; an operator assignment establishes the accepted roster configuration. A Raffle claim is a commitment to enter and provide the corresponding gold; operator verification and approval establish drawing weight. Their later execution differs again: Raid is performed socially by humans, while Raffle consumes established drawing weight mechanically.
+
+Other activities can collapse those boundaries. In Hidden in Plain Sight, a submission is both the participation commitment and the participation itself; later operator adjudication determines whether that participation succeeded rather than whether it occurred.
+
+These distinctions are vocabulary, not framework machinery. They do not establish a generic participation table, commitment model, state machine, adjudication service, assignment model, or authorization contract. Participation windows, withdrawal rules, establishment procedure, execution, success, and historical evidence remain module behavior until repeated concrete modules prove a narrower shared abstraction.
+
+Software must not promote intent into observed participation merely because it has a commitment record. Where actual participation is only knowable after the activity, Guild Operations should preserve the strongest fact its authority and evidence legitimately establish.
 
 ## Persistence
 
