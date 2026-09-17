@@ -22,7 +22,7 @@ import { registerRaidOperationPage } from "./web/pages/events/raid/operation.js"
 import { registerRaidAdminDetailPage } from "./web/pages/events/raid/detail.js";
 import { registerRaidDefinitionPage } from "./web/pages/events/raid/definition.js";
 import { registerRaidPage } from "./web/pages/events/raid/index.js";
-import { registerRaffleAdminPage } from "./web/pages/events/raffle/admin.js";
+import { registerRaffleAdminPage } from "./web/pages/events/raffle/operation.js";
 import { registerRaffleClaimsPage } from "./web/pages/events/raffle/claims.js";
 import { registerRaffleEntryPage } from "./web/pages/events/raffle/enter.js";
 import { registerRaffleHistoryPage } from "./web/pages/events/raffle/history.js";
