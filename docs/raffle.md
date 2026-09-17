@@ -101,7 +101,7 @@ Current Events presentation uses the first destination as its primary interactio
 
 ## Claim
 
-A claim is a durable promissory record. It means approximately:
+A claim is a durable participation commitment. It means approximately:
 
 > This Guildie, acting through this controlled guild Character, intends to deposit the gold corresponding to this many entries for this round.
 
@@ -123,7 +123,7 @@ An unresolved claim may end in exactly one of three ways:
 - `denied` — denying Guildie, denial Unix time, and mandatory reason;
 - `cancelled` — claimant Guildie and cancellation Unix time.
 
-Approval is the boundary where a claim begins contributing immutable drawing weight. Once approved, the requested entry count cannot be cancelled, reduced, edited, or withdrawn from the population.
+Approval is the boundary where the participation commitment becomes established drawing participation: the claim begins contributing immutable drawing weight. Once approved, the requested entry count cannot be cancelled, reduced, edited, or withdrawn from the population.
 
 Pending claims establish no drawing weight. Denied and cancelled claims contribute no drawing weight but remain durable records.
 
@@ -209,10 +209,14 @@ That Offering answers whether Raffle is an activity the guild offers. A concrete
 
 Discord and other integrations remain interaction surfaces over the same backend truth. They do not become independent owners of Raffle state.
 
-## Relationship to Raid
+## Relationship to other participation events
 
-Raid and Raffle now demonstrate a coherent module architecture: each module owns its domain truth, application operations, explicit capabilities, authority enforcement, concrete destinations, and presentation facts while shared surfaces project those facts.
+Raid and Raffle are paired reference implementations for Guild Operations participation-event modules. Each owns its domain truth, application operations, explicit capabilities, authority enforcement, concrete destinations, and presentation facts while shared surfaces project those facts.
 
-They do **not** establish a shared lifecycle or participation framework. Raid is occurrence-driven and may treat cancellation as removal; Raffle has explicit listed/live/concluded state, a claim-admission window, human adjudication, manual resolution, and durable cancellation evidence. Those differences are domain truth, not architectural debt.
+Both currently begin with a participant-authored participation commitment that requires further operator-owned establishment. Raid signup offers an intended configuration that an operator organizes into the planned roster. A Raffle claim promises an entry payment that an operator verifies before approval establishes immutable drawing weight. That common shape is useful vocabulary, not shared procedure.
 
-Two modules are enough to establish useful vocabulary and pressure-test boundaries. They are not, by themselves, justification for extracting generic event, participation, lifecycle, destination, or audit machinery beyond the shared contracts already earned.
+Their execution and evidence differ. Raid is a human activity whose actual attendance is not established merely by signup or assignment. Raffle can mechanically consume approved drawing weight during its draw and preserve that execution evidence. Their lifecycle and cancellation semantics also remain deliberately different.
+
+Other participation events need not contain the same stages. In Hidden in Plain Sight, a submission can be both the participation commitment and the participation itself; later operator adjudication determines success rather than whether participation occurred.
+
+These modules establish useful participation-event vocabulary and pressure-test common boundaries. They do not justify extracting a generic event, participation, commitment, lifecycle, destination, adjudication, or audit framework beyond shared contracts already earned.
