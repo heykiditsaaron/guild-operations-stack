@@ -90,18 +90,18 @@
   flex: none;
 }
 
-.raffle-admin-overview .raffle-management-controls > a[href^="/admin/raffle/"],
+.raffle-admin-overview .raffle-management-controls > a[href^="/events/raffle/manage/"],
 .raffle-admin-overview .raffle-management-controls > button[data-draw-raffle-round],
 .raffle-admin-overview .raffle-management-controls > button[data-cancel-raffle-round] {
   font-size: 0;
 }
 
-.raffle-admin-overview .raffle-overview-item-live .raffle-management-controls > a[href^="/admin/raffle/"]::after {
+.raffle-admin-overview .raffle-overview-item-live .raffle-management-controls > a[href^="/events/raffle/manage/"]::after {
   content: "Manage";
   font-size: 0.88rem;
 }
 
-.raffle-admin-overview .raffle-overview-item:not(.raffle-overview-item-live) .raffle-management-controls > a[href^="/admin/raffle/"]::after {
+.raffle-admin-overview .raffle-overview-item:not(.raffle-overview-item-live) .raffle-management-controls > a[href^="/events/raffle/manage/"]::after {
   content: "Edit";
   font-size: 0.88rem;
 }
