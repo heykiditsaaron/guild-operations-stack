@@ -299,7 +299,7 @@ async function roundFactsForIds(roundIds: string[]): Promise<RaffleRoundFacts[]>
   return rounds.filter((round): round is RaffleRoundFacts => round !== null);
 }
 
-export async function raffleRoundFactsForAdministration(): Promise<RaffleRoundFacts[]> {
+export async function raffleRoundFactsForOperation(): Promise<RaffleRoundFacts[]> {
   const result = await pool.query<{ round_id: string }>(
     `SELECT round_id
        FROM raffle_rounds
