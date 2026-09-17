@@ -4,6 +4,8 @@ Guild Operations has a development Docker Compose stack for live validation of b
 
 The regular deployment continues to use `compose.yaml` from the regular checkout at `~/dev/guild-operations-stack`. Development uses `compose.dev.yaml` from a separate Git worktree at `~/dev/guild-operations-stack-dev` and the fixed Compose project name `guild-operations-dev`.
 
+The development application is exposed at `https://dev.guild.gameweenies.net`.
+
 ## Isolation
 
 The development deployment is isolated at two levels.
@@ -49,7 +51,7 @@ cp .env.dev.example .env.dev
 
 Populate the required Blizzard and Discord OAuth client values locally. Do not commit `.env.dev`.
 
-`APP_ORIGIN` defaults to `http://192.168.88.99:3101` in the example. If the development deployment is given a different LAN address or an HTTPS hostname, update `APP_ORIGIN` accordingly.
+The tracked development example uses `APP_ORIGIN=https://dev.guild.gameweenies.net` and secure session cookies. If the development hostname changes, update the local `APP_ORIGIN` and the tracked example together.
 
 Blizzard and Discord callback configuration must permit the development origin before authentication can be validated there. Guild Operations derives the callbacks as:
 
