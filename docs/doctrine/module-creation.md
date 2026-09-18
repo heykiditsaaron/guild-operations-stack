@@ -18,6 +18,10 @@ A module owns application operations for the behavior it establishes. Web routes
 
 An adapter may translate representation, choose presentation language, and enforce surface-specific concerns, but it should not reconstruct module lifecycle, mutation rules, or authority that belongs to the application operation.
 
+**REST resource paths and web presentation paths are independent adapter concerns.** REST should expose authoritative application subjects using conventional machine-oriented resource paths. Web routes should place the same subjects where humans naturally participate in or operate the guild activity. Neither route hierarchy is derived from, or authoritative for, the other.
+
+For example, a Raffle may be exposed to machines as `/api/v1/raffles/:raffleId` while its human presentation remains under `/events/raffle/:raffleId`. Both address the same application subject through the same application contract; the difference belongs to the medium.
+
 Raid and Raffle are the first paired reference implementations of this shape. Their concrete contracts are documented in [`../features/raid.md`](../features/raid.md) and [`../raffle.md`](../raffle.md). Treat their common boundaries as proven vocabulary to pressure-test against and their differences as evidence of module ownership, not as a generic event superclass or workflow that later modules must imitate.
 
 ## Shared projections
