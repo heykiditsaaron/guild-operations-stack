@@ -1,11 +1,10 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import { getRaffleRound } from "./application.js";
+import { getRaffle } from "./application.js";
 import {
-  liveRaffleRoundFacts,
-  raffleClaimFacts,
-  raffleRoundFacts,
+  getRaffleClaim,
+  raffleFacts,
   type RaffleCharacterRecognition,
-  type RaffleRoundFacts,
+  type RaffleFacts,
 } from "./queries.js";
 
 function readAuthorized(request: FastifyRequest): boolean {
@@ -25,92 +24,72 @@ function characterRepresentation(character: RaffleCharacterRecognition) {
   };
 }
 
-function roundRepresentation(facts: RaffleRoundFacts) {
-  const { round, metrics, winner } = facts;
-  const pot = BigInt(round.entryPriceGold) * BigInt(metrics.approvedEntryCount);
-  const winnerPrize = round.prizeKind === "gold" && round.winnerPercentage !== null
-    ? (pot * BigInt(round.winnerPercentage)) / 100n
+function raffleRepresentation(facts: RaffleFacts) {
+  const { raffle, participationOpen, metrics, winner } = facts;
+  const pot = BigInt(raffle.entryPriceGold) * BigInt(metrics.approvedEntryCount);
+  const winnerPrize = raffle.prizeKind === "gold" && raffle.winnerPercentage !== null
+    ? (pot * BigInt(raffle.winnerPercentage)) / 100n
     : null;
   const guildShare = winnerPrize === null ? null : pot - winnerPrize;
 
   return {
-    round_id: round.roundId,
-    title: round.roundTitle,
-    status: round.status,
-    conclusion: round.conclusion,
-    drawing_at_unix: round.drawingAtUnix,
-    entry_price_gold: round.entryPriceGold,
-    prize: {
-      kind: round.prizeKind,
-      winner_percentage: round.winnerPercentage,
-      description: round.prizeDescription,
+    raffle_id: raffle.raffleId,
+    title: raffle.title,
+    conclusion: raffle.conclusion,
+    drawing_at_unix: raffle.drawingAtUnix,
+    participation: {
+      open: participationOpen,
+      opened_at_unix: raffle.openedAtUnix,
+      closed_at_unix: raffle.participationClosedAtUnix,
     },
-    created_at_unix: round.createdAtUnix,
-    live_at_unix: round.liveAtUnix,
-    concluded_at_unix: round.concludedAtUnix,
+    entry_price_gold: raffle.entryPriceGold,
+    prize: {
+      kind: raffle.prizeKind,
+      winner_percentage: raffle.winnerPercentage,
+      description: raffle.prizeDescription,
+    },
+    created_at_unix: raffle.createdAtUnix,
+    concluded_at_unix: raffle.concludedAtUnix,
     claims: {
       pending: metrics.pendingClaimCount,
       approved: metrics.approvedClaimCount,
       denied: metrics.deniedClaimCount,
-      cancelled: metrics.cancelledClaimCount,
+      revoked: metrics.revokedClaimCount,
       approved_entries: metrics.approvedEntryCount,
     },
-    gold: round.prizeKind === "gold"
-      ? {
-          pot: pot.toString(),
-          winner_prize: winnerPrize?.toString() ?? null,
-          guild_share: guildShare?.toString() ?? null,
-        }
+    gold: raffle.prizeKind === "gold"
+      ? { pot: pot.toString(), winner_prize: winnerPrize?.toString() ?? null, guild_share: guildShare?.toString() ?? null }
       : null,
-    total_entries: round.totalEntries,
-    winning_claim_id: round.winningClaimId,
-    winner: winner
-      ? {
-          claim_id: winner.claimId,
-          character: characterRepresentation(winner.character),
-        }
-      : null,
+    total_entries: raffle.totalEntries,
+    winning_claim_id: raffle.winningClaimId,
+    winner: winner ? { claim_id: winner.claimId, character: characterRepresentation(winner.character) } : null,
   };
 }
 
 export async function registerRaffleApiV1Routes(app: FastifyInstance): Promise<void> {
-  app.get("/api/v1/raffle/rounds/live", async (request, reply) => {
+  app.get<{ Params: { raffleId: string } }>("/api/v1/raffles/:raffleId", async (request, reply) => {
     if (!readAuthorized(request)) return reply.code(401).send({ error: "invalid_machine_authority" });
-    const facts = await liveRaffleRoundFacts();
-    return reply.send({ round: facts ? roundRepresentation(facts) : null });
-  });
-
-  app.get<{ Params: { roundId: string } }>("/api/v1/raffle/rounds/:roundId", async (request, reply) => {
-    if (!readAuthorized(request)) return reply.code(401).send({ error: "invalid_machine_authority" });
-    const facts = await raffleRoundFacts(request.params.roundId);
-    if (!facts) return reply.code(404).send({ error: "round_not_found" });
-    return reply.send(roundRepresentation(facts));
+    const facts = await raffleFacts(request.params.raffleId);
+    if (!facts) return reply.code(404).send({ error: "raffle_not_found" });
+    return reply.send(raffleRepresentation(facts));
   });
 
   app.get<{ Params: { claimId: string } }>("/api/v1/raffle/claims/:claimId", async (request, reply) => {
     if (!readAuthorized(request)) return reply.code(401).send({ error: "invalid_machine_authority" });
-    const claim = await raffleClaimFacts(request.params.claimId);
+    const claim = await getRaffleClaim(request.params.claimId);
     if (!claim) return reply.code(404).send({ error: "claim_not_found" });
-
-    const round = await getRaffleRound(claim.roundId);
-    if (!round) return reply.code(404).send({ error: "claim_not_found" });
+    const raffle = await getRaffle(claim.raffleId);
+    if (!raffle) return reply.code(404).send({ error: "claim_not_found" });
 
     return reply.send({
       claim_id: claim.claimId,
-      round_id: claim.roundId,
-      round: {
-        status: round.status,
-        conclusion: round.conclusion,
-      },
+      raffle_id: claim.raffleId,
+      raffle: { conclusion: raffle.conclusion },
       character: characterRepresentation(claim.character),
       requested_entry_count: claim.requestedEntryCount,
       promised_gold_value: claim.promisedGoldValue,
       created_at_unix: claim.createdAtUnix,
-      resolution: {
-        kind: claim.resolutionKind,
-        at_unix: claim.resolutionAtUnix,
-        denial_reason: claim.denialReason,
-      },
+      resolution: { kind: claim.resolutionKind, at_unix: claim.resolutionAtUnix, denial_reason: claim.denialReason },
     });
   });
 }
