@@ -1,99 +1,12 @@
 import type { FastifyInstance } from "fastify";
-import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
-import { raffleRoundDestinations } from "../../../../modules/raffle/destinations.js";
-import { raffleClaimsForMember, type RaffleMemberClaim } from "../../../../modules/raffle/member-view.js";
-import { liveRaffleRoundFacts } from "../../../../modules/raffle/queries.js";
+import { authenticatedGuildie,SESSION_COOKIE_NAME } from "../../../../auth.js";
+import { raffleDestinations } from "../../../../modules/raffle/destinations.js";
+import { raffleClaimsForMember,type RaffleMemberClaim } from "../../../../modules/raffle/member-view.js";
+import { nextEstablishedRaffleFacts } from "../../../../modules/raffle/queries.js";
 import type { AssetRegistry } from "../../../assets.js";
-import { htmlText, renderPage } from "../../../render.js";
+import { htmlText,renderPage } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
-
-function localTime(unixSeconds: number): string {
-  const instant = new Date(unixSeconds * 1000).toISOString();
-  return `<time datetime="${instant}" data-local-time-unix="${unixSeconds}" data-local-time-date-style="medium">${instant}</time>`;
-}
-
-function claimResolution(claim: RaffleMemberClaim): string {
-  if (claim.resolutionKind === "approved") {
-    return claim.resolutionActorLabel ? `Approved by ${claim.resolutionActorLabel}` : "Approved";
-  }
-  if (claim.resolutionKind === "denied") {
-    return claim.resolutionActorLabel ? `Denied by ${claim.resolutionActorLabel}` : "Denied";
-  }
-  if (claim.resolutionKind === "cancelled") return "Cancelled";
-  return "Awaiting attendant review";
-}
-
-function claimsList(claims: RaffleMemberClaim[]): string {
-  if (claims.length === 0) {
-    return `<p class="raffle-status-copy">You have not submitted a claim for this raffle.</p>`;
-  }
-
-  return `<ol class="raffle-claims-list">
-      ${claims.map((claim) => `
-        <li class="raffle-claim-item">
-          <div class="raffle-claim-heading">
-            <strong>${htmlText(claim.characterName)} · ${claim.requestedEntryCount} ${claim.requestedEntryCount === 1 ? "entry" : "entries"}</strong>
-            <span class="raffle-claim-state">${htmlText(claimResolution(claim))}</span>
-          </div>
-          <p class="raffle-claim-meta">Promised deposit: ${htmlText(claim.promisedGoldValue)} gold · ${localTime(claim.createdAtUnix)}</p>
-          ${claim.denialReason ? `<p class="raffle-claim-reason">Reason: ${htmlText(claim.denialReason)}</p>` : ""}
-          ${claim.resolutionKind === null ? `<button class="raffle-claim-cancel" type="button" data-cancel-raffle-claim="${htmlText(claim.claimId)}">Cancel claim</button>` : ""}
-        </li>`).join("\n")}
-    </ol>`;
-}
-
-export async function registerRaffleClaimsPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
-  app.get("/events/raffle/claims", async (request, reply) => {
-    const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, guildie, liveFacts] = await Promise.all([
-      viewerForRequest(sessionToken),
-      authenticatedGuildie(sessionToken),
-      liveRaffleRoundFacts(),
-    ]);
-    const liveRaffle = liveFacts?.round ?? null;
-    const participateDestination = liveRaffle
-      ? raffleRoundDestinations(liveRaffle).find((destination) => destination.kind === "participate")
-      : null;
-
-    let body: string;
-    if (!liveRaffle) {
-      body = `<section class="raffle-workspace" aria-labelledby="raffle-claims-title"><h2 id="raffle-claims-title">No active raffle.</h2></section>`;
-    } else if (!guildie) {
-      body = `<section class="raffle-workspace" aria-labelledby="raffle-claims-title">
-        <h2 id="raffle-claims-title">Your claims</h2>
-        <p class="raffle-workspace-intro">Sign in to view your claims for the current raffle.</p>
-        <a class="raffle-action" href="/auth/blizzard/start?return_to=%2Fevents%2Fraffle%2Fclaims">Sign in to view claims</a>
-      </section>`;
-    } else {
-      const claims = await raffleClaimsForMember(guildie.guildieId, liveRaffle.roundId);
-      body = `<section class="raffle-workspace" aria-labelledby="raffle-claims-title">
-        <div class="raffle-claims-toolbar">
-          <h2 id="raffle-claims-title">Your claims</h2>
-          ${participateDestination ? `<a class="raffle-action raffle-action-secondary raffle-claims-new" href="${htmlText(participateDestination.href)}">Enter new claim</a>` : ""}
-        </div>
-        ${claimsList(claims)}
-      </section>`;
-    }
-
-    const html = renderPage(assets, {
-      pathname: "/events/raffle/claims",
-      title: "Raffle Claims · OH CRIT I Pulled! Guild Operations",
-      description: "View your claims for the current OH CRIT I Pulled! guild raffle.",
-      viewer,
-      secondaryNavigation: { kind: "back", label: "Back to raffle", href: "/events/raffle" },
-      stylesheets: ["raffle.css"],
-      scripts: ["raffle.js"],
-      header: `
-        <div class="raffle-page-header">
-          <p class="eyebrow">Events · Raffle</p>
-          <h1 id="page-title">Claims</h1>
-        </div>`,
-      body,
-    });
-
-    return reply
-      .header("Cache-Control", "no-cache")
-      .type("text/html; charset=utf-8")
-      .send(html);
-  });
-}
+function localTime(u:number):string{const i=new Date(u*1000).toISOString();return `<time datetime="${i}" data-local-time-unix="${u}" data-local-time-date-style="medium">${i}</time>`;}
+function resolution(c:RaffleMemberClaim):string{if(c.resolutionKind==="approved")return c.resolutionActorLabel?`Approved by ${c.resolutionActorLabel}`:"Approved";if(c.resolutionKind==="denied")return c.resolutionActorLabel?`Denied by ${c.resolutionActorLabel}`:"Denied";if(c.resolutionKind==="revoked")return "Revoked";return "Awaiting attendant review";}
+function list(claims:RaffleMemberClaim[]):string{if(!claims.length)return '<p class="raffle-status-copy">You have not submitted a claim for this raffle.</p>';return `<ol class="raffle-claims-list">${claims.map(c=>`<li class="raffle-claim-item"><div class="raffle-claim-heading"><strong>${htmlText(c.characterName)} · ${c.requestedEntryCount} ${c.requestedEntryCount===1?"entry":"entries"}</strong><span class="raffle-claim-state">${htmlText(resolution(c))}</span></div><p class="raffle-claim-meta">Promised deposit: ${htmlText(c.promisedGoldValue)} gold · ${localTime(c.createdAtUnix)}</p>${c.denialReason?`<p class="raffle-claim-reason">Reason: ${htmlText(c.denialReason)}</p>`:""}${c.resolutionKind===null?`<button class="raffle-claim-cancel" type="button" data-revoke-raffle-claim="${htmlText(c.claimId)}">Revoke claim</button>`:""}</li>`).join("\n")}</ol>`;}
+export async function registerRaffleClaimsPage(app:FastifyInstance,assets:AssetRegistry):Promise<void>{app.get("/events/raffle/claims",async(request,reply)=>{const token=request.cookies[SESSION_COOKIE_NAME];const [viewer,guildie,facts]=await Promise.all([viewerForRequest(token),authenticatedGuildie(token),nextEstablishedRaffleFacts()]);const raffle=facts?.raffle??null;const participate=raffle?raffleDestinations(raffle).find(d=>d.kind==="participate"):null;let body:string;if(!raffle)body='<section class="raffle-workspace"><h2>No operational raffle.</h2></section>';else if(!guildie)body='<section class="raffle-workspace"><h2>Your claims</h2><p class="raffle-workspace-intro">Sign in to view your claims for the current raffle.</p><a class="raffle-action" href="/auth/blizzard/start?return_to=%2Fevents%2Fraffle%2Fclaims">Sign in to view claims</a></section>';else{const claims=await raffleClaimsForMember(guildie.guildieId,raffle.raffleId);body=`<section class="raffle-workspace"><div class="raffle-claims-toolbar"><h2>Your claims</h2>${participate?`<a class="raffle-action raffle-action-secondary raffle-claims-new" href="${htmlText(participate.href)}">Enter new claim</a>`:""}</div>${list(claims)}</section>`;}return reply.header("Cache-Control","no-cache").type("text/html; charset=utf-8").send(renderPage(assets,{pathname:"/events/raffle/claims",title:"Raffle Claims · OH CRIT I Pulled! Guild Operations",description:"View your claims for the current OH CRIT I Pulled! guild raffle.",viewer,secondaryNavigation:{kind:"back",label:"Back to raffle",href:"/events/raffle"},stylesheets:["raffle.css"],scripts:["raffle.js"],header:'<div class="raffle-page-header"><p class="eyebrow">Events · Raffle</p><h1 id="page-title">Claims</h1></div>',body}));});}
