@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../../../auth.js";
 import { raffleParticipationCutoffUnix } from "../../../../modules/raffle/domain.js";
-import { rafflePublicView,type RafflePublicClaim,type RafflePublicView } from "../../../../modules/raffle/round-view.js";
+import { rafflePublicView,type RafflePublicClaim,type RafflePublicView } from "../../../../modules/raffle/raffle-view.js";
 import type { AssetRegistry } from "../../../assets.js";
 import { htmlText,renderPage } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
