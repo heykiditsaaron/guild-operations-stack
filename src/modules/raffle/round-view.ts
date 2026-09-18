@@ -1,88 +1,13 @@
-import type {
-  RaffleClaimResolution,
-  RafflePrizeKind,
-  RaffleRoundConclusion,
-  RaffleRoundStatus,
-} from "./domain.js";
+import type { RaffleClaimResolution, RaffleConclusion, RafflePrizeKind } from "./domain.js";
 import { raffleGuildieAttribution } from "./guildie-attribution.js";
-import { raffleClaimFactsForRound, raffleRoundFacts } from "./queries.js";
+import { raffleClaimFactsForRaffle, raffleFacts } from "./queries.js";
 
-export type RafflePublicClaim = {
-  claimId: string;
-  characterName: string;
-  requestedEntryCount: number;
-  promisedGoldValue: string;
-  createdAtUnix: number;
-  resolutionKind: RaffleClaimResolution;
-  resolutionActorLabel: string | null;
-  resolvedAtUnix: number | null;
-  denialReason: string | null;
-};
+export type RafflePublicClaim={claimId:string;characterName:string;requestedEntryCount:number;promisedGoldValue:string;createdAtUnix:number;resolutionKind:RaffleClaimResolution;resolutionActorLabel:string|null;resolvedAtUnix:number|null;denialReason:string|null;};
+export type RafflePublicView={raffleId:string;conclusion:RaffleConclusion;title:string|null;drawingAtUnix:number;entryPriceGold:string;prizeKind:RafflePrizeKind;winnerPercentage:number|null;prizeDescription:string|null;createdAtUnix:number;openedAtUnix:number|null;participationClosedAtUnix:number|null;participationOpen:boolean;concludedAtUnix:number|null;totalEntries:number|null;approvedEntryCount:number;winnerCharacterName:string|null;claims:RafflePublicClaim[];};
 
-export type RafflePublicRound = {
-  roundId: string;
-  status: RaffleRoundStatus;
-  conclusion: RaffleRoundConclusion;
-  roundTitle: string | null;
-  drawingAtUnix: number;
-  entryPriceGold: string;
-  prizeKind: RafflePrizeKind;
-  winnerPercentage: number | null;
-  prizeDescription: string | null;
-  createdAtUnix: number;
-  liveAtUnix: number | null;
-  concludedAtUnix: number | null;
-  totalEntries: number | null;
-  approvedEntryCount: number;
-  winnerCharacterName: string | null;
-  claims: RafflePublicClaim[];
-};
-
-export async function rafflePublicRound(roundId: string): Promise<RafflePublicRound | null> {
-  const [facts, claims] = await Promise.all([
-    raffleRoundFacts(roundId),
-    raffleClaimFactsForRound(roundId),
-  ]);
-  if (!facts) return null;
-
-  const actorGuildieIds = new Set(
-    claims
-      .map((claim) => claim.resolutionActorGuildieId)
-      .filter((guildieId): guildieId is string => guildieId !== null),
-  );
-  const attributionEntries = await Promise.all(
-    [...actorGuildieIds].map(async (guildieId) => [guildieId, await raffleGuildieAttribution(guildieId)] as const),
-  );
-  const attributionByGuildieId = new Map(attributionEntries);
-
-  return {
-    roundId: facts.round.roundId,
-    status: facts.round.status,
-    conclusion: facts.round.conclusion,
-    roundTitle: facts.round.roundTitle,
-    drawingAtUnix: facts.round.drawingAtUnix,
-    entryPriceGold: facts.round.entryPriceGold,
-    prizeKind: facts.round.prizeKind,
-    winnerPercentage: facts.round.winnerPercentage,
-    prizeDescription: facts.round.prizeDescription,
-    createdAtUnix: facts.round.createdAtUnix,
-    liveAtUnix: facts.round.liveAtUnix,
-    concludedAtUnix: facts.round.concludedAtUnix,
-    totalEntries: facts.round.totalEntries,
-    approvedEntryCount: facts.metrics.approvedEntryCount,
-    winnerCharacterName: facts.winner?.character.name ?? null,
-    claims: claims.map((claim) => ({
-      claimId: claim.claimId,
-      characterName: claim.character.name,
-      requestedEntryCount: claim.requestedEntryCount,
-      promisedGoldValue: claim.promisedGoldValue,
-      createdAtUnix: claim.createdAtUnix,
-      resolutionKind: claim.resolutionKind,
-      resolutionActorLabel: claim.resolutionActorGuildieId === null
-        ? null
-        : attributionByGuildieId.get(claim.resolutionActorGuildieId) ?? "Guild officer",
-      resolvedAtUnix: claim.resolutionAtUnix,
-      denialReason: claim.denialReason,
-    })),
-  };
+export async function rafflePublicView(raffleId:string):Promise<RafflePublicView|null>{
+ const [facts,claims]=await Promise.all([raffleFacts(raffleId),raffleClaimFactsForRaffle(raffleId)]);if(!facts)return null;
+ const ids=new Set(claims.map(c=>c.resolutionActorGuildieId).filter((id):id is string=>id!==null));
+ const entries=await Promise.all([...ids].map(async id=>[id,await raffleGuildieAttribution(id)] as const));const byId=new Map(entries);
+ return {raffleId:facts.raffle.raffleId,conclusion:facts.raffle.conclusion,title:facts.raffle.title,drawingAtUnix:facts.raffle.drawingAtUnix,entryPriceGold:facts.raffle.entryPriceGold,prizeKind:facts.raffle.prizeKind,winnerPercentage:facts.raffle.winnerPercentage,prizeDescription:facts.raffle.prizeDescription,createdAtUnix:facts.raffle.createdAtUnix,openedAtUnix:facts.raffle.openedAtUnix,participationClosedAtUnix:facts.raffle.participationClosedAtUnix,participationOpen:facts.participationOpen,concludedAtUnix:facts.raffle.concludedAtUnix,totalEntries:facts.raffle.totalEntries,approvedEntryCount:facts.metrics.approvedEntryCount,winnerCharacterName:facts.winner?.character.name??null,claims:claims.map(c=>({claimId:c.claimId,characterName:c.character.name,requestedEntryCount:c.requestedEntryCount,promisedGoldValue:c.promisedGoldValue,createdAtUnix:c.createdAtUnix,resolutionKind:c.resolutionKind,resolutionActorLabel:c.resolutionActorGuildieId===null?null:byId.get(c.resolutionActorGuildieId)??"Guild officer",resolvedAtUnix:c.resolutionAtUnix,denialReason:c.denialReason}))};
 }
