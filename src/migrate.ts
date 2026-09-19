@@ -35,10 +35,11 @@ async function recordLegacyBaseline(): Promise<void> {
   const recorded = await pool.query<{ count: string }>(
     "SELECT count(*)::text AS count FROM schema_migrations",
   );
-  if (Number(recorded.rows[0]?.count ?? "0") > 0) return;
+  const recordedCount = Number(recorded.rows[0]?.count ?? "0");
 
-  const hasInitialSchema = await tableExists("guild_subjects");
-  if (!hasInitialSchema) return;
+  const hasLegacyRoot = await tableExists("guild_subjects");
+  const hasCurrentRoot = await tableExists("guildies");
+  if (!hasLegacyRoot && !hasCurrentRoot) return;
 
   let baselineFile: string | null = null;
 
@@ -61,6 +62,7 @@ async function recordLegacyBaseline(): Promise<void> {
   }
 
   if (!baselineFile) {
+    if (recordedCount > 0) return;
     throw new Error(
       "Existing database has no migration ledger and does not match a recognized Guild Operations schema baseline.",
     );
