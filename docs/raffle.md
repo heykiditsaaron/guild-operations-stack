@@ -14,7 +14,7 @@ That declaration establishes a durable claim. It does not establish drawing part
 
 A human attendant verifies the guild-bank deposit. Approval establishes the claim's immutable drawing weight. Denial records that the promise was not accepted. An unresolved claimant may revoke their own declaration before the Raffle concludes.
 
-The operator establishes the Raffle, opens and may explicitly close participation, adjudicates claims, and performs the draw. Guild Operations automates the procedure around those human authorities without manufacturing the bank-verification judgment.
+The operator establishes the Raffle, opens participation, may pause and resume admission before the temporal cutoff, adjudicates claims, and performs the draw. Guild Operations automates the procedure around those human authorities without manufacturing the bank-verification judgment.
 
 ## Authority
 
@@ -25,7 +25,7 @@ The participating Guildie is authoritative for establishing and revoking their o
 Raffle operators act through explicit global capabilities:
 
 - `raffle.modify` — establish Raffles and modify mutable terms before participation opens;
-- `raffle.stage` — open/close participation and cancel an unconcluded Raffle;
+- `raffle.stage` — open, pause, or resume participation and cancel an unconcluded Raffle;
 - `raffle.claims` — inspect and adjudicate claims;
 - `raffle.draw` — perform the manual draw.
 
@@ -49,10 +49,10 @@ Participation is open only while all of these are true:
 
 - the Raffle is unconcluded;
 - participation has been opened;
-- an operator has not explicitly closed it;
+- operator admission is not currently paused;
 - the one-hour pre-drawing freeze has not begun.
 
-Operator closure and temporal closure are different mechanisms producing the same procedural result: no new claims may be established. Operator closure is attributed; temporal closure is derived from time and has no actor.
+Operator pause and temporal closure are deliberately different. A pause is an attributed, reversible admission gate: the operator may resume participation before the cutoff. The one-hour temporal cutoff is derived from time, has no actor, and is irreversible. No operator action may admit new claims after that cutoff.
 
 The declared drawing time is the earliest legitimate draw time. A draw may happen later but never earlier.
 
@@ -66,7 +66,7 @@ There is no persisted `listed/live/concluded` status enum.
 
 ## Modification and cancellation
 
-Terms may be modified only before participation has ever opened. Once claims can have been established against those terms, modification cannot rewrite that procedural history.
+Terms may be modified only before participation has ever opened. Opening participation permanently locks the Raffle terms, including drawing time, entry price, prize kind, and prize definition. Pausing participation does not make those terms mutable again. This prevents an operator from changing the bargain after members have been given an opportunity to establish claims against it.
 
 Cancellation is deliberately durable. Unlike Raid withdrawal, cancelling a Raffle does not delete the activity or its participation evidence because gold deposits, refunds, and discrepancies may require later human follow-up.
 
