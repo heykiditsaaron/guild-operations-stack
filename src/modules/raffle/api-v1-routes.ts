@@ -40,7 +40,8 @@ function raffleRepresentation(facts: RaffleFacts) {
     participation: {
       open: participationOpen,
       opened_at_unix: raffle.openedAtUnix,
-      closed_at_unix: raffle.participationClosedAtUnix,
+      paused_at_unix: raffle.participationPausedAtUnix,
+      resumed_at_unix: raffle.participationResumedAtUnix,
     },
     entry_price_gold: raffle.entryPriceGold,
     prize: {
