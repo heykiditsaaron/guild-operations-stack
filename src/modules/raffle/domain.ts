@@ -34,8 +34,10 @@ export type Raffle = {
   updatedAtUnix: number | null;
   openedByGuildieId: string | null;
   openedAtUnix: number | null;
-  participationClosedByGuildieId: string | null;
-  participationClosedAtUnix: number | null;
+  participationPausedByGuildieId: string | null;
+  participationPausedAtUnix: number | null;
+  participationResumedByGuildieId: string | null;
+  participationResumedAtUnix: number | null;
   concludedByGuildieId: string | null;
   concludedAtUnix: number | null;
   totalEntries: number | null;
@@ -91,10 +93,10 @@ export function raffleParticipationCutoffUnix(drawingAtUnix: number): number {
   return drawingAtUnix - RAFFLE_PARTICIPATION_FREEZE_SECONDS;
 }
 
-export function raffleParticipationIsOpen(raffle: Pick<Raffle, "conclusion" | "openedAtUnix" | "participationClosedAtUnix" | "drawingAtUnix">, atUnix: number = unixNow()): boolean {
+export function raffleParticipationIsOpen(raffle: Pick<Raffle, "conclusion" | "openedAtUnix" | "participationPausedAtUnix" | "participationResumedAtUnix" | "drawingAtUnix">, atUnix: number = unixNow()): boolean {
   return raffle.conclusion === null
     && raffle.openedAtUnix !== null
-    && raffle.participationClosedAtUnix === null
+    && (raffle.participationPausedAtUnix === null || raffle.participationResumedAtUnix !== null)
     && atUnix < raffleParticipationCutoffUnix(raffle.drawingAtUnix);
 }
 
@@ -148,8 +150,10 @@ function mapRaffle(row: Record<string, unknown>): Raffle {
     updatedAtUnix: nullableNumber(row.updated_at_unix),
     openedByGuildieId: nullableString(row.opened_by_guildie_id),
     openedAtUnix: nullableNumber(row.opened_at_unix),
-    participationClosedByGuildieId: nullableString(row.participation_closed_by_guildie_id),
-    participationClosedAtUnix: nullableNumber(row.participation_closed_at_unix),
+    participationPausedByGuildieId: nullableString(row.participation_paused_by_guildie_id),
+    participationPausedAtUnix: nullableNumber(row.participation_paused_at_unix),
+    participationResumedByGuildieId: nullableString(row.participation_resumed_by_guildie_id),
+    participationResumedAtUnix: nullableNumber(row.participation_resumed_at_unix),
     concludedByGuildieId: nullableString(row.concluded_by_guildie_id),
     concludedAtUnix: nullableNumber(row.concluded_at_unix),
     totalEntries: nullableNumber(row.total_entries),
@@ -233,7 +237,7 @@ export async function openRaffleParticipation(actorGuildieId: string, raffleId: 
     const raffle = await lockedRaffle(transactionClient, raffleId);
     if (raffle.conclusion !== null) throw new RaffleRuleError("raffle_concluded", "A concluded Raffle cannot open participation");
     if (raffle.opened_at_unix !== null) throw new RaffleRuleError("participation_already_opened", "Raffle participation has already been opened");
-    if (!raffleParticipationIsOpen({ conclusion: null, openedAtUnix: unixNow(), participationClosedAtUnix: null, drawingAtUnix: Number(raffle.drawing_at_unix) })) {
+    if (!raffleParticipationIsOpen({ conclusion: null, openedAtUnix: unixNow(), participationPausedAtUnix: null, participationResumedAtUnix: null, drawingAtUnix: Number(raffle.drawing_at_unix) })) {
       throw new RaffleRuleError("participation_freeze_reached", "Raffle participation cannot open after the one-hour pre-drawing freeze begins");
     }
     const openedAtUnix = unixNow();
@@ -245,16 +249,38 @@ export async function openRaffleParticipation(actorGuildieId: string, raffleId: 
   });
 }
 
-export async function closeRaffleParticipation(actorGuildieId: string, raffleId: string, client: PoolClient | null = null): Promise<Raffle> {
+export async function pauseRaffleParticipation(actorGuildieId: string, raffleId: string, client: PoolClient | null = null): Promise<Raffle> {
   return withOptionalTransaction(client, async (transactionClient) => {
     const raffle = await lockedRaffle(transactionClient, raffleId);
     if (raffle.conclusion !== null) throw new RaffleRuleError("raffle_concluded", "A concluded Raffle cannot change participation availability");
     if (raffle.opened_at_unix === null) throw new RaffleRuleError("participation_not_opened", "Raffle participation has not been opened");
-    if (raffle.participation_closed_at_unix !== null) return mapRaffle(raffle);
-    const closedAtUnix = unixNow();
+    const current = mapRaffle(raffle);
+    if (!raffleParticipationIsOpen(current)) return current;
+    const pausedAtUnix = unixNow();
     const result = await transactionClient.query(
-      "UPDATE raffles SET participation_closed_by_guildie_id=$2, participation_closed_at_unix=$3 WHERE raffle_id=$1 RETURNING *",
-      [raffleId, actorGuildieId, closedAtUnix],
+      `UPDATE raffles
+          SET participation_paused_by_guildie_id=$2, participation_paused_at_unix=$3,
+              participation_resumed_by_guildie_id=NULL, participation_resumed_at_unix=NULL
+        WHERE raffle_id=$1 RETURNING *`,
+      [raffleId, actorGuildieId, pausedAtUnix],
+    );
+    return mapRaffle(result.rows[0] as Record<string, unknown>);
+  });
+}
+
+export async function resumeRaffleParticipation(actorGuildieId: string, raffleId: string, client: PoolClient | null = null): Promise<Raffle> {
+  return withOptionalTransaction(client, async (transactionClient) => {
+    const raffle = await lockedRaffle(transactionClient, raffleId);
+    if (raffle.conclusion !== null) throw new RaffleRuleError("raffle_concluded", "A concluded Raffle cannot change participation availability");
+    if (raffle.opened_at_unix === null) throw new RaffleRuleError("participation_not_opened", "Raffle participation has not been opened");
+    if (raffle.participation_paused_at_unix === null || raffle.participation_resumed_at_unix !== null) return mapRaffle(raffle);
+    const resumedAtUnix = unixNow();
+    if (resumedAtUnix >= raffleParticipationCutoffUnix(Number(raffle.drawing_at_unix))) {
+      throw new RaffleRuleError("participation_freeze_reached", "Raffle participation cannot resume after the one-hour pre-drawing freeze begins");
+    }
+    const result = await transactionClient.query(
+      "UPDATE raffles SET participation_resumed_by_guildie_id=$2, participation_resumed_at_unix=$3 WHERE raffle_id=$1 RETURNING *",
+      [raffleId, actorGuildieId, resumedAtUnix],
     );
     return mapRaffle(result.rows[0] as Record<string, unknown>);
   });
