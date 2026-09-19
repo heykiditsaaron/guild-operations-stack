@@ -9,7 +9,8 @@ import {
   RaffleRuleError,
   approveRaffleClaim as approveRaffleClaimDomain,
   cancelRaffle as cancelRaffleDomain,
-  closeRaffleParticipation as closeRaffleParticipationDomain,
+  pauseRaffleParticipation as pauseRaffleParticipationDomain,
+  resumeRaffleParticipation as resumeRaffleParticipationDomain,
   denyRaffleClaim as denyRaffleClaimDomain,
   drawRaffle as drawRaffleDomain,
   establishRaffle as establishRaffleDomain,
@@ -55,9 +56,14 @@ export async function openRaffleParticipation(actorGuildieId: string, raffleId: 
   return openRaffleParticipationDomain(actorGuildieId, raffleId);
 }
 
-export async function closeRaffleParticipation(actorGuildieId: string, raffleId: string): Promise<Raffle> {
+export async function pauseRaffleParticipation(actorGuildieId: string, raffleId: string): Promise<Raffle> {
   await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_STAGE_CAPABILITY);
-  return closeRaffleParticipationDomain(actorGuildieId, raffleId);
+  return pauseRaffleParticipationDomain(actorGuildieId, raffleId);
+}
+
+export async function resumeRaffleParticipation(actorGuildieId: string, raffleId: string): Promise<Raffle> {
+  await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_STAGE_CAPABILITY);
+  return resumeRaffleParticipationDomain(actorGuildieId, raffleId);
 }
 
 export async function cancelRaffle(actorGuildieId: string, raffleId: string): Promise<Raffle> {
