@@ -5,7 +5,7 @@ export function rafflePublicDestination(raffleId:string):string{return `/events/
 export function raffleParticipationDestination(raffleId:string):string{return `/events/raffle/enter?raffle=${encodeURIComponent(raffleId)}`;}
 export function raffleOperationDestination(raffleId:string):string{return `/events/raffle/manage/${encodeURIComponent(raffleId)}`;}
 
-export function raffleDestinations(raffle:Pick<Raffle,"raffleId"|"conclusion"|"openedAtUnix"|"participationClosedAtUnix"|"drawingAtUnix">):readonly GuildEventDestination[]{
+export function raffleDestinations(raffle:Pick<Raffle,"raffleId"|"conclusion"|"openedAtUnix"|"participationPausedAtUnix"|"participationResumedAtUnix"|"drawingAtUnix">):readonly GuildEventDestination[]{
   const publicDestination:GuildEventDestination={kind:"public",label:"View raffle",href:rafflePublicDestination(raffle.raffleId)};
   if(raffle.conclusion!==null)return [publicDestination];
   const operateDestination:GuildEventDestination={kind:"operate",label:"Manage raffle",href:raffleOperationDestination(raffle.raffleId)};
