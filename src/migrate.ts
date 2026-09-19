@@ -33,6 +33,9 @@ const migrationFiles = [
   "029_raid_participation_withdrawal.sql",
   "030_guild_event_publication_destinations.sql",
   "031_raid_occurrence_lifecycle.sql",
+  "032_raid_action_vocabulary.sql",
+  "033_raffle_domain_vocabulary.sql",
+  "034_raffle_participation_state.sql",
 ];
 
 for (const migrationFile of migrationFiles) {
