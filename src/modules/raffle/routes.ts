@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
 import { GuildCapabilityDeniedError, RAFFLE_CLAIMS_CAPABILITY, requireGuildCapabilityOrOperator } from "../../guild-permissions.js";
 import {
-  RaffleRuleError, approveRaffleClaim, cancelRaffle, closeRaffleParticipation, denyRaffleClaim, drawRaffle,
+  RaffleRuleError, approveRaffleClaim, cancelRaffle, pauseRaffleParticipation, resumeRaffleParticipation, denyRaffleClaim, drawRaffle,
   establishRaffle, establishRaffleClaim, getRaffle, listRaffleClaims, modifyRaffle, openRaffleParticipation,
   revokeRaffleClaim, type RafflePrizeKind, type RaffleTerms,
 } from "./application.js";
@@ -33,7 +33,8 @@ export async function registerRaffleRoutes(app:FastifyInstance):Promise<void>{
   app.post("/raffle",async(request,reply)=>{const id=await requireGuildie(request,reply);if(!id)return;try{return reply.code(201).send(await establishRaffle(id,raffleTerms(bodyObject(request.body))));}catch(e){if(sendDomainError(e,reply))return;throw e;}});
   app.patch<{Params:{raffleId:string}}>("/raffle/:raffleId",async(request,reply)=>{const id=await requireGuildie(request,reply);if(!id)return;try{return await modifyRaffle(id,request.params.raffleId,raffleTerms(bodyObject(request.body)));}catch(e){if(sendDomainError(e,reply))return;throw e;}});
   app.post<{Params:{raffleId:string}}>("/raffle/:raffleId/participation/open",async(request,reply)=>{const id=await requireGuildie(request,reply);if(!id)return;try{return await openRaffleParticipation(id,request.params.raffleId);}catch(e){if(sendDomainError(e,reply))return;throw e;}});
-  app.post<{Params:{raffleId:string}}>("/raffle/:raffleId/participation/close",async(request,reply)=>{const id=await requireGuildie(request,reply);if(!id)return;try{return await closeRaffleParticipation(id,request.params.raffleId);}catch(e){if(sendDomainError(e,reply))return;throw e;}});
+  app.post<{Params:{raffleId:string}}>("/raffle/:raffleId/participation/pause",async(request,reply)=>{const id=await requireGuildie(request,reply);if(!id)return;try{return await pauseRaffleParticipation(id,request.params.raffleId);}catch(e){if(sendDomainError(e,reply))return;throw e;}});
+  app.post<{Params:{raffleId:string}}>("/raffle/:raffleId/participation/resume",async(request,reply)=>{const id=await requireGuildie(request,reply);if(!id)return;try{return await resumeRaffleParticipation(id,request.params.raffleId);}catch(e){if(sendDomainError(e,reply))return;throw e;}});
   app.post<{Params:{raffleId:string}}>("/raffle/:raffleId/cancel",async(request,reply)=>{const id=await requireGuildie(request,reply);if(!id)return;try{return await cancelRaffle(id,request.params.raffleId);}catch(e){if(sendDomainError(e,reply))return;throw e;}});
   app.post<{Params:{raffleId:string}}>("/raffle/:raffleId/draw",async(request,reply)=>{const id=await requireGuildie(request,reply);if(!id)return;try{return await drawRaffle(id,request.params.raffleId);}catch(e){if(sendDomainError(e,reply))return;throw e;}});
   app.get<{Params:{raffleId:string}}>("/raffle/:raffleId",async(request,reply)=>{const id=await requireGuildie(request,reply);if(!id)return;const raffle=await getRaffle(request.params.raffleId);return raffle??reply.code(404).send({error:"raffle_not_found"});});
