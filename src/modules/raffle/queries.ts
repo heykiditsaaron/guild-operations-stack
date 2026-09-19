@@ -184,14 +184,6 @@ export async function concludedRaffleFacts():Promise<RaffleFacts[]>{
   return raffleFactsForIds(result.rows.map(row=>String(row.raffle_id)));
 }
 
-export async function nextEstablishedRaffleFacts():Promise<RaffleFacts|null>{
-  const result=await pool.query<{raffle_id:string}>(
-    `SELECT raffle_id FROM raffles WHERE guild_id=$1 AND conclusion IS NULL
-       ORDER BY drawing_at_unix ASC,created_at_unix ASC,raffle_id ASC LIMIT 1`,[config.guild.id]);
-  const raffleId=result.rows[0]?.raffle_id;
-  return raffleId?raffleFacts(String(raffleId)):null;
-}
-
 export async function openRaffleFacts():Promise<RaffleFacts[]>{
   const operational=await raffleFactsForOperation();
   return operational.filter(facts=>facts.participationOpen);
