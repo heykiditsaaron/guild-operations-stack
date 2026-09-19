@@ -15,7 +15,7 @@ Whether that activity currently accepts new participation intent is a separate f
 
 Open and closed describe what is true, not how it became true. Operator action, temporal policy, or another domain rule may establish the same resulting availability state.
 
-An established activity may therefore be closed before it opens, open for participation, or closed again while it remains operational.
+An established activity may therefore be closed before it opens, open for participation, or closed again while it remains operational. A domain may also have a reversible admission gate that temporarily prevents new intent without establishing irreversible closure.
 
 An activity is **concluded** when it is no longer operationally available but remains historical truth about an activity that existed or occurred.
 
@@ -68,7 +68,7 @@ The freeze is policy, not per-activity configuration. Operators work within it r
 
 The freeze creates protected time for both participants and operators to evaluate settled participation state before the activity can occur. Domain-specific adjudication, revocation, assignment, or other legitimate work may continue during that interval where the owning domain permits it; the shared policy specifically prevents new participation intent.
 
-Operator-authored closure may make participation closed earlier. No operator action may override the temporal freeze to admit new intent after the cutoff.
+A domain may prevent new intent earlier through its own operator procedure. In Raffle, that procedure is a reversible participation pause rather than lifecycle closure: an operator may pause and resume admission before the cutoff. No operator action may override the temporal freeze to admit new intent after the cutoff.
 
 A declared occurrence is also a lower temporal bound on occurrence or resolution. Human or domain conditions may cause execution later, but ordinary operation must not make it happen earlier.
 
@@ -76,7 +76,7 @@ For Raffle specifically, drawing before the declared drawing time is forbidden e
 
 ## Modification and established temporal truth
 
-Ordinary modification must not invalidate authoritative procedural truth already established under an activity's terms.
+Ordinary modification must not invalidate authoritative procedural truth already established under an activity's terms. Raffle makes this concrete by permanently locking all Raffle terms once participation has ever opened; an operator pause does not restore term mutability.
 
 An operator cannot use occurrence modification to short-circuit the participation freeze, reopen a freeze that has already taken effect, or permit an outcome that could not legitimately occur under the established terms.
 
