@@ -9,7 +9,7 @@ function rulesBody(): string {
     <article class="raffle-reference-page raffle-rules">
       <section aria-labelledby="eligibility-heading">
         <h2 id="eligibility-heading">1. Eligibility</h2>
-        <p>Raffles are open to eligible members of OH CRIT I Pulled! while a raffle is live.</p>
+        <p>Raffles are open to eligible members of OH CRIT I Pulled! while raffle participation is open.</p>
       </section>
 
       <section aria-labelledby="entering-heading">
@@ -21,7 +21,7 @@ function rulesBody(): string {
       <section aria-labelledby="deposits-heading">
         <h2 id="deposits-heading">3. Guild Bank Deposits</h2>
         <p>The full amount associated with a claim must be deposited into the guild bank using the character named on that claim so an attendant can verify it against the guild bank records.</p>
-        <p>Claims that cannot be verified may be denied. A pending claim may be cancelled before it has been approved or denied.</p>
+        <p>Claims that cannot be verified may be denied. An unresolved claim may be revoked by the member before the raffle concludes.</p>
       </section>
 
       <section aria-labelledby="drawing-heading">
