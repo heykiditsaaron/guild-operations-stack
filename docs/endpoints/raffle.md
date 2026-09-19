@@ -11,7 +11,7 @@ Member participation requires a normal authenticated Guildie session. Raffle val
 Privileged operations use explicit global capabilities:
 
 - `raffle.modify` — establish Raffles and modify terms before participation has opened.
-- `raffle.stage` — open or close participation and cancel an unconcluded Raffle.
+- `raffle.stage` — open, pause, or resume participation and cancel an unconcluded Raffle.
 - `raffle.claims` — inspect and adjudicate claims.
 - `raffle.draw` — perform the manual draw.
 
@@ -32,10 +32,10 @@ A Raffle is the concrete activity. There is no parent Raffle/round distinction a
 Relevant truth is represented independently:
 
 - the Raffle is established when its durable record exists;
-- participation has never opened, is currently open, or is closed;
+- participation has never opened, is currently open, is operator-paused, or is temporally closed;
 - `conclusion` is `null` while operational, then `drawn`, `operator_cancelled`, or `no_participation`;
-- temporal participation closure is derived at one hour before `drawing_at_unix`;
-- an operator may close participation earlier;
+- operator pause is reversible before the cutoff and preserves attribution;
+- temporal participation closure is derived at one hour before `drawing_at_unix` and cannot be reopened;
 - drawing cannot occur before `drawing_at_unix`.
 
 ## Versioned REST API
@@ -57,7 +57,8 @@ Representative shape:
   "participation": {
     "open": true,
     "opened_at_unix": 1788810000,
-    "closed_at_unix": null
+    "paused_at_unix": null,
+    "resumed_at_unix": null
   },
   "entry_price_gold": "1000",
   "prize": {
@@ -90,9 +91,10 @@ These routes support Guild Operations interaction surfaces. They are not the pro
 ### Raffle operations
 
 - `POST /raffle` — `raffle.modify`; establish a Raffle.
-- `PATCH /raffle/:raffleId` — `raffle.modify`; modify terms before participation has ever opened.
+- `PATCH /raffle/:raffleId` — `raffle.modify`; modify terms only before participation has ever opened. Opening participation permanently locks ticket price and all other Raffle terms; pausing does not unlock them.
 - `POST /raffle/:raffleId/participation/open` — `raffle.stage`; open participation before the one-hour freeze.
-- `POST /raffle/:raffleId/participation/close` — `raffle.stage`; explicitly close participation. Repeated closure is a no-op.
+- `POST /raffle/:raffleId/participation/pause` — `raffle.stage`; pause new claims while preserving the operational Raffle. Repeated pause is a no-op.
+- `POST /raffle/:raffleId/participation/resume` — `raffle.stage`; resume a currently paused Raffle before the one-hour cutoff. Repeated resume is a no-op.
 - `POST /raffle/:raffleId/cancel` — `raffle.stage`; conclude with `operator_cancelled` while preserving Raffle evidence.
 - `POST /raffle/:raffleId/draw` — `raffle.draw`; draw only at or after the declared drawing time and only after every claim is resolved.
 - `GET /raffle/:raffleId` — authenticated Guildie; read the domain Raffle.
