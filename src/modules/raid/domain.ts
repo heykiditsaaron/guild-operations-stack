@@ -27,7 +27,7 @@ export type RaidParticipationKey =
   | { character: RaidCharacterReference }
   | { declaredClass: string };
 
-export type CreateRaidInput = {
+export type EstablishRaidInput = {
   label: string;
   description?: string | null;
   occursAt: RaidOccurrence;
@@ -46,20 +46,20 @@ export type ModifyRaidInput = {
   requirements?: readonly RaidRequirement[];
 };
 
-export type SubmitRaidParticipationRowInput = {
+export type EstablishRaidSignupInput = {
   raidId: string;
   applicantAnchor: RaidApplicantAnchor;
   participationKey: RaidParticipationKey;
   willingSpecs: readonly string[];
 };
 
-export type WithdrawRaidParticipationRowInput = {
+export type RevokeRaidSignupInput = {
   raidId: string;
   signupRowId: string;
   applicantAnchor: RaidApplicantAnchor;
 };
 
-export type AssignRaidParticipationInput = {
+export type EstablishRaidAssignmentInput = {
   raidId: string;
   signupRowId: string;
   selectedSpec: string;
@@ -98,7 +98,7 @@ function validateAuthoredContent(label: string, description?: string | null): vo
   }
 }
 
-export function validateCreateRaidInput(input: CreateRaidInput): void {
+export function validateEstablishRaidInput(input: EstablishRaidInput): void {
   validateAuthoredContent(input.label, input.description);
   validateOccurrence(input.occursAt);
   validateRequirements(input.requirements ?? []);
