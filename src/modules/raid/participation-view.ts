@@ -17,7 +17,7 @@ export type RaidParticipationCharacter = {
   roles: readonly RaidRole[];
 };
 
-export type RaidSignupRowView = {
+export type RaidSignupView = {
   signupRowId: string;
   applicantId: string;
   anchorKind: "guildie" | "external";
@@ -89,7 +89,7 @@ export async function raidParticipationCharacters(
   };
 }
 
-export async function raidSignupRows(raidId: string): Promise<RaidSignupRowView[]> {
+export async function raidSignups(raidId: string): Promise<RaidSignupView[]> {
   const result = await pool.query<{
     signup_row_id: string;
     applicant_id: string;
@@ -156,8 +156,8 @@ export async function raidSignupRows(raidId: string): Promise<RaidSignupRowView[
   });
 }
 
-export async function raidSignupRowsForGuildie(raidId: string, guildieId: string): Promise<RaidSignupRowView[]> {
-  return (await raidSignupRows(raidId)).filter(
+export async function raidSignupsForGuildie(raidId: string, guildieId: string): Promise<RaidSignupView[]> {
+  return (await raidSignups(raidId)).filter(
     (row) => row.anchorKind === "guildie" && row.anchorValue === guildieId,
   );
 }
