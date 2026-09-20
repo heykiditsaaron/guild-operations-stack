@@ -13,7 +13,7 @@ import {
   raidHasOccurred,
   raidOccurrenceDestinations,
   raidRosterDiagnostics,
-  unestablishRaidAssignment,
+  withdrawRaidAssignment,
 } from "../../../../modules/raid/application.js";
 import { raidSignups } from "../../../../modules/raid/participation-view.js";
 import type { RaidDifficulty, RaidRole } from "../../../../modules/raid/domain.js";
@@ -220,7 +220,7 @@ async function unassignParticipant(request: FastifyRequest<{ Params: RaidParams;
   if (!guildie) return reply.code(401).send({ error: "Authentication required" });
   if (typeof request.body?.signupRowId !== "string") return reply.code(400).send({ error: "Participation row is required" });
   try {
-    await unestablishRaidAssignment(guildie.guildieId, request.params.raidId, request.body.signupRowId);
+    await withdrawRaidAssignment(guildie.guildieId, request.params.raidId, request.body.signupRowId);
     return { ok: true };
   } catch (error) {
     return reply.code(raidActionStatusCode(error)).send({ error: error instanceof Error ? error.message : "Participant could not be unassigned" });
