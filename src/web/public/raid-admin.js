@@ -199,7 +199,7 @@ function selectCard(card) {
   card.classList.add("raid-participant-card-selected");
   showAvailableTargets(card);
   setActionStatus(card.dataset.assigned === "true"
-    ? "Participant selected. Choose another + role, or tap the participation pool to return them."
+    ? "Participant selected. Choose another + role, or tap the signup pool to return them."
     : "Participant selected. Choose a + role slot.");
 }
 
@@ -214,7 +214,7 @@ function assignCardToRole(card, role) {
   }
   const specs = participantRoleSpecs(card, role);
   if (!specs.length) {
-    setActionStatus(`That participation offer cannot be assigned as ${role === "damage" ? "Damage" : role}.`);
+    setActionStatus(`That signup cannot be assigned as ${role === "damage" ? "Damage" : role}.`);
     return;
   }
   clearSelectedCard();
@@ -401,7 +401,7 @@ for (const target of document.querySelectorAll("[data-raid-drop-role]")) {
   if (!role) continue;
   target.addEventListener("click", () => {
     if (selectedCard instanceof HTMLElement) assignCardToRole(selectedCard, role);
-    else setActionStatus("Select a participation card first, then choose a + role slot.");
+    else setActionStatus("Select a signup first, then choose a + role slot.");
   });
 }
 
