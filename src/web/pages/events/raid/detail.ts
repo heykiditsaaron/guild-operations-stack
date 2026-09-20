@@ -8,14 +8,14 @@ import {
   guildieHasGuildCapabilityOrOperator,
 } from "../../../../guild-permissions.js";
 import {
-  assignRaidParticipation,
+  establishRaidAssignment,
   raidEventFacts,
   raidHasOccurred,
   raidOccurrenceDestinations,
   raidRosterDiagnostics,
-  unassignRaidParticipation,
+  unestablishRaidAssignment,
 } from "../../../../modules/raid/application.js";
-import { raidSignupRows } from "../../../../modules/raid/participation-view.js";
+import { raidSignups } from "../../../../modules/raid/participation-view.js";
 import type { RaidDifficulty, RaidRole } from "../../../../modules/raid/domain.js";
 import {
   isRaidBuffTrait,
@@ -32,7 +32,7 @@ import { viewerForRequest } from "../../../viewer.js";
 type RaidParams = { raidId: string };
 type AssignBody = { signupRowId?: unknown; selectedSpec?: unknown; selectedRole?: unknown };
 type UnassignBody = { signupRowId?: unknown };
-type RaidSignupRowView = Awaited<ReturnType<typeof raidSignupRows>>[number];
+type RaidSignupView = Awaited<ReturnType<typeof raidSignups>>[number];
 
 const RAID_ROLES: readonly RaidRole[] = ["tank", "healer", "damage"];
 const ROLE_TRAITS: Record<RaidRole, WowTrait> = {
@@ -71,7 +71,7 @@ function specsByRole(className: string, willingSpecs: readonly string[], willing
   };
 }
 
-function coverageCount(rows: readonly RaidSignupRowView[], trait: WowTrait): number {
+function coverageCount(rows: readonly RaidSignupView[], trait: WowTrait): number {
   return rows.reduce((count, row) => {
     if (!row.selectedSpec) return count;
     return traitsForSpec(row.className, row.selectedSpec).includes(trait) ? count + 1 : count;
@@ -84,14 +84,14 @@ async function specIcon(className: string, specName: string, classNameValue: str
   return `<img class="raid-spec-icon" src="${htmlText(iconUrl)}" alt="" aria-hidden="true" title="${htmlText(`${specName} ${classNameValue}`)}">`;
 }
 
-function offeredRoleIcons(row: RaidSignupRowView): string {
+function offeredRoleIcons(row: RaidSignupView): string {
   const roleSpecs = specsByRole(row.className, row.willingSpecs, row.willingRoles);
   const roles = RAID_ROLES.filter((role) => roleSpecs[role].length > 0);
   if (!roles.length) return "";
   return `<div class="raid-participant-roles" aria-label="Offered roles">${roles.map((role) => `<span class="raid-role-icon raid-role-icon-${role}" role="img" aria-label="${htmlText(roleLabel(role))}" title="${htmlText(roleLabel(role))}"></span>`).join("")}</div>`;
 }
 
-async function signupCard(row: RaidSignupRowView): Promise<string> {
+async function signupCard(row: RaidSignupView): Promise<string> {
   const roleSpecs = specsByRole(row.className, row.willingSpecs, row.willingRoles);
   return `<article class="raid-participant-card" draggable="true" tabindex="0"
     data-raid-participant-card
@@ -106,7 +106,7 @@ async function signupCard(row: RaidSignupRowView): Promise<string> {
   </article>`;
 }
 
-async function assignedCard(row: RaidSignupRowView, mutable: boolean): Promise<string> {
+async function assignedCard(row: RaidSignupView, mutable: boolean): Promise<string> {
   const roleSpecs = specsByRole(row.className, row.willingSpecs, row.willingRoles);
   const selectedSpec = row.selectedSpec ?? "";
   const icon = selectedSpec ? await specIcon(row.className, selectedSpec, row.className) : "";
@@ -120,7 +120,7 @@ async function assignedCard(row: RaidSignupRowView, mutable: boolean): Promise<s
   </article>`;
 }
 
-async function raidBuffDiagnosticItem(trait: RaidBuffTrait, assigned: readonly RaidSignupRowView[]): Promise<string> {
+async function raidBuffDiagnosticItem(trait: RaidBuffTrait, assigned: readonly RaidSignupView[]): Promise<string> {
   const label = raidBuffLabel(trait);
   const iconUrl = await raidBuffIconUrl(trait);
   const count = coverageCount(assigned, trait);
@@ -173,7 +173,7 @@ async function renderRaidOrganizer(request: FastifyRequest<{ Params: RaidParams 
   const operateDestination = destinations.find((value) => value.kind === "operate");
   if (!operateDestination) throw new Error("Raid operate destination is not configured");
 
-  const [rows, diagnostics] = await Promise.all([raidSignupRows(raid.raidId), raidRosterDiagnostics(raid.raidId)]);
+  const [rows, diagnostics] = await Promise.all([raidSignups(raid.raidId), raidRosterDiagnostics(raid.raidId)]);
   const assigned = rows.filter((row) => row.assignmentId !== null);
   const available = rows.filter((row) => row.assignmentId === null && !rows.some((candidate) => candidate.applicantId === row.applicantId && candidate.assignmentId !== null));
   const navigation: SecondaryNavigation = { kind: "breadcrumb", items: [{ label: "Events", href: "/events" }, { label: "Raid operations", href: "/events/raid/manage" }, { label: raid.label }] };
@@ -208,7 +208,7 @@ async function assignParticipant(request: FastifyRequest<{ Params: RaidParams; B
   const body = request.body ?? {};
   if (typeof body.signupRowId !== "string" || typeof body.selectedSpec !== "string" || (body.selectedRole !== "tank" && body.selectedRole !== "healer" && body.selectedRole !== "damage")) return reply.code(400).send({ error: "Assignment is incomplete" });
   try {
-    const assignmentId = await assignRaidParticipation(guildie.guildieId, { raidId: request.params.raidId, signupRowId: body.signupRowId, selectedSpec: body.selectedSpec, selectedRole: body.selectedRole });
+    const assignmentId = await establishRaidAssignment(guildie.guildieId, { raidId: request.params.raidId, signupRowId: body.signupRowId, selectedSpec: body.selectedSpec, selectedRole: body.selectedRole });
     return reply.code(201).send({ assignmentId });
   } catch (error) {
     return reply.code(raidActionStatusCode(error)).send({ error: error instanceof Error ? error.message : "Participant could not be assigned" });
@@ -220,7 +220,7 @@ async function unassignParticipant(request: FastifyRequest<{ Params: RaidParams;
   if (!guildie) return reply.code(401).send({ error: "Authentication required" });
   if (typeof request.body?.signupRowId !== "string") return reply.code(400).send({ error: "Participation row is required" });
   try {
-    await unassignRaidParticipation(guildie.guildieId, request.params.raidId, request.body.signupRowId);
+    await unestablishRaidAssignment(guildie.guildieId, request.params.raidId, request.body.signupRowId);
     return { ok: true };
   } catch (error) {
     return reply.code(raidActionStatusCode(error)).send({ error: error instanceof Error ? error.message : "Participant could not be unassigned" });
