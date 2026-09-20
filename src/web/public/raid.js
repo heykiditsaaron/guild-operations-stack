@@ -82,7 +82,7 @@ for (const form of document.querySelectorAll("[data-raid-signup-form]")) {
       return;
     }
 
-    const displayName = option.dataset.displayName ?? option.dataset.className ?? "Participation offer";
+    const displayName = option.dataset.displayName ?? option.dataset.className ?? "Raid signup";
     const realmName = option.dataset.realmName;
     const className = option.dataset.className;
     identity.textContent = [displayName, realmName, className && className !== displayName ? className : null].filter(Boolean).join(" · ");
@@ -122,7 +122,7 @@ for (const form of document.querySelectorAll("[data-raid-signup-form]")) {
       };
     }
 
-    status.textContent = "Submitting participation…";
+    status.textContent = "Submitting signup…";
     try {
       const response = await fetch(`${raidMutationBase()}/signup`, {
         method: "POST",
@@ -130,30 +130,30 @@ for (const form of document.querySelectorAll("[data-raid-signup-form]")) {
         body: JSON.stringify(body),
       });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error ?? "Participation could not be submitted");
+      if (!response.ok) throw new Error(payload.error ?? "Signup could not be submitted");
       window.location.reload();
     } catch (error) {
-      status.textContent = error instanceof Error ? error.message : "Participation could not be submitted.";
+      status.textContent = error instanceof Error ? error.message : "Signup could not be submitted.";
     }
   });
 }
 
-for (const button of document.querySelectorAll("[data-raid-withdraw-offer]")) {
+for (const button of document.querySelectorAll("[data-raid-revoke-signup]")) {
   if (!(button instanceof HTMLButtonElement)) continue;
   button.addEventListener("click", async () => {
-    const signupRowId = button.dataset.raidWithdrawOffer;
+    const signupRowId = button.dataset.raidRevokeSignup;
     if (!signupRowId) return;
     button.disabled = true;
     button.textContent = "Withdrawing…";
     try {
       const response = await fetch(`${raidMutationBase()}/signup/${encodeURIComponent(signupRowId)}/withdraw`, { method: "POST" });
       const payload = response.status === 204 ? {} : await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error ?? "Participation offer could not be withdrawn");
+      if (!response.ok) throw new Error(payload.error ?? "Raid signup could not be withdrawn");
       window.location.reload();
     } catch (error) {
       button.disabled = false;
       button.textContent = "Withdraw";
-      window.alert(error instanceof Error ? error.message : "Participation offer could not be withdrawn.");
+      window.alert(error instanceof Error ? error.message : "Raid signup could not be withdrawn.");
     }
   });
 }
