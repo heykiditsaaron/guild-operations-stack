@@ -165,6 +165,20 @@ export async function raidSignups(raidId: string): Promise<RaidSignupView[]> {
   });
 }
 
+export async function raidSignup(raidId: string, signupRowId: string): Promise<RaidSignupView | null> {
+  return (await raidSignups(raidId)).find((row) => row.signupRowId === signupRowId) ?? null;
+}
+
+export async function raidAssignment(raidId: string, signupRowId: string): Promise<Pick<RaidSignupView, "assignmentId" | "selectedSpec" | "selectedRole"> | null> {
+  const signup = await raidSignup(raidId, signupRowId);
+  if (!signup?.assignmentId) return null;
+  return {
+    assignmentId: signup.assignmentId,
+    selectedSpec: signup.selectedSpec,
+    selectedRole: signup.selectedRole,
+  };
+}
+
 export async function raidSignupsForGuildie(raidId: string, guildieId: string): Promise<RaidSignupView[]> {
   return (await raidSignups(raidId)).filter(
     (row) => row.anchorKind === "guildie" && row.anchorValue === guildieId,
