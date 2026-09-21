@@ -51,7 +51,9 @@ There is no independent Raid signup window or persisted open/closed signup stage
 
 At or after `occursAt`, history is derived from time rather than written as a lifecycle transition. No scheduler or background transition is required. Historical Raids are read-only.
 
-Before occurrence, cancellation is destructive. Cancelling removes the Raid and its dependent signup commitments and assignments and withdraws its event publication. A cancelled Raid does not survive as Raid history.
+Before occurrence, cancellation is destructive. Cancelling removes the Raid and its dependent signup commitments and assignments. A cancelled Raid does not survive as Raid history.
+
+Raid operations do not directly own or mutate shared Calendar/event-publication state. Raid owns Raid truth; shared discovery surfaces must project that truth through their own integration boundary rather than becoming a transactional side effect of Raid establishment, modification, or cancellation.
 
 The Raid Operations page therefore separates upcoming operational work from surviving historical Raids. Historical presentation is intentionally minimal until a concrete Raid feature earns richer history such as outcomes, logs, attendance, or analytics.
 
