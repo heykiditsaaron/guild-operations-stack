@@ -1,3 +1,4 @@
+import { emit } from "../../emissions/registry.js";
 import {
   RAFFLE_CLAIMS_CAPABILITY,
   RAFFLE_DRAW_CAPABILITY,
@@ -43,12 +44,16 @@ export {
 
 export async function establishRaffle(actorGuildieId: string, terms: RaffleTerms): Promise<Raffle> {
   await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_MODIFY_CAPABILITY);
-  return establishRaffleDomain(actorGuildieId, terms);
+  const raffle = await establishRaffleDomain(actorGuildieId, terms);
+  await emit({ code: "raffle.established", subject: raffle.raffleId });
+  return raffle;
 }
 
 export async function modifyRaffle(actorGuildieId: string, raffleId: string, terms: RaffleTerms): Promise<Raffle> {
   await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_MODIFY_CAPABILITY);
-  return modifyRaffleDomain(actorGuildieId, raffleId, terms);
+  const raffle = await modifyRaffleDomain(actorGuildieId, raffleId, terms);
+  await emit({ code: "raffle.modified", subject: raffle.raffleId });
+  return raffle;
 }
 
 export async function openRaffleParticipation(actorGuildieId: string, raffleId: string): Promise<Raffle> {
@@ -68,7 +73,9 @@ export async function resumeRaffleParticipation(actorGuildieId: string, raffleId
 
 export async function cancelRaffle(actorGuildieId: string, raffleId: string): Promise<Raffle> {
   await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_STAGE_CAPABILITY);
-  return cancelRaffleDomain(actorGuildieId, raffleId);
+  const raffle = await cancelRaffleDomain(actorGuildieId, raffleId);
+  await emit({ code: "raffle.cancelled", subject: raffle.raffleId });
+  return raffle;
 }
 
 export async function establishRaffleClaim(
@@ -107,6 +114,7 @@ export async function drawRaffle(actorGuildieId: string, raffleId: string): Prom
       details: { raffle_id: concluded.raffleId, conclusion: concluded.conclusion },
     });
   }
+  await emit({ code: "raffle.concluded", subject: concluded.raffleId });
   return concluded;
 }
 
