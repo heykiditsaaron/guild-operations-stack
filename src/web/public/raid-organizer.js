@@ -111,3 +111,31 @@ for (const button of document.querySelectorAll("[data-raid-unassign]")) {
     }
   });
 }
+
+
+for (const button of document.querySelectorAll("[data-raid-deny]")) {
+  if (!(button instanceof HTMLButtonElement)) continue;
+  button.addEventListener("pointerdown", (event) => event.stopPropagation());
+  button.addEventListener("click", async (event) => {
+    event.stopPropagation();
+    const card = button.closest("[data-raid-participant-card]");
+    if (!(card instanceof HTMLElement)) return;
+    const signupRowId = card.dataset.signupRowId;
+    if (!signupRowId) return;
+    button.disabled = true;
+    try {
+      const response = await fetch(`${window.location.pathname}/deny`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ signupRowId }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error ?? "Signup could not be denied");
+      window.location.reload();
+    } catch (error) {
+      button.disabled = false;
+      const status = document.querySelector("[data-raid-action-status]");
+      if (status instanceof HTMLElement) status.textContent = error instanceof Error ? error.message : "Signup could not be denied.";
+    }
+  });
+}
