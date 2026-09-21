@@ -2,14 +2,14 @@ import type { FastifyInstance } from "fastify";
 import type { AssetRegistry } from "../../web/assets.js";
 import { registerDiscordAdminPage } from "./admin-page.js";
 import { registerDiscordCapabilityDefinitions } from "./authorization.js";
-import { registerDiscordGuildRefreshObserver } from "./guild-refresh.js";
+import { registerDiscordEmissionConsumers } from "./emissions.js";
 import { registerDiscordRoleMapsPage } from "./role-maps-page.js";
 import { registerDiscordRoutes } from "./routes.js";
 import { registerDiscordWebPresentation } from "./web-presentation.js";
 
 export function registerDiscordModuleAdministration(): void {
   registerDiscordCapabilityDefinitions();
-  registerDiscordGuildRefreshObserver();
+  registerDiscordEmissionConsumers();
   registerDiscordWebPresentation();
 }
 
