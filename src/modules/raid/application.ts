@@ -3,7 +3,6 @@ import { characterMembership } from "../../application-state.js";
 import { config } from "../../config.js";
 import { controlledCharactersForGuildie } from "../../controlled-characters.js";
 import { pool, withTransaction } from "../../db.js";
-import { establishGuildEventPublication, withdrawGuildEventPublication } from "../../guild-events/publication/registry.js";
 import type { GuildEventDestination } from "../../guild-events/publication/contract.js";
 import {
   effectiveGuildAuthority,
@@ -68,10 +67,6 @@ export function raidOccurrenceDestinations(raidId:string):readonly GuildEventDes
     { kind:"operate", label:"Manage raid", href:raidManageDestination(raidId) },
   ];
 }
-async function publishRaid(raid:RaidEventFacts, client:PoolClient):Promise<void> {
-  await establishGuildEventPublication({ publicationId:raid.raidId, label:raid.label, description:raid.description, occursAt:[raid.occursAt],
-    category:"raid", tags:raid.tags, destinations:raidOccurrenceDestinations(raid.raidId) }, client);
-}
 async function recordRaidAction(client:PoolClient,raidId:string,action:RaidAction,actorGuildieId:string):Promise<void>{
   await client.query("INSERT INTO raid_action_history (raid_id,action,actor_guildie_id) VALUES ($1,$2,$3)",[raidId,action,actorGuildieId]);
 }
@@ -99,7 +94,7 @@ export async function establishRaid(actorGuildieId:string,input:EstablishRaidInp
     const raidId=r.rows[0].raid_id;
     await replaceRaidRequirements(client,raidId,input.requirements??[]);
     await recordRaidAction(client,raidId,"created",actorGuildieId);
-    const facts=await raidEventFacts(raidId,client); if(!facts)throw new Error("Created Raid could not be reloaded"); await publishRaid(facts,client); return facts;
+    const facts=await raidEventFacts(raidId,client); if(!facts)throw new Error("Created Raid could not be reloaded"); return facts;
   });
 }
 
@@ -112,13 +107,13 @@ export async function modifyRaid(actorGuildieId:string,raidId:string,input:Modif
       raidId,input.label?.trim()??current.label,input.description===undefined?current.description:(input.description?.trim()||null),occurs[0],occurs.length===2?occurs[1]:null,input.tags===undefined?current.tags:normalizedStrings(input.tags),input.difficulty??current.difficulty]);
     if(input.requirements!==undefined)await replaceRaidRequirements(client,raidId,input.requirements);
     await recordRaidAction(client,raidId,"modified",actorGuildieId);
-    const facts=await raidEventFacts(raidId,client); if(!facts)throw new Error("Raid not found"); await publishRaid(facts,client); return facts;
+    const facts=await raidEventFacts(raidId,client); if(!facts)throw new Error("Raid not found"); return facts;
   });
 }
 
 export async function cancelRaid(actorGuildieId:string,raidId:string):Promise<void>{
   await requireGuildCapabilityOrOperator(actorGuildieId,RAID_STAGE_CAPABILITY);
-  await withTransaction(async client=>{const current=await raidEventFacts(raidId,client);if(!current)throw new Error("Raid not found");requireUpcomingRaid(current);await withdrawGuildEventPublication(raidId,client);await client.query("DELETE FROM raid_events WHERE raid_id=$1",[raidId]);});
+  await withTransaction(async client=>{const current=await raidEventFacts(raidId,client);if(!current)throw new Error("Raid not found");requireUpcomingRaid(current);await client.query("DELETE FROM raid_events WHERE raid_id=$1",[raidId]);});
 }
 
 async function assertApplicantEligible(raid:RaidEventFacts,guildieId:string|null):Promise<void>{if(raid.eligibility==="anyone")return;if(!guildieId)throw new Error("Raid eligibility requires a Guildie");if(!await effectiveGuildAuthority(guildieId,raid.guildId))throw new Error("Applicant is not a current Guildie");}
