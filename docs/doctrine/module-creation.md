@@ -28,11 +28,34 @@ Raid and Raffle are the first paired reference implementations of this shape. Th
 
 A module may express selected facts through shared infrastructure when that infrastructure has a legitimate cross-module consumer. The module remains authoritative for its own lifecycle, participation, operation, and history.
 
-A module-owned event can therefore establish its own listing and destinations while separately publishing the smaller representation a shared discovery surface needs. Shared projections must not become alternate owners of module state.
+### Calendar as a temporal map
 
-Current event-publication and Calendar machinery is still evolving. Do not use legacy Calendar or publication shapes as doctrine for new module design. When those shared contracts are rebuilt, pressure them against the concrete module contracts that now exist rather than making modules conform to obsolete discovery machinery.
+Calendar owns a deliberately small temporal map. Its persisted point answers only:
 
-Do not put rules, eligibility, administration, history, or module procedure into a shared projection merely because a shared interface could carry them.
+- **when does this authoritative subject occur?**
+- **which authority and subject should a consumer query when it wants to project that point?**
+
+A Calendar point therefore consists of a source/subject reference plus its temporal coordinate or range. Calendar persistence does not own copied titles, lifecycle labels, participation state, destinations, winners, descriptions, or other module facts merely because a Calendar presentation might display them.
+
+The owning module's application query remains authoritative for projection guidance. That query may expose recognition metadata, category/designation, public inspection destinations, participation destinations, operational destinations, or other values that mean: **if a consumer chooses to project this aspect, this is the authoritative value to use.** Providing that guidance does not prescribe which values a Calendar presentation must show or how it must show them.
+
+This keeps Calendar presentation open-ended. The same persisted temporal point may support an agenda, grid, history view, compact widget, Discord expression, or another surface without changing Calendar truth.
+
+Calendar receives semantic emissions only for occurrences it explicitly cares about. Current Calendar interests are top-level activity subjects such as Raid and Raffle establishment, modification, conclusion where relevant, and cancellation. Subordinate parent/subject emissions such as Raid signups or Raffle claims do not currently establish or move Calendar points and are therefore not Calendar concerns. This is an earned current boundary, not a rule that Calendar can never care about a subordinate subject.
+
+For current lifecycle handling:
+
+- establishment establishes/reconciles the temporal point;
+- modification re-queries the authoritative subject and reconciles the point;
+- Raffle conclusion may re-query/reconcile but does not withdraw the point;
+- cancellation withdraws the point;
+- time passing alone does not withdraw a point.
+
+Calendar retention and eventual cleanup are Calendar-owned housekeeping, not source-domain lifecycle. Raid post-occurrence conclusion/history semantics remain intentionally unresolved until Raid earns that ceremony.
+
+Legacy event-publication shapes are not doctrine for this machinery. Modules emit semantic occurrences; Calendar decides which occurrences matter, queries the authoritative module contract, and maintains its own temporal map.
+
+Do not put rules, eligibility, administration, history, or module procedure into Calendar persistence merely because a Calendar interface could display them.
 
 ## Participation, operations, and administration
 
