@@ -23,7 +23,7 @@ Eligibility is required at creation. The web authoring surface defaults the sele
 
 Eligibility is immutable after creation. It remains visible as a Raid fact on the public listing and in Edit, but Edit cannot change it.
 
-Before occurrence, an authorized operator may modify the name, description, occurrence, difficulty, and readiness requirements. Raid names are limited to 80 characters and descriptions to 1,400 characters.
+Before occurrence, an authorized operator may modify the name, description, occurrence, difficulty, and readiness requirements. A Raid defines an operational buffer immediately before occurrence. Establishment must leave the full operational buffer available. Modification may extend that buffer but may never artificially shrink it: before the buffer begins, an operator cannot move the Raid into it; once time has naturally entered the buffer, occurrence may only be postponed far enough to restore the full buffer. Cancellation is exempt because it abandons the Raid rather than modifying its occurrence. Raid names are limited to 80 characters and descriptions to 1,400 characters.
 
 Readiness requirements communicate expectations to participants. Guild Operations does not mechanically enforce them.
 
@@ -34,10 +34,15 @@ Raid lifecycle is occurrence-driven:
 ```text
 Raid created
 │
-├── immediately accepting participation commitments
+├── accepting participation commitments before the operational buffer
 │   ├── definition may be modified by authorized operators
-│   ├── signup commitments may be created or withdrawn
+│   ├── signup commitments may be established or revoked
 │   └── assignments may establish roster participation
+│
+├── operational buffer begins
+│   ├── signup admission is frozen
+│   ├── assignments may continue
+│   └── occurrence may only be postponed far enough to restore the full buffer, or the Raid may be cancelled
 │
 ├── occursAt arrives
 │
@@ -47,7 +52,7 @@ Raid created
     └── assignments preserved
 ```
 
-There is no independent Raid signup window or persisted open/closed signup stage. The Raid's existence before occurrence is the commitment window.
+There is no persisted open/closed signup stage. Signup admission is derived from the Raid occurrence and its operational buffer: signups may be established or revoked before the buffer begins and are frozen during the buffer.
 
 At or after `occursAt`, history is derived from time rather than written as a lifecycle transition. No scheduler or background transition is required. Historical Raids are read-only.
 
@@ -67,7 +72,7 @@ The applicant does not declare a Raid role directly. Raid derives willing roles 
 
 An applicant may have multiple active signup commitments. The public listing's signup count is the number of distinct applicants with at least one active commitment, not the number of signup rows.
 
-Before occurrence, an applicant owns withdrawal of their own commitment. If that commitment has been assigned, withdrawal removes the assignment transactionally rather than silently transferring it to another signup.
+Before the operational buffer begins, an applicant owns revocation of their own commitment. If that commitment has been assigned, revocation removes the assignment transactionally rather than silently transferring it to another signup.
 
 A signup is evidence of intent, not evidence that the applicant attended the Raid. Guild Operations must not reinterpret signup or assignment as observed attendance merely because those facts are available before occurrence.
 
