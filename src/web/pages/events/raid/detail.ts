@@ -8,8 +8,7 @@ import {
   guildieHasGuildCapabilityOrOperator,
 } from "../../../../guild-permissions.js";
 import {
-  establishRaidAssignment,
-  modifyRaidAssignment,
+  setRaidAssignment,
   raidEventFacts,
   raidHasOccurred,
   raidOccurrenceDestinations,
@@ -209,13 +208,8 @@ async function assignParticipant(request: FastifyRequest<{ Params: RaidParams; B
   const body = request.body ?? {};
   if (typeof body.signupRowId !== "string" || typeof body.selectedSpec !== "string" || (body.selectedRole !== "tank" && body.selectedRole !== "healer" && body.selectedRole !== "damage")) return reply.code(400).send({ error: "Assignment is incomplete" });
   try {
-    const existing = (await raidSignups(request.params.raidId)).find((row) => row.signupRowId === body.signupRowId)?.assignmentId ?? null;
-    if (existing) {
-      await modifyRaidAssignment(guildie.guildieId, { raidId: request.params.raidId, signupRowId: body.signupRowId, selectedSpec: body.selectedSpec, selectedRole: body.selectedRole });
-      return reply.code(200).send({ assignmentId: existing });
-    }
-    const assignmentId = await establishRaidAssignment(guildie.guildieId, { raidId: request.params.raidId, signupRowId: body.signupRowId, selectedSpec: body.selectedSpec, selectedRole: body.selectedRole });
-    return reply.code(201).send({ assignmentId });
+    const assignment = await setRaidAssignment(guildie.guildieId, { raidId: request.params.raidId, signupRowId: body.signupRowId, selectedSpec: body.selectedSpec, selectedRole: body.selectedRole });
+    return reply.code(assignment.established ? 201 : 200).send({ assignmentId: assignment.assignmentId });
   } catch (error) {
     return reply.code(raidActionStatusCode(error)).send({ error: error instanceof Error ? error.message : "Participant could not be assigned" });
   }
