@@ -56,23 +56,9 @@ Modules must not register HTML, CSS, arbitrary metadata, shell layout instructio
 
 Do not use Offerings as a generic module capability registry. Internal operations and administrative actions are not enduring participation offerings merely because they exist.
 
-## Guild Calendar Events
+## Guild Calendar Points
 
-The Guild Calendar is the authoritative shared registry of guild occurrences that have intentionally been placed on the calendar. It owns temporal registration and the current shared calendar representation. It is not a generic event-management system.
-
-A module-owned occurrence may exist without a Calendar event. For example, a raffle round may be created before raffle decides that the round should be projected into shared temporal discovery. Until the module establishes a Calendar event, the Calendar has no representation of that round.
-
-An authorized external application operation may also create a Calendar event directly. Such an event does not need a fake module or producer identity in the shared Calendar representation.
-
-### Data flow
-
-```text
-Module-owned occurrence truth ──┐
-                               ├──→ Guild Calendar Event ──→ Calendar consumers
-External calendar operation ───┘
-```
-
-When a module contributes an occurrence, the module remains authoritative for its procedure and lifecycle. The Calendar stores only the shared temporal representation the module has intentionally established.
+The Guild Calendar is a temporal map. It persists that an authoritative application subject occupies a temporal coordinate and records where that subject's authority can be queried when a consumer chooses to project the point.
 
 ### Contract
 
@@ -81,97 +67,46 @@ type GuildCalendarOccursAt =
   | readonly [number]
   | readonly [number, number];
 
-type GuildCalendarEvent = {
-  eventId: string;
-  title: string;
+type GuildCalendarPoint = {
+  sourceKind: string;
+  sourceSubject: string;
   occursAt: GuildCalendarOccursAt;
-  category: string | null;
-  destination: string | null;
 };
 ```
 
-- `eventId` — globally unique coordinate for the Calendar event.
-- `title` — required human-facing name of the occurrence.
-- `occursAt` — current best temporal truth for the occurrence.
-- `category` — optional broad classification meaningful to Calendar consumers without knowledge of the producing capability.
-- `destination` — optional semantic destination associated with the occurrence; consumers choose how or whether to express it.
+`sourceKind` identifies the owning application authority, such as `raid` or `raffle`. `sourceSubject` identifies the concrete authoritative subject within that authority. Together they identify the Calendar point and tell a consumer where to query for projection guidance.
 
-Time uses Unix values:
+`occursAt` is either an instant or a start/end range. It is the Calendar-owned temporal fact.
 
-```text
-[unix]
-    → instant
+Calendar persistence does not copy titles, categories, destinations, participation state, lifecycle state, descriptions, results, or other module facts. The owning module's application query remains authoritative for those values. Projection metadata supplied by that query means: if a consumer chooses to project that aspect, use this authoritative value. The consumer still decides which values to show and how to present them.
 
-[unix, unix]
-    → range from start to end
-```
+### Emission-driven reconciliation
 
-There is no arbitrary metadata bag. Module identity, producer identity, procedure status, eligibility, participation rules, and module-specific lifecycle do not belong in the shared Calendar contract merely because a producer knows them.
+Modules do not publish Calendar-shaped objects. They emit semantic occurrences after authoritative operations complete. Calendar explicitly registers interest in the top-level activity emissions that can establish, move, reconcile, or withdraw temporal points.
 
-`kind` is intentionally not part of the contract. Concrete module/event type is not currently needed to understand or operate shared temporal discovery. `category` remains optional because a broad member-facing classification may be useful across producers.
+Current lifecycle handling is:
 
-### Management authority
+- establishment queries the authoritative subject and establishes/reconciles its point;
+- modification re-queries and reconciles the point;
+- Raffle conclusion re-queries/reconciles and does not withdraw the point;
+- cancellation withdraws the point;
+- time passing alone does not withdraw a point.
 
-Calendar persistence keeps a small management distinction that is intentionally not part of the discovery contract:
+Current Calendar interests are subject-level Raid and Raffle emissions. Parent/subject emissions such as Raid signups and Raffle claims do not currently establish or move Calendar points. This is a current earned boundary, not a permanent prohibition on subordinate temporal subjects.
 
-```text
-application-managed
-external-managed
-```
+### Temporal state and retention
 
-This distinction exists only to protect mutation authority. Internal modules may update or withdraw the Calendar events they establish through application-owned projection machinery. REST write authority may create, update, and withdraw only externally managed Calendar events; it cannot mutate module-managed occurrences such as raffle projections.
+Consumers derive temporal relevance from `occursAt`. Upcoming, happening, and historical are presentation/temporal derivations rather than persisted Calendar lifecycle.
 
-Consumers do not need this management classification to understand the event, so it is not exposed as event type, source, or producer metadata.
+The Calendar does not remove a point merely because time passed. A past occurrence and a withdrawn occurrence are distinct. Eventual cleanup of old points is Calendar-owned retention policy and does not manufacture source-domain withdrawal.
 
-### Registration and withdrawal
+### Generic Calendar-native points
 
-Presence in the Calendar is the act of registration.
-
-```text
-occurrence exists elsewhere
-    → not necessarily on Calendar
-
-establish Calendar event
-    → registered and discoverable
-
-withdraw Calendar event
-    → no longer discoverable
-```
-
-Persistence may retain a withdrawn row as operational state, but `discoverable` is not a producer-facing contract field. Consumers see currently registered Calendar events rather than a second visible state meaning “registered but not registered.”
-
-Establishing the same `eventId` again replaces its current Calendar representation when performed through the same management authority class. This supports module projections whose best temporal truth can change without allowing one authority class to take over another's Calendar event.
-
-Withdrawal means the event should no longer be represented through the Calendar. Withdrawal is not the mechanism for merely becoming past.
-
-### Temporal state
-
-Consumers derive temporal relevance from `occursAt`:
-
-```text
-instant [T]
-    current/future while T >= now
-    past once T < now
-
-range [start, end]
-    upcoming while now < start
-    happening while start <= now <= end
-    past once end < now
-```
-
-The Calendar does not require producers to publish lifecycle statuses such as upcoming, live, concluded, or cancelled. Those meanings belong to event owners when they exist.
-
-The Calendar does not remove an event merely because time passed. A past registered occurrence and a withdrawn occurrence are distinct states.
-
-### History
-
-The Calendar is not a generic history ledger. It stores the current shared representation of a registered occurrence. Module-specific scheduling history remains with the owning module. Application operations may be recorded through global operational inspection where appropriate.
+Calendar does not currently own a generic event-insertion ceremony or external mutation API. If generic Calendar-native points are needed, that capability will be earned and owned by a separate module rather than broadening the temporal-map machinery itself.
 
 ### Consumers
 
-Calendar consumers read the same shared contract and choose presentation appropriate to their medium. They must not reconstruct omitted category, destination, participation state, eligibility, or other facts from module-specific knowledge.
-
-The current `/events` projection is one Calendar consumer. Versioned REST is another adapter over the same application contract.
+A Calendar presentation begins with the persisted temporal point, then queries its owning authority for current projection guidance. This allows the same point set to support an agenda, grid, history view, compact widget, Discord expression, or another surface without changing Calendar truth.
 
 ## Relationship between the contracts
 
