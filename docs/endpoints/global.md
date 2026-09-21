@@ -167,78 +167,11 @@ A guild coordinate other than the configured guild returns `404`. Invalid Charac
 
 The route addresses the Character directly. It does not introduce a second `character-member` or `character-membership` domain object; `membership` is the current Blizzard-roster relationship projected for that Character.
 
-## Guild Calendar REST
+## Guild Calendar
 
-The Guild Calendar is the shared registry of concrete guild occurrences intentionally placed on the calendar. It is not a generic event-management API. Internal modules may project their own occurrence truth into the same application contract, while authorized external callers may establish calendar-native events directly.
+Calendar is internal temporal-map machinery. It persists the temporal coordinates of authoritative application subjects and the source/subject reference needed to query their owning module for projection guidance.
 
-Calendar persistence distinguishes application-managed events from externally managed events solely to protect mutation authority. That distinction is not part of the shared event representation. REST reads may observe either class, but REST write authority may update or withdraw only externally managed events; it cannot mutate module-managed occurrences such as raffle projections.
-
-A Calendar event representation is:
-
-```json
-{
-  "event_id": "9d031fa6-1441-4e7f-b84c-858c8a8f392e",
-  "title": "Guild Meeting",
-  "occurs_at": [1788897600, 1788901200],
-  "category": "meeting",
-  "destination": null,
-  "registered_at_unix": 1788800000,
-  "updated_at_unix": 1788800000
-}
-```
-
-`occurs_at` contains either one Unix timestamp for an instant or two Unix timestamps for an inclusive start/end range. `title` is required. `category` and `destination` are optional and may be `null`.
-
-Calendar temporal state is derived from `occurs_at`; callers do not publish separate upcoming/live/past lifecycle values.
-
-### GET `/api/v1/calendar/events`
-
-Requires REST read authority. Returns all currently registered Calendar events ordered by occurrence start time. Past events remain valid registered events until withdrawn.
-
-```json
-{
-  "events": []
-}
-```
-
-### GET `/api/v1/calendar/events/:eventId`
-
-Requires REST read authority. Returns one currently registered Calendar event. Withdrawn or unknown events return `404`.
-
-### POST `/api/v1/calendar/events`
-
-Requires REST write authority. Creates an externally managed Calendar-native event and assigns its `event_id`.
-
-```json
-{
-  "title": "Guild Meeting",
-  "occurs_at": [1788897600, 1788901200],
-  "category": "meeting",
-  "destination": null
-}
-```
-
-Returns `201` with the established Calendar event.
-
-### PATCH `/api/v1/calendar/events/:eventId`
-
-Requires REST write authority. Updates one or more current fields of an externally managed Calendar event. Omitted fields remain unchanged. `category` and `destination` may be set to `null` to clear them.
-
-```json
-{
-  "occurs_at": [1788984000]
-}
-```
-
-Returns the updated Calendar event. Unknown, withdrawn, or application-managed events return `404` through this mutation surface.
-
-### DELETE `/api/v1/calendar/events/:eventId`
-
-Requires REST write authority. Withdraws an externally managed event from Calendar discovery and returns `204`.
-
-Withdrawal is not physical deletion and is not how an event merely becomes past. Unknown, already-withdrawn, or application-managed events return `404` through this mutation surface.
-
-External Calendar create, update, and withdrawal operations are recorded best-effort through global operational inspection with source `calendar`.
+Calendar does not currently expose a standalone REST resource or generic point-insertion API. Generic calendar-native points, if needed, belong to a separately earned module rather than the shared temporal map itself.
 
 ## Legacy machine-query surface
 
