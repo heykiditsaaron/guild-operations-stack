@@ -33,6 +33,7 @@ export type RaidSignupView = {
   selectedRole: RaidRole | null;
   deniedAtUnix: number | null;
   deniedByGuildieId: string | null;
+  withdrawnAtUnix: number | null;
 };
 
 function rolesForSpecs(className: string, specs: readonly string[]): RaidRole[] {
@@ -91,7 +92,7 @@ export async function raidParticipationCharacters(
   };
 }
 
-export async function raidSignups(raidId: string): Promise<RaidSignupView[]> {
+async function raidSignupRows(raidId: string, includeWithdrawn: boolean): Promise<RaidSignupView[]> {
   const result = await pool.query<{
     signup_row_id: string;
     applicant_id: string;
@@ -108,6 +109,7 @@ export async function raidSignups(raidId: string): Promise<RaidSignupView[]> {
     selected_role: RaidRole | null;
     denied_at_unix: string | number | null;
     denied_by_guildie_id: string | null;
+    withdrawn_at_unix: string | number | null;
   }>(
     `SELECT
        rr.signup_row_id,
@@ -124,7 +126,8 @@ export async function raidSignups(raidId: string): Promise<RaidSignupView[]> {
        ras.selected_spec,
        ras.selected_role,
        rsd.denied_at_unix,
-       rsd.denied_by_guildie_id
+       rsd.denied_by_guildie_id,
+       rr.withdrawn_at_unix
      FROM raid_signup_rows rr
      JOIN raid_applicants ra ON ra.applicant_id = rr.applicant_id
      LEFT JOIN characters c
@@ -138,9 +141,9 @@ export async function raidSignups(raidId: string): Promise<RaidSignupView[]> {
      LEFT JOIN raid_assignments ras ON ras.signup_row_id = rr.signup_row_id
      LEFT JOIN raid_signup_denials rsd ON rsd.raid_id = rr.raid_id AND rsd.signup_row_id = rr.signup_row_id
      WHERE rr.raid_id = $1
-       AND rr.withdrawn_at_unix IS NULL
+       AND ($2::boolean OR rr.withdrawn_at_unix IS NULL)
      ORDER BY rr.created_at_unix ASC, rr.signup_row_id ASC`,
-    [raidId],
+    [raidId, includeWithdrawn],
   );
 
   return result.rows.map((row) => {
@@ -161,12 +164,17 @@ export async function raidSignups(raidId: string): Promise<RaidSignupView[]> {
       selectedRole: row.selected_role,
       deniedAtUnix: row.denied_at_unix === null ? null : Number(row.denied_at_unix),
       deniedByGuildieId: row.denied_by_guildie_id,
+      withdrawnAtUnix: row.withdrawn_at_unix === null ? null : Number(row.withdrawn_at_unix),
     };
   });
 }
 
+export async function raidSignups(raidId: string): Promise<RaidSignupView[]> {
+  return raidSignupRows(raidId, false);
+}
+
 export async function raidSignup(raidId: string, signupRowId: string): Promise<RaidSignupView | null> {
-  return (await raidSignups(raidId)).find((row) => row.signupRowId === signupRowId) ?? null;
+  return (await raidSignupRows(raidId, true)).find((row) => row.signupRowId === signupRowId) ?? null;
 }
 
 export async function raidAssignment(raidId: string, signupRowId: string): Promise<Pick<RaidSignupView, "assignmentId" | "selectedSpec" | "selectedRole"> | null> {
