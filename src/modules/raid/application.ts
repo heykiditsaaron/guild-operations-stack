@@ -3,6 +3,7 @@ import { characterMembership } from "../../application-state.js";
 import { config } from "../../config.js";
 import { controlledCharactersForGuildie } from "../../controlled-characters.js";
 import { pool, withTransaction } from "../../db.js";
+import { emit } from "../../emissions/registry.js";
 import type { GuildEventDestination } from "../../guild-events/publication/contract.js";
 import {
   effectiveGuildAuthority,
@@ -89,18 +90,20 @@ export async function raidEventFacts(raidId:string, client:PoolClient|null=null)
 
 export async function establishRaid(actorGuildieId:string,input:EstablishRaidInput):Promise<RaidEventFacts>{
   validateEstablishRaidInput(input); requireFullOperationalBuffer(input.occursAt); await requireGuildCapabilityOrOperator(actorGuildieId,RAID_MODIFY_CAPABILITY); const tags=normalizedStrings(input.tags??["raid"]);
-  return withTransaction(async client=>{
+  const raid = await withTransaction(async client=>{
     const r=await client.query<{raid_id:string}>(`INSERT INTO raid_events (guild_id,label,description,occurs_start_unix,occurs_end_unix,tags,eligibility,difficulty,created_by_guildie_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING raid_id`,[config.guild.id,input.label.trim(),input.description?.trim()||null,input.occursAt[0],input.occursAt.length===2?input.occursAt[1]:null,tags,input.eligibility,input.difficulty,actorGuildieId]);
     const raidId=r.rows[0].raid_id;
     await replaceRaidRequirements(client,raidId,input.requirements??[]);
     await recordRaidAction(client,raidId,"created",actorGuildieId);
     const facts=await raidEventFacts(raidId,client); if(!facts)throw new Error("Created Raid could not be reloaded"); return facts;
   });
+  await emit({ code: "raid.established", subject: raid.raidId });
+  return raid;
 }
 
 export async function modifyRaid(actorGuildieId:string,raidId:string,input:ModifyRaidInput):Promise<RaidEventFacts>{
   validateModifyRaidInput(input); await requireGuildCapabilityOrOperator(actorGuildieId,RAID_MODIFY_CAPABILITY);
-  return withTransaction(async client=>{
+  const raid = await withTransaction(async client=>{
     const current=await raidEventFacts(raidId,client); if(!current)throw new Error("Raid not found"); requireUpcomingRaid(current);
     const occurs=input.occursAt??current.occursAt;
     if(input.occursAt!==undefined)requireFullOperationalBuffer(occurs);
@@ -110,11 +113,14 @@ export async function modifyRaid(actorGuildieId:string,raidId:string,input:Modif
     await recordRaidAction(client,raidId,"modified",actorGuildieId);
     const facts=await raidEventFacts(raidId,client); if(!facts)throw new Error("Raid not found"); return facts;
   });
+  await emit({ code: "raid.modified", subject: raid.raidId });
+  return raid;
 }
 
 export async function cancelRaid(actorGuildieId:string,raidId:string):Promise<void>{
   await requireGuildCapabilityOrOperator(actorGuildieId,RAID_STAGE_CAPABILITY);
   await withTransaction(async client=>{const current=await raidEventFacts(raidId,client);if(!current)throw new Error("Raid not found");requireUpcomingRaid(current);await client.query("DELETE FROM raid_events WHERE raid_id=$1",[raidId]);});
+  await emit({ code: "raid.cancelled", subject: raidId });
 }
 
 async function assertApplicantEligible(raid:RaidEventFacts,guildieId:string|null):Promise<void>{if(raid.eligibility==="anyone")return;if(!guildieId)throw new Error("Raid eligibility requires a Guildie");if(!await effectiveGuildAuthority(guildieId,raid.guildId))throw new Error("Applicant is not a current Guildie");}
