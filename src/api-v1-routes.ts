@@ -9,13 +9,6 @@ function readAuthorized(request: FastifyRequest): boolean {
   return header === configured || header === `Bearer ${configured}`;
 }
 
-function writeAuthorized(request: FastifyRequest): boolean {
-  const configured = process.env.API_WRITE_KEY;
-  if (!configured) return false;
-  const header = request.headers.authorization;
-  return header === configured || header === `Bearer ${configured}`;
-}
-
 export async function registerApiV1Routes(app: FastifyInstance): Promise<void> {
   app.get("/api/v1/guildies/:guildieId", async (request, reply) => {
     if (!readAuthorized(request)) return reply.code(401).send({ error: "invalid_machine_authority" });
