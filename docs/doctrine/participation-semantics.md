@@ -116,3 +116,17 @@ Web, REST, Discord, future WoW integrations, and shared projections invoke or qu
 Successful application operations that change no authoritative truth are distinct from mutations that establish a new fact. Derived temporal changes, such as a participation cutoff or occurrence passing, are also distinct from authored mutations.
 
 These distinctions must remain explicit before shared change-emission or projection machinery is designed around them.
+
+## Communication boundaries
+
+Authoritative state change and communicative significance are separate concerns.
+
+A module may contain operational work whose intermediate mutations are truthful and must be persisted, but are not individually meaningful announcements. Raid assignment is the first concrete example: organizers continuously establish, modify, and withdraw assignments while composing the group. Those mutations are authoritative working state, but broadcasting every intermediate composition would misrepresent ordinary roster work as a sequence of deliberate announcements.
+
+Where the human ceremony contains an explicit communication boundary, the application should preserve that boundary rather than inferring communication from every mutation. For Raid composition, **Lock In** is that ceremony: the organizer explicitly requests that the current authoritative composition be communicated.
+
+Lock In does not establish, modify, or withdraw Raid composition. It does not create a second published roster, a draft/committed lifecycle, or a new authoritative assignment state. The assignments already represent current truth. Lock In is an explicit request to emit or publish that truth through whatever communication machinery ultimately owns delivery.
+
+Because the operation is communicative rather than mutative, repeated Lock In actions may be legitimate even when the underlying composition has not changed. Whether a downstream consumer suppresses redundant presentation is a consumer concern; Raid should not manufacture a state mutation merely to justify communication.
+
+Do not generalize this into a universal publish operation. Other domains may earn different communication boundaries, and some authoritative changes may themselves be sufficiently meaningful to emit directly. The important distinction is that **authoritative does not automatically mean emissive**.
