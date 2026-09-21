@@ -49,13 +49,13 @@ export type RaidRosterDiagnostics = { assigned:number; tanks:number; healers:num
 type RaidAction = "created" | "modified" | "assignment_established" | "assignment_modified" | "assignment_withdrawn" | "signup_denied";
 
 function nowUnix():number { return Math.floor(Date.now()/1000); }
-export const RAID_SIGNUP_FREEZE_SECONDS = 60 * 60;
+export const RAID_OPERATIONAL_BUFFER_SECONDS = 60 * 60;
 export function raidHasOccurred(raid:RaidEventFacts, atUnix:number=nowUnix()):boolean { return atUnix>=raid.occursAt[0]; }
-export function raidSignupCutoffUnix(raid:RaidEventFacts):number { return raid.occursAt[0]-RAID_SIGNUP_FREEZE_SECONDS; }
+export function raidSignupCutoffUnix(raid:RaidEventFacts):number { return raid.occursAt[0]-RAID_OPERATIONAL_BUFFER_SECONDS; }
 export function raidSignupsAreOpen(raid:RaidEventFacts, atUnix:number=nowUnix()):boolean { return atUnix<raidSignupCutoffUnix(raid); }
 function requireRaidSignupsOpen(raid:RaidEventFacts):void { if(!raidSignupsAreOpen(raid))throw new Error("Raid signups are frozen"); }
 function requireUpcomingRaid(raid:RaidEventFacts):void { if(raidHasOccurred(raid))throw new Error("Raid has already occurred"); }
-function requireFutureOccurrence(occursAt:readonly [number]|readonly [number,number]):void { if(occursAt[0]<=nowUnix())throw new Error("Raid occurrence must be in the future"); }
+function requireFullOperationalBuffer(occursAt:readonly [number]|readonly [number,number]):void { if(occursAt[0]-nowUnix()<RAID_OPERATIONAL_BUFFER_SECONDS)throw new Error("Raid occurrence must preserve the full operational buffer"); }
 
 function raidPublicDestination(raidId:string):string { return `/events/raid/${encodeURIComponent(raidId)}`; }
 function raidParticipationDestination(raidId:string):string { return `/events/raid/${encodeURIComponent(raidId)}/participation`; }
@@ -88,7 +88,7 @@ export async function raidEventFacts(raidId:string, client:PoolClient|null=null)
 }
 
 export async function establishRaid(actorGuildieId:string,input:EstablishRaidInput):Promise<RaidEventFacts>{
-  validateEstablishRaidInput(input); requireFutureOccurrence(input.occursAt); await requireGuildCapabilityOrOperator(actorGuildieId,RAID_MODIFY_CAPABILITY); const tags=normalizedStrings(input.tags??["raid"]);
+  validateEstablishRaidInput(input); requireFullOperationalBuffer(input.occursAt); await requireGuildCapabilityOrOperator(actorGuildieId,RAID_MODIFY_CAPABILITY); const tags=normalizedStrings(input.tags??["raid"]);
   return withTransaction(async client=>{
     const r=await client.query<{raid_id:string}>(`INSERT INTO raid_events (guild_id,label,description,occurs_start_unix,occurs_end_unix,tags,eligibility,difficulty,created_by_guildie_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING raid_id`,[config.guild.id,input.label.trim(),input.description?.trim()||null,input.occursAt[0],input.occursAt.length===2?input.occursAt[1]:null,tags,input.eligibility,input.difficulty,actorGuildieId]);
     const raidId=r.rows[0].raid_id;
@@ -102,7 +102,8 @@ export async function modifyRaid(actorGuildieId:string,raidId:string,input:Modif
   validateModifyRaidInput(input); await requireGuildCapabilityOrOperator(actorGuildieId,RAID_MODIFY_CAPABILITY);
   return withTransaction(async client=>{
     const current=await raidEventFacts(raidId,client); if(!current)throw new Error("Raid not found"); requireUpcomingRaid(current);
-    const occurs=input.occursAt??current.occursAt; requireFutureOccurrence(occurs);
+    const occurs=input.occursAt??current.occursAt;
+    if(input.occursAt!==undefined)requireFullOperationalBuffer(occurs);
     await client.query(`UPDATE raid_events SET label=$2,description=$3,occurs_start_unix=$4,occurs_end_unix=$5,tags=$6,difficulty=$7,updated_at_unix=extract(epoch FROM now())::bigint WHERE raid_id=$1`,[
       raidId,input.label?.trim()??current.label,input.description===undefined?current.description:(input.description?.trim()||null),occurs[0],occurs.length===2?occurs[1]:null,input.tags===undefined?current.tags:normalizedStrings(input.tags),input.difficulty??current.difficulty]);
     if(input.requirements!==undefined)await replaceRaidRequirements(client,raidId,input.requirements);
