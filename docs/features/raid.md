@@ -113,7 +113,7 @@ Raid descriptions remain plain persisted text. The listing supports paragraph br
 
 Raid behavior belongs to Raid application operations. HTTP routes and web surfaces adapt representations into those operations rather than reimplementing lifecycle or authority rules.
 
-Current consequential operations include creation, modification, cancellation, signup commitment submission and withdrawal, assignment, and unassignment. Read models support the public listing, participation surface, assignment operation, and Raid Operations overview.
+Current consequential operations include establishment, modification, cancellation, signup commitment establishment and revocation, assignment, and unassignment. Read models support the public listing, participation surface, assignment operation, and Raid Operations overview. Active-signup collections intentionally omit revoked commitments, while an individual signup query preserves the distinction between a revoked historical commitment and a signup that never existed.
 
 ## Relationship to other participation events
 
