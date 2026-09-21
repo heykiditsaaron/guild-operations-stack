@@ -31,6 +31,8 @@ export type RaidSignupView = {
   assignmentId: string | null;
   selectedSpec: string | null;
   selectedRole: RaidRole | null;
+  deniedAtUnix: number | null;
+  deniedByGuildieId: string | null;
 };
 
 function rolesForSpecs(className: string, specs: readonly string[]): RaidRole[] {
@@ -104,6 +106,8 @@ export async function raidSignups(raidId: string): Promise<RaidSignupView[]> {
     assignment_id: string | null;
     selected_spec: string | null;
     selected_role: RaidRole | null;
+    denied_at_unix: string | number | null;
+    denied_by_guildie_id: string | null;
   }>(
     `SELECT
        rr.signup_row_id,
@@ -118,7 +122,9 @@ export async function raidSignups(raidId: string): Promise<RaidSignupView[]> {
        rr.willing_specs,
        ras.assignment_id,
        ras.selected_spec,
-       ras.selected_role
+       ras.selected_role,
+       rsd.denied_at_unix,
+       rsd.denied_by_guildie_id
      FROM raid_signup_rows rr
      JOIN raid_applicants ra ON ra.applicant_id = rr.applicant_id
      LEFT JOIN characters c
@@ -130,6 +136,7 @@ export async function raidSignups(raidId: string): Promise<RaidSignupView[]> {
       AND wcp.realm_id = rr.character_realm_id
       AND wcp.character_id = rr.character_id
      LEFT JOIN raid_assignments ras ON ras.signup_row_id = rr.signup_row_id
+     LEFT JOIN raid_signup_denials rsd ON rsd.raid_id = rr.raid_id AND rsd.signup_row_id = rr.signup_row_id
      WHERE rr.raid_id = $1
        AND rr.withdrawn_at_unix IS NULL
      ORDER BY rr.created_at_unix ASC, rr.signup_row_id ASC`,
@@ -152,6 +159,8 @@ export async function raidSignups(raidId: string): Promise<RaidSignupView[]> {
       assignmentId: row.assignment_id,
       selectedSpec: row.selected_spec,
       selectedRole: row.selected_role,
+      deniedAtUnix: row.denied_at_unix === null ? null : Number(row.denied_at_unix),
+      deniedByGuildieId: row.denied_by_guildie_id,
     };
   });
 }
