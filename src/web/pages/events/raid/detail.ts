@@ -9,6 +9,8 @@ import {
 } from "../../../../guild-permissions.js";
 import {
   establishRaidAssignment,
+  modifyRaidAssignment,
+  denyRaidSignup,
   raidEventFacts,
   raidHasOccurred,
   raidOccurrenceDestinations,
@@ -32,6 +34,7 @@ import { viewerForRequest } from "../../../viewer.js";
 type RaidParams = { raidId: string };
 type AssignBody = { signupRowId?: unknown; selectedSpec?: unknown; selectedRole?: unknown };
 type UnassignBody = { signupRowId?: unknown };
+type DenyBody = { signupRowId?: unknown };
 type RaidSignupView = Awaited<ReturnType<typeof raidSignups>>[number];
 
 const RAID_ROLES: readonly RaidRole[] = ["tank", "healer", "damage"];
@@ -103,6 +106,7 @@ async function signupCard(row: RaidSignupView): Promise<string> {
       <span>${row.realmName ? `${htmlText(row.realmName)} · ` : ""}${htmlText(row.className)}</span>
     </div>
     ${offeredRoleIcons(row)}
+    <button type="button" class="button-secondary" data-raid-deny aria-label="Deny ${htmlText(row.characterName ?? row.className)} signup">Deny</button>
   </article>`;
 }
 
@@ -175,14 +179,16 @@ async function renderRaidOrganizer(request: FastifyRequest<{ Params: RaidParams 
 
   const [rows, diagnostics] = await Promise.all([raidSignups(raid.raidId), raidRosterDiagnostics(raid.raidId)]);
   const assigned = rows.filter((row) => row.assignmentId !== null);
-  const available = rows.filter((row) => row.assignmentId === null && !rows.some((candidate) => candidate.applicantId === row.applicantId && candidate.assignmentId !== null));
+  const denied = rows.filter((row) => row.deniedAtUnix !== null);
+  const available = rows.filter((row) => row.assignmentId === null && row.deniedAtUnix === null && !rows.some((candidate) => candidate.applicantId === row.applicantId && candidate.assignmentId !== null));
   const navigation: SecondaryNavigation = { kind: "breadcrumb", items: [{ label: "Events", href: "/events" }, { label: "Raid operations", href: "/events/raid/manage" }, { label: raid.label }] };
   const raidBuffItems = (await Promise.all(RAID_BUFF_TRAITS.map((trait) => raidBuffDiagnosticItem(trait, assigned)))).join("");
   const utilityItems = UTILITY_TRAITS.map((trait) => textDiagnosticItem(capabilityLabel(trait), coverageCount(assigned, trait))).join("");
   const armorItems = ARMOR_TRAITS.map((trait) => textDiagnosticItem(armorLabel(trait), coverageCount(assigned, trait))).join("");
   const diagnosticsBody = `<dl class="raid-roster-diagnostics"><div class="raid-comp-tank"><dt><span class="raid-role-icon raid-role-icon-tank" aria-hidden="true"></span>Tank</dt><dd>${diagnostics.tanks}</dd></div><div class="raid-comp-healer"><dt><span class="raid-role-icon raid-role-icon-healer" aria-hidden="true"></span>Healer</dt><dd>${diagnostics.healers}</dd></div><div class="raid-comp-melee"><dt><span class="raid-role-icon raid-role-icon-damage" aria-hidden="true"></span>Melee</dt><dd>${diagnostics.melee}</dd></div><div class="raid-comp-ranged"><dt><span class="raid-role-icon raid-role-icon-damage" aria-hidden="true"></span>Ranged</dt><dd>${diagnostics.ranged}</dd></div></dl>`;
   const shelves = `<div class="raid-diagnostic-shelves" data-raid-diagnostics><div class="raid-diagnostic-tabs" aria-label="Raid diagnostics"><button type="button" class="raid-diagnostic-tab" data-raid-shelf-toggle aria-expanded="false" aria-controls="raid-buffs-panel">Raid buffs</button><button type="button" class="raid-diagnostic-tab" data-raid-shelf-toggle aria-expanded="false" aria-controls="raid-utility-panel">Utility</button><button type="button" class="raid-diagnostic-tab" data-raid-shelf-toggle aria-expanded="false" aria-controls="raid-armor-panel">Armor</button></div><div class="raid-diagnostic-panels">${diagnosticPanel("raid-buffs-panel", "Raid buffs", raidBuffItems)}${diagnosticPanel("raid-utility-panel", "Utility", utilityItems)}${diagnosticPanel("raid-armor-panel", "Armor", armorItems)}</div></div>`;
-  const pool = available.length ? (await Promise.all(available.map(signupCard))).join("") : `<p class="raid-pool-empty">All applicants are currently assigned.</p>`;
+  const pool = available.length ? (await Promise.all(available.map(signupCard))).join("") : `<p class="raid-pool-empty">No unresolved signups remain.</p>`;
+  const deniedView = denied.length ? `<section class="raid-denied-signups"><h2>Denied</h2><div>${denied.map((row) => `<article class="raid-participant-card"><div class="raid-participant-card-copy"><strong>${htmlText(row.characterName ?? row.className)}</strong><span>${row.realmName ? `${htmlText(row.realmName)} · ` : ""}${htmlText(row.className)}</span></div></article>`).join("")}</div></section>` : "";
   const mutableAssignments = canAssign && !historical;
   const lanes = (await Promise.all(RAID_ROLES.map(async (role) => {
     const members = assigned.filter((row) => row.selectedRole === role);
@@ -195,7 +201,7 @@ async function renderRaidOrganizer(request: FastifyRequest<{ Params: RaidParams 
 
   const basePath = operateDestination.href;
   const publicAction = publicDestination ? `<a class="button-secondary" href="${htmlText(publicDestination.href)}">${htmlText(publicDestination.label)} ↗</a>` : "";
-  const body = `<section class="raid-title-bar"><div><h1>${htmlText(raid.label)}</h1><p><time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${htmlText(difficultyLabel(raid.difficulty))}${historical ? " · Historical" : ""}</p></div><div class="raid-admin-actions">${publicAction}</div></section><nav class="raid-admin-actions" aria-label="Raid management mode"><a class="button-primary" href="${htmlText(basePath)}" aria-current="page">Assign</a>${canModify || canStage ? `<a class="button-secondary" href="${htmlText(basePath)}/definition">Edit</a>` : ""}</nav>${assignmentWorkspace}<section class="raid-scoreboard" aria-labelledby="raid-scoreboard-heading"><h2 id="raid-scoreboard-heading">Raid diagnostics</h2>${shelves}</section>${mutableAssignments ? `<dialog class="raid-spec-dialog" data-raid-spec-dialog><form method="dialog"><h2>Choose specialization</h2><p data-raid-spec-dialog-copy></p><div data-raid-spec-options></div><button type="button" class="button-secondary" data-raid-spec-cancel>Cancel</button></form></dialog>` : ""}`;
+  const body = `<section class="raid-title-bar"><div><h1>${htmlText(raid.label)}</h1><p><time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${htmlText(difficultyLabel(raid.difficulty))}${historical ? " · Historical" : ""}</p></div><div class="raid-admin-actions">${publicAction}</div></section><nav class="raid-admin-actions" aria-label="Raid management mode"><a class="button-primary" href="${htmlText(basePath)}" aria-current="page">Assign</a>${canModify || canStage ? `<a class="button-secondary" href="${htmlText(basePath)}/definition">Edit</a>` : ""}</nav>${assignmentWorkspace}${deniedView}<section class="raid-scoreboard" aria-labelledby="raid-scoreboard-heading"><h2 id="raid-scoreboard-heading">Raid diagnostics</h2>${shelves}</section>${mutableAssignments ? `<dialog class="raid-spec-dialog" data-raid-spec-dialog><form method="dialog"><h2>Choose specialization</h2><p data-raid-spec-dialog-copy></p><div data-raid-spec-options></div><button type="button" class="button-secondary" data-raid-spec-cancel>Cancel</button></form></dialog>` : ""}`;
   const scripts: AssetName[] = ["admin.js", "raid-admin.js"];
   if (mutableAssignments) scripts.push("raid-organizer.js");
   const html = renderPage(assets, { pathname: request.url, title: `${raid.label} · Raid Operations · OH CRIT I Pulled! Guild Operations`, description: raid.description ?? "Raid operations.", viewer, stylesheets: ["admin.css", "raid-admin.css", "raid-iconography.css", "raid-organizer.css"], scripts, secondaryNavigation: navigation, header: "", body });
@@ -208,6 +214,11 @@ async function assignParticipant(request: FastifyRequest<{ Params: RaidParams; B
   const body = request.body ?? {};
   if (typeof body.signupRowId !== "string" || typeof body.selectedSpec !== "string" || (body.selectedRole !== "tank" && body.selectedRole !== "healer" && body.selectedRole !== "damage")) return reply.code(400).send({ error: "Assignment is incomplete" });
   try {
+    const existing = (await raidSignups(request.params.raidId)).find((row) => row.signupRowId === body.signupRowId)?.assignmentId ?? null;
+    if (existing) {
+      await modifyRaidAssignment(guildie.guildieId, { raidId: request.params.raidId, signupRowId: body.signupRowId, selectedSpec: body.selectedSpec, selectedRole: body.selectedRole });
+      return reply.code(200).send({ assignmentId: existing });
+    }
     const assignmentId = await establishRaidAssignment(guildie.guildieId, { raidId: request.params.raidId, signupRowId: body.signupRowId, selectedSpec: body.selectedSpec, selectedRole: body.selectedRole });
     return reply.code(201).send({ assignmentId });
   } catch (error) {
@@ -227,8 +238,21 @@ async function unassignParticipant(request: FastifyRequest<{ Params: RaidParams;
   }
 }
 
+async function denyParticipant(request: FastifyRequest<{ Params: RaidParams; Body: DenyBody }>, reply: FastifyReply) {
+  const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
+  if (!guildie) return reply.code(401).send({ error: "Authentication required" });
+  if (typeof request.body?.signupRowId !== "string") return reply.code(400).send({ error: "Signup is required" });
+  try {
+    await denyRaidSignup(guildie.guildieId, { raidId: request.params.raidId, signupRowId: request.body.signupRowId });
+    return reply.code(204).send();
+  } catch (error) {
+    return reply.code(raidActionStatusCode(error)).send({ error: error instanceof Error ? error.message : "Signup could not be denied" });
+  }
+}
+
 export async function registerRaidOperationDetailPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get<{ Params: RaidParams }>("/events/raid/manage/:raidId", async (request, reply) => renderRaidOrganizer(request, reply, assets));
   app.post<{ Params: RaidParams; Body: AssignBody }>("/events/raid/manage/:raidId/assign", assignParticipant);
   app.post<{ Params: RaidParams; Body: UnassignBody }>("/events/raid/manage/:raidId/unassign", unassignParticipant);
+  app.post<{ Params: RaidParams; Body: DenyBody }>("/events/raid/manage/:raidId/deny", denyParticipant);
 }
