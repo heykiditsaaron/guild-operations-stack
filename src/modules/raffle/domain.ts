@@ -3,7 +3,7 @@ import type { PoolClient } from "pg";
 import { config } from "../../config.js";
 import { pool, withTransaction } from "../../db.js";
 
-export const RAFFLE_PARTICIPATION_FREEZE_SECONDS = 60 * 60;
+export const RAFFLE_OPERATIONAL_BUFFER_SECONDS = 60 * 60;
 
 export type RaffleConclusion = "drawn" | "operator_cancelled" | "no_participation" | null;
 export type RafflePrizeKind = "gold" | "item" | "other";
@@ -90,7 +90,13 @@ async function withOptionalTransaction<T>(
 }
 
 export function raffleParticipationCutoffUnix(drawingAtUnix: number): number {
-  return drawingAtUnix - RAFFLE_PARTICIPATION_FREEZE_SECONDS;
+  return drawingAtUnix - RAFFLE_OPERATIONAL_BUFFER_SECONDS;
+}
+
+function requireFullOperationalBuffer(drawingAtUnix: number): void {
+  if (drawingAtUnix - unixNow() < RAFFLE_OPERATIONAL_BUFFER_SECONDS) {
+    throw new RaffleRuleError("operational_buffer_required", "Raffle drawing time must preserve the full operational buffer");
+  }
 }
 
 export function raffleParticipationIsOpen(raffle: Pick<Raffle, "conclusion" | "openedAtUnix" | "participationPausedAtUnix" | "participationResumedAtUnix" | "drawingAtUnix">, atUnix: number = unixNow()): boolean {
@@ -206,6 +212,7 @@ async function lockedClaim(client: PoolClient, claimId: string): Promise<Record<
 
 export async function establishRaffle(actorGuildieId: string, termsInput: RaffleTerms, client: PoolClient | null = null): Promise<Raffle> {
   const terms = validateTerms(termsInput);
+  requireFullOperationalBuffer(terms.drawingAtUnix);
   const result = await (client ?? pool).query(
     `INSERT INTO raffles (
        guild_id, title, drawing_at_unix, entry_price_gold, prize_kind,
@@ -222,6 +229,7 @@ export async function modifyRaffle(actorGuildieId: string, raffleId: string, ter
     const raffle = await lockedRaffle(transactionClient, raffleId);
     if (raffle.conclusion !== null) throw new RaffleRuleError("raffle_concluded", "A concluded Raffle cannot be modified");
     if (raffle.opened_at_unix !== null) throw new RaffleRuleError("raffle_terms_locked", "Raffle terms are locked once participation has opened");
+    requireFullOperationalBuffer(terms.drawingAtUnix);
     const result = await transactionClient.query(
       `UPDATE raffles SET title=$2, drawing_at_unix=$3, entry_price_gold=$4, prize_kind=$5,
        winner_percentage=$6, prize_description=$7, updated_by_guildie_id=$8, updated_at_unix=$9
@@ -238,7 +246,7 @@ export async function openRaffleParticipation(actorGuildieId: string, raffleId: 
     if (raffle.conclusion !== null) throw new RaffleRuleError("raffle_concluded", "A concluded Raffle cannot open participation");
     if (raffle.opened_at_unix !== null) throw new RaffleRuleError("participation_already_opened", "Raffle participation has already been opened");
     if (!raffleParticipationIsOpen({ conclusion: null, openedAtUnix: unixNow(), participationPausedAtUnix: null, participationResumedAtUnix: null, drawingAtUnix: Number(raffle.drawing_at_unix) })) {
-      throw new RaffleRuleError("participation_freeze_reached", "Raffle participation cannot open after the one-hour pre-drawing freeze begins");
+      throw new RaffleRuleError("participation_freeze_reached", "Raffle participation cannot open after the operational buffer begins");
     }
     const openedAtUnix = unixNow();
     const result = await transactionClient.query(
@@ -276,7 +284,7 @@ export async function resumeRaffleParticipation(actorGuildieId: string, raffleId
     if (raffle.participation_paused_at_unix === null || raffle.participation_resumed_at_unix !== null) return mapRaffle(raffle);
     const resumedAtUnix = unixNow();
     if (resumedAtUnix >= raffleParticipationCutoffUnix(Number(raffle.drawing_at_unix))) {
-      throw new RaffleRuleError("participation_freeze_reached", "Raffle participation cannot resume after the one-hour pre-drawing freeze begins");
+      throw new RaffleRuleError("participation_freeze_reached", "Raffle participation cannot resume after the operational buffer begins");
     }
     const result = await transactionClient.query(
       "UPDATE raffles SET participation_resumed_by_guildie_id=$2, participation_resumed_at_unix=$3 WHERE raffle_id=$1 RETURNING *",
