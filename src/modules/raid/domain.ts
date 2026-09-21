@@ -66,6 +66,13 @@ export type EstablishRaidAssignmentInput = {
   selectedRole: RaidRole;
 };
 
+export type ModifyRaidAssignmentInput = EstablishRaidAssignmentInput;
+
+export type DenyRaidSignupInput = {
+  raidId: string;
+  signupRowId: string;
+};
+
 export function normalizedStrings(values: readonly string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
