@@ -2,6 +2,7 @@ import type { PoolClient } from "pg";
 import { acquireGuildAuthority, type BlizzardGuildProfile, type BlizzardGuildRoster } from "./blizzard.js";
 import { config, type Region } from "./config.js";
 import { pool, withTransaction } from "./db.js";
+import { emit } from "./emissions/registry.js";
 import {
   GUILD_REFRESH_CAPABILITY,
   GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY,
@@ -65,22 +66,31 @@ async function guildieRosterState(client: PoolClient, guildId: string): Promise<
   }]));
 }
 
-function changedGuildieIds(
+type GuildieRosterTransition = {
+  code: "guildie.joined" | "guildie.left" | "guildie.rank.modified";
+  guildieId: string;
+};
+
+function guildieRosterTransitions(
   before: Map<string, GuildieRosterState>,
   after: Map<string, GuildieRosterState>,
-): string[] {
-  const changed = new Set<string>();
+): GuildieRosterTransition[] {
+  const transitions: GuildieRosterTransition[] = [];
 
   for (const [guildieId, afterState] of after) {
     const beforeState = before.get(guildieId);
-    if (!beforeState || beforeState.rankIndex !== afterState.rankIndex) changed.add(guildieId);
+    if (!beforeState) {
+      transitions.push({ code: "guildie.joined", guildieId });
+    } else if (beforeState.rankIndex !== afterState.rankIndex) {
+      transitions.push({ code: "guildie.rank.modified", guildieId });
+    }
   }
 
   for (const guildieId of before.keys()) {
-    if (!after.has(guildieId)) changed.add(guildieId);
+    if (!after.has(guildieId)) transitions.push({ code: "guildie.left", guildieId });
   }
 
-  return [...changed];
+  return transitions;
 }
 
 async function persistGuild(
@@ -225,13 +235,20 @@ export async function refreshGuildAuthority(): Promise<GuildRefreshResult> {
     return {
       guildId,
       roster,
-      changedGuildieIds: changedGuildieIds(beforeGuildies, afterGuildies),
+      guildieTransitions: guildieRosterTransitions(beforeGuildies, afterGuildies),
     };
   });
 
+  for (const transition of persisted.guildieTransitions) {
+    await emit({
+      code: transition.code,
+      subject: transition.guildieId,
+    });
+  }
+
   await publishGuildRefreshObservation({
     guildId: persisted.guildId,
-    changedGuildieIds: persisted.changedGuildieIds,
+    changedGuildieIds: persisted.guildieTransitions.map((transition) => transition.guildieId),
   });
 
   const targets = await guildCharactersNeedingEnrichment(persisted.guildId, persisted.roster.changedPresentationCoordinates);
