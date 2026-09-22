@@ -48,7 +48,7 @@ A consumer should not need to know how global state is persisted in order to use
 
 REST preparedness is a consequence of this coherence rather than a separate architecture. The promoted global REST namespace is `/api/v1`; it serializes and authorizes established application contracts rather than introducing a second interpretation of Guild Operations state. Resources and operations are added beneath that namespace only when a concrete consumer need earns them.
 
-Concrete shared infrastructure may also accept projections from an owning procedure. Guild Event Calendar Listings and Operational Records are examples: their contracts define the shared meaning accepted by the infrastructure without transferring ownership of the underlying producer truth.
+Concrete shared infrastructure may also accept projections from an owning procedure. Calendar points and Operational Records are examples: their contracts define the shared meaning accepted by the infrastructure without transferring ownership of the underlying producer truth.
 
 Do not introduce a generic application framework, universal object model, or speculative contract registry to enforce this rule. Establish concrete contracts for actual global state and relationships as they are needed.
 
@@ -90,15 +90,15 @@ A temporal range uses two Unix values; an instant uses one. The owning contract 
 
 Concrete guild activities are the product pressure that should drive architecture.
 
-A module owns a concrete participation capability and its procedure. Shared machinery may project, organize, authorize, inspect, or otherwise support module-owned truth without silently becoming the owner of that truth.
+A module owns a concrete guild capability and its procedure. Guild Activity modules are the semantic family for concrete lifecycle-bound temporal occurrences; participation is optional within that family. Shared machinery may project, organize, authorize, inspect, or otherwise support module-owned truth without silently becoming the owner of that truth.
 
 Shared abstractions should be introduced only after multiple real features demonstrate the need.
 
 > Build the guild activity. Let the common machinery reveal itself under pressure.
 
-Module design guidance lives in [`module-creation.md`](module-creation.md).
+Application-wide module invariants live in [`module-conformity.md`](module-conformity.md). Guild Activity semantics live in [`guild-activity.md`](guild-activity.md), with participation semantics subordinate to that doctrine when an Activity exposes participation.
 
-Guild Event Calendar and Guild Event Offerings are current examples of earned shared infrastructure. Their operational contracts live under [`../infrastructure/`](../infrastructure/).
+Calendar and activity-discovery Offerings are current examples of earned shared presentation infrastructure. Calendar is not a Guild Activity module; it projects temporal truth owned elsewhere. Their operational contracts live under [`../infrastructure/`](../infrastructure/).
 
 ## Interface model
 
