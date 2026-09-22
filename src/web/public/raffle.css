@@ -10,7 +10,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  color: #c9c5ba;
+  color: var(--theme-text-secondary);
   font-size: 0.9rem;
   font-weight: 650;
   text-decoration: none;
@@ -18,7 +18,7 @@
 
 .raffle-back-link:hover,
 .raffle-back-link:focus-visible {
-  color: #f7f4ea;
+  color: var(--theme-text);
 }
 
 .raffle-public-shell {
@@ -63,7 +63,7 @@
 .raffle-countdown-caption {
   display: block;
   margin-top: 0.6rem;
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.9rem;
 }
 
@@ -99,13 +99,13 @@
   gap: 0.75rem;
   padding: 0.85rem 0.95rem;
   border-top: 1px solid rgba(255, 255, 255, 0.07);
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   text-decoration: none;
 }
 
 .raffle-reference-link:hover,
 .raffle-reference-link:focus-visible {
-  color: #f7f4ea;
+  color: var(--theme-text);
   border-top-color: rgba(232, 201, 134, 0.22);
 }
 
@@ -117,7 +117,7 @@
 
 .raffle-reference-arrow {
   flex: 0 0 auto;
-  color: #e8c986;
+  color: var(--theme-accent);
 }
 
 .raffle-workspace {
@@ -137,7 +137,7 @@
 .raffle-claim-meta,
 .raffle-claim-reason,
 .raffle-status-copy {
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   line-height: 1.55;
 }
 
@@ -158,7 +158,7 @@
 
 .raffle-entry-success p {
   margin: 0;
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   line-height: 1.5;
 }
 
@@ -191,7 +191,7 @@
 .raffle-promise {
   min-height: 1.25rem;
   margin: 0;
-  color: #aaa69c;
+  color: var(--theme-text-muted);
 }
 
 .raffle-claims-toolbar {
@@ -238,7 +238,7 @@
 }
 
 .raffle-claim-state {
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.86rem;
 }
 
@@ -273,7 +273,7 @@
 
 .raffle-reference-empty p {
   margin: 0.8rem 0 0;
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   line-height: 1.55;
 }
 
@@ -302,7 +302,7 @@
 }
 
 .raffle-history-heading span {
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.88rem;
 }
 
@@ -319,7 +319,7 @@
 }
 
 .raffle-history-fact dt {
-  color: #aaa69c;
+  color: var(--theme-text-muted);
 }
 
 .raffle-history-fact dd {
@@ -346,7 +346,7 @@
 
 .raffle-rules p {
   margin: 0.75rem 0 0;
-  color: #c9c5ba;
+  color: var(--theme-text-secondary);
 }
 
 @media (max-width: 34rem) {
