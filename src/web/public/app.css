@@ -141,7 +141,7 @@ button:disabled,
 }
 
 /* Shared presentation primitives. Domain surfaces compose these; themes own their visual expression. */
-.card {
+.activity-card {
   min-width: 0;
   padding: clamp(1.2rem, 4vw, 1.6rem);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -150,19 +150,19 @@ button:disabled,
   box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.18);
 }
 
-.card-header {
+.activity-card-header {
   display: grid;
   gap: 0.45rem;
 }
 
-.card-title {
+.activity-card-title {
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(1.55rem, 5vw, 2.15rem);
   line-height: 1.05;
 }
 
-.card-actions {
+.activity-card-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
@@ -220,15 +220,15 @@ button:disabled,
 }
 
 @media (max-width: 34rem) {
-  .card-actions {
+  .activity-card-actions {
     display: grid;
   }
 
-  .card-actions > .button,
-  .card-actions > .button-primary,
-  .card-actions > .button-secondary,
-  .card-actions > .button-success,
-  .card-actions > .button-destructive {
+  .activity-card-actions > .button,
+  .activity-card-actions > .button-primary,
+  .activity-card-actions > .button-secondary,
+  .activity-card-actions > .button-success,
+  .activity-card-actions > .button-destructive {
     width: 100%;
   }
 }
