@@ -2,7 +2,7 @@
 
 This document describes the shared machinery that translates established Guildie authority into globally owned application capabilities.
 
-The authority derivation itself is doctrine defined in [`../doctrine/guild-authority.md`](../doctrine/guild-authority.md).
+The authority derivation itself is doctrine defined in [`../doctrine/member-objects.md`](../doctrine/member-objects.md).
 
 ## Input
 
