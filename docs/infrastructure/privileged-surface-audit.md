@@ -2,7 +2,7 @@
 
 This document records the privileged web surface inventory that motivated the separation of participation, operations, and administration, plus the current migration state.
 
-The authoritative semantic distinction is defined in [`../doctrine/surface-roles.md`](../doctrine/surface-roles.md).
+The authoritative semantic distinction is defined in [`../doctrine/module-conformity.md`](../doctrine/module-conformity.md).
 
 ## Current global administration shell
 
