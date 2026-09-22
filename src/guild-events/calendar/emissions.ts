@@ -45,5 +45,9 @@ async function consumeCalendarEmission(emission: Emission): Promise<void> {
 }
 
 export function registerGuildCalendarEmissionConsumers(): void {
-  registerEmissionConsumer(CALENDAR_EMISSION_CODES, consumeCalendarEmission);
+  registerEmissionConsumer({
+    consumerId: "calendar",
+    codes: CALENDAR_EMISSION_CODES,
+    receive: consumeCalendarEmission,
+  });
 }
