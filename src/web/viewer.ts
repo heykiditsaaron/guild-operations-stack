@@ -1,6 +1,7 @@
 import { guildieState } from "../application-state.js";
 import { authenticatedGuildie } from "../auth.js";
 import { guildTheme } from "../guild-theme.js";
+import { guildPresentation } from "../guild-presentation.js";
 import {
   GUILD_REFRESH_CAPABILITY,
   OPERATIONS_INSPECT_CAPABILITY,
@@ -11,12 +12,13 @@ import { moduleWebPresentationForGuildie } from "./module-presentation.js";
 import type { WebViewer } from "./render.js";
 
 export async function viewerForRequest(sessionToken: string | undefined): Promise<WebViewer> {
-  const [guildie, theme] = await Promise.all([authenticatedGuildie(sessionToken), guildTheme()]);
+  const [guildie, theme, presentation] = await Promise.all([authenticatedGuildie(sessionToken), guildTheme(), guildPresentation()]);
 
   if (!guildie) {
     return {
       authenticated: false,
       theme,
+      guildPresentation: presentation,
       modulePresentation: await moduleWebPresentationForGuildie(null),
     };
   }
@@ -33,6 +35,7 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
     return {
       authenticated: false,
       theme,
+      guildPresentation: presentation,
       modulePresentation: await moduleWebPresentationForGuildie(null),
     };
   }
@@ -40,6 +43,7 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
   return {
     authenticated: true,
     theme,
+    guildPresentation: presentation,
     modulePresentation,
     administrationAvailable: administration.available,
     administrationDestinations: administration.available
