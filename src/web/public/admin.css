@@ -453,3 +453,46 @@
     flex-direction: column;
   }
 }
+
+.theme-settings {
+  display: grid;
+  gap: 1rem;
+}
+
+.theme-settings h3,
+.theme-settings p {
+  margin: 0;
+}
+
+.theme-settings p,
+.theme-settings-controls label span,
+.theme-settings-feedback {
+  color: #aaa69c;
+}
+
+.theme-settings p {
+  margin-top: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.theme-settings-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.theme-settings-controls label {
+  display: grid;
+  gap: 0.35rem;
+  min-width: min(100%, 16rem);
+}
+
+.theme-settings-controls label span,
+.theme-settings-feedback {
+  font-size: 0.82rem;
+}
+
+.theme-settings-feedback {
+  min-height: 1.15rem;
+}
