@@ -94,7 +94,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       .type("text/html; charset=utf-8")
       .send(renderPage(assets, {
         pathname: "/admin/general/discord",
-        title: "Discord configuration · OH CRIT I Pulled! Guild Operations",
+        title: `Discord configuration · ${viewer.guildPresentation.guildName} Guild Operations`,
         description: "Configure the packaged Discord integration.",
         viewer,
         stylesheets: ["admin.css"],
