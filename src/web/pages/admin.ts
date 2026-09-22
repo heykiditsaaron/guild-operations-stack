@@ -13,6 +13,7 @@ import {
 } from "../../guild-refresh-schedule.js";
 import {
   GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY,
+  GUILD_PRESENTATION_CONFIGURE_CAPABILITY,
   MODULES_CONFIGURE_CAPABILITY,
   THEME_CONFIGURE_CAPABILITY,
   guildieHasGuildCapability,
@@ -26,6 +27,7 @@ import {
 } from "../../module-lifecycle.js";
 import { isConfiguredOperator } from "../../operator-authority.js";
 import { GUILD_THEMES, guildTheme, isGuildThemeKey, setGuildTheme, type GuildThemeKey } from "../../guild-theme.js";
+import { guildPresentation, parseGuildPresentationUrl, setGuildPresentationDestinations, type GuildPresentation } from "../../guild-presentation.js";
 import { administrationAvailabilityForGuildie } from "../administration.js";
 import type { AssetRegistry } from "../assets.js";
 import { renderPage } from "../render.js";
@@ -60,6 +62,10 @@ function renderThemeSettings(theme: GuildThemeKey): string {
   return `<form class="settings-panel theme-settings" data-theme-settings-form><div><h3>Theme</h3><p>Choose the color palette used throughout Guild Operations for this guild.</p></div><div class="theme-settings-controls"><label><span>Palette</span><select data-theme-select>${options}</select></label><button type="submit" class="button-primary" data-theme-save>Save</button></div><p class="theme-settings-feedback" data-theme-feedback role="status" aria-live="polite"></p></form>`;
 }
 
+function renderGuildPresentationSettings(presentation: GuildPresentation): string {
+  return `<form class="settings-panel guild-presentation-settings" data-guild-presentation-form><div><h3>Guild links</h3><p>Optional third-party destinations presented for this guild. Blizzard identity and the WoW Armory destination are derived from observed guild truth.</p></div><div class="theme-settings-controls"><label><span>Raider.IO URL</span><input type="url" value="${htmlText(presentation.raiderIoUrl ?? "")}" placeholder="https://" data-raider-io-url></label><label><span>Warcraft Logs URL</span><input type="url" value="${htmlText(presentation.warcraftLogsUrl ?? "")}" placeholder="https://" data-warcraft-logs-url></label><button type="submit" class="button-primary" data-guild-presentation-save>Save</button></div><p class="theme-settings-feedback" data-guild-presentation-feedback role="status" aria-live="polite"></p></form>`;
+}
+
 function rankSummary(policy: GuildCapabilityPolicySet["capabilities"][number], ranks: GuildCapabilityPolicySet["ranks"]): string {
   const guildMaster = ranks.find((rank) => rank.rankIndex === 0)?.displayName ?? "Rank 0";
   const names = policy.permittedRanks.map((rankIndex) => ranks.find((rank) => rank.rankIndex === rankIndex)?.displayName ?? `Rank ${rankIndex}`);
@@ -90,13 +96,14 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
   app.get("/admin/general", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie] = await Promise.all([viewerForRequest(sessionToken), authenticatedGuildie(sessionToken)]);
-    const [canConfigureModules, canConfigureGuildRefreshSchedule, canConfigureTheme, administration] = guildie ? await Promise.all([guildieHasGuildCapabilityOrOperator(guildie.guildieId, MODULES_CONFIGURE_CAPABILITY), guildieHasGuildCapability(guildie.guildieId, GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY), guildieHasGuildCapability(guildie.guildieId, THEME_CONFIGURE_CAPABILITY), administrationAvailabilityForGuildie(guildie.guildieId)]) : [false, false, false, null];
-    const [refreshSchedule, modulesState, theme] = await Promise.all([canConfigureGuildRefreshSchedule ? guildRefreshSchedule() : Promise.resolve(null), canConfigureModules ? packagedModuleStates() : Promise.resolve([]), canConfigureTheme ? guildTheme() : Promise.resolve<GuildThemeKey>("default")]);
+    const [canConfigureModules, canConfigureGuildRefreshSchedule, canConfigureTheme, canConfigureGuildPresentation, administration] = guildie ? await Promise.all([guildieHasGuildCapabilityOrOperator(guildie.guildieId, MODULES_CONFIGURE_CAPABILITY), guildieHasGuildCapability(guildie.guildieId, GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY), guildieHasGuildCapability(guildie.guildieId, THEME_CONFIGURE_CAPABILITY), guildieHasGuildCapability(guildie.guildieId, GUILD_PRESENTATION_CONFIGURE_CAPABILITY), administrationAvailabilityForGuildie(guildie.guildieId)]) : [false, false, false, false, null];
+    const [refreshSchedule, modulesState, theme, presentation] = await Promise.all([canConfigureGuildRefreshSchedule ? guildRefreshSchedule() : Promise.resolve(null), canConfigureModules ? packagedModuleStates() : Promise.resolve([]), canConfigureTheme ? guildTheme() : Promise.resolve<GuildThemeKey>("default"), canConfigureGuildPresentation ? guildPresentation() : Promise.resolve(null)]);
     const hasAdministration = administration?.available === true;
     const moduleLifecycle = canConfigureModules ? administrationSection("modules", "modules-heading", "Modules", `${renderModuleLifecycle(modulesState, administration?.canConfigureDiscord === true)}<p class="admin-section-note">Enablement controls whether an installed module participates in Guild Operations. Acquisition or entitlement is a separate concern and is not implemented here.</p>`) : "";
     const themeSettings = canConfigureTheme ? administrationSection("appearance", "appearance-heading", "Appearance", renderThemeSettings(theme)) : "";
+    const presentationSettings = canConfigureGuildPresentation && presentation ? administrationSection("guild-presentation", "guild-presentation-heading", "Guild presentation", renderGuildPresentationSettings(presentation)) : "";
     const guildSettings = canConfigureGuildRefreshSchedule && refreshSchedule ? administrationSection("guild-settings", "guild-settings-heading", "Guild settings", renderGuildRefreshSchedule(refreshSchedule)) : "";
-    const content = hasAdministration ? `<div class="admin-sections">${moduleLifecycle}${themeSettings}${guildSettings}</div>` : `<section class="admin-unavailable" aria-labelledby="admin-unavailable-heading"><h2 id="admin-unavailable-heading">Administration is not available for this account.</h2></section>`;
+    const content = hasAdministration ? `<div class="admin-sections">${moduleLifecycle}${themeSettings}${presentationSettings}${guildSettings}</div>` : `<section class="admin-unavailable" aria-labelledby="admin-unavailable-heading"><h2 id="admin-unavailable-heading">Administration is not available for this account.</h2></section>`;
     const html = renderPage(assets, { pathname: "/admin/general", title: "General Administration · OH CRIT I Pulled! Guild Operations", description: "Configure Guild Operations.", viewer, stylesheets: ["admin.css", "admin-modules.css"], scripts: ["admin.js", "admin-modules.js"], header: `<div class="admin-page-header"><h1 id="page-title">Administration</h1><p class="lede">Configure Guild Operations and its modules.</p></div>`, body: `${administrationTabs("general")}${content}` });
     if (!hasAdministration) return reply.code(guildie ? 403 : 401).header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
@@ -121,6 +128,17 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     const body = (request.body ?? {}) as { theme?: unknown };
     if (typeof body.theme !== "string" || !isGuildThemeKey(body.theme)) return reply.code(400).send({ error: "unknown_theme" });
     return reply.send({ theme: await setGuildTheme(body.theme) });
+  });
+
+  app.put("/admin/general/presentation", async (request, reply) => {
+    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
+    if (!guildie) return reply.code(401).send({ error: "authentication_required" });
+    if (!await guildieHasGuildCapability(guildie.guildieId, GUILD_PRESENTATION_CONFIGURE_CAPABILITY)) return reply.code(403).send({ error: "guild_presentation_configuration_not_authorized" });
+    const body = (request.body ?? {}) as { raiderIoUrl?: unknown; warcraftLogsUrl?: unknown };
+    const raiderIoUrl = parseGuildPresentationUrl(body.raiderIoUrl ?? null);
+    const warcraftLogsUrl = parseGuildPresentationUrl(body.warcraftLogsUrl ?? null);
+    if (raiderIoUrl === undefined || warcraftLogsUrl === undefined) return reply.code(400).send({ error: "presentation_urls_must_use_http_or_https" });
+    return reply.send({ presentation: await setGuildPresentationDestinations({ raiderIoUrl, warcraftLogsUrl }) });
   });
 
   app.get("/admin/permissions", async (request, reply) => {
