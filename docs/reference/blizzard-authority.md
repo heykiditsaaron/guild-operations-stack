@@ -9,7 +9,7 @@ Canonical contracts live in:
 - [`../doctrine/member-objects.md`](../doctrine/member-objects.md)
 - [`../infrastructure/authentication-ceremony.md`](../infrastructure/authentication-ceremony.md)
 - [`../infrastructure/persistence-boundary.md`](../infrastructure/persistence-boundary.md)
-- [`../doctrine/guild-authority.md`](../doctrine/guild-authority.md)
+- [`../doctrine/member-objects.md`](../doctrine/member-objects.md) — including current Guildie organizational authority derivation
 
 ## User-authorized WoW profile authority
 
