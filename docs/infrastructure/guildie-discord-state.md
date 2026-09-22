@@ -138,7 +138,7 @@ Discord module guild-rank → Discord-role mapping
 Discord role assignment
 ```
 
-Lower numeric Blizzard rank indexes represent higher authority. A Guildie receives the configured role for their effective rank and every configured lower-authority role below it.
+Lower numeric Blizzard rank indexes represent higher authority. A Guildie receives only the configured Discord role for their effective rank. Rank Mapping does not accumulate lower-authority rank roles.
 
 Discord role possession never grants a Guild Operations capability. It may only serve as a cheap preflight signal for Discord-side interaction.
 
