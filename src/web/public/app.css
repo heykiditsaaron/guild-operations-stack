@@ -1139,3 +1139,66 @@ h1 {
     padding: 1.5rem;
   }
 }
+
+
+/* Canonical public projection for a specific activity occurrence. */
+.public-occurrence {
+  display: grid;
+  gap: 1.5rem;
+  width: min(100%, 52rem);
+}
+
+.public-occurrence-header,
+.public-occurrence-identity {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.public-occurrence-identity h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 7vw, 3.4rem);
+  line-height: 1.02;
+}
+
+.public-occurrence-identity .status {
+  margin: 0;
+}
+
+.public-occurrence-description {
+  max-width: 44rem;
+  color: #d0ccc2;
+  line-height: 1.55;
+}
+
+.public-occurrence-description p {
+  margin: 0;
+}
+
+.public-occurrence-facts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.public-occurrence-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.public-occurrence-detail {
+  display: grid;
+  gap: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(238, 201, 124, 0.18);
+}
+
+@media (max-width: 34rem) {
+  .public-occurrence-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .public-occurrence-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
