@@ -57,11 +57,11 @@
 }
 
 .events-create-menu strong {
-  color: #e8c986;
+  color: var(--theme-accent);
 }
 
 .events-create-menu span {
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.82rem;
 }
 
@@ -130,7 +130,7 @@
 }
 
 .events-offering:focus-visible {
-  outline: 2px solid #e8c986;
+  outline: 2px solid var(--theme-accent);
   outline-offset: 3px;
 }
 
@@ -171,7 +171,7 @@
 
 .events-offering-kicker {
   margin: 0;
-  color: #e8c986;
+  color: var(--theme-accent);
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.14em;
@@ -206,7 +206,7 @@
   padding: 0.6rem clamp(1.15rem, 4vw, 1.45rem);
   border-top: 1px solid rgba(232, 201, 134, 0.14);
   background: rgba(232, 201, 134, 0.045);
-  color: #e8c986;
+  color: var(--theme-accent);
   font-size: 0.88rem;
   font-weight: 800;
 }
@@ -291,7 +291,7 @@
 }
 
 .events-status-banner-upcoming {
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   background: linear-gradient(
     90deg,
     rgba(170, 166, 156, 0.11) 0%,
@@ -367,7 +367,7 @@
   align-items: center;
   gap: 0.35rem;
   margin-top: 0.3rem;
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.84rem;
   line-height: 1.45;
 }
@@ -378,7 +378,7 @@
 
 .events-item-action {
   flex: 0 0 auto;
-  color: #e8c986;
+  color: var(--theme-accent);
   font-size: 0.8rem;
   font-weight: 700;
   white-space: nowrap;
@@ -404,7 +404,7 @@
 .events-empty > p:last-child {
   max-width: 34rem;
   margin: 0.75rem 0 0;
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   line-height: 1.55;
 }
 
@@ -500,11 +500,11 @@
 }
 
 .events-create-choices strong {
-  color: #e8c986;
+  color: var(--theme-accent);
 }
 
 .events-create-choices span {
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.84rem;
 }
 
