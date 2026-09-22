@@ -79,15 +79,21 @@ async function attemptConsumerReceipt(
   publication: EmissionPublication,
   consumer: EmissionConsumerRegistration,
 ): Promise<void> {
-  await pool.query(
+  const claimed = await pool.query(
     `UPDATE emission_consumer_receipts
         SET last_attempted_at_unix = extract(epoch FROM now())::bigint,
             attempt_count = attempt_count + 1
       WHERE publication_id = $1
         AND consumer_id = $2
-        AND acknowledged_at_unix IS NULL`,
+        AND acknowledged_at_unix IS NULL
+        AND (
+          last_attempted_at_unix IS NULL
+          OR last_attempted_at_unix <= extract(epoch FROM now())::bigint - 30
+        )
+      RETURNING publication_id`,
     [publication.publicationId, consumer.consumerId],
   );
+  if (!claimed.rowCount) return;
 
   try {
     await consumer.receive(publication.emission);
