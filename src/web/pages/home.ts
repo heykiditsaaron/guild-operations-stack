@@ -3,7 +3,7 @@ import { SESSION_COOKIE_NAME } from "../../auth.js";
 import { packagedModuleEnabled } from "../../module-lifecycle.js";
 import { openRaffleFacts } from "../../modules/raffle/queries.js";
 import { assetUrl, type AssetName, type AssetRegistry } from "../assets.js";
-import { renderPage } from "../render.js";
+import { htmlText, renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
 
 function openRafflePromotion(assets: AssetRegistry): string {
