@@ -20,5 +20,9 @@ async function consumeGuildieEmission(emission: Emission): Promise<void> {
 }
 
 export function registerDiscordEmissionConsumers(): void {
-  registerEmissionConsumer(DISCORD_GUILDIE_EMISSION_CODES, consumeGuildieEmission);
+  registerEmissionConsumer({
+    consumerId: "discord.roles",
+    codes: DISCORD_GUILDIE_EMISSION_CODES,
+    receive: consumeGuildieEmission,
+  });
 }
