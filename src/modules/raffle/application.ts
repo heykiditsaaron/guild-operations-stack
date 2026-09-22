@@ -30,6 +30,7 @@ import {
   type RaffleTerms,
 } from "./domain.js";
 import { publishRaffleOperationalException } from "./operational-exceptions.js";
+import { raffleOperationDestination, raffleParticipationDestination, rafflePublicDestination } from "./destinations.js";
 
 export {
   RaffleRuleError,
@@ -116,6 +117,28 @@ export async function drawRaffle(actorGuildieId: string, raffleId: string): Prom
   }
   await emit({ code: "raffle.concluded", subject: concluded.raffleId });
   return concluded;
+}
+
+export type RaffleCalendarProjection = {
+  title: string;
+  description: string | null;
+  category: "raffle";
+  publicDestination: string;
+  participationDestination: string;
+  operationDestination: string;
+};
+
+export async function raffleCalendarProjection(raffleId: string): Promise<RaffleCalendarProjection | null> {
+  const raffle = await raffleDomain(raffleId);
+  if (!raffle) return null;
+  return {
+    title: raffle.title ?? "Guild Raffle",
+    description: raffle.prizeKind === "gold" ? "Guild gold raffle." : raffle.prizeDescription,
+    category: "raffle",
+    publicDestination: rafflePublicDestination(raffle.raffleId),
+    participationDestination: raffleParticipationDestination(raffle.raffleId),
+    operationDestination: raffleOperationDestination(raffle.raffleId),
+  };
 }
 
 export async function getRaffle(raffleId: string): Promise<Raffle | null> {
