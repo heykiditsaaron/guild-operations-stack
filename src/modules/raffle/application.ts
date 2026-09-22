@@ -123,9 +123,9 @@ export type RaffleCalendarProjection = {
   title: string;
   description: string | null;
   category: "raffle";
-  publicDestination: string;
-  participationDestination: string;
-  operationDestination: string;
+  publicAction: { label: string; href: string };
+  participationAction: { label: string; href: string } | null;
+  operationAction: { label: string; href: string };
 };
 
 export async function raffleCalendarProjection(raffleId: string): Promise<RaffleCalendarProjection | null> {
@@ -135,9 +135,11 @@ export async function raffleCalendarProjection(raffleId: string): Promise<Raffle
     title: raffle.title ?? "Guild Raffle",
     description: raffle.prizeKind === "gold" ? "Guild gold raffle." : raffle.prizeDescription,
     category: "raffle",
-    publicDestination: rafflePublicDestination(raffle.raffleId),
-    participationDestination: raffleParticipationDestination(raffle.raffleId),
-    operationDestination: raffleOperationDestination(raffle.raffleId),
+    publicAction: { label: "View raffle", href: rafflePublicDestination(raffle.raffleId) },
+    participationAction: raffleParticipationIsOpen(raffle)
+      ? { label: "Enter to win", href: raffleParticipationDestination(raffle.raffleId) }
+      : null,
+    operationAction: { label: "Manage raffle", href: raffleOperationDestination(raffle.raffleId) },
   };
 }
 
