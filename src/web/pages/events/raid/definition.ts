@@ -77,8 +77,8 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
         </form>`
       : `<section class="raid-admin-form"><p>${historical ? "This raid has occurred. Its definition is preserved as history." : "You can inspect this raid, but you cannot edit it."}</p><dl class="raid-admin-card-facts"><dt>Name</dt><dd>${htmlText(raid.label)}</dd><dt>Difficulty</dt><dd>${htmlText(difficultyLabel(raid.difficulty))}</dd><dt>Who can apply</dt><dd>${htmlText(eligibilityLabel(raid.eligibility))}</dd></dl></section>`;
 
-    const cancellation = canStage && !historical
-      ? `<section class="raid-admin-danger"><h2>Cancel raid</h2><p>Cancellation permanently removes this raid, including its participation and assignments.</p><button type="button" class="button-secondary" data-raid-cancel>Cancel raid</button></section>`
+    const lifecycleActions = canStage && !historical
+      ? `<button type="button" class="button-destructive" data-raid-cancel>Cancel raid</button>`
       : "";
 
     const html = renderPage(assets, {
@@ -90,7 +90,7 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
       scripts: ["admin.js", "raid-definition.js"],
       secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Events", href: "/events" }, { label: "Raid operations", href: "/events/raid/manage" }, { label: raid.label }] },
       header: "",
-      body: renderOccurrenceOperations({ title: raid.label, context: `<time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${htmlText(difficultyLabel(raid.difficulty))}${historical ? " · Historical" : ""}`, publicAction: publicDestination ? { label: publicDestination.label, href: publicDestination.href } : undefined, modes: [{ label: "Assign", href: basePath }, { label: "Edit", href: `${basePath}/definition`, current: true }], workspace: `<section class="raid-admin-setup">${edit}${cancellation}<p data-raid-definition-status role="status" aria-live="polite"></p></section>` }),
+      body: renderOccurrenceOperations({ title: raid.label, context: `<time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${htmlText(difficultyLabel(raid.difficulty))}${historical ? " · Historical" : ""}`, publicAction: publicDestination ? { label: publicDestination.label, href: publicDestination.href } : undefined, modes: [{ label: "Assign", href: basePath }, { label: "Edit", href: `${basePath}/definition`, current: true }], lifecycleActions, workspace: `<section class="raid-admin-setup">${edit}<p data-raid-definition-status role="status" aria-live="polite"></p></section>` }),
     });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
