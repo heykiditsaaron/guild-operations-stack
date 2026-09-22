@@ -165,6 +165,21 @@ a.raffle-action {
 
 .raffle-edit-form,
 .raffle-setup-form { display: grid; gap: 1rem; }
+.raffle-edit-locked { margin: 0; color: #aaa69c; line-height: 1.55; }
+
+.raffle-management .raffle-facts {
+  grid-template-columns: minmax(8.5rem, 0.85fr) minmax(0, 1.15fr);
+  gap: 0.55rem 1.25rem;
+}
+
+.raffle-management .raffle-facts dt,
+.raffle-management .raffle-facts dd {
+  min-width: 0;
+}
+
+.raffle-management .raffle-facts dd {
+  overflow-wrap: anywhere;
+}
 .raffle-setup-form { margin-top: 1.25rem; }
 
 .raffle-edit-field,
