@@ -73,7 +73,7 @@
   padding: 0.15rem 0.28rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 0.28rem;
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.58rem;
   line-height: 1;
 }
