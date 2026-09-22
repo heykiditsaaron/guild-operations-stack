@@ -230,3 +230,37 @@ if (
     }
   });
 }
+
+const themeForm = document.querySelector("[data-theme-settings-form]");
+const themeSelect = document.querySelector("[data-theme-select]");
+const themeSave = document.querySelector("[data-theme-save]");
+const themeFeedback = document.querySelector("[data-theme-feedback]");
+
+if (
+  themeForm instanceof HTMLFormElement
+  && themeSelect instanceof HTMLSelectElement
+  && themeSave instanceof HTMLButtonElement
+  && themeFeedback instanceof HTMLElement
+) {
+  themeForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (themeSave.disabled) return;
+    themeSave.disabled = true;
+    themeSave.textContent = "Saving…";
+    themeFeedback.textContent = "Saving guild theme…";
+    try {
+      const response = await fetch("/admin/general/theme", {
+        method: "PUT",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({ theme: themeSelect.value }),
+      });
+      if (!response.ok) throw new Error(`Theme update returned ${response.status}`);
+      window.location.reload();
+    } catch (error) {
+      console.error("Guild theme update failed", error);
+      themeSave.disabled = false;
+      themeSave.textContent = "Save";
+      themeFeedback.textContent = "Guild theme could not be saved.";
+    }
+  });
+}
