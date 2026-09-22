@@ -68,6 +68,33 @@ When deciding where durable state belongs, ask what concrete fact is being persi
 
 Current transactional and operational persistence mechanics belong under [`../infrastructure/`](../infrastructure/).
 
+## Semantic emissions and transport
+
+A **semantic emission** is a publication that a meaningful application occurrence happened. The producer owns the occurrence and identifies it through an application-wide semantic code and authoritative coordinates. An emission is not created for a particular consumer and does not encode the work a consumer should perform. A valid emission may currently have zero, one, or many interested consumers.
+
+Emissions have two earned production mechanisms:
+
+- **operational production** — a meaningful occurrence is produced by an authoritative application operation or observed transition;
+- **temporal production** — a meaningful occurrence is produced when authoritative state crosses a domain-defined temporal threshold.
+
+The producer owns whether an operational event or temporal threshold is semantically significant enough to emit. Temporal production does not transfer ownership of the threshold's meaning into scheduling machinery.
+
+Once produced, both kinds enter the same transport boundary:
+
+```text
+operational event ────┐
+                      ├── emission → transport → interested consumers
+temporal threshold ───┘
+```
+
+**Emission transport** begins when a producer publishes an emission and ends when that emission has been handed to each interested consumer. Transport owns routing and reliable receipt. Reliability may mature from direct in-process invocation to durable acknowledgement, retry, and recovery as concrete delivery pressure requires; those mechanics must not change the semantic meaning of emissions or transfer producer authority into transport.
+
+Consumers own all work after receipt. Calendar reconciliation, Discord projection or mutation, push notification, audience resolution, and other consumer-specific consequences remain concerns of those consumers and their adapters. From the transport boundary, Calendar, Discord, Push, and future consumers are the same class of participant: independently interested consumers of semantic emissions.
+
+Transport does not require every emission to have a consumer, and consumer usefulness does not itself establish producer meaning. Concrete consumer pressure may reveal a meaningful occurrence worth publishing, but the resulting emission describes the producer-owned occurrence rather than the requesting consumer's desired action.
+
+Do not introduce a generic event domain, notification domain, audience framework, or scheduler merely to implement transport. Production, transport, and consumption remain distinct responsibilities even when their first implementation is small.
+
 ## Member and authority model
 
 Guild Operations deliberately distinguishes durable Guildie continuity from Blizzard account authority, WoW accounts, Characters, current roster observations, selected-main presentation, optional Discord association, and derived capabilities.
