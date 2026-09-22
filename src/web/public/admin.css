@@ -10,7 +10,7 @@
 .admin-tabs a {
   padding: 0.55rem 0.85rem;
   border-radius: 0.55rem;
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.9rem;
   font-weight: 700;
   text-decoration: none;
@@ -18,7 +18,7 @@
 
 .admin-tabs a:hover,
 .admin-tabs a:focus-visible {
-  color: #e8c986;
+  color: var(--theme-accent);
   background: rgba(255, 255, 255, 0.04);
 }
 
@@ -29,7 +29,7 @@
 
 .admin-empty-state {
   margin: 0;
-  color: #aaa69c;
+  color: var(--theme-text-muted);
 }
 
 .admin-page-header-row {
@@ -47,14 +47,14 @@
 .admin-header-utility {
   flex: none;
   margin-top: 0.15rem;
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.9rem;
   text-decoration: none;
 }
 
 .admin-header-utility:hover,
 .admin-header-utility:focus-visible {
-  color: #e8c986;
+  color: var(--theme-accent);
   text-decoration: underline;
 }
 
@@ -74,7 +74,7 @@
 .admin-unavailable h2 {
   margin: 0 0 1rem;
   font-size: 1rem;
-  color: #c9c5ba;
+  color: var(--theme-text-secondary);
 }
 
 .guild-refresh-admin-heading,
@@ -104,7 +104,7 @@
 .discord-state-heading p,
 .discord-admin-unavailable p {
   margin: 0.35rem 0 0;
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.9rem;
 }
 
@@ -134,7 +134,7 @@
 
 .guild-refresh-stat span,
 .guild-refresh-schedule-next span {
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.82rem;
 }
 
@@ -148,7 +148,7 @@
 .discord-projection-feedback {
   min-height: 1.15rem;
   margin: 0.75rem 0 0;
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.85rem;
 }
 
@@ -191,7 +191,7 @@
   display: flex;
   gap: 0.5rem;
   align-items: center;
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.85rem;
 }
 
@@ -207,14 +207,14 @@
 
 .discord-state-link {
   flex: none;
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.88rem;
   text-decoration: none;
 }
 
 .discord-state-link:hover,
 .discord-state-link:focus-visible {
-  color: #e8c986;
+  color: var(--theme-accent);
   text-decoration: underline;
 }
 
@@ -231,7 +231,7 @@
 }
 
 .discord-role-fields label span {
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.82rem;
 }
 
@@ -243,7 +243,7 @@
 .discord-projection-state {
   display: inline-block;
   margin-top: 0.75rem;
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.82rem;
 }
 
@@ -275,7 +275,7 @@
 }
 
 .discord-state-table th {
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.78rem;
   font-weight: 650;
 }
@@ -312,14 +312,14 @@
 
 .admin-destination-description {
   grid-column: 1;
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.9rem;
 }
 
 .admin-destination-arrow {
   grid-column: 2;
   grid-row: 1 / span 2;
-  color: #e8c986;
+  color: var(--theme-accent);
   font-size: 1.15rem;
 }
 
@@ -338,7 +338,7 @@
 }
 
 .operations-filters label span {
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.82rem;
 }
 
@@ -362,7 +362,7 @@
 .operations-records-heading span,
 .operations-record-heading,
 .operations-record-actor {
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.82rem;
 }
 
@@ -397,7 +397,7 @@
 }
 
 .operations-record-result-partial {
-  color: #e8c986;
+  color: var(--theme-accent);
 }
 
 .operations-record-result-failure {
@@ -419,7 +419,7 @@
 
 .operations-record-details summary {
   cursor: pointer;
-  color: #c9c5ba;
+  color: var(--theme-text-secondary);
 }
 
 .operations-record-details pre {
@@ -432,7 +432,7 @@
 }
 
 .operations-empty {
-  color: #aaa69c;
+  color: var(--theme-text-muted);
 }
 
 @media (max-width: 42rem) {
@@ -467,7 +467,7 @@
 .theme-settings p,
 .theme-settings-controls label span,
 .theme-settings-feedback {
-  color: #aaa69c;
+  color: var(--theme-text-muted);
 }
 
 .theme-settings p {
