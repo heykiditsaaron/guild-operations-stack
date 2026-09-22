@@ -42,18 +42,51 @@ The domain owns whether and how a concluded activity survives as durable history
 
 ## Optional participation
 
-Participation is optional and subordinate to Guild Activity lifecycle.
+Participation exists only in relation to a Guild Activity. A Guild Activity is not required to expose participation, but anything Guild Operations describes as participation belongs to a concrete Guild Activity.
 
 When an active Guild Activity exposes participation, its current participation availability may be described as:
 
-- **open** — new participation may currently be established;
-- **closed** — new participation may not currently be established.
+- **open** — eligible participants may currently establish new participation intent;
+- **closed** — new participation intent may not currently be established.
 
-Open and closed are participation adjectives of an active activity, not peer lifecycle states. Closed participation does not conclude the activity and may be reversible when the domain permits it. Once the activity is concluded, current participation availability no longer applies.
+Open and closed are participation adjectives of an active Activity, not lifecycle states. Closed participation does not conclude the Activity and may be reversible when the domain permits it. Once the Activity concludes, current participation availability no longer applies.
 
-The detailed semantics of participant intent, organizer authority, revocation, establishment of participation, evidence, and operational protection are governed by [Participation Semantics](participation-semantics.md).
+### Intent and authority
 
-A Guild Activity without signup, registration, entry, or other participation machinery remains a legitimate Guild Activity.
+Eligible participants are authoritative for declaring their own willful intent to participate. Declaring intent does not by itself prove that participation occurred or, where the domain distinguishes them, that an organizer established the participant's procedural place in the Activity.
+
+Organizer authority is distinct from participant authority. A domain may allow organizers to accept or disallow declared intent, establish expected participation, modify an established arrangement, or withdraw it. Similar consequences across Activities do not imply a generic approval workflow.
+
+Where the domain permits, a participant may revoke their own durable declaration. Revocation preserves the historical fact that the declaration existed while ending its ongoing procedural effect. The domain owns when revocation remains legitimate.
+
+Application operations should describe their semantic effect rather than their persistence verb. **Establish** means authoritative truth begins to exist; **modify** changes existing truth while retaining continuity; **revoke** is a participant retracting their own declaration where permitted; **withdraw** ends concrete authoritative truth. Domains retain more specific language where their actual mechanics differ.
+
+### Participation evidence
+
+Software preserves only the strongest participation fact it can legitimately establish.
+
+Intent is not proof of occurrence. Organizer establishment of expected participation is not proof of actual attendance. A domain may mechanically possess stronger evidence where its procedure actually creates it.
+
+Each Activity domain owns what participation evidence remains historically significant and how it survives conclusion. Different retention behavior is legitimate when the underlying human procedure has different consequences.
+
+### Participation protection
+
+A domain owns temporal and operational rules protecting its participation ceremony. Ordinary modification must not invalidate authoritative procedural truth already established under an Activity's terms or manufacture participation that could not legitimately occur under those terms.
+
+Shared policy should become Guild Activity doctrine only when the semantic rule is genuinely universal to Guild Activity participation. Similar current rules in multiple concrete domains remain domain policy until that stronger claim is earned.
+
+## Attribution
+
+Meaningful authoritative Activity mutations should preserve sufficient nearby attribution to recover, where meaningful:
+
+- the subject whose truth changed;
+- the actor who made the declaration or decision;
+- the authority under which that actor acted;
+- the resulting authoritative truth;
+- when it happened; and
+- the reason, when reason is part of the ceremony.
+
+Subject and actor remain distinct even when the same person commonly occupies both roles. This does not require a universal audit framework; attribution stays with the domain truth or history that gives it meaning.
 
 ## Domain ownership
 
@@ -61,21 +94,25 @@ Guild Activity governance standardizes semantic meaning, not implementation. Eac
 
 - establishment and modification procedure;
 - authoritative temporal facts and their representation;
-- the rules that determine whether the activity is active or concluded;
-- any participation procedure and its open/closed rules;
+- the rules determining whether the Activity is active or concluded;
+- any participation procedure, authority, availability, protection, and evidence;
 - conclusion kinds and consequences;
 - persistence and historical evidence;
 - application operations and authority.
 
-Do not introduce a generic Guild Activity table, superclass, lifecycle engine, registry, shared status column, or mandatory application interface merely to encode this vocabulary.
+Do not introduce a generic Guild Activity table, superclass, lifecycle engine, registry, shared status column, participation framework, approval workflow, or mandatory application interface merely to encode this vocabulary.
 
 ## Semantic events and emissions
 
-A Guild Activity domain owns which meaningful system events are significant enough to publish as semantic emissions. This doctrine does not require establishment, modification, conclusion, cancellation, participation changes, or any other occurrence to be emitted.
+A Guild Activity domain owns which meaningful system events are significant enough to publish as semantic emissions. Authoritative state change and communicative significance are separate concerns.
 
-When a domain does publish an event, it follows the application-wide semantic emission code shape. A domain may, for example, publish establishment as `raid.established` or `raffle.established`. Standardizing emission syntax does not standardize emission obligation.
+This doctrine does not require establishment, modification, conclusion, cancellation, participation changes, or any other occurrence to be emitted. A domain may also contain authoritative working state whose intermediate mutations are truthful without each mutation constituting a meaningful announcement.
 
-Consumers independently decide which published events matter to them. A consumer reacting to an activity's emissions does not acquire lifecycle authority over the activity, and the consumer cannot require the domain to publish an event merely because that event would be useful to it.
+When a domain publishes an event, it follows the application-wide semantic emission code shape. A domain may, for example, publish establishment as `raid.established` or `raffle.established`. Standardizing emission syntax does not standardize emission obligation.
+
+Consumers independently decide which published events matter to them. A consumer reacting to an Activity's emissions does not acquire lifecycle authority over the Activity, and a consumer cannot require the domain to publish an event merely because that event would be useful to it.
+
+Where a concrete human ceremony contains an explicit communication boundary, the owning domain should preserve that boundary rather than infer communication from every mutation. Such boundaries remain domain-specific until repeated pressure earns something broader.
 
 ## Consumers and projections
 
@@ -89,6 +126,8 @@ Likewise, the public `/events` surface is a human-facing projection and discover
 
 Raid and Raffle are paired pressure tests of this doctrine. They share the Guild Activity semantic family while retaining different domain mechanics.
 
-Raid derives natural conclusion from occurrence time and may destructively cancel a pre-occurrence activity. Raffle persists explicit conclusion facts and preserves cancellation because consequential participation evidence may require later reconciliation.
+Raid derives natural conclusion from occurrence time and may destructively cancel a pre-occurrence Activity. Raffle persists explicit conclusion facts and preserves cancellation because consequential participation evidence may require later reconciliation.
+
+Their current participation timing, mutability, assignment, adjudication, communication, and retention rules belong to those concrete domains unless a genuinely universal Guild Activity semantic is established.
 
 Those differences are evidence of domain ownership, not exceptions to Guild Activity governance.
