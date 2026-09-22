@@ -1,26 +1,26 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../auth.js";
 import type { AssetRegistry } from "../assets.js";
-import { renderPage } from "../render.js";
+import { htmlText, renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
 
 const effectiveDate = "September 7, 2026";
 
-function documentHeader(title: string, summary: string): string {
+function documentHeader(guildName: string, title: string, summary: string): string {
   return `<div class="site-document-header">
-    <p class="eyebrow">OH CRIT I Pulled!</p>
+    <p class="eyebrow">${htmlText(guildName)}</p>
     <h1>${title}</h1>
     <p class="lede">${summary}</p>
   </div>`;
 }
 
-function privacyBody(): string {
+function privacyBody(guildName: string): string {
   return `<article class="site-document">
     <p class="site-document-effective">Effective ${effectiveDate}</p>
 
     <section>
       <h2>About this site</h2>
-      <p>This website supports participation in the World of Warcraft guild OH CRIT I Pulled!. It is privately operated for the guild and is not operated by, sponsored by, or affiliated with Blizzard Entertainment or Discord.</p>
+      <p>This website supports participation in the World of Warcraft guild ${htmlText(guildName)}. It is privately operated for the guild and is not operated by, sponsored by, or affiliated with Blizzard Entertainment or Discord.</p>
     </section>
 
     <section>
@@ -46,7 +46,7 @@ function privacyBody(): string {
 
     <section>
       <h2>External services</h2>
-      <p>The site communicates with Blizzard to authenticate accounts and obtain Blizzard-owned World of Warcraft information. If you connect Discord, it communicates with Discord to establish that association and may use the guild's Discord integration to manage guild-defined roles. Links to Blizzard, Raider.IO, Warcraft Logs, and Discord take you to services with their own privacy practices.</p>
+      <p>The site communicates with Blizzard to authenticate accounts and obtain Blizzard-owned World of Warcraft information. If you connect Discord, it communicates with Discord to establish that association and may use the guild's Discord integration to manage guild-defined roles. Links to Blizzard, Discord, and other third-party services take you to services with their own privacy practices.</p>
     </section>
 
     <section>
@@ -61,13 +61,13 @@ function privacyBody(): string {
   </article>`;
 }
 
-function termsBody(): string {
+function termsBody(guildName: string): string {
   return `<article class="site-document">
     <p class="site-document-effective">Effective ${effectiveDate}</p>
 
     <section>
       <h2>Purpose</h2>
-      <p>Guild Operations exists to support participation in OH CRIT I Pulled! outside World of Warcraft while remaining connected to the guild's activity in WoW and Discord. It is a private guild service, not a Blizzard Entertainment or Discord service.</p>
+      <p>Guild Operations exists to support participation in ${htmlText(guildName)} outside World of Warcraft while remaining connected to the guild's activity in WoW and Discord. It is a private guild service, not a Blizzard Entertainment or Discord service.</p>
     </section>
 
     <section>
@@ -83,7 +83,7 @@ function termsBody(): string {
 
     <section>
       <h2>World of Warcraft and external services</h2>
-      <p>Blizzard remains authoritative for Blizzard-owned facts such as authenticated account control, characters, current guild membership, and numeric guild rank. Discord remains responsible for its own service. Raider.IO, Warcraft Logs, and other linked services are independent services. Their availability, data, and terms are outside Guild Operations' control.</p>
+      <p>Blizzard remains authoritative for Blizzard-owned facts such as authenticated account control, characters, current guild membership, and numeric guild rank. Discord remains responsible for its own service. Other linked third-party services are independent services. Their availability, data, and terms are outside Guild Operations' control.</p>
     </section>
 
     <section>
@@ -113,12 +113,12 @@ export async function registerSiteInformationPages(app: FastifyInstance, assets:
     const viewer = await viewerForRequest(request.cookies[SESSION_COOKIE_NAME]);
     return reply.type("text/html; charset=utf-8").send(renderPage(assets, {
       pathname: "/privacy",
-      title: "Privacy — OH CRIT I Pulled!",
-      description: "Privacy information for the OH CRIT I Pulled! guild website.",
+      title: `Privacy — ${viewer.guildPresentation.guildName}`,
+      description: `Privacy information for the ${viewer.guildPresentation.guildName} guild website.`,
       viewer,
       stylesheets: ["site-information.css"],
-      header: documentHeader("Privacy", "What Guild Operations uses, why it uses it, and where that information comes from."),
-      body: privacyBody(),
+      header: documentHeader(viewer.guildPresentation.guildName, "Privacy", "What Guild Operations uses, why it uses it, and where that information comes from."),
+      body: privacyBody(viewer.guildPresentation.guildName),
     }));
   });
 
@@ -126,12 +126,12 @@ export async function registerSiteInformationPages(app: FastifyInstance, assets:
     const viewer = await viewerForRequest(request.cookies[SESSION_COOKIE_NAME]);
     return reply.type("text/html; charset=utf-8").send(renderPage(assets, {
       pathname: "/terms",
-      title: "Terms — OH CRIT I Pulled!",
-      description: "Terms for using the OH CRIT I Pulled! guild website.",
+      title: `Terms — ${viewer.guildPresentation.guildName}`,
+      description: `Terms for using the ${viewer.guildPresentation.guildName} guild website.`,
       viewer,
       stylesheets: ["site-information.css"],
-      header: documentHeader("Terms", "The practical ground rules for using the guild's participation site."),
-      body: termsBody(),
+      header: documentHeader(viewer.guildPresentation.guildName, "Terms", "The practical ground rules for using the guild's participation site."),
+      body: termsBody(viewer.guildPresentation.guildName),
     }));
   });
 }
