@@ -4,24 +4,15 @@ Guild Operations exists to mechanically encode human guild participation without
 
 This doctrine records the semantic distinctions earned by comparing concrete participation modules. It is vocabulary and design constraint, not a generic participation framework, lifecycle engine, persistence model, or event superclass.
 
-## Activity existence and availability
+## Relationship to Guild Activity
 
-A participation activity is **established** when its concrete authoritative domain truth exists.
+Participation semantics are subordinate to [Guild Activity](guild-activity.md). They apply only when a Guild Activity exposes participation machinery.
 
-Whether that activity currently accepts new participation intent is a separate fact:
+Guild Activity doctrine owns activity existence, establishment, active/concluded lifecycle meaning, temporal identity, and domain-owned conclusion semantics. This doctrine does not redefine those concepts.
 
-- **open** — eligible participants may establish new participation intent;
-- **closed** — new participation intent may not be established.
+While a Guild Activity is active, participation availability may be **open** or **closed**. Open means eligible participants may establish new participation intent; closed means new participation intent may not be established. Operator action, temporal policy, or another domain rule may produce the same availability state. Closed participation does not conclude the Activity and may be reversible where the domain permits it.
 
-Open and closed describe what is true, not how it became true. Operator action, temporal policy, or another domain rule may establish the same resulting availability state.
-
-An established activity may therefore be closed before it opens, open for participation, or closed again while it remains operational. A domain may also have a reversible admission gate that temporarily prevents new intent without establishing irreversible closure.
-
-An activity is **concluded** when it is no longer operationally available but remains historical truth about an activity that existed or occurred.
-
-An activity is **withdrawn** when its authoritative concrete domain truth ceases to exist. Whether withdrawal is legitimate and what dependent state survives are domain questions.
-
-Conclusion and withdrawal are not interchangeable. Historical retention follows consequential domain truth, not a generic requirement to preserve every preparation record.
+Once the Guild Activity concludes, current participation availability no longer applies. Historical retention of the Activity and its participation evidence remains domain-owned.
 
 ## Participation intent and authority
 
