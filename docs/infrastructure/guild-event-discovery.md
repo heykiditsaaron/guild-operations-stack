@@ -84,7 +84,7 @@ Calendar persistence does not copy titles, categories, destinations, participati
 
 Modules do not publish Calendar-shaped objects. They publish semantic emissions into application-wide emission transport. Calendar is one consumer of that transport and explicitly registers interest in the top-level activity emissions that can establish, move, reconcile, or withdraw temporal points.
 
-The current Calendar-producing emissions are operationally produced after authoritative operations complete. Calendar does not own emission production or transport, and it is not privileged over other consumers. Future Discord, Push, or other consumers may independently subscribe to the same emissions and perform entirely different work after receipt. Domain-defined temporal production may also enter the same transport without making Calendar responsible for scheduling or producing those occurrences.
+The current Calendar-producing emissions are operationally published durably in the same database transaction as their authoritative operation or observed transition, then delivered to Calendar after that transaction commits. Calendar does not own emission production or transport, and it is not privileged over other consumers. Future Discord, Push, or other consumers may independently subscribe to the same emissions and perform entirely different work after receipt. Domain-defined temporal production may also enter the same transport without making Calendar responsible for scheduling or producing those occurrences.
 
 Current lifecycle handling is:
 
