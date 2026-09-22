@@ -38,74 +38,17 @@
   font-weight: 500;
 }
 
-.raffle-plaque-wrap {
-  padding-top: clamp(2.5rem, 8vw, 4.75rem);
+.raffle-occurrence-list {
+  display: grid;
+  gap: 1.25rem;
 }
 
-.raffle-plaque {
-  position: relative;
-  isolation: isolate;
-  overflow: visible;
-  padding: clamp(1.4rem, 5vw, 2.25rem);
-  border: 1px solid rgba(238, 201, 124, 0.3);
-  border-radius: 1.35rem;
-  background:
-    radial-gradient(circle at 78% 0%, rgba(216, 156, 51, 0.14), transparent 18rem),
-    linear-gradient(145deg, rgba(43, 35, 24, 0.96), rgba(19, 19, 22, 0.98) 62%);
-  box-shadow:
-    0 1.5rem 4.5rem rgba(0, 0, 0, 0.32),
-    inset 0 1px rgba(255, 255, 255, 0.035);
-}
-
-.raffle-plaque-art {
-  position: absolute;
-  z-index: -1;
-  top: clamp(-3.4rem, -7vw, -2rem);
-  right: clamp(-1.15rem, -2vw, -0.35rem);
-  width: clamp(9rem, 28vw, 16rem);
-  max-height: 16rem;
-  object-fit: contain;
-  object-position: top right;
-  pointer-events: none;
-  user-select: none;
-  filter: drop-shadow(0 1.2rem 1.7rem rgba(0, 0, 0, 0.38));
-}
-
-.raffle-plaque-copy {
-  position: relative;
-  z-index: 1;
-  max-width: 34rem;
-}
-
-.raffle-live-kicker,
-.raffle-plaque-label {
-  margin: 0;
-  color: #e8c986;
-  font-size: 0.76rem;
-  font-weight: 750;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.raffle-live-kicker {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  padding-right: 7rem;
-}
-
-.raffle-live-kicker::before {
-  content: "";
-  width: 0.55rem;
-  height: 0.55rem;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  background: #7cc68d;
-  box-shadow: 0 0 1rem rgba(124, 198, 141, 0.52);
+.raffle-occurrence-card {
+  width: min(100%, 46rem);
 }
 
 .raffle-countdown-block {
-  margin-top: clamp(1.75rem, 6vw, 2.7rem);
+  margin-top: clamp(1.5rem, 5vw, 2.25rem);
 }
 
 .raffle-countdown {
@@ -129,76 +72,16 @@
   letter-spacing: -0.03em;
 }
 
-.raffle-stats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
-  margin: clamp(2rem, 7vw, 3rem) 0 0;
-}
-
-.raffle-stat {
-  min-width: 0;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(238, 201, 124, 0.17);
-}
-
 .raffle-stat-value {
-  display: block;
-  margin-top: 0.4rem;
-  font-size: clamp(1.5rem, 5vw, 2.35rem);
-  font-weight: 750;
-  line-height: 1.05;
+  font-size: clamp(1.35rem, 4vw, 2rem);
 }
 
 .raffle-drawing {
-  margin-top: clamp(1.8rem, 6vw, 2.5rem);
+  margin-top: 0;
 }
 
 .raffle-drawing time {
-  display: block;
-  margin-top: 0.42rem;
-  color: #f7f4ea;
-  font-size: clamp(1rem, 3.5vw, 1.18rem);
-  font-weight: 700;
-}
-
-.raffle-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: clamp(2rem, 7vw, 3rem);
-}
-
-.raffle-action {
-  min-height: 3rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.72rem 1rem;
-  border: 1px solid rgba(232, 201, 134, 0.34);
-  border-radius: 0.75rem;
-  background: rgba(232, 201, 134, 0.08);
-  color: #e8c986;
-  font-weight: 750;
-  text-decoration: none;
-}
-
-.raffle-action:hover,
-.raffle-action:focus-visible {
-  border-color: rgba(232, 201, 134, 0.56);
-  background: rgba(232, 201, 134, 0.13);
-}
-
-.raffle-action-secondary {
-  border-color: rgba(255, 255, 255, 0.11);
-  background: rgba(255, 255, 255, 0.035);
-  color: #f7f4ea;
-}
-
-.raffle-action-secondary:hover,
-.raffle-action-secondary:focus-visible {
-  border-color: rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.065);
+  color: inherit;
 }
 
 .raffle-reference-links {
@@ -487,44 +370,11 @@
 }
 
 @media (max-width: 34rem) {
-  .raffle-plaque {
-    padding-top: 1.55rem;
-  }
-
-  .raffle-plaque-art {
-    top: -2.5rem;
-    right: -0.65rem;
-    width: 9rem;
-  }
-
-  .raffle-live-kicker {
-    padding-right: 5.5rem;
-  }
-
   .raffle-stats {
     grid-template-columns: 1fr;
   }
 
-  .raffle-actions,
-  .raffle-reference-links {
-    grid-template-columns: 1fr;
-  }
-
-  .raffle-actions {
-    display: grid;
-  }
-
-  .raffle-action {
-    width: 100%;
-  }
-
-  .raffle-claims-toolbar .raffle-action {
-    width: auto;
-  }
-
-  .raffle-entry-success .raffle-action {
-    justify-self: stretch;
-  }
+  .raffle-reference-links { grid-template-columns: 1fr; }
 
   .raffle-history-fact {
     grid-template-columns: 1fr;
