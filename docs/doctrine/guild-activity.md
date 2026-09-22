@@ -108,9 +108,11 @@ A Guild Activity domain owns which meaningful system events are significant enou
 
 This doctrine does not require establishment, modification, conclusion, cancellation, participation changes, or any other occurrence to be emitted. A domain may also contain authoritative working state whose intermediate mutations are truthful without each mutation constituting a meaningful announcement.
 
-When a domain publishes an event, it follows the application-wide semantic emission code shape. A domain may, for example, publish establishment as `raid.established` or `raffle.established`. Standardizing emission syntax does not standardize emission obligation.
+When a domain publishes an event, it follows the application-wide semantic emission contract defined by [Architecture](architecture.md). A domain may, for example, publish establishment as `raid.established` or `raffle.established`. Standardizing emission syntax and transport does not standardize emission obligation.
 
-Consumers independently decide which published events matter to them. A consumer reacting to an Activity's emissions does not acquire lifecycle authority over the Activity, and a consumer cannot require the domain to publish an event merely because that event would be useful to it.
+Guild Activity emissions may be produced directly by meaningful authoritative operations or by domain-defined temporal thresholds. For example, a Raid may eventually define a meaningful pre-occurrence threshold without making Calendar, scheduling machinery, or another consumer authoritative for that Raid meaning.
+
+Consumers independently decide which published events matter to them. A consumer reacting to an Activity's emissions does not acquire lifecycle authority over the Activity, and a consumer cannot require the domain to publish an event merely because that event would be useful to it. After receipt, each consumer owns its own consequential work; transport does not encode Calendar, Discord, Push, audience, or other consumer-specific behavior.
 
 Where a concrete human ceremony contains an explicit communication boundary, the owning domain should preserve that boundary rather than infer communication from every mutation. Such boundaries remain domain-specific until repeated pressure earns something broader.
 
