@@ -1,4 +1,5 @@
-import { emit } from "../../emissions/registry.js";
+import { withTransaction } from "../../db.js";
+import { deliverEmission, publishEmission } from "../../emissions/registry.js";
 import {
   RAFFLE_CLAIMS_CAPABILITY,
   RAFFLE_DRAW_CAPABILITY,
@@ -45,16 +46,24 @@ export {
 
 export async function establishRaffle(actorGuildieId: string, terms: RaffleTerms): Promise<Raffle> {
   await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_MODIFY_CAPABILITY);
-  const raffle = await establishRaffleDomain(actorGuildieId, terms);
-  await emit({ code: "raffle.established", subject: raffle.raffleId });
-  return raffle;
+  const persisted = await withTransaction(async (client) => {
+    const raffle = await establishRaffleDomain(actorGuildieId, terms, client);
+    const publication = await publishEmission(client, { code: "raffle.established", subject: raffle.raffleId });
+    return { raffle, publication };
+  });
+  await deliverEmission(persisted.publication);
+  return persisted.raffle;
 }
 
 export async function modifyRaffle(actorGuildieId: string, raffleId: string, terms: RaffleTerms): Promise<Raffle> {
   await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_MODIFY_CAPABILITY);
-  const raffle = await modifyRaffleDomain(actorGuildieId, raffleId, terms);
-  await emit({ code: "raffle.modified", subject: raffle.raffleId });
-  return raffle;
+  const persisted = await withTransaction(async (client) => {
+    const raffle = await modifyRaffleDomain(actorGuildieId, raffleId, terms, client);
+    const publication = await publishEmission(client, { code: "raffle.modified", subject: raffle.raffleId });
+    return { raffle, publication };
+  });
+  await deliverEmission(persisted.publication);
+  return persisted.raffle;
 }
 
 export async function openRaffleParticipation(actorGuildieId: string, raffleId: string): Promise<Raffle> {
@@ -74,9 +83,13 @@ export async function resumeRaffleParticipation(actorGuildieId: string, raffleId
 
 export async function cancelRaffle(actorGuildieId: string, raffleId: string): Promise<Raffle> {
   await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_STAGE_CAPABILITY);
-  const raffle = await cancelRaffleDomain(actorGuildieId, raffleId);
-  await emit({ code: "raffle.cancelled", subject: raffle.raffleId });
-  return raffle;
+  const persisted = await withTransaction(async (client) => {
+    const raffle = await cancelRaffleDomain(actorGuildieId, raffleId, client);
+    const publication = await publishEmission(client, { code: "raffle.cancelled", subject: raffle.raffleId });
+    return { raffle, publication };
+  });
+  await deliverEmission(persisted.publication);
+  return persisted.raffle;
 }
 
 export async function establishRaffleClaim(
@@ -105,7 +118,12 @@ export async function denyRaffleClaim(actorGuildieId: string, claimId: string, r
 
 export async function drawRaffle(actorGuildieId: string, raffleId: string): Promise<Raffle> {
   await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_DRAW_CAPABILITY);
-  const concluded = await drawRaffleDomain(actorGuildieId, raffleId);
+  const persisted = await withTransaction(async (client) => {
+    const raffle = await drawRaffleDomain(actorGuildieId, raffleId, client);
+    const publication = await publishEmission(client, { code: "raffle.concluded", subject: raffle.raffleId });
+    return { raffle, publication };
+  });
+  const concluded = persisted.raffle;
   if (concluded.conclusion === "drawn" && !concluded.winningClaimId) {
     console.error(`[raffle] drawn Raffle ${concluded.raffleId} is missing its winning claim`);
     await publishRaffleOperationalException({
@@ -115,7 +133,7 @@ export async function drawRaffle(actorGuildieId: string, raffleId: string): Prom
       details: { raffle_id: concluded.raffleId, conclusion: concluded.conclusion },
     });
   }
-  await emit({ code: "raffle.concluded", subject: concluded.raffleId });
+  await deliverEmission(persisted.publication);
   return concluded;
 }
 
