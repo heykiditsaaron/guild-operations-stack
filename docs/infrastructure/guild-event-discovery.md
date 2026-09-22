@@ -1,18 +1,18 @@
-# Guild Event Discovery
+# Activity Discovery
 
-Guild Event discovery is shared infrastructure with two independent contracts:
+Activity discovery is shared presentation infrastructure with two independent contracts:
 
 ```text
-Guild Event Offering
+Activity Offering
     → What participation does the guild offer?
 
-Guild Calendar Event
+Guild Calendar Point
     → What concrete guild occurrence happens when?
 ```
 
-A capability may expose an enduring Offering without any scheduled occurrence. A guild occurrence may also be placed on the Calendar without belonging to an internal module.
+A capability may expose an enduring Offering without any concrete Guild Activity currently existing. Calendar points represent temporal projection state for authoritative subjects; Calendar itself is not a Guild Activity module.
 
-## Guild Event Offerings
+## Activity Offerings
 
 Use an Offering when the Events shell should be able to promote an enduring participation capability even when no concrete occurrence is scheduled.
 
@@ -110,9 +110,9 @@ A Calendar presentation begins with the persisted temporal point, then queries i
 
 ## Relationship between the contracts
 
-An Offering may exist with zero Calendar events. A Calendar event may describe an occurrence related to an Offering, but neither contract establishes the other's truth.
+An Offering may exist with zero Calendar points. A Calendar point may describe an occurrence related to an Offering, but neither contract establishes the other's truth.
 
-The Events shell may consume both because it presents both enduring participation discovery and temporal discovery. That shared consumer does not collapse the contracts into one event model.
+The Events shell may consume both because it presents both enduring participation discovery and temporal discovery. That shared consumer does not collapse the contracts into one activity model.
 
 ## Extending discovery infrastructure
 
