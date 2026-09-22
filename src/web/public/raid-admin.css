@@ -61,7 +61,7 @@
 .raid-operation-card .activity-card-header p,
 .raid-operation-card-description {
   margin: 0.35rem 0 0;
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.9rem;
 }
 
@@ -80,7 +80,7 @@
 }
 
 .raid-admin-empty {
-  color: #aaa69c;
+  color: var(--theme-text-muted);
 }
 
 .raid-title-bar,
@@ -118,7 +118,7 @@
 .raid-workspace-heading p,
 .raid-scoreboard-empty,
 .raid-pool-empty {
-  color: #aaa69c;
+  color: var(--theme-text-muted);
 }
 
 .raid-title-bar p {
@@ -219,7 +219,7 @@
   padding: 0.18rem 0.4rem;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 999px;
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.68rem;
   line-height: 1.25;
 }
@@ -339,7 +339,7 @@
 .raid-participant-card span,
 .raid-participant-card small {
   overflow: hidden;
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.68rem;
   line-height: 1.22;
   text-overflow: ellipsis;
@@ -481,7 +481,7 @@
 }
 
 .raid-spec-dialog p {
-  color: #aaa69c;
+  color: var(--theme-text-muted);
 }
 
 .raid-spec-dialog [data-raid-spec-options] {
