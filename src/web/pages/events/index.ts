@@ -160,7 +160,7 @@ function renderEventItem(item: CalendarOccurrence, canOperate: boolean): string 
     : "";
 
   return `
-    <article class="events-item">
+    <article class="events-item" data-calendar-occurrence data-start-unix="${occursAt[0]}" data-end-unix="${occursAt.length === 2 ? occursAt[1] : occursAt[0]}">
       <a class="events-item-main events-item-link" href="${publicHref}" aria-label="${publicLabel}: ${title}">
         <div class="events-item-copy">
           <p class="events-item-category">${category}</p>
@@ -204,6 +204,7 @@ function emptyCalendarState(): string {
 function renderCalendar(
   happeningNow: CalendarOccurrence[],
   upcoming: CalendarOccurrence[],
+  occurrences: CalendarOccurrence[],
   canOperate: (event: CalendarOccurrence) => boolean,
 ): string {
   const calendarBody = happeningNow.length || upcoming.length
@@ -216,8 +217,36 @@ function renderCalendar(
 
   return `
     <section class="events-calendar-widget" aria-labelledby="events-calendar-title">
-      <h2 class="eyebrow events-calendar-title" id="events-calendar-title">What&apos;s happening</h2>
-      ${calendarBody}
+      <div class="events-calendar-heading">
+        <h2 class="eyebrow events-calendar-title" id="events-calendar-title">What&apos;s happening</h2>
+        <div class="events-view-switcher" role="group" aria-label="Calendar view">
+          <button type="button" class="events-view-option is-active" data-calendar-view="agenda" aria-pressed="true">Agenda</button>
+          <button type="button" class="events-view-option" data-calendar-view="week" aria-pressed="false">Week</button>
+          <button type="button" class="events-view-option" data-calendar-view="month" aria-pressed="false">Month</button>
+        </div>
+      </div>
+      <div class="events-view-panel" data-calendar-panel="agenda">
+        ${calendarBody}
+      </div>
+      <div class="events-view-panel" data-calendar-panel="week" hidden>
+        <div class="events-period-toolbar">
+          <button type="button" class="button button-secondary events-period-nav" data-calendar-shift="-1" aria-label="Previous week">←</button>
+          <strong data-calendar-period-label></strong>
+          <button type="button" class="button button-secondary events-period-nav" data-calendar-shift="1" aria-label="Next week">→</button>
+        </div>
+        <div class="events-week" data-calendar-week></div>
+      </div>
+      <div class="events-view-panel" data-calendar-panel="month" hidden>
+        <div class="events-period-toolbar">
+          <button type="button" class="button button-secondary events-period-nav" data-calendar-shift="-1" aria-label="Previous month">←</button>
+          <strong data-calendar-period-label></strong>
+          <button type="button" class="button button-secondary events-period-nav" data-calendar-shift="1" aria-label="Next month">→</button>
+        </div>
+        <div class="events-month" data-calendar-month></div>
+      </div>
+      <div class="events-calendar-source" hidden>
+        ${occurrences.map((event) => renderEventItem(event, canOperate(event))).join("\n")}
+      </div>
     </section>`;
 }
 
@@ -278,7 +307,7 @@ export async function registerEventsPage(app: FastifyInstance, assets: AssetRegi
     const guildCommunity = guild ? `${htmlText(guild.name)}&apos;s community` : "the guild&apos;s community";
     const body = `
       <div class="events-shell">
-        ${renderCalendar(happeningNow, upcoming, canOperateOccurrence)}
+        ${renderCalendar(happeningNow, upcoming, occurrences, canOperateOccurrence)}
         ${renderOfferings(offerings, assets)}
       </div>`;
 
@@ -288,6 +317,7 @@ export async function registerEventsPage(app: FastifyInstance, assets: AssetRegi
       description: "Discover OH CRIT I Pulled! guild participation offerings and current or upcoming events.",
       viewer,
       stylesheets: ["events.css"],
+      scripts: ["events.js"],
       header: `
         <div class="events-page-header-row">
           <div class="events-page-header">
