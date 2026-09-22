@@ -214,6 +214,22 @@ function renderFooter(viewer: WebViewer): string {
   </div></footer>`;
 }
 
+export type PublicOccurrenceAction = { label: string; href: string; kind?: "primary" | "secondary" };
+export type PublicOccurrenceFrame = {
+  title: string;
+  state: string;
+  active?: boolean;
+  description?: string;
+  facts: string;
+  actions?: readonly PublicOccurrenceAction[];
+  detail?: string;
+};
+
+export function renderPublicOccurrence(input: PublicOccurrenceFrame): string {
+  const actions = (input.actions ?? []).map((action) => `<a class="button-${action.kind ?? "secondary"}" href="${escapeHtml(action.href)}">${escapeHtml(action.label)}</a>`).join("");
+  return `<article class="public-occurrence"><header class="public-occurrence-header"><div class="public-occurrence-identity"><h1>${escapeHtml(input.title)}</h1><p class="status${input.active ? " status-active" : ""}">${escapeHtml(input.state)}</p>${input.description ? `<div class="public-occurrence-description">${input.description}</div>` : ""}</div></header><div class="public-occurrence-facts facts">${input.facts}</div>${actions ? `<nav class="public-occurrence-actions" aria-label="Occurrence actions">${actions}</nav>` : ""}${input.detail ? `<div class="public-occurrence-detail">${input.detail}</div>` : ""}</article>`;
+}
+
 export type OccurrenceOperationsMode = { label: string; href: string; current?: boolean };
 export type OccurrenceOperationsFrame = {
   title: string;
