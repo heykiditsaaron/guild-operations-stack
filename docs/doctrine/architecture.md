@@ -32,25 +32,41 @@ Guild Operations should automate procedure, enforcement, recording, resolution, 
 
 Global machinery is the canonical application substrate for state and relationships that belong to Guild Operations as a whole.
 
-Authoritative persistence and external observations are translated into named application contracts before consumers interpret them. Internal consumers and external consumers must depend on the same application meanings. Web presentation, Discord integrations, schedulers, administrative tooling, future modules, and REST interfaces may express or invoke those contracts differently, but they must not independently reconstruct alternate versions of the same global truth.
+Authoritative persistence and external observations are translated into named application contracts before consumers interpret them. Internal and external consumers depend on the same application meanings. Web presentation, Discord integrations, schedulers, administrative tooling, modules, and REST interfaces may express or invoke those contracts differently, but they must not independently reconstruct alternate versions of the same truth.
 
 The dependency direction is:
 
 ```text
 external authority / persistence
             ↓
-    global application contracts
+    application contracts
             ↓
         consumers
 ```
 
-A consumer should not need to know how global state is persisted in order to use it correctly. Direct persistence access is appropriate inside the machinery that owns and establishes a global contract; it is not an alternate contract for downstream consumers.
+A consumer should not need to know how state is persisted in order to use it correctly. Direct persistence access is appropriate inside the machinery that owns and establishes a contract; it is not an alternate contract for downstream consumers.
 
-REST preparedness is a consequence of this coherence rather than a separate architecture. The promoted global REST namespace is `/api/v1`; it serializes and authorizes established application contracts rather than introducing a second interpretation of Guild Operations state. Resources and operations are added beneath that namespace only when a concrete consumer need earns them.
+REST preparedness is a consequence of this coherence rather than a separate architecture. The promoted global REST namespace is `/api/v1`; it serializes and authorizes established application contracts rather than introducing a second interpretation of Guild Operations state. Resources and operations are added only when concrete consumer pressure earns them.
 
-Concrete shared infrastructure may also accept projections from an owning procedure. Calendar points and Operational Records are examples: their contracts define the shared meaning accepted by the infrastructure without transferring ownership of the underlying producer truth.
+Concrete shared infrastructure may accept projections from an owning procedure. Calendar points and Operational Records are examples: their contracts define the shared meaning accepted by the infrastructure without transferring ownership of the underlying producer truth.
 
-Do not introduce a generic application framework, universal object model, or speculative contract registry to enforce this rule. Establish concrete contracts for actual global state and relationships as they are needed.
+Do not introduce a generic application framework, universal object model, or speculative contract registry to enforce this rule. Establish concrete contracts as actual state and relationships require them.
+
+## Semantic ownership and persistence
+
+Persistence ownership follows semantic ownership.
+
+A fact is not globally owned merely because it is stored in the same database, referenced by many consumers, or projected through shared infrastructure. Guild Operations globally owns durable application facts whose meaning belongs to the application as a whole. A concrete module owns durable facts created by its own procedure. Shared infrastructure may own storage and enforcement of its own contract while a producer remains authoritative for the truth contributed through it.
+
+Persisting an external observation does not transfer authority from the system that established it. Blizzard observations may be retained by Guild Operations while Blizzard remains authoritative for the underlying Blizzard-owned facts.
+
+Derived state should not become a second independently persisted source of authority merely because it is useful. Historical procedure facts may be persisted by the procedure that established them without becoming mutable sources of current identity, membership, or rank truth.
+
+Persistence names actual objects and relationships. **Subject** is contextual language, not a persisted object category or universal coordinate.
+
+When deciding where durable state belongs, ask what concrete fact is being persisted, who owns its meaning, whether it is authoritative or observed, whether an existing owner should be referenced rather than duplicated, and whether shared storage has actually been earned. Place state with its semantic owner rather than whichever code path happens to write it first.
+
+Current transactional and operational persistence mechanics belong under [`../infrastructure/`](../infrastructure/).
 
 ## Member and authority model
 
@@ -58,7 +74,7 @@ Guild Operations deliberately distinguishes durable Guildie continuity from Bliz
 
 These concepts must not be collapsed merely because they currently describe the same human.
 
-The canonical member model lives in [`member-objects.md`](member-objects.md). Current Guildie participation and effective rank are defined in [`guild-authority.md`](guild-authority.md).
+The canonical member and organizational-authority model lives in [`member-objects.md`](member-objects.md).
 
 ## Subject is contextual language
 
@@ -76,27 +92,25 @@ Useful recognition cues currently include Character name, class or active specia
 
 > Prepare the seam, not the speculative feature.
 
-## Persistence and time
-
-Persistence ownership follows semantic ownership. Durable objects, external observations, guild-owned meaning, and historical participation must remain distinguishable even when they live in one database.
-
-The detailed ownership doctrine is in [`global-persistence.md`](global-persistence.md).
+## Time
 
 All newly persisted values representing instants in time use **Unix timestamps**. Human-readable date, time, and timezone are presentation concerns. Local wall-clock input must be converted before persistence, and server/container timezone must not become application policy.
 
 A temporal range uses two Unix values; an instant uses one. The owning contract defines their semantic meaning rather than introducing a speculative generic time framework.
 
-## Participation and shared machinery
+Legacy timestamp columns predating this rule are conformity debt. They do not weaken the rule for new persistence and should not trigger unrelated wholesale migrations.
 
-Concrete guild activities are the product pressure that should drive architecture.
+## Modules and concrete pressure
 
-A module owns a concrete guild capability and its procedure. Guild Activity modules are the semantic family for concrete lifecycle-bound temporal occurrences; participation is optional within that family. Shared machinery may project, organize, authorize, inspect, or otherwise support module-owned truth without silently becoming the owner of that truth.
+Concrete guild capabilities are the product pressure that should drive architecture.
+
+A module owns a concrete capability and its procedure. Shared machinery may project, organize, authorize, inspect, or otherwise support module-owned truth without silently becoming the owner of that truth.
 
 Shared abstractions should be introduced only after multiple real features demonstrate the need.
 
 > Build the guild activity. Let the common machinery reveal itself under pressure.
 
-Application-wide module invariants live in [`module-conformity.md`](module-conformity.md). Guild Activity semantics live in [`guild-activity.md`](guild-activity.md), with participation semantics subordinate to that doctrine when an Activity exposes participation.
+Application-wide module invariants live in [`module-conformity.md`](module-conformity.md). Guild Activity is one specialized semantic family governed by [`guild-activity.md`](guild-activity.md).
 
 Calendar and activity-discovery Offerings are current examples of earned shared presentation infrastructure. Calendar is not a Guild Activity module; it projects temporal truth owned elsewhere. Their operational contracts live under [`../infrastructure/`](../infrastructure/).
 
@@ -112,10 +126,10 @@ Current web implementation guidance lives in [`../infrastructure/web-rendering.m
 
 Identity and authority machinery are infrastructure, not the product destination. The current foundation is intentionally sufficient rather than exhaustive.
 
-When a new feature creates tension, prefer the smallest concrete change that lets the feature work correctly. Add another shared distinction only when a real guild activity proves it is necessary.
+When a new feature creates tension, prefer the smallest concrete change that lets the feature work correctly. Add another shared distinction only when real use proves it necessary.
 
 ## Documentation rule
 
 Doctrine records durable meaning and design constraints. Current machinery belongs in infrastructure documentation.
 
-Infrastructure may change substantially without changing this doctrine; when doctrine itself changes, the project has changed what it believes the system should mean.
+Infrastructure may change substantially without changing doctrine; when doctrine itself changes, the project has changed what it believes the system should mean.
