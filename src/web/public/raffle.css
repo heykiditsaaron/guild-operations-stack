@@ -180,31 +180,11 @@
 
 .raffle-form select,
 .raffle-form input {
-  min-height: 3rem;
   width: 100%;
-  padding: 0.65rem 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 0.65rem;
-  background: #17181d;
-  color: inherit;
 }
 
-.raffle-form button,
-.raffle-claim-cancel {
+.raffle-form .button-primary {
   min-height: 3rem;
-  padding: 0.7rem 1rem;
-  border: 1px solid rgba(232, 201, 134, 0.35);
-  border-radius: 0.7rem;
-  background: rgba(232, 201, 134, 0.08);
-  color: #e8c986;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.raffle-form button:disabled,
-.raffle-claim-cancel:disabled {
-  cursor: wait;
-  opacity: 0.58;
 }
 
 .raffle-form-status,
