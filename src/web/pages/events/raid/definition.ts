@@ -83,7 +83,7 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
 
     const html = renderPage(assets, {
       pathname: request.url,
-      title: `${raid.label} · Raid Operations · OH CRIT I Pulled! Guild Operations`,
+      title: `${raid.label} · Raid Operations · ${viewer.guildPresentation.guildName} Guild Operations`,
       description: raid.description ?? "Raid operations.",
       viewer,
       stylesheets: ["admin.css", "raid-admin.css"],
