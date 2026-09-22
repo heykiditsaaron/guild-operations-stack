@@ -63,7 +63,7 @@ The shared renderer still supports the previous module administration destinatio
 
 Published destinations are filtered against backend authority before they reach rendering. The selector is a projection of authorized legacy destinations, not an authorization boundary of its own. Module routes must continue enforcing their own authority requirements.
 
-Do not extend the legacy destination registration contract. New Administration behavior should target General or Permissions according to [`../doctrine/surface-roles.md`](../doctrine/surface-roles.md), and privileged domain operations should remain with the domain being operated.
+Do not extend the legacy destination registration contract. New Administration behavior should target General or Permissions according to [`../doctrine/module-conformity.md`](../doctrine/module-conformity.md), and privileged domain operations should remain with the domain being operated.
 
 ## Secondary navigation
 
