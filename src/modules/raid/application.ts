@@ -60,8 +60,8 @@ type RaidAction = "created" | "modified" | "assignment_established" | "assignmen
 function nowUnix():number { return Math.floor(Date.now()/1000); }
 export const RAID_OPERATIONAL_BUFFER_SECONDS = 60 * 60;
 export function raidHasOccurred(raid:RaidEventFacts, atUnix:number=nowUnix()):boolean { return atUnix>=raid.occursAt[0]; }
-export function raidSignupCutoffUnix(raid:RaidEventFacts):number { return raid.occursAt[0]-RAID_OPERATIONAL_BUFFER_SECONDS; }
-export function raidSignupsAreOpen(raid:RaidEventFacts, atUnix:number=nowUnix()):boolean { return atUnix<raidSignupCutoffUnix(raid); }
+export function raidSignupCutoffUnix(raid:Pick<RaidEventFacts, "occursAt">):number { return raid.occursAt[0]-RAID_OPERATIONAL_BUFFER_SECONDS; }
+export function raidSignupsAreOpen(raid:Pick<RaidEventFacts, "occursAt">, atUnix:number=nowUnix()):boolean { return atUnix<raidSignupCutoffUnix(raid); }
 function requireRaidSignupsOpen(raid:RaidEventFacts):void { if(!raidSignupsAreOpen(raid))throw new Error("Raid signups are frozen"); }
 function requireUpcomingRaid(raid:RaidEventFacts):void { if(raidHasOccurred(raid))throw new Error("Raid has already occurred"); }
 function requireFullOperationalBuffer(occursAt:readonly [number]|readonly [number,number]):void { if(occursAt[0]-nowUnix()<RAID_OPERATIONAL_BUFFER_SECONDS)throw new Error("Raid occurrence must preserve the full operational buffer"); }
