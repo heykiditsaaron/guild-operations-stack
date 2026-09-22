@@ -1,5 +1,4 @@
 import type { PoolClient } from "pg";
-import { withTransaction } from "../db.js";
 import type {
   Emission,
   EmissionConsumerRegistration,
@@ -85,7 +84,3 @@ export async function deliverEmission(publication: EmissionPublication): Promise
   }
 }
 
-export async function emit(input: Emission): Promise<void> {
-  const publication = await withTransaction((client) => publishEmission(client, input));
-  await deliverEmission(publication);
-}
