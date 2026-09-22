@@ -40,7 +40,11 @@ summary {
 }
 
 button,
-.button {
+.button,
+.button-primary,
+.button-secondary,
+.button-success,
+.button-destructive {
   min-height: 2.65rem;
   display: inline-flex;
   align-items: center;
@@ -60,13 +64,21 @@ button,
 }
 
 button:hover,
-.button:hover {
+.button:hover,
+.button-primary:hover,
+.button-secondary:hover,
+.button-success:hover,
+.button-destructive:hover {
   border-color: rgba(255, 255, 255, 0.22);
   background: rgba(255, 255, 255, 0.065);
 }
 
 button:focus-visible,
 .button:focus-visible,
+.button-primary:focus-visible,
+.button-secondary:focus-visible,
+.button-success:focus-visible,
+.button-destructive:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
@@ -75,7 +87,11 @@ select:focus-visible {
 }
 
 button:disabled,
-.button[aria-disabled="true"] {
+.button[aria-disabled="true"],
+.button-primary[aria-disabled="true"],
+.button-secondary[aria-disabled="true"],
+.button-success[aria-disabled="true"],
+.button-destructive[aria-disabled="true"] {
   cursor: not-allowed;
   opacity: 0.5;
 }
@@ -111,6 +127,110 @@ button:disabled,
 .button-destructive:hover {
   border-color: rgba(198, 105, 105, 0.5);
   background: rgba(198, 105, 105, 0.11);
+}
+
+.button-secondary {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.035);
+  color: #f7f4ea;
+}
+
+.button-secondary:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.065);
+}
+
+/* Shared presentation primitives. Domain surfaces compose these; themes own their visual expression. */
+.card {
+  min-width: 0;
+  padding: clamp(1.2rem, 4vw, 1.6rem);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  background: rgba(18, 19, 24, 0.72);
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.18);
+}
+
+.card-header {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.card-title {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.55rem, 5vw, 2.15rem);
+  line-height: 1.05;
+}
+
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  gap: 0.5rem;
+  margin: 0;
+  color: #aaa69c;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.status-active::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #7cc68d;
+  box-shadow: 0 0 0.8rem rgba(124, 198, 141, 0.42);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0 0;
+}
+
+.fact {
+  min-width: 0;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.fact-label {
+  display: block;
+  color: #aaa69c;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.fact-value {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+@media (max-width: 34rem) {
+  .card-actions {
+    display: grid;
+  }
+
+  .card-actions > .button,
+  .card-actions > .button-primary,
+  .card-actions > .button-secondary,
+  .card-actions > .button-success,
+  .card-actions > .button-destructive {
+    width: 100%;
+  }
 }
 
 input:not([type="checkbox"]):not([type="radio"]),
