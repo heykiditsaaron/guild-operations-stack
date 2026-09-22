@@ -1,10 +1,10 @@
-for (const card of document.querySelectorAll("[data-module-lifecycle-card]")) {
+for (const card of document.querySelectorAll("[data-module-key]")) {
   if (!(card instanceof HTMLElement)) continue;
 
   const moduleKey = card.dataset.moduleKey;
   const toggle = card.querySelector("[data-module-enabled]");
-  const label = card.querySelector("[data-module-enabled-label]");
-  const feedback = card.querySelector("[data-module-lifecycle-feedback]");
+  const label = card.querySelector("[data-module-switch-label]");
+  const feedback = card.querySelector("[data-module-feedback]");
 
   if (
     !moduleKey
