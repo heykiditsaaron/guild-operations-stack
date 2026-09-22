@@ -1,6 +1,11 @@
-import type { Emission, EmissionConsumer } from "./contract.js";
+import type {
+  Emission,
+  EmissionConsumerRegistration,
+} from "./contract.js";
 
-const consumersByCode = new Map<string, Set<EmissionConsumer>>();
+export const EMISSION_TRANSPORT_ID = "in-process";
+
+const consumersByCode = new Map<string, Map<string, EmissionConsumerRegistration>>();
 
 function requireText(value: string, field: string): string {
   const normalized = value.trim();
@@ -9,13 +14,24 @@ function requireText(value: string, field: string): string {
 }
 
 export function registerEmissionConsumer(
-  codes: readonly string[],
-  consumer: EmissionConsumer,
+  input: EmissionConsumerRegistration,
 ): void {
-  for (const codeInput of codes) {
+  const consumerId = requireText(input.consumerId, "consumerId");
+
+  for (const codeInput of input.codes) {
     const code = requireText(codeInput, "code");
-    const consumers = consumersByCode.get(code) ?? new Set<EmissionConsumer>();
-    consumers.add(consumer);
+    const consumers = consumersByCode.get(code) ?? new Map<string, EmissionConsumerRegistration>();
+    const existing = consumers.get(consumerId);
+
+    if (existing && existing.receive !== input.receive) {
+      throw new Error(`Emission consumer ${consumerId} is already registered for ${code}`);
+    }
+
+    consumers.set(consumerId, {
+      consumerId,
+      codes: input.codes,
+      receive: input.receive,
+    });
     consumersByCode.set(code, consumers);
   }
 }
@@ -27,11 +43,16 @@ export async function emit(input: Emission): Promise<void> {
     subject: requireText(input.subject, "subject"),
   };
 
-  for (const consumer of consumersByCode.get(emission.code) ?? []) {
+  for (const consumer of consumersByCode.get(emission.code)?.values() ?? []) {
     try {
-      await consumer(emission);
+      await consumer.receive(emission);
     } catch (error) {
-      console.error("Emission consumer failed", { emission, error });
+      console.error("Emission consumer failed", {
+        transportId: EMISSION_TRANSPORT_ID,
+        consumerId: consumer.consumerId,
+        emission,
+        error,
+      });
     }
   }
 }
