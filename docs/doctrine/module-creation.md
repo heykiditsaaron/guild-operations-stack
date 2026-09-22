@@ -24,6 +24,59 @@ For example, a Raffle may be exposed to machines as `/api/v1/raffles/:raffleId` 
 
 Raid and Raffle are the first paired reference implementations of this shape. Their concrete contracts are documented in [`../features/raid.md`](../features/raid.md) and [`../raffle.md`](../raffle.md). Treat their common boundaries as proven vocabulary to pressure-test against and their differences as evidence of module ownership, not as a generic event superclass or workflow that later modules must imitate.
 
+## Guild Activity governance
+
+A **Guild Activity** is a guild-owned, lifecycle-bound temporal occurrence. Raid and Raffle are the first concrete Guild Activity modules.
+
+Internally, **activity** names the authoritative lifecycle-bound subject. **Event** names a meaningful system occurrence concerning authoritative state. Human-facing adapters may still present Guild Activities as **Events** where that is the natural member vocabulary; presentation language does not redefine the underlying domain concept.
+
+Guild Activity lifecycle vocabulary is deliberately small:
+
+```text
+nothing
+   │
+   │ establish
+   ▼
+ active
+   │
+   │ domain-defined conclusion
+   ▼
+concluded
+```
+
+**Establishment is an operation/event, not a lifecycle state.** Establishment brings a previously nonexistent Guild Activity into the active state. **Active** means the activity's activation continues. **Concluded** means that activation has ended.
+
+Conclusion is semantic rather than a required persisted transition. A domain may derive conclusion from time, preserve explicit conclusion facts, or use another legitimate domain rule. Cancellation, completion, drawing, expiration, or other terminal meanings are domain-defined ways an activity may conclude; they are not additional universal Guild Activity lifecycle states. The domain also owns whether and how a concluded activity survives as durable history.
+
+A Guild Activity may expose participation, but participation is not what makes it a Guild Activity. Guild Activities without signup, registration, entry, or other participation machinery remain legitimate temporal activities.
+
+When an active Guild Activity does expose participation, its participation availability may be described as:
+
+- **open** — new participation may currently be established;
+- **closed** — new participation may not currently be established.
+
+Open and closed are participation adjectives of an active activity, not peer lifecycle states. Closed participation does not conclude the activity and may be reversible when the domain permits it. Once the activity is concluded, current participation availability no longer applies.
+
+These terms standardize semantic governance, not implementation. A Guild Activity domain continues to own:
+
+- establishment and modification procedure;
+- authoritative temporal facts and their domain representation;
+- the rules that determine whether it is active or concluded;
+- any participation procedure and open/closed rules;
+- conclusion kinds and consequences;
+- persistence and historical evidence;
+- application operations and authority.
+
+Do not introduce a generic Guild Activity table, superclass, lifecycle engine, registry, shared status column, or mandatory application interface merely to encode this vocabulary. Shared machinery should still be earned by concrete pressure from multiple domains.
+
+### Semantic events and emissions
+
+A domain owns which meaningful system events are significant enough to publish as semantic emissions. Guild Activity governance does not require establishment, modification, conclusion, cancellation, participation changes, or any other occurrence to be emitted.
+
+When a domain does publish an event, it follows the application-wide semantic emission code shape. For example, a domain may choose to publish an establishment event as `raid.established` or `raffle.established`. Standardizing the shape of emission codes does not standardize which emissions must exist.
+
+Consumers independently decide which published events matter to them. Calendar, for example, may consume a domain's establishment emission in order to establish or reconcile its own temporal point. That consumer relationship does not transfer lifecycle authority to Calendar, and Calendar does not require a Guild Activity to publish any particular event merely because the activity is temporal.
+
 ## Shared projections
 
 A module may express selected facts through shared infrastructure when that infrastructure has a legitimate cross-module consumer. The module remains authoritative for its own lifecycle, participation, operation, and history.
