@@ -133,7 +133,7 @@ export async function registerDiscordRoleMapsPage(app: FastifyInstance, assets: 
       .type("text/html; charset=utf-8")
       .send(renderPage(assets, {
         pathname: "/admin/general/discord/role-maps",
-        title: "Discord role maps · OH CRIT I Pulled! Guild Operations",
+        title: `Discord role maps · ${viewer.guildPresentation.guildName} Guild Operations`,
         description: "Configure Discord role maps.",
         viewer,
         stylesheets: ["admin.css"],
