@@ -26,7 +26,7 @@ import {
 } from "../../../../wow-iconography.js";
 import { allWowTraits, specHasTrait, traitsForSpec, type WowTrait } from "../../../../wow-traits/registry.js";
 import type { AssetName, AssetRegistry } from "../../../assets.js";
-import { htmlText, renderPage, type SecondaryNavigation } from "../../../render.js";
+import { htmlText, renderOccurrenceOperations, renderPage, type SecondaryNavigation } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
 
 type RaidParams = { raidId: string };
@@ -194,8 +194,8 @@ async function renderRaidOrganizer(request: FastifyRequest<{ Params: RaidParams 
     : `<section class="raid-workspace">${historical ? `<p class="raid-board-status">This raid has occurred. Its final assignment is preserved as history.</p>` : ""}${diagnosticsBody}<div class="raid-assignment-board"><h2>Raid group</h2><div class="raid-role-lanes">${lanes}</div></div></section>`;
 
   const basePath = operateDestination.href;
-  const publicAction = publicDestination ? `<a class="button-secondary" href="${htmlText(publicDestination.href)}">${htmlText(publicDestination.label)} ↗</a>` : "";
-  const body = `<section class="raid-title-bar"><div><h1>${htmlText(raid.label)}</h1><p><time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${htmlText(difficultyLabel(raid.difficulty))}${historical ? " · Historical" : ""}</p></div><div class="raid-admin-actions">${publicAction}</div></section><nav class="raid-admin-actions" aria-label="Raid management mode"><a class="button-primary" href="${htmlText(basePath)}" aria-current="page">Assign</a>${canModify || canStage ? `<a class="button-secondary" href="${htmlText(basePath)}/definition">Edit</a>` : ""}</nav>${assignmentWorkspace}<section class="raid-scoreboard" aria-labelledby="raid-scoreboard-heading"><h2 id="raid-scoreboard-heading">Raid diagnostics</h2>${shelves}</section>${mutableAssignments ? `<dialog class="raid-spec-dialog" data-raid-spec-dialog><form method="dialog"><h2>Choose specialization</h2><p data-raid-spec-dialog-copy></p><div data-raid-spec-options></div><button type="button" class="button-secondary" data-raid-spec-cancel>Cancel</button></form></dialog>` : ""}`;
+  const workspace = `${assignmentWorkspace}<section class="raid-scoreboard" aria-labelledby="raid-scoreboard-heading"><h2 id="raid-scoreboard-heading">Raid diagnostics</h2>${shelves}</section>${mutableAssignments ? `<dialog class="raid-spec-dialog" data-raid-spec-dialog><form method="dialog"><h2>Choose specialization</h2><p data-raid-spec-dialog-copy></p><div data-raid-spec-options></div><button type="button" class="button-secondary" data-raid-spec-cancel>Cancel</button></form></dialog>` : ""}`;
+  const body = renderOccurrenceOperations({ title: raid.label, context: `<time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${htmlText(difficultyLabel(raid.difficulty))}${historical ? " · Historical" : ""}`, publicAction: publicDestination ? { label: publicDestination.label, href: publicDestination.href } : undefined, modes: [{ label: "Assign", href: basePath, current: true }, ...(canModify || canStage ? [{ label: "Edit", href: `${basePath}/definition` }] : [])], workspace });
   const scripts: AssetName[] = ["admin.js", "raid-admin.js"];
   if (mutableAssignments) scripts.push("raid-organizer.js");
   const html = renderPage(assets, { pathname: request.url, title: `${raid.label} · Raid Operations · OH CRIT I Pulled! Guild Operations`, description: raid.description ?? "Raid operations.", viewer, stylesheets: ["admin.css", "raid-admin.css", "raid-iconography.css", "raid-organizer.css"], scripts, secondaryNavigation: navigation, header: "", body });
