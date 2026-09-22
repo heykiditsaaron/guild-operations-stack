@@ -214,6 +214,21 @@ function renderFooter(viewer: WebViewer): string {
   </div></footer>`;
 }
 
+export type OccurrenceOperationsMode = { label: string; href: string; current?: boolean };
+export type OccurrenceOperationsFrame = {
+  title: string;
+  context: string;
+  publicAction?: { label: string; href: string };
+  modes: readonly OccurrenceOperationsMode[];
+  workspace: string;
+};
+
+export function renderOccurrenceOperations(input: OccurrenceOperationsFrame): string {
+  const publicAction = input.publicAction ? `<a class="button-secondary" href="${escapeHtml(input.publicAction.href)}">${escapeHtml(input.publicAction.label)} ↗</a>` : "";
+  const modes = input.modes.map((mode) => `<a class="${mode.current ? "button-primary" : "button-secondary"}" href="${escapeHtml(mode.href)}"${mode.current ? ' aria-current="page"' : ""}>${escapeHtml(mode.label)}</a>`).join("");
+  return `<section class="occurrence-operations-frame"><header class="occurrence-operations-header"><div class="occurrence-operations-identity"><h1>${escapeHtml(input.title)}</h1><p>${input.context}</p></div>${publicAction ? `<div class="occurrence-operations-public-action">${publicAction}</div>` : ""}</header>${modes ? `<nav class="occurrence-operations-modes" aria-label="Operational mode">${modes}</nav>` : ""}<div class="occurrence-operations-workspace">${input.workspace}</div></section>`;
+}
+
 export function renderPage(assets: AssetRegistry, input: RenderPageInput): string {
   const title = escapeHtml(input.title);
   const description = escapeHtml(input.description ?? "OH CRIT I Pulled!");
