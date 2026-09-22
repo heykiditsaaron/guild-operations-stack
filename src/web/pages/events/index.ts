@@ -2,9 +2,15 @@ import type { FastifyInstance } from "fastify";
 import { guildState } from "../../../application-state.js";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../auth.js";
 import {
+  RAID_ASSIGN_CAPABILITY,
   RAID_MODIFY_CAPABILITY,
+  RAID_STAGE_CAPABILITY,
+  RAFFLE_CLAIMS_CAPABILITY,
+  RAFFLE_DRAW_CAPABILITY,
   RAFFLE_MODIFY_CAPABILITY,
+  RAFFLE_STAGE_CAPABILITY,
   guildieHasGuildCapability,
+  guildieHasGuildCapabilityOrOperator,
 } from "../../../guild-permissions.js";
 import {
   discoverableGuildCalendarPoints,
@@ -32,6 +38,7 @@ type CalendarProjection = {
   category: string;
   publicAction: { label: string; href: string };
   participationAction: { label: string; href: string } | null;
+  operationAction: { label: string; href: string };
 };
 
 type CalendarOccurrence = {
@@ -136,26 +143,35 @@ function renderOfferings(offerings: readonly GuildEventOffering[], assets: Asset
     </section>`;
 }
 
-function renderEventItem(item: CalendarOccurrence): string {
+function renderEventItem(item: CalendarOccurrence, canOperate: boolean): string {
   const { projection, occursAt } = item;
   const title = htmlText(projection.title);
   const category = htmlText(humanize(projection.category));
-  const action = projection.participationAction ?? projection.publicAction;
-  const href = htmlText(action.href);
-  const actionLabel = htmlText(action.label);
+  const publicHref = htmlText(projection.publicAction.href);
+  const publicLabel = htmlText(projection.publicAction.label);
   const description = projection.description
     ? `<p class="events-item-description">${htmlText(projection.description)}</p>`
     : "";
-  const content = `
-      <div class="events-item-copy">
-        <p class="events-item-category">${category}</p>
-        <h3>${title}</h3>
-        ${description}
-        <div class="events-item-time">${eventTime(occursAt)}</div>
-      </div>
-      ${href ? `<span class="events-item-action">${actionLabel} <span aria-hidden="true">→</span></span>` : ""}`;
+  const participationAction = projection.participationAction
+    ? `<a class="button button-primary events-item-secondary-action" href="${htmlText(projection.participationAction.href)}">${htmlText(projection.participationAction.label)}</a>`
+    : "";
+  const operationAction = canOperate
+    ? `<a class="button button-secondary events-item-secondary-action" href="${htmlText(projection.operationAction.href)}">Manage</a>`
+    : "";
 
-  return `<a class="events-item events-item-link" href="${href}" aria-label="${actionLabel}: ${title}">${content}</a>`;
+  return `
+    <article class="events-item">
+      <a class="events-item-main events-item-link" href="${publicHref}" aria-label="${publicLabel}: ${title}">
+        <div class="events-item-copy">
+          <p class="events-item-category">${category}</p>
+          <h3>${title}</h3>
+          ${description}
+          <div class="events-item-time">${eventTime(occursAt)}</div>
+        </div>
+        <span class="events-item-action">${publicLabel} <span aria-hidden="true">→</span></span>
+      </a>
+      ${participationAction || operationAction ? `<nav class="events-item-actions" aria-label="${title} actions">${participationAction}${operationAction}</nav>` : ""}
+    </article>`;
 }
 
 function renderSection(
@@ -163,6 +179,7 @@ function renderSection(
   title: string,
   events: CalendarOccurrence[],
   state: "live" | "upcoming",
+  canOperate: (event: CalendarOccurrence) => boolean,
 ): string {
   if (!events.length) return "";
 
@@ -187,12 +204,13 @@ function emptyCalendarState(): string {
 function renderCalendar(
   happeningNow: CalendarOccurrence[],
   upcoming: CalendarOccurrence[],
+  canOperate: (event: CalendarOccurrence) => boolean,
 ): string {
   const calendarBody = happeningNow.length || upcoming.length
     ? `
       <div class="events-discovery">
-        ${renderSection("events-happening-now", "Happening now", happeningNow, "live")}
-        ${renderSection("events-upcoming", "Upcoming", upcoming, "upcoming")}
+        ${renderSection("events-happening-now", "Happening now", happeningNow, "live", canOperate)}
+        ${renderSection("events-upcoming", "Upcoming", upcoming, "upcoming", canOperate)}
       </div>`
     : emptyCalendarState();
 
@@ -214,12 +232,23 @@ export async function registerEventsPage(app: FastifyInstance, assets: AssetRegi
       guildState(),
       packagedModuleStates(),
     ]);
-    const [canCreateRaid, canCreateRaffle] = guildie
+    const [canCreateRaid, canCreateRaffle, canOperateRaid, canOperateRaffle] = guildie
       ? await Promise.all([
           guildieHasGuildCapability(guildie.guildieId, RAID_MODIFY_CAPABILITY),
           guildieHasGuildCapability(guildie.guildieId, RAFFLE_MODIFY_CAPABILITY),
+          Promise.all([
+            RAID_MODIFY_CAPABILITY,
+            RAID_STAGE_CAPABILITY,
+            RAID_ASSIGN_CAPABILITY,
+          ].map((capability) => guildieHasGuildCapabilityOrOperator(guildie.guildieId, capability))).then((values) => values.some(Boolean)),
+          Promise.all([
+            RAFFLE_MODIFY_CAPABILITY,
+            RAFFLE_STAGE_CAPABILITY,
+            RAFFLE_CLAIMS_CAPABILITY,
+            RAFFLE_DRAW_CAPABILITY,
+          ].map((capability) => guildieHasGuildCapabilityOrOperator(guildie.guildieId, capability))).then((values) => values.some(Boolean)),
         ])
-      : [false, false];
+      : [false, false, false, false];
     const moduleStateByKey = new Map(moduleStates.map((module) => [module.key, module]));
     const offerings = guildEventOfferings().filter((offering) => offeringAvailable(offering.destination, moduleStateByKey));
     const raidEnabled = moduleStateByKey.get("raid")?.enabled !== false;
@@ -240,10 +269,16 @@ export async function registerEventsPage(app: FastifyInstance, assets: AssetRegi
     const relevant = occurrences.filter((event) => occursThrough(event.occursAt) >= nowUnix);
     const happeningNow = relevant.filter((event) => isHappeningNow(event.occursAt, nowUnix));
     const upcoming = relevant.filter((event) => !isHappeningNow(event.occursAt, nowUnix));
+    const canOperateOccurrence = (event: CalendarOccurrence): boolean =>
+      event.point.sourceKind === "raid"
+        ? canOperateRaid
+        : event.point.sourceKind === "raffle"
+          ? canOperateRaffle
+          : false;
     const guildCommunity = guild ? `${htmlText(guild.name)}&apos;s community` : "the guild&apos;s community";
     const body = `
       <div class="events-shell">
-        ${renderCalendar(happeningNow, upcoming)}
+        ${renderCalendar(happeningNow, upcoming, canOperateOccurrence)}
         ${renderOfferings(offerings, assets)}
       </div>`;
 
