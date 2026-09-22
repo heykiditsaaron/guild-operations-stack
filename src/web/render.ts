@@ -1,4 +1,5 @@
 import { config } from "../config.js";
+import { guildTheme } from "../guild-theme.js";
 import type { AdministrationNavigationDestination } from "./admin-navigation.js";
 import { assetUrl, type AssetName, type AssetRegistry } from "./assets.js";
 import type { ModuleWebPresentation } from "./module-presentation.js";
@@ -259,7 +260,8 @@ export function renderOccurrenceOperations(input: OccurrenceOperationsFrame): st
   return `<section class="occurrence-operations-frame"><header class="occurrence-operations-header"><div class="occurrence-operations-identity"><h1>${escapeHtml(input.title)}</h1><p>${input.context}</p></div>${publicAction ? `<div class="occurrence-operations-public-action">${publicAction}</div>` : ""}</header>${modes || lifecycleActions ? `<div class="occurrence-operations-toolbar">${modes ? `<nav class="occurrence-operations-modes" aria-label="Operational mode">${modes}</nav>` : ""}${lifecycleActions ? `<div class="occurrence-operations-lifecycle" aria-label="Lifecycle actions">${lifecycleActions}</div>` : ""}</div>` : ""}<div class="occurrence-operations-workspace">${input.workspace}</div></section>`;
 }
 
-export function renderPage(assets: AssetRegistry, input: RenderPageInput): string {
+export async function renderPage(assets: AssetRegistry, input: RenderPageInput): Promise<string> {
+  const theme = await guildTheme();
   const title = escapeHtml(input.title);
   const description = escapeHtml(input.description ?? "OH CRIT I Pulled!");
   const canonicalUrl = new URL(input.pathname, config.appOrigin).toString();
@@ -268,7 +270,7 @@ export function renderPage(assets: AssetRegistry, input: RenderPageInput): strin
   const administrationNavigation = renderAdministrationNavigation(input.viewer, input.pathname);
   const secondaryNavigation = renderSecondaryNavigation(input.secondaryNavigation);
   return `<!doctype html>
-<html lang="en">
+<html lang="en" data-theme="${theme}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
