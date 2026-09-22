@@ -50,14 +50,14 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
 
     const html = renderPage(assets, {
       pathname: "/",
-      title: "OH CRIT I Pulled!",
-      description: "OH CRIT I Pulled! — a World of Warcraft guild built around good people, shared adventures, and playing the game your way.",
+      title: viewer.guildPresentation.guildName,
+      description: `${viewer.guildPresentation.guildName} — a World of Warcraft guild built around good people, shared adventures, and playing the game your way.`,
       viewer,
       stylesheets,
       header: `
         <div class="home-community-header">
           <p class="home-community-mark">World of Warcraft guild</p>
-          <h1 id="page-title">OH CRIT I Pulled!</h1>
+          <h1 id="page-title">${htmlText(viewer.guildPresentation.guildName)}</h1>
           <p class="home-community-lede">A guild built around good people, shared adventures, and playing the game your way.</p>
           <p class="home-community-note">People first. Low pressure, not low ambition.</p>
         </div>`,
