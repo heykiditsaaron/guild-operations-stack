@@ -154,7 +154,7 @@ async function renderRaidOrganizer(request: FastifyRequest<{ Params: RaidParams 
   if (!guildie || !authorized) {
     const html = renderPage(assets, {
       pathname: request.url,
-      title: "Raid Operations · OH CRIT I Pulled! Guild Operations",
+      title: `Raid Operations · ${viewer.guildPresentation.guildName} Guild Operations`,
       viewer,
       stylesheets: ["admin.css", "raid-admin.css"],
       secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Events", href: "/events" }, { label: "Raid operations", href: "/events/raid/manage" }, { label: "Unavailable" }] },
@@ -199,7 +199,7 @@ async function renderRaidOrganizer(request: FastifyRequest<{ Params: RaidParams 
   const body = renderOccurrenceOperations({ title: raid.label, context: `<time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${htmlText(difficultyLabel(raid.difficulty))}${historical ? " · Historical" : ""}`, publicAction: publicDestination ? { label: publicDestination.label, href: publicDestination.href } : undefined, modes: [{ label: "Assign", href: basePath, current: true }, ...(canModify || canStage ? [{ label: "Edit", href: `${basePath}/definition` }] : [])], lifecycleActions, workspace });
   const scripts: AssetName[] = ["admin.js", "raid-admin.js", ...(lifecycleActions ? ["raid-definition.js" as AssetName] : [])];
   if (mutableAssignments) scripts.push("raid-organizer.js");
-  const html = renderPage(assets, { pathname: request.url, title: `${raid.label} · Raid Operations · OH CRIT I Pulled! Guild Operations`, description: raid.description ?? "Raid operations.", viewer, stylesheets: ["admin.css", "raid-admin.css", "raid-iconography.css", "raid-organizer.css"], scripts, secondaryNavigation: navigation, header: "", body });
+  const html = renderPage(assets, { pathname: request.url, title: `${raid.label} · Raid Operations · ${viewer.guildPresentation.guildName} Guild Operations`, description: raid.description ?? "Raid operations.", viewer, stylesheets: ["admin.css", "raid-admin.css", "raid-iconography.css", "raid-organizer.css"], scripts, secondaryNavigation: navigation, header: "", body });
   return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
 }
 
