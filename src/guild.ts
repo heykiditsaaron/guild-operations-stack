@@ -2,7 +2,7 @@ import type { PoolClient } from "pg";
 import { acquireGuildAuthority, type BlizzardGuildProfile, type BlizzardGuildRoster } from "./blizzard.js";
 import { config, type Region } from "./config.js";
 import { pool, withTransaction } from "./db.js";
-import { emit } from "./emissions/registry.js";
+import { deliverEmission, publishEmission } from "./emissions/registry.js";
 import {
   GUILD_REFRESH_CAPABILITY,
   GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY,
@@ -232,18 +232,24 @@ export async function refreshGuildAuthority(): Promise<GuildRefreshResult> {
     const beforeGuildies = await guildieRosterState(client, guildId);
     const roster = await persistRoster(client, guildId, config.guild.region, authority.roster);
     const afterGuildies = await guildieRosterState(client, guildId);
+    const guildieTransitions = guildieRosterTransitions(beforeGuildies, afterGuildies);
+    const publications = [];
+    for (const transition of guildieTransitions) {
+      publications.push(await publishEmission(client, {
+        code: transition.code,
+        subject: transition.guildieId,
+      }));
+    }
     return {
       guildId,
       roster,
-      guildieTransitions: guildieRosterTransitions(beforeGuildies, afterGuildies),
+      guildieTransitions,
+      publications,
     };
   });
 
-  for (const transition of persisted.guildieTransitions) {
-    await emit({
-      code: transition.code,
-      subject: transition.guildieId,
-    });
+  for (const publication of persisted.publications) {
+    await deliverEmission(publication);
   }
 
   await publishGuildRefreshObservation({
