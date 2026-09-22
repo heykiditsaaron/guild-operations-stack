@@ -84,7 +84,7 @@ function desiredRankRoleIds(
 ): string[] {
   if (effectiveRankIndex === null) return [];
   return mappings
-    .filter((mapping) => mapping.rankIndex >= effectiveRankIndex)
+    .filter((mapping) => mapping.rankIndex === effectiveRankIndex)
     .map((mapping) => mapping.discordRoleId);
 }
 
