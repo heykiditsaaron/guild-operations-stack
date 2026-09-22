@@ -220,6 +220,24 @@ button:disabled,
   gap: 0.55rem;
 }
 
+.occurrence-operations-modes {
+  order: 2;
+}
+
+.occurrence-operations-lifecycle {
+  order: 1;
+}
+
+@media (min-width: 42rem) {
+  .occurrence-operations-modes {
+    order: 1;
+  }
+
+  .occurrence-operations-lifecycle {
+    order: 2;
+  }
+}
+
 .occurrence-operations-modes .button-primary,
 .occurrence-operations-modes .button-secondary,
 .occurrence-operations-lifecycle .button-primary,
