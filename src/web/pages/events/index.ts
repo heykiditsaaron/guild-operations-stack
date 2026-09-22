@@ -7,11 +7,11 @@ import {
   RAID_STAGE_CAPABILITY,
   guildieHasGuildCapability,
 } from "../../../guild-permissions.js";
-import type {
-  GuildEventOccurrence,
-  GuildEventPublication,
-} from "../../../guild-events/publication/contract.js";
-import { publishedGuildEvents } from "../../../guild-events/publication/registry.js";
+import {
+  discoverableGuildCalendarPoints,
+  type GuildCalendarOccursAt,
+  type GuildCalendarPoint,
+} from "../../../guild-events/calendar/registry.js";
 import {
   guildEventOfferings,
   type GuildEventOffering,
@@ -22,14 +22,39 @@ import {
   type PackagedModuleState,
 } from "../../../module-lifecycle.js";
 import { raffleGuildieCanOperate } from "../../../modules/raffle/authorization.js";
+import { raffleCalendarProjection } from "../../../modules/raffle/application.js";
+import { raidCalendarProjection } from "../../../modules/raid/application.js";
 import { assetUrl, type AssetName, type AssetRegistry } from "../../assets.js";
 import { htmlText, renderPage } from "../../render.js";
 import { viewerForRequest } from "../../viewer.js";
 
-type CalendarOccurrence = {
-  publication: GuildEventPublication;
-  occursAt: GuildEventOccurrence;
+type CalendarProjection = {
+  title: string;
+  description: string | null;
+  category: string;
+  publicAction: { label: string; href: string };
+  participationAction: { label: string; href: string } | null;
 };
+
+type CalendarOccurrence = {
+  point: GuildCalendarPoint;
+  projection: CalendarProjection;
+  occursAt: GuildCalendarOccursAt;
+};
+
+async function projectionForPoint(point: GuildCalendarPoint): Promise<CalendarProjection | null> {
+  if (point.sourceKind === "raid") return raidCalendarProjection(point.sourceSubject);
+  if (point.sourceKind === "raffle") return raffleCalendarProjection(point.sourceSubject);
+  return null;
+}
+
+async function calendarOccurrences(points: readonly GuildCalendarPoint[]): Promise<CalendarOccurrence[]> {
+  const resolved = await Promise.all(points.map(async (point) => {
+    const projection = await projectionForPoint(point);
+    return projection ? { point, projection, occursAt: point.occursAt } : null;
+  }));
+  return resolved.filter((item): item is CalendarOccurrence => item !== null);
+}
 
 function humanize(value: string): string {
   return value
@@ -44,26 +69,20 @@ function localTime(unixSeconds: number): string {
   return `<time datetime="${instant}" data-local-time-unix="${unixSeconds}" data-local-time-date-style="full">${instant}</time>`;
 }
 
-function eventTime(occurrence: GuildEventOccurrence): string {
+function eventTime(occurrence: GuildCalendarOccursAt): string {
   const [start, end] = occurrence;
   if (end === undefined) return localTime(start);
   return `${localTime(start)}<span class="events-time-separator" aria-hidden="true">→</span>${localTime(end)}`;
 }
 
-function occursThrough(occurrence: GuildEventOccurrence): number {
+function occursThrough(occurrence: GuildCalendarOccursAt): number {
   return occurrence.length === 2 ? occurrence[1] : occurrence[0];
 }
 
-function isHappeningNow(occurrence: GuildEventOccurrence, nowUnix: number): boolean {
+function isHappeningNow(occurrence: GuildCalendarOccursAt, nowUnix: number): boolean {
   const [start, end] = occurrence;
   if (end === undefined) return start === nowUnix;
   return start <= nowUnix && nowUnix <= end;
-}
-
-function calendarOccurrences(publications: readonly GuildEventPublication[]): CalendarOccurrence[] {
-  return publications
-    .flatMap((publication) => publication.occursAt.map((occursAt) => ({ publication, occursAt })))
-    .sort((left, right) => left.occursAt[0] - right.occursAt[0]);
 }
 
 function offeringAvailable(
@@ -119,14 +138,14 @@ function renderOfferings(offerings: readonly GuildEventOffering[], assets: Asset
 }
 
 function renderEventItem(item: CalendarOccurrence): string {
-  const { publication, occursAt } = item;
-  const title = htmlText(publication.label);
-  const category = htmlText(publication.category ? humanize(publication.category) : "Guild Event");
-  const destination = publication.destinations[0] ?? null;
-  const href = destination ? htmlText(destination.href) : null;
-  const actionLabel = destination ? htmlText(destination.label) : null;
-  const description = publication.description
-    ? `<p class="events-item-description">${htmlText(publication.description)}</p>`
+  const { projection, occursAt } = item;
+  const title = htmlText(projection.title);
+  const category = htmlText(humanize(projection.category));
+  const action = projection.participationAction ?? projection.publicAction;
+  const href = htmlText(action.href);
+  const actionLabel = htmlText(action.label);
+  const description = projection.description
+    ? `<p class="events-item-description">${htmlText(projection.description)}</p>`
     : "";
   const content = `
       <div class="events-item-copy">
@@ -136,10 +155,6 @@ function renderEventItem(item: CalendarOccurrence): string {
         <div class="events-item-time">${eventTime(occursAt)}</div>
       </div>
       ${href ? `<span class="events-item-action">${actionLabel} <span aria-hidden="true">→</span></span>` : ""}`;
-
-  if (!href) {
-    return `<article class="events-item">${content}</article>`;
-  }
 
   return `<a class="events-item events-item-link" href="${href}" aria-label="${actionLabel}: ${title}">${content}</a>`;
 }
@@ -193,10 +208,10 @@ export async function registerEventsPage(app: FastifyInstance, assets: AssetRegi
   app.get("/events", async (request, reply) => {
     const nowUnix = Math.floor(Date.now() / 1000);
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, guildie, publications, guild, moduleStates] = await Promise.all([
+    const [viewer, guildie, calendarPoints, guild, moduleStates] = await Promise.all([
       viewerForRequest(sessionToken),
       authenticatedGuildie(sessionToken),
-      publishedGuildEvents(),
+      discoverableGuildCalendarPoints(),
       guildState(),
       packagedModuleStates(),
     ]);
@@ -215,7 +230,8 @@ export async function registerEventsPage(app: FastifyInstance, assets: AssetRegi
     const canOperateRaid = raidEnabled && (canModifyRaid || canStageRaid || canAssignRaid);
     const canOperateRaffle = raffleEnabled && canAdministerRaffle;
 
-    const relevant = calendarOccurrences(publications).filter((event) => occursThrough(event.occursAt) >= nowUnix);
+    const occurrences = await calendarOccurrences(calendarPoints);
+    const relevant = occurrences.filter((event) => occursThrough(event.occursAt) >= nowUnix);
     const happeningNow = relevant.filter((event) => isHappeningNow(event.occursAt, nowUnix));
     const upcoming = relevant.filter((event) => !isHappeningNow(event.occursAt, nowUnix));
     const guildCommunity = guild ? `${htmlText(guild.name)}&apos;s community` : "the guild&apos;s community";
