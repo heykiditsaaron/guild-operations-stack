@@ -1202,3 +1202,59 @@ h1 {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Shared frame for acting on a member's relationship to an occurrence. */
+.occurrence-participation-frame {
+  display: grid;
+  gap: 2rem;
+  width: min(100%, 46rem);
+}
+
+.occurrence-participation-header {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.occurrence-participation-header .eyebrow,
+.occurrence-participation-header h1,
+.occurrence-participation-title,
+.occurrence-participation-context {
+  margin: 0;
+}
+
+.occurrence-participation-title {
+  color: #c9c5ba;
+  font-size: clamp(1rem, 3vw, 1.15rem);
+  line-height: 1.45;
+}
+
+.occurrence-participation-context {
+  color: #d8d4ca;
+  line-height: 1.5;
+}
+
+.occurrence-participation-existing,
+.occurrence-participation-intake {
+  min-width: 0;
+}
+
+.participation-workspace {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.participation-workspace-header {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.participation-workspace-header h2,
+.participation-workspace-header p {
+  margin: 0;
+}
+
+.participation-workspace-header p {
+  color: #aaa69c;
+  line-height: 1.55;
+}
