@@ -77,14 +77,6 @@
   color: #c9c5ba;
 }
 
-.guild-refresh-admin,
-.discord-admin {
-  padding: 1rem 1.1rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 0.8rem;
-  background: rgba(255, 255, 255, 0.025);
-}
-
 .guild-refresh-admin-heading,
 .guild-refresh-schedule-heading,
 .discord-admin-heading,
@@ -253,13 +245,6 @@
   margin-top: 0.75rem;
   color: #aaa69c;
   font-size: 0.82rem;
-}
-
-.discord-state-inspection {
-  padding: 1rem 1.1rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 0.8rem;
-  background: rgba(255, 255, 255, 0.025);
 }
 
 .discord-projection-state {
