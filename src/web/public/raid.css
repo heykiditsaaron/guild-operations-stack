@@ -36,7 +36,7 @@
 }
 
 .raid-empty-state p {
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   line-height: 1.5;
 }
 
