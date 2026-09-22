@@ -187,7 +187,7 @@ function renderSection(
     <section class="events-section" aria-labelledby="${id}">
       <h3 class="events-status-banner events-status-banner-${state}" id="${id}">${title}</h3>
       <div class="events-list">
-        ${events.map(renderEventItem).join("\n")}
+        ${events.map((event) => renderEventItem(event, canOperate(event))).join("\n")}
       </div>
     </section>`;
 }
