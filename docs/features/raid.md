@@ -1,12 +1,12 @@
 # Raid
 
-Raid is one of Guild Operations' first complete participation-event reference modules. Together with Raffle, it demonstrates how a concrete module owns its authority, lifecycle, participation, operation, and presentation without turning those choices into generic event machinery.
+Raid is one of Guild Operations' first concrete Guild Activity modules. Together with Raffle, it pressure-tests the shared Guild Activity semantics while retaining domain ownership of its authority, lifecycle mechanics, participation, operation, and presentation.
 
-## Event identity
+## Activity identity
 
-A Raid is an event kind. Each persisted Raid is one specific Raid event with its own occurrence, listing, participation, and operational surfaces.
+Each persisted Raid is one concrete Guild Activity with its own temporal occurrence, listing, participation, and operational surfaces.
 
-The Raid owns its event facts. Other surfaces may project those facts, but they do not own Raid lifecycle or participation state.
+Raid owns its activity facts. Other surfaces may project those facts and may present the Raid publicly as an Event, but they do not own Raid lifecycle or participation state.
 
 ## Definition
 
@@ -88,13 +88,13 @@ The Raid listing summarizes only the current assigned composition: Tanks, Healer
 
 Each Raid declares navigable destinations for its concrete surfaces:
 
-- `public` — the Raid event listing;
+- `public` — the public Raid listing;
 - `participate` — Raid signup commitments; and
 - `operate` — Raid management.
 
 Destinations describe where a surface exists. Their presence does not grant authority to use it; authorization remains enforced by the relevant application operation and surface.
 
-The public listing is the canonical public expression of one Raid event. It presents the Raid's occurrence and definition, eligibility, readiness requirements, signup summary, current assigned composition when present, and appropriate destinations/actions.
+The public listing is the canonical public expression of one Raid activity. It presents the Raid's occurrence and definition, eligibility, readiness requirements, signup summary, current assigned composition when present, and appropriate destinations/actions.
 
 Management has two human-facing modes:
 
@@ -115,12 +115,12 @@ Raid behavior belongs to Raid application operations. HTTP routes and web surfac
 
 Current consequential operations include establishment, modification, cancellation, signup commitment establishment and revocation, assignment, and unassignment. Read models support the public listing, participation surface, assignment operation, and Raid Operations overview. Active-signup collections intentionally omit revoked commitments, while an individual signup query preserves the distinction between a revoked historical commitment and a signup that never existed.
 
-## Relationship to other participation events
+## Relationship to other Guild Activities
 
-Raid and Raffle are paired reference implementations for Guild Operations participation-event modules. Both currently demonstrate a participant-authored commitment followed by operator-owned establishment, but the meaning and procedure remain module-owned: Raid operators organize a commitment into an intended roster, while Raffle operators verify a promised payment and establish drawing weight.
+Raid and Raffle are paired reference implementations for Guild Activity modules that expose participation. Both currently demonstrate a participant-authored commitment followed by operator-owned establishment, but the meaning and procedure remain module-owned: Raid operators organize a commitment into an intended roster, while Raffle operators verify a promised payment and establish drawing weight.
 
 Their execution then diverges. Raid is a human activity Guild Operations cannot mechanically enforce; Raffle can mechanically consume established drawing weight during its draw. Neither commitment nor Raid assignment should be promoted into evidence of actual attendance without an authority-bearing observation that establishes it.
 
-Other participation events need not contain the same stages. In Hidden in Plain Sight, for example, a submission can be both the participation commitment and the participation itself, with later adjudication determining success rather than whether participation occurred.
+Other participating Guild Activities need not contain the same stages. A future domain may make a submission both the participation commitment and the participation itself, with later adjudication determining success rather than whether participation occurred.
 
 These examples establish useful vocabulary, not a shared participation workflow. Participation windows, cancellation semantics, history, eligibility, assignment, adjudication, execution, and evidence remain module behaviors unless repeated concrete modules prove a narrower shared abstraction is warranted.
