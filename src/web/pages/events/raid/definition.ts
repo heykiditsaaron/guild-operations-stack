@@ -4,7 +4,7 @@ import { GuildCapabilityDeniedError, RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILI
 import { cancelRaid, modifyRaid, raidEventFacts, raidHasOccurred, raidOccurrenceDestinations } from "../../../../modules/raid/application.js";
 import { RAID_DESCRIPTION_MAX_LENGTH, RAID_LABEL_MAX_LENGTH, type RaidDifficulty, type RaidEligibility, type RaidRequirement } from "../../../../modules/raid/domain.js";
 import type { AssetRegistry } from "../../../assets.js";
-import { htmlText, renderPage } from "../../../render.js";
+import { htmlText, renderOccurrenceOperations, renderPage } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
 
 type RaidParams = { raidId: string };
@@ -90,17 +90,7 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
       scripts: ["admin.js", "raid-definition.js"],
       secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Events", href: "/events" }, { label: "Raid operations", href: "/events/raid/manage" }, { label: raid.label }] },
       header: "",
-      body: `<section class="raid-title-bar">
-          <div>
-            <h1>${htmlText(raid.label)}</h1>
-            <p><time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${htmlText(difficultyLabel(raid.difficulty))}${historical ? " · Historical" : ""}</p>
-          </div>
-          <div class="raid-admin-actions">
-            ${publicDestination ? `<a class="button-secondary" href="${htmlText(publicDestination.href)}">${htmlText(publicDestination.label)} ↗</a>` : ""}
-          </div>
-        </section>
-        <nav class="raid-admin-actions" aria-label="Raid management mode"><a class="button-secondary" href="${htmlText(basePath)}">Assign</a><a class="button-primary" href="${htmlText(basePath)}/definition" aria-current="page">Edit</a></nav>
-        <section class="raid-admin-setup">${edit}${cancellation}<p data-raid-definition-status role="status" aria-live="polite"></p></section>`,
+      body: renderOccurrenceOperations({ title: raid.label, context: `<time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${htmlText(difficultyLabel(raid.difficulty))}${historical ? " · Historical" : ""}`, publicAction: publicDestination ? { label: publicDestination.label, href: publicDestination.href } : undefined, modes: [{ label: "Assign", href: basePath }, { label: "Edit", href: `${basePath}/definition`, current: true }], workspace: `<section class="raid-admin-setup">${edit}${cancellation}<p data-raid-definition-status role="status" aria-live="polite"></p></section>` }),
     });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
