@@ -1,16 +1,16 @@
 # Module Conformity
 
-Guild Operations modules own concrete guild capabilities. This doctrine defines the application-wide invariants a module must respect regardless of what semantic family it belongs to.
+Guild Operations modules own concrete guild capabilities. This doctrine defines the application-wide invariants every module must respect regardless of semantic family.
 
 A module family may add stronger semantic governance. Guild Activity modules, for example, are additionally governed by [Guild Activity](guild-activity.md). Family doctrine does not transfer domain ownership into shared machinery.
 
-## Domain and source ownership
+## Domain ownership
 
 A module owns the domain truth and procedure of the capability it establishes or operates.
 
-Concrete capability modules belong under `src/modules/<module>/` once the application has earned a module boundary for that capability. Source ownership does not need to mirror member-facing route hierarchy. A module may appear under `/events` or contribute to shared projections without transferring its truth to those surfaces.
+A module may appear through shared discovery, administration, or projection surfaces without transferring its truth to those surfaces. The existence of multiple modules does not imply a generic module loader, lifecycle implementation, participation framework, registry, or superclass.
 
-The `src/modules/` container does not imply a generic module loader, lifecycle implementation, participation framework, registry, or superclass. Shared abstractions emerge only from repeated concrete pressure.
+Shared abstractions emerge only from repeated concrete pressure.
 
 ## Application boundary
 
@@ -19,8 +19,6 @@ A module owns application operations for its authoritative behavior. Web, REST, 
 An adapter may translate representation, choose presentation language, and enforce surface-specific concerns, but it must not reconstruct module lifecycle, mutation rules, or authority that belongs to the application operation.
 
 REST resource paths and web presentation paths are independent adapter concerns. REST exposes authoritative application subjects through machine-oriented resource paths. Web places the same subjects where humans naturally participate in or operate them. Neither route hierarchy is authoritative for the other.
-
-Raid and Raffle demonstrate this boundary: machine resources and human Events routes meet at the owning application contract rather than at URL conventions.
 
 ## Shared infrastructure and projections
 
@@ -32,45 +30,61 @@ Projection guidance supplied by a module means that, if a consumer chooses to pr
 
 ## Participation, operations, and administration
 
-A module may expose participation, privileged operations, administrative configuration, or any combination of those roles. The distinctions are defined in [Surface Roles](surface-roles.md).
+Elevated authority does not determine information architecture. A module may expose participation, privileged operations, administrative configuration, or any combination of those roles.
 
-Do not classify a module-owned surface as Administration merely because it requires elevated authority.
+**Participation** lets guild members take part in a Guild Activity and belongs with the Activity being participated in.
 
-- Participation stays with the activity being participated in.
-- Operations stay with the activity or process being operated.
-- Administration owns durable configuration, module lifecycle state, and configurable permission policy.
+**Operations** let authorized members run, advance, adjudicate, reconcile, or resolve a concrete activity or process. Operations remain with the domain or process being operated. A capability does not become administrative merely because only privileged members may invoke it.
 
-Module enablement is administrative state. Operational use of an enabled module remains module-owned.
+**Administration** configures how Guild Operations provides and governs capabilities. It owns durable application or module configuration, module lifecycle state where earned, and configurable authorization policy rather than ordinary privileged work.
 
-Do not introduce generic administration, entitlement, participation, contribution, or lifecycle frameworks before multiple concrete modules demonstrate the required contract.
+> Authority controls access. It does not determine information architecture.
+
+Module enablement is administrative state. Operational use of an enabled module remains module-owned. A module does not earn an administrative destination merely because it exists; it contributes only configuration or configurable permission policy that has actually been earned.
+
+Module lifecycle concepts remain distinct where they exist:
+
+```text
+availability / entitlement
+        ↓
+enablement
+        ↓
+configuration readiness
+        ↓
+operational use
+```
+
+Current behavior should model only states actually required by Guild Operations. Do not build speculative commerce, licensing, entitlement, administration, contribution, permission, or module-lifecycle frameworks merely because future machinery can be imagined.
 
 ## Persistence
 
-A module owns persistence for the domain truth it establishes and must not duplicate globally owned Guild Operations truth.
+A module owns durable facts established by its own procedure and references globally owned Guild Operations objects and observations rather than recreating them locally.
 
-Application-wide persistence ownership is defined in [Global Persistence](global-persistence.md). Current member reconciliation mechanics are infrastructure documented in [Persistence Boundary](../infrastructure/persistence-boundary.md).
+Shared storage does not transfer semantic ownership. A module contributing truth to shared infrastructure remains authoritative for the truth it contributed while the infrastructure owns only its own storage contract and procedure.
+
+Derived global authority must not be duplicated as module-local truth merely to make module procedure convenient.
+
+Application-wide persistence law is defined by [Architecture](architecture.md). Current persistence mechanics belong to infrastructure documentation.
 
 ## Permissioning
 
 Modules consume globally authoritative member, roster, rank, and capability facts while owning permission policy specific to their procedure.
 
-Do not duplicate global authority state merely to make a local authorization decision. Shared permission machinery is documented in [Guild Permissioning](../infrastructure/guild-permissioning.md).
+Do not duplicate global authority state merely to make a local authorization decision.
 
 A module capability may exist without being administratively configurable. When the guild can configure module permission policy, that configuration belongs to the global Permissions concern while enforcement remains in backend authority and module procedure.
 
 Capability names should describe concrete authority the module currently has. Changing an established machine capability key is consequential because persisted mappings may depend on it.
 
-## Rendering
+Current permission machinery is documented in [Guild Permissioning](../infrastructure/guild-permissioning.md).
 
-Rendering ownership follows semantic ownership:
+## Presentation ownership
 
-1. global rendering when presentation belongs to the shared application language;
-2. module rendering when reusable presentation belongs specifically to that module;
-3. inline rendering when a surface is genuinely exceptional and has no demonstrated reusable owner.
-
-Do not promote one-off presentation merely to create reuse, and do not duplicate globally owned shell or navigation behavior inside modules. Current rendering infrastructure is documented in [Web Rendering](../infrastructure/web-rendering.md).
+Presentation ownership follows semantic ownership. Shared application language belongs to global presentation machinery; reusable domain-specific expression belongs to its domain; exceptional one-off expression should not be promoted merely to manufacture reuse.
 
 A module may establish semantic designation labels as useful defaults while allowing a projection to choose clearer local human-facing copy. Presentation may change expression, not the underlying fact or authority.
+
+Current rendering and navigation mechanics belong in [Web Rendering](../infrastructure/web-rendering.md).
 
 ## General rule
 
