@@ -34,7 +34,7 @@ function roleOptions(roles: DiscordGuildRole[], selectedRoleId: string | null): 
 async function renderRoleMaps(): Promise<string> {
   const settings = await guildDiscordProjectionSettings(undefined, true);
   if (!await discordGuildIntegrationConfigured()) {
-    return `<div class="discord-admin discord-admin-unavailable">
+    return `<div class="discord-admin discord-admin-unavailable settings-panel">
       <p>Configure and enable Discord with a server ID and bot token before managing roles.</p>
       <span>Linked Role is ${settings.linkedMappingEnabled ? "on" : "off"}. Rank Mapping is ${settings.rankMappingEnabled ? "on" : "off"}.</span>
     </div>`;
@@ -44,7 +44,7 @@ async function renderRoleMaps(): Promise<string> {
   try {
     roles = await getDiscordGuildRoles();
   } catch {
-    return `<div class="discord-admin discord-admin-unavailable">
+    return `<div class="discord-admin discord-admin-unavailable settings-panel">
       <p>Discord roles could not be read.</p>
       <span>Linked Role is ${settings.linkedMappingEnabled ? "on" : "off"}. Rank Mapping is ${settings.rankMappingEnabled ? "on" : "off"}.</span>
     </div>`;
@@ -54,7 +54,7 @@ async function renderRoleMaps(): Promise<string> {
   const rankMapping = new Map(settings.rankRoles.map((mapping) => [mapping.rankIndex, mapping.discordRoleId]));
 
   return `<form class="discord-role-maps-form" data-discord-projection-form>
-    <div class="discord-admin" data-discord-admin>
+    <div class="discord-admin settings-panel" data-discord-admin>
       <section class="discord-role-map-section" aria-labelledby="discord-linked-role-heading">
         <div class="discord-projection-heading discord-admin-heading discord-role-map-heading">
           <div>
@@ -76,7 +76,7 @@ async function renderRoleMaps(): Promise<string> {
       </section>
     </div>
 
-    <div class="discord-admin" data-discord-admin>
+    <div class="discord-admin settings-panel" data-discord-admin>
       <section class="discord-role-map-section" aria-labelledby="discord-rank-mapping-heading">
         <div class="discord-projection-heading discord-admin-heading discord-role-map-heading">
           <div>
@@ -101,7 +101,7 @@ async function renderRoleMaps(): Promise<string> {
     </div>
 
     <div class="discord-projection-actions">
-      <button type="button" data-discord-refresh-roles>Refresh roles</button>
+      <button type="button" class="button-secondary" data-discord-refresh-roles>Refresh roles</button>
       <button type="submit" class="button-primary" data-discord-projection-save>Save</button>
     </div>
     <p class="discord-projection-feedback" data-discord-projection-feedback role="status" aria-live="polite"></p>
