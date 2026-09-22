@@ -230,6 +230,18 @@ export function renderPublicOccurrence(input: PublicOccurrenceFrame): string {
   return `<article class="public-occurrence"><header class="public-occurrence-header"><div class="public-occurrence-identity"><h1>${escapeHtml(input.title)}</h1><p class="status${input.active ? " status-active" : ""}">${escapeHtml(input.state)}</p>${input.description ? `<div class="public-occurrence-description">${input.description}</div>` : ""}</div></header><div class="public-occurrence-facts facts">${input.facts}</div>${actions ? `<nav class="public-occurrence-actions" aria-label="Occurrence actions">${actions}</nav>` : ""}${input.detail ? `<div class="public-occurrence-detail">${input.detail}</div>` : ""}</article>`;
 }
 
+export type OccurrenceParticipationFrame = {
+  activity: string;
+  title: string;
+  context?: string;
+  existingParticipation?: string;
+  intake: string;
+};
+
+export function renderOccurrenceParticipation(input: OccurrenceParticipationFrame): string {
+  return `<section class="occurrence-participation-frame"><header class="occurrence-participation-header"><p class="eyebrow">Events · ${escapeHtml(input.activity)}</p><h1>Participation</h1><p class="occurrence-participation-title">${escapeHtml(input.title)}</p>${input.context ? `<div class="occurrence-participation-context">${input.context}</div>` : ""}</header>${input.existingParticipation ? `<div class="occurrence-participation-existing">${input.existingParticipation}</div>` : ""}<div class="occurrence-participation-intake">${input.intake}</div></section>`;
+}
+
 export type OccurrenceOperationsMode = { label: string; href: string; current?: boolean };
 export type OccurrenceOperationsFrame = {
   title: string;
