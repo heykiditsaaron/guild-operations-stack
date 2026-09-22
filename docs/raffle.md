@@ -1,8 +1,8 @@
 # Raffle
 
-Raffle is a concrete Guild Operations participation module for operating the guild raffle. A Raffle is the activity itself; there is no separate Round object or generic event lifecycle beneath it.
+Raffle is a concrete Guild Activity module for operating the guild raffle. A Raffle is the activity itself; there is no separate Round object or generic lifecycle object beneath it.
 
-Raffle is deliberately domain-specific. It does not derive its procedure from a generic event, participation, lifecycle, notification, or audit framework.
+Raffle follows Guild Activity semantics while remaining deliberately domain-specific. It does not derive its procedure from a generic participation, lifecycle, notification, or audit framework.
 
 ## Human ceremony
 
@@ -149,7 +149,7 @@ Human surfaces are organized for participation and operation:
 - `/events/raffle/rules` — standing rules;
 - `/events/raffle/manage` and `/events/raffle/manage/:raffleId` — operational surfaces.
 
-Raffle also registers the enduring Guild Event Offering that makes the activity discoverable even when no Raffle is currently accepting participation. That offering is presentation/discovery metadata, not Raffle lifecycle.
+Raffle also registers an enduring activity Offering that makes the capability discoverable even when no concrete Raffle is currently accepting participation. That offering is presentation/discovery metadata, not Raffle lifecycle.
 
 ## Calendar boundary
 
@@ -167,7 +167,7 @@ Raffle publishes an operational exception only when it deliberately identifies a
 
 ## Relationship to Raid
 
-Raid and Raffle are useful paired pressure tests, not instances of one generic lifecycle.
+Raid and Raffle are useful paired pressure tests of Guild Activity semantics, not instances of one generic lifecycle implementation.
 
 Both distinguish participant intent from organizer-established participation and both use the one-hour pre-occurrence participation freeze. Their mechanics remain domain-specific.
 
