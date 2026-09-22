@@ -12,9 +12,32 @@
   max-width: 48rem;
 }
 
+.raid-occurrence-list {
+  display: grid;
+  gap: 1.25rem;
+}
+
 .raid-occurrence-card {
   display: grid;
   gap: 1.25rem;
+}
+
+.raid-empty-state {
+  width: min(100%, 46rem);
+  padding-top: 2rem;
+  border-top: 1px solid rgba(238, 201, 124, 0.18);
+}
+
+.raid-empty-state h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.8rem, 6vw, 2.7rem);
+  font-weight: 500;
+}
+
+.raid-empty-state p {
+  color: #aaa69c;
+  line-height: 1.5;
 }
 
 .raid-listing-description {
