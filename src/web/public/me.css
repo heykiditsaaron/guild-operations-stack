@@ -25,7 +25,7 @@
 .me-menu .me-control:hover [data-me-label]::after,
 .me-menu .me-control:focus-visible [data-me-label]::after,
 .me-menu[open] .me-control [data-me-label]::after {
-  color: #c9c5ba;
+  color: var(--theme-text-secondary);
 }
 
 .me-menu-panel {
@@ -47,7 +47,7 @@
   min-height: 2.5rem;
   padding: 0.55rem 0.7rem;
   border-radius: 0.55rem;
-  color: #e8c986;
+  color: var(--theme-accent);
   font-size: 0.84rem;
   font-weight: 700;
   text-decoration: none;
@@ -77,7 +77,7 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 0.55rem;
   background: rgba(255, 255, 255, 0.04);
-  color: #c9c5ba;
+  color: var(--theme-text-secondary);
   text-align: center;
   font-size: 0.78rem;
   font-weight: 650;
@@ -87,7 +87,7 @@
 .me-menu-panel .session-sign-out-action:focus-visible {
   border-color: rgba(232, 201, 134, 0.24);
   background: rgba(255, 255, 255, 0.075);
-  color: #f7f4ea;
+  color: var(--theme-text);
 }
 
 .main-picker-sheet {
@@ -120,7 +120,7 @@
 
 .main-picker-section-copy {
   margin: 0.35rem 0 0.75rem;
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.84rem;
   line-height: 1.45;
 }
