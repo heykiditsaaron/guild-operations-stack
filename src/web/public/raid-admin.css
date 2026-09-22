@@ -36,87 +36,44 @@
   gap: 0.75rem;
 }
 
-.raid-admin-card {
+.raid-operation-card {
   display: grid;
   gap: 0.9rem;
-  padding: 1rem 1.1rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 0.8rem;
-  background: rgba(255, 255, 255, 0.025);
 }
 
-.raid-admin-card-open {
+.raid-operation-card-active {
   border-color: rgba(124, 198, 141, 0.2);
   background: rgba(124, 198, 141, 0.035);
 }
 
-.raid-admin-card-heading {
-  display: flex;
-  justify-content: space-between;
+.raid-operation-card .activity-card-header {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   gap: 1rem;
-  align-items: flex-start;
 }
 
-.raid-admin-card-identity h2,
-.raid-admin-card-identity p,
-.raid-admin-card-description {
-  margin: 0;
-}
-
-.raid-admin-card-identity h2 {
+.raid-operation-card .activity-card-title {
+  font-family: inherit;
   font-size: 1rem;
+  line-height: 1.2;
 }
 
-.raid-admin-card-identity p,
-.raid-admin-card-description {
-  margin-top: 0.35rem;
+.raid-operation-card .activity-card-header p,
+.raid-operation-card-description {
+  margin: 0.35rem 0 0;
   color: #aaa69c;
   font-size: 0.9rem;
 }
 
-.raid-admin-card-state {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  min-height: 1.55rem;
-  padding: 0.2rem 0.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 999px;
-  color: #c8c4ba;
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  line-height: 1;
-  text-transform: uppercase;
+.raid-operation-card-facts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.raid-admin-card-open .raid-admin-card-state {
-  border-color: rgba(124, 198, 141, 0.28);
-  color: #b9dfc1;
+.raid-operation-card .activity-card-actions {
+  margin-top: 0;
 }
 
-.raid-admin-card-facts {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 0.35rem 1rem;
-  margin: 0;
-}
-
-.raid-admin-card-facts dt {
-  font-weight: 700;
-}
-
-.raid-admin-card-facts dd {
-  margin: 0;
-}
-
-.raid-admin-card-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem;
-}
-
-.raid-admin-card-actions .button-primary {
+.raid-operation-card .activity-card-actions a {
   min-height: 2.35rem;
   padding: 0.5rem 0.75rem;
   font-size: 0.88rem;
@@ -585,7 +542,7 @@
 }
 
 @media (max-width: 42rem) {
-  .raid-admin-card-heading {
+  .raid-operation-card .activity-card-header {
     align-items: baseline;
   }
 }
