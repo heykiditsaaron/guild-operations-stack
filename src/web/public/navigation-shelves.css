@@ -17,19 +17,19 @@
   padding: 0.75rem 1rem;
   border-radius: 0;
   border-left: 2px solid transparent;
-  color: #c9c5ba;
+  color: var(--theme-text-secondary);
 }
 
 .mobile-nav-panel a[aria-current="page"] {
-  border-left-color: #e8c986;
+  border-left-color: var(--theme-accent);
   background: rgba(255, 255, 255, 0.045);
-  color: #f7f4ea;
+  color: var(--theme-text);
 }
 
 .mobile-nav-panel a:hover,
 .mobile-nav-panel a:focus-visible {
   background: rgba(255, 255, 255, 0.055);
-  color: #f7f4ea;
+  color: var(--theme-text);
 }
 
 .administration-navigation-zone {
@@ -51,7 +51,7 @@
 
 .administration-navigation-control > span {
   flex: 0 0 auto;
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.08em;
