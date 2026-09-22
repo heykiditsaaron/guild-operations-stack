@@ -1,4 +1,5 @@
-import { randomUUID } from "node:crypto";
+import type { PoolClient } from "pg";
+import { withTransaction } from "../db.js";
 import type {
   Emission,
   EmissionConsumerRegistration,
@@ -6,7 +7,7 @@ import type {
 
 export const EMISSION_TRANSPORT_ID = "in-process";
 
-type EmissionPublication = Readonly<{
+export type EmissionPublication = Readonly<{
   publicationId: string;
   emission: Emission;
 }>;
@@ -19,14 +20,29 @@ function requireText(value: string, field: string): string {
   return normalized;
 }
 
-function publish(input: Emission): EmissionPublication {
+function normalizeEmission(input: Emission): Emission {
   return {
-    publicationId: randomUUID(),
-    emission: {
-      code: requireText(input.code, "code"),
-      ...(input.parent === undefined ? {} : { parent: requireText(input.parent, "parent") }),
-      subject: requireText(input.subject, "subject"),
-    },
+    code: requireText(input.code, "code"),
+    ...(input.parent === undefined ? {} : { parent: requireText(input.parent, "parent") }),
+    subject: requireText(input.subject, "subject"),
+  };
+}
+
+export async function publishEmission(
+  client: PoolClient,
+  input: Emission,
+): Promise<EmissionPublication> {
+  const emission = normalizeEmission(input);
+  const result = await client.query<{ publication_id: string }>(
+    `INSERT INTO emission_publications (transport_id, code, parent, subject)
+     VALUES ($1, $2, $3, $4)
+     RETURNING publication_id`,
+    [EMISSION_TRANSPORT_ID, emission.code, emission.parent ?? null, emission.subject],
+  );
+
+  return {
+    publicationId: result.rows[0].publication_id,
+    emission,
   };
 }
 
@@ -53,9 +69,7 @@ export function registerEmissionConsumer(
   }
 }
 
-export async function emit(input: Emission): Promise<void> {
-  const publication = publish(input);
-
+export async function deliverEmission(publication: EmissionPublication): Promise<void> {
   for (const consumer of consumersByCode.get(publication.emission.code)?.values() ?? []) {
     try {
       await consumer.receive(publication.emission);
@@ -69,4 +83,9 @@ export async function emit(input: Emission): Promise<void> {
       });
     }
   }
+}
+
+export async function emit(input: Emission): Promise<void> {
+  const publication = await withTransaction((client) => publishEmission(client, input));
+  await deliverEmission(publication);
 }
