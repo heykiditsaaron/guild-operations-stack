@@ -1,15 +1,15 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../../../auth.js";
 import type { AssetRegistry } from "../../../assets.js";
-import { renderPage } from "../../../render.js";
+import { htmlText, renderPage } from "../../../render.js";
 import { viewerForRequest } from "../../../viewer.js";
 
-function rulesBody(): string {
+function rulesBody(guildName: string): string {
   return `
     <article class="raffle-reference-page raffle-rules">
       <section aria-labelledby="eligibility-heading">
         <h2 id="eligibility-heading">1. Eligibility</h2>
-        <p>Raffles are open to eligible members of OH CRIT I Pulled! while raffle participation is open.</p>
+        <p>Raffles are open to eligible members of ${htmlText(guildName)} while raffle participation is open.</p>
       </section>
 
       <section aria-labelledby="entering-heading">
@@ -56,8 +56,8 @@ export async function registerRaffleRulesPage(app: FastifyInstance, assets: Asse
 
     const html = renderPage(assets, {
       pathname: "/events/raffle/rules",
-      title: "Rules and Regulations · OH CRIT I Pulled! Guild Operations",
-      description: "Rules and regulations for OH CRIT I Pulled! guild raffles.",
+      title: `Rules and Regulations · ${viewer.guildPresentation.guildName} Guild Operations`,
+      description: `Rules and regulations for ${viewer.guildPresentation.guildName} guild raffles.`,
       viewer,
       secondaryNavigation: {
         kind: "breadcrumb",
@@ -74,7 +74,7 @@ export async function registerRaffleRulesPage(app: FastifyInstance, assets: Asse
           <h1 id="page-title">Rules and Regulations</h1>
           <p class="lede">The standing rules for participating in guild raffles.</p>
         </div>`,
-      body: rulesBody(),
+      body: rulesBody(viewer.guildPresentation.guildName),
     });
 
     return reply
