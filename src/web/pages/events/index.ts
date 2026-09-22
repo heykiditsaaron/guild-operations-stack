@@ -330,8 +330,8 @@ export async function registerEventsPage(app: FastifyInstance, assets: AssetRegi
 
     const html = renderPage(assets, {
       pathname: "/events",
-      title: "Events · OH CRIT I Pulled! Guild Operations",
-      description: "Discover OH CRIT I Pulled! guild participation offerings and current or upcoming events.",
+      title: `Events · ${viewer.guildPresentation.guildName} Guild Operations`,
+      description: `Discover ${viewer.guildPresentation.guildName} guild participation offerings and current or upcoming events.`,
       viewer,
       stylesheets: ["events.css"],
       scripts: ["events.js"],
