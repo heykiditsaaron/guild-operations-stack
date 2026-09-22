@@ -30,7 +30,8 @@ export function parseGuildPresentationUrl(value: unknown): string | null | undef
 }
 
 function armoryUrl(region: string, realmSlug: string, guildNameSlug: string): string {
-  return `https://worldofwarcraft.blizzard.com/en-${region}/guild/${region}/${encodeURIComponent(realmSlug)}/${encodeURIComponent(guildNameSlug)}`;
+  const locale = region === "us" ? "en-us" : region === "eu" ? "en-gb" : region === "kr" ? "ko-kr" : "zh-tw";
+  return `https://worldofwarcraft.blizzard.com/${locale}/guild/${region}/${encodeURIComponent(realmSlug)}/${encodeURIComponent(guildNameSlug)}`;
 }
 
 export async function guildPresentation(): Promise<GuildPresentation> {
