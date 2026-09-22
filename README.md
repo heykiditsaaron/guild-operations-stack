@@ -86,10 +86,7 @@ Core doctrine currently lives in:
 
 - [`docs/doctrine/architecture.md`](docs/doctrine/architecture.md) — system purpose, architectural laws, and ownership boundaries.
 - [`docs/doctrine/member-objects.md`](docs/doctrine/member-objects.md) — Guildie, Character, roster, selected-main, session, Discord, and capability meanings.
-- [`docs/doctrine/guild-authority.md`](docs/doctrine/guild-authority.md) — derivation of current Guildie participation and effective rank.
-- [`docs/doctrine/global-persistence.md`](docs/doctrine/global-persistence.md) — semantic ownership of persisted and derived truth.
 - [`docs/doctrine/module-conformity.md`](docs/doctrine/module-conformity.md) — application-wide invariants for concrete modules.
 - [`docs/doctrine/guild-activity.md`](docs/doctrine/guild-activity.md) — semantic governance for lifecycle-bound temporal Guild Activity modules.
-- [`docs/doctrine/participation-semantics.md`](docs/doctrine/participation-semantics.md) — subordinate semantics for Guild Activities that expose participation.
 
 Shared implementation guidance lives under [`docs/infrastructure/`](docs/infrastructure/). Concrete globally owned capabilities live under [`docs/features/`](docs/features/), empirical evidence under [`docs/reference/`](docs/reference/), endpoint reference under [`docs/endpoints/`](docs/endpoints/), and module-owned documentation remains with its owning module documentation.
