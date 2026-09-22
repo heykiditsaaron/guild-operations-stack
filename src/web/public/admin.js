@@ -264,3 +264,43 @@ if (
     }
   });
 }
+
+
+const guildPresentationForm = document.querySelector("[data-guild-presentation-form]");
+const raiderIoUrl = document.querySelector("[data-raider-io-url]");
+const warcraftLogsUrl = document.querySelector("[data-warcraft-logs-url]");
+const guildPresentationSave = document.querySelector("[data-guild-presentation-save]");
+const guildPresentationFeedback = document.querySelector("[data-guild-presentation-feedback]");
+
+if (
+  guildPresentationForm instanceof HTMLFormElement
+  && raiderIoUrl instanceof HTMLInputElement
+  && warcraftLogsUrl instanceof HTMLInputElement
+  && guildPresentationSave instanceof HTMLButtonElement
+  && guildPresentationFeedback instanceof HTMLElement
+) {
+  guildPresentationForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (guildPresentationSave.disabled) return;
+    guildPresentationSave.disabled = true;
+    guildPresentationSave.textContent = "Saving…";
+    guildPresentationFeedback.textContent = "Saving guild presentation…";
+    try {
+      const response = await fetch("/admin/general/presentation", {
+        method: "PUT",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({
+          raiderIoUrl: raiderIoUrl.value.trim() || null,
+          warcraftLogsUrl: warcraftLogsUrl.value.trim() || null,
+        }),
+      });
+      if (!response.ok) throw new Error(`Guild presentation update returned ${response.status}`);
+      window.location.reload();
+    } catch (error) {
+      console.error("Guild presentation update failed", error);
+      guildPresentationSave.disabled = false;
+      guildPresentationSave.textContent = "Save";
+      guildPresentationFeedback.textContent = "Guild presentation could not be saved. Use complete http or https URLs.";
+    }
+  });
+}
