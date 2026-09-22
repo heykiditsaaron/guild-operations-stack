@@ -206,10 +206,9 @@ button:disabled,
 
 .occurrence-operations-toolbar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.65rem 1rem;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.65rem;
   padding: 0.8rem 0;
 }
 
@@ -228,15 +227,7 @@ button:disabled,
   order: 1;
 }
 
-@media (min-width: 42rem) {
-  .occurrence-operations-modes {
-    order: 1;
-  }
 
-  .occurrence-operations-lifecycle {
-    order: 2;
-  }
-}
 
 .occurrence-operations-modes .button-primary,
 .occurrence-operations-modes .button-secondary,
