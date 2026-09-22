@@ -4,7 +4,6 @@ import { config } from "../../config.js";
 import { controlledCharactersForGuildie } from "../../controlled-characters.js";
 import { pool, withTransaction } from "../../db.js";
 import { emit } from "../../emissions/registry.js";
-import type { GuildEventDestination } from "../../guild-events/publication/contract.js";
 import {
   effectiveGuildAuthority,
   RAID_ASSIGN_CAPABILITY,
@@ -70,7 +69,8 @@ function requireFullOperationalBuffer(occursAt:readonly [number]|readonly [numbe
 function raidPublicDestination(raidId:string):string { return `/events/raid/${encodeURIComponent(raidId)}`; }
 function raidParticipationDestination(raidId:string):string { return `/events/raid/${encodeURIComponent(raidId)}/participation`; }
 function raidManageDestination(raidId:string):string { return `/events/raid/manage/${encodeURIComponent(raidId)}`; }
-export function raidOccurrenceDestinations(raidId:string):readonly GuildEventDestination[] {
+export type RaidDestination = { kind: string; label: string; href: string };
+export function raidOccurrenceDestinations(raidId:string):readonly RaidDestination[] {
   return [
     { kind:"public", label:"View raid", href:raidPublicDestination(raidId) },
     { kind:"participate", label:"Signups", href:raidParticipationDestination(raidId) },
