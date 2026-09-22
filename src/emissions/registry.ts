@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type {
   Emission,
   EmissionConsumerRegistration,
@@ -5,12 +6,28 @@ import type {
 
 export const EMISSION_TRANSPORT_ID = "in-process";
 
+type EmissionPublication = Readonly<{
+  publicationId: string;
+  emission: Emission;
+}>;
+
 const consumersByCode = new Map<string, Map<string, EmissionConsumerRegistration>>();
 
 function requireText(value: string, field: string): string {
   const normalized = value.trim();
   if (!normalized) throw new Error(`Emission ${field} must not be empty`);
   return normalized;
+}
+
+function publish(input: Emission): EmissionPublication {
+  return {
+    publicationId: randomUUID(),
+    emission: {
+      code: requireText(input.code, "code"),
+      ...(input.parent === undefined ? {} : { parent: requireText(input.parent, "parent") }),
+      subject: requireText(input.subject, "subject"),
+    },
+  };
 }
 
 export function registerEmissionConsumer(
@@ -37,20 +54,17 @@ export function registerEmissionConsumer(
 }
 
 export async function emit(input: Emission): Promise<void> {
-  const emission: Emission = {
-    code: requireText(input.code, "code"),
-    ...(input.parent === undefined ? {} : { parent: requireText(input.parent, "parent") }),
-    subject: requireText(input.subject, "subject"),
-  };
+  const publication = publish(input);
 
-  for (const consumer of consumersByCode.get(emission.code)?.values() ?? []) {
+  for (const consumer of consumersByCode.get(publication.emission.code)?.values() ?? []) {
     try {
-      await consumer.receive(emission);
+      await consumer.receive(publication.emission);
     } catch (error) {
       console.error("Emission consumer failed", {
         transportId: EMISSION_TRANSPORT_ID,
+        publicationId: publication.publicationId,
         consumerId: consumer.consumerId,
-        emission,
+        emission: publication.emission,
         error,
       });
     }
