@@ -204,15 +204,28 @@ button:disabled,
   flex: 0 0 auto;
 }
 
-.occurrence-operations-modes {
+.occurrence-operations-toolbar {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   flex-wrap: wrap;
-  gap: 0.55rem;
+  gap: 0.65rem 1rem;
   padding: 0.8rem 0;
 }
 
+.occurrence-operations-modes,
+.occurrence-operations-lifecycle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
 .occurrence-operations-modes .button-primary,
-.occurrence-operations-modes .button-secondary {
+.occurrence-operations-modes .button-secondary,
+.occurrence-operations-lifecycle .button-primary,
+.occurrence-operations-lifecycle .button-secondary,
+.occurrence-operations-lifecycle .button-success,
+.occurrence-operations-lifecycle .button-destructive {
   min-height: 2.25rem;
   padding: 0.45rem 0.7rem;
   font-size: 0.82rem;
