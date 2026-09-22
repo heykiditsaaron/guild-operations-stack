@@ -4,6 +4,7 @@ import { pool, withTransaction } from "./db.js";
 import {
   GUILD_REFRESH_CAPABILITY,
   GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY,
+  GUILD_PRESENTATION_CONFIGURE_CAPABILITY,
   MODULES_CONFIGURE_CAPABILITY,
   OPERATIONS_INSPECT_CAPABILITY,
   THEME_CONFIGURE_CAPABILITY,
@@ -43,6 +44,7 @@ export function registerGlobalGuildCapabilityDefinitions(): void {
     { key: GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY, namespace: "global", namespaceLabel: "Global", label: "Configure guild refresh schedule", description: "Configure automatic guild synchronization policy.", defaultPermittedRanks: [1, 2] },
     { key: MODULES_CONFIGURE_CAPABILITY, namespace: "global", namespaceLabel: "Global", label: "Configure modules", description: "Enable or disable installed Guild Operations modules.", defaultPermittedRanks: [] },
     { key: THEME_CONFIGURE_CAPABILITY, namespace: "global", namespaceLabel: "Global", label: "Configure theme", description: "Select the visual theme used by Guild Operations for this guild.", defaultPermittedRanks: [] },
+    { key: GUILD_PRESENTATION_CONFIGURE_CAPABILITY, namespace: "global", namespaceLabel: "Global", label: "Configure guild presentation", description: "Configure optional external destinations presented for this guild.", defaultPermittedRanks: [] },
     { key: OPERATIONS_INSPECT_CAPABILITY, namespace: "global", namespaceLabel: "Global", label: "Inspect operations", description: "Inspect operational history and recorded failures.", defaultPermittedRanks: [1, 2] },
   ]);
 }
