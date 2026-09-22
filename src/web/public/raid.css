@@ -8,28 +8,13 @@
 
 .raid-listing {
   display: grid;
-  gap: 1.5rem;
+  gap: 1.25rem;
   max-width: 48rem;
 }
 
-.raid-listing-header {
+.raid-occurrence-card {
   display: grid;
-  justify-items: start;
-  gap: .8rem;
-}
-
-.raid-listing-header h1,
-.raid-listing-time {
-  margin: 0;
-}
-
-.raid-listing-title {
-  overflow-wrap: anywhere;
-}
-
-.raid-listing-title-long {
-  font-size: clamp(2rem, 7vw, 3.25rem);
-  line-height: 1.02;
+  gap: 1.25rem;
 }
 
 .raid-listing-description {
@@ -39,59 +24,6 @@
 
 .raid-listing-description p {
   margin: 0;
-}
-
-.raid-difficulty,
-.raid-listing-status {
-  display: inline-flex;
-  align-items: center;
-  width: fit-content;
-  margin: 0;
-  padding: .2rem .55rem;
-  border: 1px solid var(--border-subtle, #2a2a2f);
-  border-radius: .45rem;
-  font-size: .9rem;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.raid-listing-time {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .65rem;
-  align-items: center;
-}
-
-.raid-listing-status {
-  font-size: .8rem;
-}
-
-.raid-listing-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  align-items: center;
-}
-
-.raid-listing-actions a {
-  min-height: 2.75rem;
-}
-
-.raid-listing-signup {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: .65rem 1.25rem;
-  border-radius: .7rem;
-  text-decoration: none;
-  font-weight: 700;
-}
-
-.raid-listing-manage {
-  display: inline-flex;
-  align-items: center;
-  padding: .65rem .25rem;
-  font-weight: 700;
 }
 
 .raid-requirements {
@@ -277,15 +209,6 @@
 }
 
 @media (max-width: 40rem) {
-  .raid-listing-title-long {
-    font-size: clamp(1.9rem, 9vw, 2.5rem);
-    line-height: 1.05;
-  }
-
-  .raid-listing-actions {
-    gap: .75rem;
-  }
-
   .raid-requirements dl > div {
     grid-template-columns: 1fr;
     gap: .2rem;
