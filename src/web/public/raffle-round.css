@@ -68,7 +68,7 @@
 }
 
 .raffle-ledger th {
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.78rem;
   font-weight: 750;
   letter-spacing: 0.08em;
@@ -91,7 +91,7 @@
 .raffle-ledger-resolution-time,
 .raffle-ledger-note {
   margin-top: 0.25rem;
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.82rem;
   line-height: 1.4;
 }
@@ -108,7 +108,7 @@
 
 .raffle-history-record-link:hover .raffle-history-heading strong,
 .raffle-history-record-link:focus-visible .raffle-history-heading strong {
-  color: #e8c986;
+  color: var(--theme-accent);
 }
 
 .raffle-history-heading > div {
@@ -119,7 +119,7 @@
 }
 
 .raffle-history-status {
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.82rem;
   font-weight: 650;
 }
@@ -128,12 +128,12 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.55rem 1.25rem;
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.9rem;
 }
 
 .raffle-history-summary strong {
-  color: #f7f4ea;
+  color: var(--theme-text);
 }
 
 .raffle-history-summary .raffle-reference-arrow {
@@ -189,7 +189,7 @@
 
   .raffle-ledger td::before {
     content: attr(data-label);
-    color: #aaa69c;
+    color: var(--theme-text-muted);
     font-size: 0.72rem;
     font-weight: 750;
     letter-spacing: 0.08em;
