@@ -4,7 +4,7 @@
 
 .site-document {
   width: min(100%, 46rem);
-  color: #c9c5ba;
+  color: var(--theme-text-secondary);
   font-size: 0.96rem;
   line-height: 1.68;
 }
@@ -28,7 +28,7 @@
 
 .site-document h2 {
   margin: 0 0 0.65rem;
-  color: #f7f4ea;
+  color: var(--theme-text);
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(1.25rem, 3vw, 1.55rem);
   line-height: 1.2;
@@ -46,6 +46,6 @@
   padding: 0.08rem 0.28rem;
   border-radius: 0.3rem;
   background: rgba(255, 255, 255, 0.055);
-  color: #e8c986;
+  color: var(--theme-accent);
   font-size: 0.88em;
 }
