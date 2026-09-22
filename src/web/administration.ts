@@ -1,6 +1,7 @@
 import {
   GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY,
   MODULES_CONFIGURE_CAPABILITY,
+  THEME_CONFIGURE_CAPABILITY,
   effectiveGuildAuthority,
 } from "../guild-permissions.js";
 import { canAdministerGuildPermissions } from "../guild-capability-policy.js";
@@ -10,6 +11,7 @@ export type AdministrationAvailability = {
   available: boolean;
   canConfigureModules: boolean;
   canConfigurePermissions: boolean;
+  canConfigureTheme: boolean;
   canConfigureDiscord: boolean;
   canConfigureGuildRefreshSchedule: boolean;
 };
@@ -18,6 +20,7 @@ const unavailableAdministration: AdministrationAvailability = {
   available: false,
   canConfigureModules: false,
   canConfigurePermissions: false,
+  canConfigureTheme: false,
   canConfigureDiscord: false,
   canConfigureGuildRefreshSchedule: false,
 };
@@ -30,10 +33,12 @@ export async function administrationAvailabilityForGuildie(
 
   const canConfigureModules = authority.operator || authority.capabilities.includes(MODULES_CONFIGURE_CAPABILITY);
   const canConfigurePermissions = await canAdministerGuildPermissions(guildieId);
+  const canConfigureTheme = authority.operator || authority.rankIndex === 0 || authority.capabilities.includes(THEME_CONFIGURE_CAPABILITY);
   const canConfigureDiscord = authority.capabilities.includes(DISCORD_ADMIN_CAPABILITY);
   const canConfigureGuildRefreshSchedule = authority.capabilities.includes(GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY);
   const available = canConfigureModules
     || canConfigurePermissions
+    || canConfigureTheme
     || canConfigureDiscord
     || canConfigureGuildRefreshSchedule;
 
@@ -41,6 +46,7 @@ export async function administrationAvailabilityForGuildie(
     available,
     canConfigureModules,
     canConfigurePermissions,
+    canConfigureTheme,
     canConfigureDiscord,
     canConfigureGuildRefreshSchedule,
   };
