@@ -141,6 +141,14 @@ button:disabled,
 }
 
 /* Shared presentation primitives. Domain surfaces compose these; themes own their visual expression. */
+.settings-panel {
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+
 .module-landing-header {
   display: flex;
   align-items: end;
