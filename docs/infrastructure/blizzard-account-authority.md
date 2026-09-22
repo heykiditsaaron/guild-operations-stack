@@ -2,7 +2,7 @@
 
 This infrastructure acquires and persists Blizzard account/control authority for a Guildie. It supports two ceremonies with different authority: ordinary login may establish or resolve Guildie continuity, while self refresh may only reconcile an already established Guildie and principal binding.
 
-Domain meanings come from [`../doctrine/member-objects.md`](../doctrine/member-objects.md). Current Guildie participation semantics come from [`../doctrine/guild-authority.md`](../doctrine/guild-authority.md).
+Domain meanings come from [`../doctrine/member-objects.md`](../doctrine/member-objects.md). Current Guildie organizational participation and authority semantics are defined there as well.
 
 ## Shared acquisition
 
