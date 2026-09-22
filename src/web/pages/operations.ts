@@ -164,7 +164,7 @@ export async function registerOperationsAdminPage(
 
     const html = renderPage(assets, {
       pathname: "/operations",
-      title: "Operations · OH CRIT I Pulled! Guild Operations",
+      title: `Operations · ${viewer.guildPresentation.guildName} Guild Operations`,
       description: "Run and inspect privileged Guild Operations procedures.",
       viewer,
       stylesheets: ["admin.css"],
