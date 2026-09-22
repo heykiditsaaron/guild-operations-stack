@@ -1,6 +1,6 @@
 # Guild Refresh
 
-Guild refresh is the shared reconciliation procedure for Blizzard-owned guild roster state. The doctrine describing how roster truth contributes to Guildie authority lives in [`../doctrine/guild-authority.md`](../doctrine/guild-authority.md).
+Guild refresh is the shared reconciliation procedure for Blizzard-owned guild roster state. The doctrine describing how roster truth contributes to Guildie authority lives in [`../doctrine/member-objects.md`](../doctrine/member-objects.md).
 
 ## What it owns
 
