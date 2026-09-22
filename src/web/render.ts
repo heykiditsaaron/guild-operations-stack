@@ -1,5 +1,4 @@
 import { config } from "../config.js";
-import { guildTheme } from "../guild-theme.js";
 import type { AdministrationNavigationDestination } from "./admin-navigation.js";
 import { assetUrl, type AssetName, type AssetRegistry } from "./assets.js";
 import type { ModuleWebPresentation } from "./module-presentation.js";
@@ -28,6 +27,7 @@ export type WebViewerCharacter = {
 
 type WebViewerPresentation = {
   modulePresentation: ModuleWebPresentation;
+  theme: "default" | "alliance" | "horde";
 };
 
 export type WebViewer =
@@ -260,8 +260,8 @@ export function renderOccurrenceOperations(input: OccurrenceOperationsFrame): st
   return `<section class="occurrence-operations-frame"><header class="occurrence-operations-header"><div class="occurrence-operations-identity"><h1>${escapeHtml(input.title)}</h1><p>${input.context}</p></div>${publicAction ? `<div class="occurrence-operations-public-action">${publicAction}</div>` : ""}</header>${modes || lifecycleActions ? `<div class="occurrence-operations-toolbar">${modes ? `<nav class="occurrence-operations-modes" aria-label="Operational mode">${modes}</nav>` : ""}${lifecycleActions ? `<div class="occurrence-operations-lifecycle" aria-label="Lifecycle actions">${lifecycleActions}</div>` : ""}</div>` : ""}<div class="occurrence-operations-workspace">${input.workspace}</div></section>`;
 }
 
-export async function renderPage(assets: AssetRegistry, input: RenderPageInput): Promise<string> {
-  const theme = await guildTheme();
+export function renderPage(assets: AssetRegistry, input: RenderPageInput): string {
+  const theme = input.viewer.theme;
   const title = escapeHtml(input.title);
   const description = escapeHtml(input.description ?? "OH CRIT I Pulled!");
   const canonicalUrl = new URL(input.pathname, config.appOrigin).toString();
