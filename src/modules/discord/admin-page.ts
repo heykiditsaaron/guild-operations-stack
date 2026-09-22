@@ -56,7 +56,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       <section class="admin-section" aria-labelledby="discord-module-heading">
         <h2 id="discord-module-heading">Discord module</h2>
         ${secretWarning}
-        <div class="discord-admin">
+        <div class="discord-admin settings-panel">
           <form class="discord-module-form" data-discord-module-form>
             <div class="discord-projection-heading discord-admin-heading">
               <div>
