@@ -115,7 +115,28 @@ Blizzard owns whether a Character is currently on that roster and the Character'
 
 A Character leaving the roster does not erase the Character or historical Guild Operations activity involving it.
 
-## Guildie roster and participation surface
+## Guildie roster and organizational authority
+
+Current Guildie organizational participation and rank-derived authority come from two independent Blizzard-authoritative observations. Blizzard account authority establishes which Characters a Guildie currently controls; Blizzard guild-roster authority separately establishes which Characters are current guild members and the numeric rank attached to each.
+
+Neither observation substitutes for the other:
+
+```text
+control without roster membership
+    → known controlled Character
+    → not currently eligible for Guild Operations guild participation
+
+roster membership without demonstrated Guildie control
+    → current guild Character
+    → not attributable to that Guildie
+
+control + roster membership
+    → eligible Guild Operations Character for that Guildie
+```
+
+Character presentation is another independent observation and cannot establish either control or guild membership.
+
+### Guildie roster and participation surface
 
 The **Guildie roster** is Guild Operations-derived current organizational participation.
 
@@ -160,6 +181,24 @@ This state is derived and non-destructive; it is not a second persisted source o
 `guildie.left` means the Guildie transitioned from having a current participation surface to having none. It is not a closeout, deletion, retirement, or historical rewrite.
 
 A Guildie's current participation surface can appear or disappear because the Blizzard Character roster changed or because Blizzard account reconciliation changed which Characters the Guildie currently controls.
+
+### Durable authority coordinates
+
+Character authority joins by:
+
+```text
+region + realm_id + character_id
+```
+
+Mutable presentation fields such as Character name or realm name are not continuity coordinates.
+
+The configured guild is identified internally by Blizzard's numeric `guild_id`.
+
+The authority invariant is:
+
+> A Guildie's current guild participation and rank-derived authority exist only where Blizzard-demonstrated Character control intersects Blizzard's current guild roster.
+
+Guildie continuity survives changes to that intersection. Current authority does not.
 
 ## Guild rank
 
