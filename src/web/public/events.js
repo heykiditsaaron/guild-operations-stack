@@ -8,7 +8,7 @@
     : [];
   const viewButtons = Array.from(root.querySelectorAll("[data-calendar-view]"));
   const panels = Array.from(root.querySelectorAll("[data-calendar-panel]"));
-  let activeView = "agenda";
+  let activeView = root.dataset.calendarInitialView || "agenda";
   let weekOffset = 0;
   let monthOffset = 0;
 
@@ -105,7 +105,7 @@
     }
   }
 
-  function setView(view) {
+  function setView(view, persist = false) {
     activeView = view;
     viewButtons.forEach((button) => {
       const selected = button.dataset.calendarView === view;
@@ -117,11 +117,20 @@
     });
     if (view === "week") renderWeek();
     if (view === "month") renderMonth();
+    if (persist) {
+      fetch("/events/view", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ view }),
+      }).catch(() => {});
+    }
   }
 
   viewButtons.forEach((button) => {
-    button.addEventListener("click", () => setView(button.dataset.calendarView || "agenda"));
+    button.addEventListener("click", () => setView(button.dataset.calendarView || "agenda", true));
   });
+
+  setView(activeView);
 
   root.addEventListener("click", (event) => {
     const button = event.target.closest("[data-calendar-shift]");
