@@ -42,7 +42,7 @@
 
 .raffle-operation-card .activity-card-header p {
   margin: 0.35rem 0 0;
-  color: #aaa69c;
+  color: var(--theme-text-muted);
   font-size: 0.9rem;
 }
 
