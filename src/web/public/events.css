@@ -583,19 +583,23 @@
 .events-view-switcher {
   display: inline-flex;
   gap: 0.2rem;
-  padding: 0.2rem;
+  padding: 0.14rem;
   border: 1px solid color-mix(in srgb, var(--theme-text-muted) 22%, transparent);
   border-radius: 0.7rem;
 }
 
 .events-view-option {
-  padding: 0.42rem 0.65rem;
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
   border: 0;
   border-radius: 0.5rem;
   background: transparent;
   color: var(--theme-text-muted);
   font: inherit;
-  font-size: 0.78rem;
+  place-items: center;
+  font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
 }
@@ -769,12 +773,8 @@
   }
 
   .events-view-switcher {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .events-view-option {
-    text-align: center;
+    align-self: flex-start;
+    display: inline-flex;
   }
 
   .events-week {
