@@ -47,6 +47,15 @@ export type RaidEventFacts = {
 };
 export type RaidRosterDiagnostics = { assigned:number; tanks:number; healers:number; damage:number; melee:number; ranged:number };
 
+export type RaidCalendarProjection = {
+  title: string;
+  description: string | null;
+  category: "raid";
+  publicDestination: string;
+  participationDestination: string;
+  operationDestination: string;
+};
+
 type RaidAction = "created" | "modified" | "assignment_established" | "assignment_modified" | "assignment_withdrawn" | "signup_denied";
 
 function nowUnix():number { return Math.floor(Date.now()/1000); }
@@ -78,6 +87,19 @@ async function replaceRaidRequirements(client:PoolClient,raidId:string,requireme
   }
 }
 async function resolveApplicantGuildie(anchor:RaidApplicantAnchor):Promise<string|null>{ if(anchor.kind!=="guildie")return null; const r=await pool.query<{guildie_id:string}>("SELECT guildie_id FROM guildies WHERE guildie_id = $1",[anchor.value]); return r.rows[0]?.guildie_id??null; }
+
+export async function raidCalendarProjection(raidId:string):Promise<RaidCalendarProjection|null>{
+  const raid=await raidEventFacts(raidId);
+  if(!raid)return null;
+  return {
+    title:raid.label,
+    description:raid.description,
+    category:"raid",
+    publicDestination:raidPublicDestination(raid.raidId),
+    participationDestination:raidParticipationDestination(raid.raidId),
+    operationDestination:raidManageDestination(raid.raidId),
+  };
+}
 
 export async function raidEventFacts(raidId:string, client:PoolClient|null=null):Promise<RaidEventFacts|null>{
   const db=client??pool;
