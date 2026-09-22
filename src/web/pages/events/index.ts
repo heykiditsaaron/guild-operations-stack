@@ -2,6 +2,12 @@ import type { FastifyInstance } from "fastify";
 import { guildState } from "../../../application-state.js";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../auth.js";
 import {
+  calendarViewForGuildie,
+  isCalendarViewMode,
+  setCalendarViewForGuildie,
+  type CalendarViewMode,
+} from "../../../calendar-preference.js";
+import {
   RAID_ASSIGN_CAPABILITY,
   RAID_MODIFY_CAPABILITY,
   RAID_STAGE_CAPABILITY,
@@ -205,6 +211,7 @@ function renderCalendar(
   happeningNow: CalendarOccurrence[],
   upcoming: CalendarOccurrence[],
   occurrences: CalendarOccurrence[],
+  selectedView: CalendarViewMode,
   canOperate: (event: CalendarOccurrence) => boolean,
 ): string {
   const calendarBody = happeningNow.length || upcoming.length
@@ -216,13 +223,13 @@ function renderCalendar(
     : emptyCalendarState();
 
   return `
-    <section class="events-calendar-widget" aria-labelledby="events-calendar-title">
+    <section class="events-calendar-widget" aria-labelledby="events-calendar-title" data-calendar-initial-view="${selectedView}">
       <div class="events-calendar-heading">
         <h2 class="eyebrow events-calendar-title" id="events-calendar-title">What&apos;s happening</h2>
         <div class="events-view-switcher" role="group" aria-label="Calendar view">
-          <button type="button" class="events-view-option is-active" data-calendar-view="agenda" aria-pressed="true">Agenda</button>
-          <button type="button" class="events-view-option" data-calendar-view="week" aria-pressed="false">Week</button>
-          <button type="button" class="events-view-option" data-calendar-view="month" aria-pressed="false">Month</button>
+          <button type="button" class="events-view-option" data-calendar-view="agenda" aria-label="Agenda view" title="Agenda" aria-pressed="false"><span aria-hidden="true">☷</span></button>
+          <button type="button" class="events-view-option" data-calendar-view="week" aria-label="Week view" title="Week" aria-pressed="false"><span aria-hidden="true">▥</span></button>
+          <button type="button" class="events-view-option" data-calendar-view="month" aria-label="Month view" title="Month" aria-pressed="false"><span aria-hidden="true">▦</span></button>
         </div>
       </div>
       <div class="events-view-panel" data-calendar-panel="agenda">
@@ -251,6 +258,15 @@ function renderCalendar(
 }
 
 export async function registerEventsPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
+  app.post("/events/view", async (request, reply) => {
+    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
+    if (!guildie) return reply.code(401).send({ error: "authentication_required" });
+    const view = (request.body as { view?: unknown } | null)?.view;
+    if (!isCalendarViewMode(view)) return reply.code(400).send({ error: "invalid_calendar_view" });
+    await setCalendarViewForGuildie(guildie.guildieId, view);
+    return reply.code(204).send();
+  });
+
   app.get("/events", async (request, reply) => {
     const nowUnix = Math.floor(Date.now() / 1000);
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
@@ -261,6 +277,7 @@ export async function registerEventsPage(app: FastifyInstance, assets: AssetRegi
       guildState(),
       packagedModuleStates(),
     ]);
+    const selectedView = guildie ? await calendarViewForGuildie(guildie.guildieId) : "agenda";
     const [canCreateRaid, canCreateRaffle, canOperateRaid, canOperateRaffle] = guildie
       ? await Promise.all([
           guildieHasGuildCapability(guildie.guildieId, RAID_MODIFY_CAPABILITY),
@@ -307,7 +324,7 @@ export async function registerEventsPage(app: FastifyInstance, assets: AssetRegi
     const guildCommunity = guild ? `${htmlText(guild.name)}&apos;s community` : "the guild&apos;s community";
     const body = `
       <div class="events-shell">
-        ${renderCalendar(happeningNow, upcoming, occurrences, canOperateOccurrence)}
+        ${renderCalendar(happeningNow, upcoming, occurrences, selectedView, canOperateOccurrence)}
         ${renderOfferings(offerings, assets)}
       </div>`;
 
