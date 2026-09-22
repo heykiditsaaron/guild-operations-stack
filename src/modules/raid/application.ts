@@ -51,9 +51,9 @@ export type RaidCalendarProjection = {
   title: string;
   description: string | null;
   category: "raid";
-  publicDestination: string;
-  participationDestination: string;
-  operationDestination: string;
+  publicAction: { label: string; href: string };
+  participationAction: { label: string; href: string } | null;
+  operationAction: { label: string; href: string };
 };
 
 type RaidAction = "created" | "modified" | "assignment_established" | "assignment_modified" | "assignment_withdrawn" | "signup_denied";
@@ -95,9 +95,9 @@ export async function raidCalendarProjection(raidId:string):Promise<RaidCalendar
     title:raid.label,
     description:raid.description,
     category:"raid",
-    publicDestination:raidPublicDestination(raid.raidId),
-    participationDestination:raidParticipationDestination(raid.raidId),
-    operationDestination:raidManageDestination(raid.raidId),
+    publicAction:{label:"View raid",href:raidPublicDestination(raid.raidId)},
+    participationAction:raidSignupsAreOpen(raid)?{label:"Sign up",href:raidParticipationDestination(raid.raidId)}:null,
+    operationAction:{label:"Manage raid",href:raidManageDestination(raid.raidId)},
   };
 }
 
