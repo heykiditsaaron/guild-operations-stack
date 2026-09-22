@@ -2,9 +2,8 @@ import type { FastifyInstance } from "fastify";
 import { guildState } from "../../../application-state.js";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../auth.js";
 import {
-  RAID_ASSIGN_CAPABILITY,
   RAID_MODIFY_CAPABILITY,
-  RAID_STAGE_CAPABILITY,
+  RAFFLE_MODIFY_CAPABILITY,
   guildieHasGuildCapability,
 } from "../../../guild-permissions.js";
 import {
@@ -21,7 +20,6 @@ import {
   packagedModuleStates,
   type PackagedModuleState,
 } from "../../../module-lifecycle.js";
-import { raffleGuildieCanOperate } from "../../../modules/raffle/authorization.js";
 import { raffleCalendarProjection } from "../../../modules/raffle/application.js";
 import { raidCalendarProjection } from "../../../modules/raid/application.js";
 import { assetUrl, type AssetName, type AssetRegistry } from "../../assets.js";
@@ -130,7 +128,8 @@ function renderOfferings(offerings: readonly GuildEventOffering[], assets: Asset
   if (!offerings.length) return "";
 
   return `
-    <section class="events-offerings" aria-label="Participation offerings">
+    <section class="events-offerings" aria-labelledby="events-offerings-title">
+      <h2 class="eyebrow events-section-title" id="events-offerings-title">More ways to participate</h2>
       <div class="events-offering-grid">
         ${offerings.map((offering) => renderOffering(offering, assets)).join("\n")}
       </div>
@@ -199,7 +198,7 @@ function renderCalendar(
 
   return `
     <section class="events-calendar-widget" aria-labelledby="events-calendar-title">
-      <h2 class="eyebrow events-calendar-title" id="events-calendar-title">Guild Event Calendar</h2>
+      <h2 class="eyebrow events-calendar-title" id="events-calendar-title">What&apos;s happening</h2>
       ${calendarBody}
     </section>`;
 }
@@ -215,39 +214,37 @@ export async function registerEventsPage(app: FastifyInstance, assets: AssetRegi
       guildState(),
       packagedModuleStates(),
     ]);
-    const [canModifyRaid, canStageRaid, canAssignRaid, canAdministerRaffle] = guildie
+    const [canCreateRaid, canCreateRaffle] = guildie
       ? await Promise.all([
           guildieHasGuildCapability(guildie.guildieId, RAID_MODIFY_CAPABILITY),
-          guildieHasGuildCapability(guildie.guildieId, RAID_STAGE_CAPABILITY),
-          guildieHasGuildCapability(guildie.guildieId, RAID_ASSIGN_CAPABILITY),
-          raffleGuildieCanOperate(guildie.guildieId),
+          guildieHasGuildCapability(guildie.guildieId, RAFFLE_MODIFY_CAPABILITY),
         ])
-      : [false, false, false, false];
+      : [false, false];
     const moduleStateByKey = new Map(moduleStates.map((module) => [module.key, module]));
     const offerings = guildEventOfferings().filter((offering) => offeringAvailable(offering.destination, moduleStateByKey));
     const raidEnabled = moduleStateByKey.get("raid")?.enabled !== false;
     const raffleEnabled = moduleStateByKey.get("raffle")?.enabled !== false;
-    const canOperateRaid = raidEnabled && (canModifyRaid || canStageRaid || canAssignRaid);
-    const canOperateRaffle = raffleEnabled && canAdministerRaffle;
+    const createChoices = [
+      raidEnabled && canCreateRaid
+        ? `<a href="/events/raid/manage"><strong>Raid</strong><span>Schedule a guild raid</span></a>`
+        : "",
+      raffleEnabled && canCreateRaffle
+        ? `<a href="/events/raffle/manage"><strong>Raffle</strong><span>Establish a guild raffle</span></a>`
+        : "",
+    ].filter(Boolean).join("");
+    const createEvent = createChoices
+      ? `<details class="events-create"><summary class="button button-primary">Create New Event</summary><div class="events-create-menu" role="menu">${createChoices}</div></details>`
+      : "";
 
     const occurrences = await calendarOccurrences(calendarPoints);
     const relevant = occurrences.filter((event) => occursThrough(event.occursAt) >= nowUnix);
     const happeningNow = relevant.filter((event) => isHappeningNow(event.occursAt, nowUnix));
     const upcoming = relevant.filter((event) => !isHappeningNow(event.occursAt, nowUnix));
     const guildCommunity = guild ? `${htmlText(guild.name)}&apos;s community` : "the guild&apos;s community";
-    const operationalEntries = [
-      canOperateRaid ? `<a class="button button-secondary" href="/events/raid/manage">Manage raids</a>` : "",
-      canOperateRaffle ? `<a class="button button-secondary" href="/events/raffle/manage">Manage raffles</a>` : "",
-    ].filter(Boolean).join("");
-    const operationalEntry = operationalEntries
-      ? `<div class="events-operator-actions">${operationalEntries}</div>`
-      : "";
-
     const body = `
       <div class="events-shell">
-        ${operationalEntry}
-        ${renderOfferings(offerings, assets)}
         ${renderCalendar(happeningNow, upcoming)}
+        ${renderOfferings(offerings, assets)}
       </div>`;
 
     const html = renderPage(assets, {
@@ -257,10 +254,13 @@ export async function registerEventsPage(app: FastifyInstance, assets: AssetRegi
       viewer,
       stylesheets: ["events.css"],
       header: `
-        <div class="events-page-header">
-          <p class="eyebrow">Guild participation</p>
-          <h1 id="page-title">Events</h1>
-          <p class="lede">Find out ways to take part in ${guildCommunity}. Below you&apos;ll find what the guild offers and when you can join along.</p>
+        <div class="events-page-header-row">
+          <div class="events-page-header">
+            <p class="eyebrow">Guild participation</p>
+            <h1 id="page-title">Events</h1>
+            <p class="lede">Find out what&apos;s happening in ${guildCommunity} and ways you can take part.</p>
+          </div>
+          ${createEvent}
         </div>`,
       body,
     });
