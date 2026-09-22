@@ -1,5 +1,8 @@
+import { registerApplicationEmissionConsumers } from "./emissions/consumers.js";
 import { pool } from "./db.js";
 import { performGuildRefresh } from "./guild-refresh-operation.js";
+
+registerApplicationEmissionConsumers();
 
 try {
   const result = await performGuildRefresh();
