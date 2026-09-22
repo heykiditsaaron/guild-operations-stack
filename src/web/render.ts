@@ -1,4 +1,4 @@
-import { config } from "../config.js";
+import type { GuildPresentation } from "../guild-presentation.js";
 import type { AdministrationNavigationDestination } from "./admin-navigation.js";
 import { assetUrl, type AssetName, type AssetRegistry } from "./assets.js";
 import type { ModuleWebPresentation } from "./module-presentation.js";
@@ -26,6 +26,7 @@ export type WebViewerCharacter = {
 };
 
 type WebViewerPresentation = {
+  guildPresentation: GuildPresentation;
   modulePresentation: ModuleWebPresentation;
   theme: "default" | "alliance" | "horde";
 };
@@ -204,9 +205,10 @@ function externalFooterLink(url: string | null, label: string): string {
 
 function renderFooter(viewer: WebViewer): string {
   const communityLinks = viewer.modulePresentation.footerCommunityLinks.join("");
-  const wowLinks = [externalFooterLink(config.wowArmoryUrl, "WoW Armory"), externalFooterLink(config.raiderIoUrl, "Raider.IO"), externalFooterLink(config.warcraftLogsUrl, "Warcraft Logs")].filter(Boolean).join("");
+  const presentation = viewer.guildPresentation;
+  const wowLinks = [externalFooterLink(presentation.wowArmoryUrl, "WoW Armory"), externalFooterLink(presentation.raiderIoUrl, "Raider.IO"), externalFooterLink(presentation.warcraftLogsUrl, "Warcraft Logs")].filter(Boolean).join("");
   return `<footer class="app-footer"><div class="app-footer-inner">
-    <div class="footer-brand"><span class="footer-guild-name">OH CRIT I Pulled!</span><span class="footer-guild-context">Gurubashi · US</span></div>
+    <div class="footer-brand"><span class="footer-guild-name">${escapeHtml(presentation.guildName)}</span><span class="footer-guild-context">${escapeHtml([presentation.realmName, presentation.region].filter(Boolean).join(" · "))}</span></div>
     <div class="footer-destinations">
       ${communityLinks ? `<section class="footer-group" aria-label="Guild community"><p class="footer-group-title">Join us</p><div class="footer-links">${communityLinks}</div></section>` : ""}
       ${wowLinks ? `<section class="footer-group" aria-label="Guild links"><p class="footer-group-title">Find us in Azeroth</p><div class="footer-links">${wowLinks}</div></section>` : ""}
