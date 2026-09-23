@@ -1,19 +1,19 @@
 import type { PoolClient } from "pg";
-import { acquireGuildAuthority, type BlizzardGuildProfile, type BlizzardGuildRoster } from "./blizzard.js";
-import { config, type Region } from "./config.js";
-import { pool, withTransaction } from "./db.js";
-import { deliverEmission, publishEmission } from "./emissions/registry.js";
+import { acquireGuildAuthority, type BlizzardGuildProfile, type BlizzardGuildRoster } from "../../blizzard.js";
+import { config, type Region } from "../../config.js";
+import { pool, withTransaction } from "../../db.js";
+import { deliverEmission, publishEmission } from "../../emissions/registry.js";
 import {
   GUILD_REFRESH_CAPABILITY,
   GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY,
   OPERATIONS_INSPECT_CAPABILITY,
-} from "./core/authority/guild-permissions.js";
-import { publishGuildRefreshObservation } from "./core/guild/guild-refresh-observers.js";
+} from "../authority/guild-permissions.js";
+import { publishGuildRefreshObservation } from "./guild-refresh-observers.js";
 import {
   enrichGuildCharacters,
   guildCharactersNeedingEnrichment,
   type GuildCharacterCoordinate,
-} from "./core/guild/guild-character-enrichment.js";
+} from "./guild-character-enrichment.js";
 
 function factionValue(value: unknown): string | null {
   if (typeof value === "string") return value;
