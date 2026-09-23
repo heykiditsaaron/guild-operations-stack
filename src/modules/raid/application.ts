@@ -1,5 +1,5 @@
 import type { PoolClient } from "pg";
-import { characterMembership } from "../../application-state.js";
+import { characterMembership } from "../../core/guild/character-membership.js";
 import { config } from "../../config.js";
 import { controlledCharactersForGuildie } from "../../core/identity/controlled-characters.js";
 import { pool, withTransaction } from "../../db.js";
