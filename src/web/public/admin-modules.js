@@ -20,7 +20,7 @@ for (const card of document.querySelectorAll("[data-module-key]")) {
     feedback.textContent = enabled ? "Enabling module…" : "Disabling module…";
 
     try {
-      const response = await fetch(`/admin/general/modules/${encodeURIComponent(moduleKey)}`, {
+      const response = await fetch(`/admin/modules/${encodeURIComponent(moduleKey)}`, {
         method: "PUT",
         headers: {
           Accept: "application/json",
