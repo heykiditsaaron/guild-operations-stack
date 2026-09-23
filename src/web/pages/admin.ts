@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
-import { guildRefreshStatus } from "../../guild-admin.js";
+import { guildRefreshStatus } from "../../core/guild/guild-refresh-status.js";
 import {
   canAdministerGuildPermissions,
   guildCapabilityPoliciesForActor,
@@ -11,7 +11,7 @@ import {
   GUILD_REFRESH_MINIMUM_INTERVAL_SECONDS,
   guildRefreshSchedule,
   type GuildRefreshSchedule,
-} from "../../guild-refresh-schedule.js";
+} from "../../core/guild/guild-refresh-schedule.js";
 import {
   GUILD_REFRESH_CAPABILITY,
   GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY,

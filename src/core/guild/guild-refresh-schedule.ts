@@ -1,5 +1,5 @@
-import { config } from "./config.js";
-import { pool } from "./db.js";
+import { config } from "../../config.js";
+import { pool } from "../../db.js";
 
 export const GUILD_REFRESH_MINIMUM_INTERVAL_SECONDS = 300;
 export const GUILD_REFRESH_DEFAULT_INTERVAL_SECONDS = 86400;
