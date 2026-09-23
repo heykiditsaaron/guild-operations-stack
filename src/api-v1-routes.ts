@@ -1,5 +1,8 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import { characterMembership, guildieState } from "./application-state.js";
+import { characterMembership } from "./core/guild/character-membership.js";
+import { effectiveGuildAuthority } from "./core/authority/guild-permissions.js";
+import { mainCharacterForGuildie } from "./core/identity/main-character.js";
+import { guildCharactersForGuildie } from "./guild.js";
 import { config, parseRegion } from "./config.js";
 
 function readAuthorized(request: FastifyRequest): boolean {
@@ -18,29 +21,33 @@ export async function registerApiV1Routes(app: FastifyInstance): Promise<void> {
       return reply.code(400).send({ error: "invalid_guildie_coordinate" });
     }
 
-    const state = await guildieState(params.guildieId);
-    if (!state) return reply.code(404).send({ error: "guildie_not_found" });
+    const characters = await guildCharactersForGuildie(params.guildieId);
+    const [selectedMain, guildAuthority] = await Promise.all([
+      mainCharacterForGuildie(params.guildieId),
+      effectiveGuildAuthority(params.guildieId),
+    ]);
+    if (!characters.length && !selectedMain && !guildAuthority) return reply.code(404).send({ error: "guildie_not_found" });
 
     return reply.send({
-      guildie_id: state.guildieId,
+      guildie_id: params.guildieId,
       guild: {
-        membership: state.guildAuthority
+        membership: guildAuthority
           ? {
-              guild_id: state.guildAuthority.guildId,
-              rank: state.guildAuthority.rankIndex,
-              rank_name: state.guildAuthority.rankDisplayName,
+              guild_id: guildAuthority.guildId,
+              rank: guildAuthority.rankIndex,
+              rank_name: guildAuthority.rankDisplayName,
             }
           : null,
-        main_character: state.selectedMain
+        main_character: selectedMain
           ? {
-              guild_id: state.selectedMain.guildId,
-              character_id: state.selectedMain.characterId,
-              realm_id: state.selectedMain.realmId,
-              name: state.selectedMain.name,
-              realm_name: state.selectedMain.realmName,
-              rank: state.selectedMain.rankIndex,
-              currently_eligible: state.selectedMain.currentlyEligible,
-              avatar_url: state.selectedMain.avatarUrl,
+              guild_id: selectedMain.guildId,
+              character_id: selectedMain.characterId,
+              realm_id: selectedMain.realmId,
+              name: selectedMain.name,
+              realm_name: selectedMain.realmName,
+              rank: selectedMain.rankIndex,
+              currently_eligible: selectedMain.currentlyEligible,
+              avatar_url: selectedMain.avatarUrl,
             }
           : null,
       },
