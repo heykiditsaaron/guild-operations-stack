@@ -1,0 +1,128 @@
+import { acquireGuildAuthorityByReference, type BlizzardGuildProfile } from "../../blizzard.js";
+import type { Region } from "../../config.js";
+import { pool, withTransaction } from "../../db.js";
+import { controlledCharactersForGuildie } from "../identity/controlled-characters.js";
+import { discoverInstallationGuildCandidates } from "./guild-candidates.js";
+
+function localizedValue(value: unknown): string | null {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object") {
+    const localized = value as Record<string, unknown>;
+    if (typeof localized.en_US === "string") return localized.en_US;
+    const first = Object.values(localized).find((candidate) => typeof candidate === "string");
+    return typeof first === "string" ? first : null;
+  }
+  return null;
+}
+
+function factionValue(value: unknown): string | null {
+  if (typeof value === "string") return value;
+  if (value && typeof value === "object") {
+    const typed = value as { type?: unknown; name?: unknown };
+    if (typeof typed.type === "string") return typed.type;
+    if (typeof typed.name === "string") return typed.name;
+  }
+  return null;
+}
+
+async function persistGuild(region: Region, profile: BlizzardGuildProfile): Promise<string> {
+  const guildId = String(profile.id);
+  const realmId = String(profile.realm.id);
+  const realmSlug = profile.realm.slug;
+  if (!profile.name || !realmSlug) throw new Error("Blizzard guild profile omitted required coordinates");
+
+  await pool.query(
+    `INSERT INTO guilds (
+       guild_id, region, realm_id, name, realm_name, realm_slug, faction, created_timestamp
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+     ON CONFLICT (guild_id) DO UPDATE SET
+       region=EXCLUDED.region, realm_id=EXCLUDED.realm_id, name=EXCLUDED.name,
+       realm_name=EXCLUDED.realm_name, realm_slug=EXCLUDED.realm_slug,
+       faction=EXCLUDED.faction, created_timestamp=EXCLUDED.created_timestamp, last_seen_at=now()`,
+    [guildId, region, realmId, profile.name, localizedValue(profile.realm.name), realmSlug,
+      factionValue(profile.faction), profile.created_timestamp ?? null],
+  );
+  return guildId;
+}
+
+export type InstallationGuildBinding = {
+  guildId: string;
+  boundAt: Date;
+  boundByGuildieId: string | null;
+  authorizedAt: Date | null;
+  authorizedByGuildieId: string | null;
+  authorizationKind: "guild_master" | "original_install_bypass" | null;
+};
+
+export async function installationGuildBinding(): Promise<InstallationGuildBinding | null> {
+  const result = await pool.query<{
+    guild_id: string; bound_at: Date; bound_by_guildie_id: string | null;
+    authorized_at: Date | null; authorized_by_guildie_id: string | null;
+    authorization_kind: InstallationGuildBinding["authorizationKind"];
+  }>(`SELECT guild_id, bound_at, bound_by_guildie_id, authorized_at,
+             authorized_by_guildie_id, authorization_kind
+        FROM installation_guild_binding WHERE singleton = true`);
+  const row = result.rows[0];
+  return row ? {
+    guildId: row.guild_id,
+    boundAt: row.bound_at,
+    boundByGuildieId: row.bound_by_guildie_id,
+    authorizedAt: row.authorized_at,
+    authorizedByGuildieId: row.authorized_by_guildie_id,
+    authorizationKind: row.authorization_kind,
+  } : null;
+}
+
+export async function establishPendingInstallationGuildBinding(input: {
+  guildieId: string;
+  region: Region;
+  guildId: string;
+}): Promise<InstallationGuildBinding> {
+  if (await installationGuildBinding()) throw new Error("Installation is already bound to a guild");
+
+  const candidates = await discoverInstallationGuildCandidates(input.guildieId);
+  const candidate = candidates.find((value) => value.region === input.region && value.guildId === input.guildId);
+  if (!candidate) throw new Error("Selected guild is not a current controlled-character guild candidate");
+
+  const authority = await acquireGuildAuthorityByReference({
+    region: candidate.region,
+    referenceHref: candidate.referenceHref,
+  });
+  if (
+    String(authority.profile.id) !== candidate.guildId
+    || String(authority.roster.guild.id) !== candidate.guildId
+  ) {
+    throw new Error("Blizzard guild authority did not corroborate the selected guild");
+  }
+  if (
+    String(authority.profile.realm.id) !== candidate.realmId
+    || authority.profile.realm.slug !== candidate.realmSlug
+  ) {
+    throw new Error("Blizzard guild profile did not corroborate the selected guild realm");
+  }
+
+  const controlled = await controlledCharactersForGuildie(input.guildieId);
+  const controlledCoordinates = new Set(controlled.map((character) =>
+    `${character.region}:${character.realmId}:${character.characterId}`
+  ));
+  const currentlyPresent = (authority.roster.members ?? []).some((member) => {
+    const character = member.character;
+    return controlledCoordinates.has(
+      `${candidate.region}:${String(character.realm.id)}:${String(character.id)}`
+    );
+  });
+  if (!currentlyPresent) throw new Error("Selected guild roster does not contain a currently controlled character");
+
+  await withTransaction(async (client) => {
+    const guildId = await persistGuild(candidate.region, authority.profile);
+    await client.query(
+      `INSERT INTO installation_guild_binding (singleton, guild_id, bound_by_guildie_id)
+       VALUES (true, $1, $2)`,
+      [guildId, input.guildieId],
+    );
+  });
+
+  const binding = await installationGuildBinding();
+  if (!binding) throw new Error("Installation guild binding was not persisted");
+  return binding;
+}
