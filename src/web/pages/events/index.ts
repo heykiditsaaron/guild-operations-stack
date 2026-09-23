@@ -24,9 +24,9 @@ import {
   type GuildCalendarPoint,
 } from "../../../core/calendar/registry.js";
 import {
-  guildEventOfferings,
-  type GuildEventOffering,
-} from "../../../guild-events/offerings/registry.js";
+  guildActivityOfferings,
+  type GuildActivityOffering,
+} from "../../../guild-activities/offerings/registry.js";
 import {
   packagedCapabilityForPath,
   packagedCapabilityStates,
@@ -104,13 +104,13 @@ function offeringAvailable(
   return moduleKey === null || modules.get(moduleKey)?.enabled !== false;
 }
 
-function offeringArtworkUrl(offering: GuildEventOffering, assets: AssetRegistry): string | null {
+function offeringArtworkUrl(offering: GuildActivityOffering, assets: AssetRegistry): string | null {
   if (!offering.artwork) return null;
   if (offering.artwork.kind === "url") return offering.artwork.url;
   return assetUrl(assets, offering.artwork.asset as AssetName);
 }
 
-function renderOffering(offering: GuildEventOffering, assets: AssetRegistry): string {
+function renderOffering(offering: GuildActivityOffering, assets: AssetRegistry): string {
   const title = htmlText(offering.title);
   const tagline = htmlText(offering.tagline);
   const destination = htmlText(offering.destination);
@@ -137,7 +137,7 @@ function renderOffering(offering: GuildEventOffering, assets: AssetRegistry): st
     </a>`;
 }
 
-function renderOfferings(offerings: readonly GuildEventOffering[], assets: AssetRegistry): string {
+function renderOfferings(offerings: readonly GuildActivityOffering[], assets: AssetRegistry): string {
   if (!offerings.length) return "";
 
   return `
@@ -296,7 +296,7 @@ export async function registerEventsPage(app: FastifyInstance, assets: AssetRegi
         ])
       : [false, false, false, false];
     const moduleStateByKey = new Map(moduleStates.map((module) => [module.key, module]));
-    const offerings = guildEventOfferings().filter((offering) => offeringAvailable(offering.destination, moduleStateByKey));
+    const offerings = guildActivityOfferings().filter((offering) => offeringAvailable(offering.destination, moduleStateByKey));
     const raidEnabled = moduleStateByKey.get("raid")?.enabled !== false;
     const raffleEnabled = moduleStateByKey.get("raffle")?.enabled !== false;
     const createChoices = [
