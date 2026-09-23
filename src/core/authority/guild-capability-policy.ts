@@ -12,7 +12,7 @@ import {
   effectiveGuildAuthority,
   guildieHasGuildCapability,
 } from "./guild-permissions.js";
-import { registerGuildRefreshObserver } from "../../guild-refresh-observers.js";
+import { registerGuildRefreshObserver } from "../guild/guild-refresh-observers.js";
 import { isConfiguredOperator } from "./operator-authority.js";
 
 export type GuildCapabilityDefinition = {

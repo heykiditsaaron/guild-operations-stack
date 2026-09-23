@@ -8,12 +8,12 @@ import {
   GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY,
   OPERATIONS_INSPECT_CAPABILITY,
 } from "./core/authority/guild-permissions.js";
-import { publishGuildRefreshObservation } from "./guild-refresh-observers.js";
+import { publishGuildRefreshObservation } from "./core/guild/guild-refresh-observers.js";
 import {
   enrichGuildCharacters,
   guildCharactersNeedingEnrichment,
   type GuildCharacterCoordinate,
-} from "./guild-character-enrichment.js";
+} from "./core/guild/guild-character-enrichment.js";
 
 function factionValue(value: unknown): string | null {
   if (typeof value === "string") return value;

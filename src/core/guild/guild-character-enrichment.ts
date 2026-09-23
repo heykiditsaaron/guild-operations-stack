@@ -4,9 +4,9 @@ import {
   getJsonWithRetry,
   type BlizzardCharacterMedia,
   type BlizzardCharacterProfile,
-} from "./blizzard.js";
-import { config, type Region } from "./config.js";
-import { pool } from "./db.js";
+} from "../../blizzard.js";
+import { config, type Region } from "../../config.js";
+import { pool } from "../../db.js";
 
 export type GuildCharacterCoordinate = {
   region: Region;

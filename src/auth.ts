@@ -6,7 +6,7 @@ import { pool } from "./db.js";
 import {
   acquireCharacterPresentation,
   type CharacterPresentationAcquisitionTarget,
-} from "./guild-character-enrichment.js";
+} from "./core/guild/guild-character-enrichment.js";
 import { effectiveGuildAuthority } from "./core/authority/guild-permissions.js";
 import { guildCharactersForGuildie } from "./core/guild/guild-characters.js";
 import { mainCharacterForGuildie, selectMainCharacter } from "./core/identity/main-character.js";

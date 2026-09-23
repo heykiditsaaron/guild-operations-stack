@@ -1,4 +1,4 @@
-import { enrichGuildCharacters } from "./guild-character-enrichment.js";
+import { enrichGuildCharacters } from "./core/guild/guild-character-enrichment.js";
 
 try {
   const result = await enrichGuildCharacters();
