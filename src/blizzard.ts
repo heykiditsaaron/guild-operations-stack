@@ -58,6 +58,7 @@ export type BlizzardCharacterProfile = {
   race?: { id?: number | string; name?: string | Record<string, string> };
   character_class?: { id?: number | string; name?: string | Record<string, string> };
   active_spec?: { id?: number | string; name?: string | Record<string, string> };
+  guild?: unknown;
   realm: {
     id: number | string;
     name?: string | Record<string, string>;
@@ -238,6 +239,10 @@ export async function acquireCharacterPresentation(
   const suffix = `namespace=profile-${target.region}&locale=en_US`;
 
   const profile = await getJsonWithRetry<BlizzardCharacterProfile>(`${base}?${suffix}`, accessToken, { onRequest });
+  console.log("Blizzard character guild diagnostic", {
+    character: `${target.characterName}-${target.realmSlug}`,
+    guild: profile.guild ?? null,
+  });
   const media = await getJsonWithRetry<BlizzardCharacterMedia>(`${base}/character-media?${suffix}`, accessToken, { onRequest });
   return { profile, media };
 }
