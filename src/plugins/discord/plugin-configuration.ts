@@ -3,7 +3,7 @@ import { pool } from "../../db.js";
 import { packagedCapabilityEnabled } from "../../packaged-capability-lifecycle.js";
 import { decryptSecret, encryptSecret, secretEncryptionAvailable } from "./secrets.js";
 
-export type DiscordModuleConfiguration = {
+export type DiscordPluginConfiguration = {
   guildId: string;
   enabled: boolean;
   clientId: string | null;
@@ -14,12 +14,12 @@ export type DiscordModuleConfiguration = {
   secretEncryptionAvailable: boolean;
 };
 
-export type DiscordModuleRuntimeConfiguration = DiscordModuleConfiguration & {
+export type DiscordPluginRuntimeConfiguration = DiscordPluginConfiguration & {
   clientSecret: string | null;
   botToken: string | null;
 };
 
-export type UpdateDiscordModuleConfigurationInput = {
+export type UpdateDiscordPluginConfigurationInput = {
   clientId: string | null;
   discordGuildId: string | null;
   inviteUrl: string | null;
@@ -64,9 +64,9 @@ async function row(guildId: string = config.guild.id): Promise<{
   return result.rows[0] ?? null;
 }
 
-export async function discordModuleConfiguration(
+export async function discordPluginConfiguration(
   guildId: string = config.guild.id,
-): Promise<DiscordModuleConfiguration> {
+): Promise<DiscordPluginConfiguration> {
   const [current, enabled] = await Promise.all([
     row(guildId),
     packagedCapabilityEnabled("discord", guildId),
@@ -83,9 +83,9 @@ export async function discordModuleConfiguration(
   };
 }
 
-export async function discordModuleRuntimeConfiguration(
+export async function discordPluginRuntimeConfiguration(
   guildId: string = config.guild.id,
-): Promise<DiscordModuleRuntimeConfiguration> {
+): Promise<DiscordPluginRuntimeConfiguration> {
   const [current, enabled] = await Promise.all([
     row(guildId),
     packagedCapabilityEnabled("discord", guildId),
@@ -104,10 +104,10 @@ export async function discordModuleRuntimeConfiguration(
   };
 }
 
-export async function updateDiscordModuleConfiguration(
-  input: UpdateDiscordModuleConfigurationInput,
+export async function updateDiscordPluginConfiguration(
+  input: UpdateDiscordPluginConfigurationInput,
   guildId: string = config.guild.id,
-): Promise<DiscordModuleConfiguration> {
+): Promise<DiscordPluginConfiguration> {
   const existing = await row(guildId);
   const clientSecretCiphertext = input.clientSecret === undefined
     ? existing?.client_secret_ciphertext ?? null
@@ -141,7 +141,7 @@ export async function updateDiscordModuleConfiguration(
     ],
   );
 
-  return discordModuleConfiguration(guildId);
+  return discordPluginConfiguration(guildId);
 }
 
 export function discordOAuthRedirectUri(): string {
