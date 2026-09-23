@@ -1,3 +1,4 @@
+import type { PoolClient } from "pg";
 import { acquireGuildAuthorityByReference, type BlizzardGuildProfile } from "../../blizzard.js";
 import type { Region } from "../../config.js";
 import { pool, withTransaction } from "../../db.js";
@@ -25,13 +26,13 @@ function factionValue(value: unknown): string | null {
   return null;
 }
 
-async function persistGuild(region: Region, profile: BlizzardGuildProfile): Promise<string> {
+async function persistGuild(client: PoolClient, region: Region, profile: BlizzardGuildProfile): Promise<string> {
   const guildId = String(profile.id);
   const realmId = String(profile.realm.id);
   const realmSlug = profile.realm.slug;
   if (!profile.name || !realmSlug) throw new Error("Blizzard guild profile omitted required coordinates");
 
-  await pool.query(
+  await client.query(
     `INSERT INTO guilds (
        guild_id, region, realm_id, name, realm_name, realm_slug, faction, created_timestamp
      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
@@ -114,7 +115,7 @@ export async function establishPendingInstallationGuildBinding(input: {
   if (!currentlyPresent) throw new Error("Selected guild roster does not contain a currently controlled character");
 
   await withTransaction(async (client) => {
-    const guildId = await persistGuild(candidate.region, authority.profile);
+    const guildId = await persistGuild(client, candidate.region, authority.profile);
     await client.query(
       `INSERT INTO installation_guild_binding (singleton, guild_id, bound_by_guildie_id)
        VALUES (true, $1, $2)`,
