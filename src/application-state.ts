@@ -2,7 +2,7 @@ import { config, type Region } from "./config.js";
 import { pool } from "./db.js";
 import { effectiveGuildAuthority, type EffectiveGuildAuthority } from "./guild-permissions.js";
 import { guildCharactersForGuildie, type GuildCharacter } from "./guild.js";
-import { mainCharacterForGuildie, type SelectedMainCharacter } from "./main-character.js";
+import { mainCharacterForGuildie, type SelectedMainCharacter } from "./core/identity/main-character.js";
 
 export type GuildState = {
   guildId: string;

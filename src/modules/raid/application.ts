@@ -1,7 +1,7 @@
 import type { PoolClient } from "pg";
 import { characterMembership } from "../../application-state.js";
 import { config } from "../../config.js";
-import { controlledCharactersForGuildie } from "../../controlled-characters.js";
+import { controlledCharactersForGuildie } from "../../core/identity/controlled-characters.js";
 import { pool, withTransaction } from "../../db.js";
 import { deliverEmission, publishEmission } from "../../emissions/registry.js";
 import {

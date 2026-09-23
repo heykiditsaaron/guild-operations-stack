@@ -1,5 +1,5 @@
-import type { Region } from "./config.js";
-import { pool } from "./db.js";
+import type { Region } from "../../config.js";
+import { pool } from "../../db.js";
 
 export type ControlledCharacter = {
   guildieId: string;
