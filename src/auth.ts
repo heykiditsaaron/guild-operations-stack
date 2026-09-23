@@ -14,7 +14,7 @@ import { publishOperationalRecord } from "./operational-inspection.js";
 import {
   establishOrResolveGuildie,
   reconcileExistingGuildieBlizzardObservation,
-} from "./persistence.js";
+} from "./core/identity/blizzard-identity.js";
 
 export const SESSION_COOKIE_NAME = "guild_session";
 
