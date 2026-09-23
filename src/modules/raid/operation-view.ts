@@ -21,6 +21,7 @@ export async function raidsForOperation(): Promise<RaidOperationEvent[]> {
             tags, eligibility, difficulty
        FROM raid_events
       WHERE guild_id = $1
+        AND cancelled_at_unix IS NULL
       ORDER BY occurs_start_unix ASC, created_at_unix ASC`,
     [config.guild.id],
   );
