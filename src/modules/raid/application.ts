@@ -43,6 +43,8 @@ export type RaidEventFacts = {
   eligibility: RaidEligibility;
   difficulty: RaidDifficulty;
   requirements: RaidRequirement[];
+  cancelledAtUnix: number | null;
+  cancelledByGuildieId: string | null;
 };
 export type RaidRosterDiagnostics = { assigned:number; tanks:number; healers:number; damage:number; melee:number; ranged:number };
 
@@ -101,14 +103,16 @@ export async function raidCalendarProjection(raidId:string):Promise<RaidCalendar
   };
 }
 
-export async function raidEventFacts(raidId:string, client:PoolClient|null=null):Promise<RaidEventFacts|null>{
+async function loadRaidEventFacts(raidId:string, client:PoolClient|null, includeCancelled:boolean):Promise<RaidEventFacts|null>{
   const db=client??pool;
-  const r=await db.query<any>(`SELECT raid_id,guild_id,label,description,occurs_start_unix,occurs_end_unix,tags,eligibility,difficulty FROM raid_events WHERE raid_id=$1`,[raidId]);
+  const r=await db.query<any>(`SELECT raid_id,guild_id,label,description,occurs_start_unix,occurs_end_unix,tags,eligibility,difficulty,cancelled_at_unix,cancelled_by_guildie_id FROM raid_events WHERE raid_id=$1 AND ($2::boolean OR cancelled_at_unix IS NULL)`,[raidId,includeCancelled]);
   const x=r.rows[0]; if(!x)return null;
   const requirements=await db.query<{label:string;value:string}>("SELECT label,value FROM raid_requirements WHERE raid_id=$1 ORDER BY position",[raidId]);
   const s=Number(x.occurs_start_unix),e=x.occurs_end_unix===null?null:Number(x.occurs_end_unix);
-  return {raidId:x.raid_id,guildId:x.guild_id,label:x.label,description:x.description,occursAt:e===null?[s]:[s,e],tags:x.tags,eligibility:x.eligibility,difficulty:x.difficulty,requirements:requirements.rows};
+  return {raidId:x.raid_id,guildId:x.guild_id,label:x.label,description:x.description,occursAt:e===null?[s]:[s,e],tags:x.tags,eligibility:x.eligibility,difficulty:x.difficulty,requirements:requirements.rows,cancelledAtUnix:x.cancelled_at_unix===null?null:Number(x.cancelled_at_unix),cancelledByGuildieId:x.cancelled_by_guildie_id};
 }
+export async function raidEventFacts(raidId:string, client:PoolClient|null=null):Promise<RaidEventFacts|null>{return loadRaidEventFacts(raidId,client,false);}
+export async function raidEventFactsIncludingCancelled(raidId:string, client:PoolClient|null=null):Promise<RaidEventFacts|null>{return loadRaidEventFacts(raidId,client,true);}
 
 export async function establishRaid(actorGuildieId:string,input:EstablishRaidInput):Promise<RaidEventFacts>{
   validateEstablishRaidInput(input); requireFullOperationalBuffer(input.occursAt); await requireGuildCapabilityOrOperator(actorGuildieId,RAID_MODIFY_CAPABILITY); const tags=normalizedStrings(input.tags??["raid"]);
@@ -145,7 +149,7 @@ export async function modifyRaid(actorGuildieId:string,raidId:string,input:Modif
 
 export async function cancelRaid(actorGuildieId:string,raidId:string):Promise<void>{
   await requireGuildCapabilityOrOperator(actorGuildieId,RAID_STAGE_CAPABILITY);
-  const publication=await withTransaction(async client=>{const current=await raidEventFacts(raidId,client);if(!current)throw new Error("Raid not found");requireUpcomingRaid(current);await client.query("DELETE FROM raid_events WHERE raid_id=$1",[raidId]);return publishEmission(client,{ code:"raid.cancelled", subject:raidId });});
+  const publication=await withTransaction(async client=>{const current=await raidEventFacts(raidId,client);if(!current)throw new Error("Raid not found");requireUpcomingRaid(current);await client.query("UPDATE raid_events SET cancelled_at_unix=extract(epoch FROM now())::bigint,cancelled_by_guildie_id=$2,updated_at_unix=extract(epoch FROM now())::bigint WHERE raid_id=$1",[raidId,actorGuildieId]);return publishEmission(client,{ code:"raid.cancelled", subject:raidId });});
   await deliverEmission(publication);
 }
 
