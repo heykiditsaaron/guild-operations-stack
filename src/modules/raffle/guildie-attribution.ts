@@ -1,4 +1,4 @@
-import { mainCharacterForGuildie } from "../../main-character.js";
+import { mainCharacterForGuildie } from "../../core/identity/main-character.js";
 
 export async function raffleGuildieAttribution(guildieId: string): Promise<string> {
   const mainCharacter = await mainCharacterForGuildie(guildieId);
