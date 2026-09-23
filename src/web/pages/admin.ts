@@ -28,8 +28,8 @@ import {
   type PackagedCapabilityState,
 } from "../../packaged-capability-lifecycle.js";
 import { isConfiguredOperator } from "../../core/authority/operator-authority.js";
-import { GUILD_THEMES, guildTheme, isGuildThemeKey, setGuildTheme, type GuildThemeKey } from "../../guild-theme.js";
-import { guildPresentation, parseGuildPresentationUrl, setGuildPresentationDestinations, type GuildPresentation } from "../../guild-presentation.js";
+import { GUILD_THEMES, guildTheme, isGuildThemeKey, setGuildTheme, type GuildThemeKey } from "../../core/presentation/guild-theme.js";
+import { guildPresentation, parseGuildPresentationUrl, setGuildPresentationDestinations, type GuildPresentation } from "../../core/presentation/guild-presentation.js";
 import { administrationAvailabilityForGuildie } from "../administration.js";
 import type { AssetRegistry } from "../assets.js";
 import { renderPage } from "../render.js";
