@@ -109,9 +109,9 @@ async function renderRoleMaps(): Promise<string> {
 }
 
 export async function registerDiscordRoleMapsPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
-  app.get("/admin/discord/role-maps", async (_request, reply) => reply.redirect("/admin/modules/discord/role-maps"));
+  app.get("/admin/discord/role-maps", async (_request, reply) => reply.redirect("/admin/plugins/discord/role-maps"));
 
-  app.get("/admin/modules/discord/role-maps", async (request, reply) => {
+  app.get("/admin/plugins/discord/role-maps", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie] = await Promise.all([
       viewerForRequest(sessionToken),
@@ -132,7 +132,7 @@ export async function registerDiscordRoleMapsPage(app: FastifyInstance, assets: 
       .header("Cache-Control", "no-cache")
       .type("text/html; charset=utf-8")
       .send(renderPage(assets, {
-        pathname: "/admin/modules/discord/role-maps",
+        pathname: "/admin/plugins/discord/role-maps",
         title: `Discord role maps · ${viewer.guildPresentation.guildName} Guild Operations`,
         description: "Configure Discord role maps.",
         viewer,
@@ -142,8 +142,8 @@ export async function registerDiscordRoleMapsPage(app: FastifyInstance, assets: 
           kind: "breadcrumb",
           items: [
             { label: "Settings", href: "/admin/modules" },
-            { label: "Modules", href: "/admin/modules" },
-            { label: "Discord", href: "/admin/modules/discord" },
+            { label: "Plugins", href: "/admin/modules" },
+            { label: "Discord", href: "/admin/plugins/discord" },
             { label: "Role Maps" },
           ],
         },

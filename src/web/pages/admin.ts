@@ -47,11 +47,17 @@ function administrationSection(sectionId: string, headingId: string, heading: st
   return `<section id="${sectionId}" class="admin-section" aria-labelledby="${headingId}"><h2 id="${headingId}">${heading}</h2>${content}</section>`;
 }
 
-function renderModuleLifecycle(modules: PackagedCapabilityState[], canConfigureDiscord: boolean): string {
-  return `<div class="module-lifecycle-list">${modules.map((module) => {
+function renderPackagedCapabilityLifecycle(capabilities: PackagedCapabilityState[], canConfigureDiscord: boolean): string {
+  const renderGroup = (kind: "module" | "plugin", heading: string) => {
+    const members = capabilities.filter((capability) => capability.kind === kind);
+    if (members.length === 0) return "";
+    return `<section class="packaged-capability-group"><h3>${heading}</h3><div class="module-lifecycle-list">${members.map((module) => {
+
     const configurationAction = module.key === "discord" && canConfigureDiscord ? `<a class="module-lifecycle-configure" href="/admin/modules/discord">Configure integration <span aria-hidden="true">→</span></a>` : "";
     return `<article class="module-lifecycle-card settings-panel" data-module-key="${module.key}"><div class="module-lifecycle-copy"><div class="module-lifecycle-heading"><h3>${htmlText(module.label)}</h3><span class="module-lifecycle-availability">Available</span></div><p>${module.enabled ? "Enabled for Guild Operations." : "Installed but disabled."}</p>${configurationAction}</div><label class="switch module-lifecycle-toggle"><input type="checkbox" data-module-enabled${module.enabled ? " checked" : ""}><span class="switch-control" aria-hidden="true"></span><span data-module-switch-label>${module.enabled ? "On" : "Off"}</span></label><p class="module-lifecycle-feedback" data-module-feedback role="status" aria-live="polite"></p></article>`;
-  }).join("\n")}</div>`;
+    }).join("\n")}</div></section>`;
+  };
+  return `${renderGroup("module", "Modules")}${renderGroup("plugin", "Plugins")}`;
 }
 
 function renderGuildRefreshSchedule(schedule: GuildRefreshSchedule): string {
@@ -138,10 +144,10 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       administrationAvailabilityForGuildie(guildie.guildieId),
       packagedCapabilityStates(),
     ]);
-    let lifecycle = renderModuleLifecycle(modulesState, administration.canConfigureDiscord);
+    let lifecycle = renderPackagedCapabilityLifecycle(modulesState, administration.canConfigureDiscord);
     if (!canConfigureModules) lifecycle = lifecycle.replaceAll("<input type=\"checkbox\" data-module-enabled", "<input type=\"checkbox\" data-module-enabled disabled");
-    const content = administrationSection("modules", "modules-heading", "Modules", `${lifecycle}<p class="admin-section-note">Availability and entitlement are distinct from enablement. Controls are available only when your authority permits changes.</p>`);
-    const html = renderPage(assets, { pathname: "/admin/modules", title: `Module Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Inspect and configure Guild Operations modules.", viewer, stylesheets: ["admin.css", "admin-modules.css"], scripts: canConfigureModules ? ["admin-modules.js"] : [], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Inspect and manage Guild Operations modules.</p></div>`, body: `${administrationTabs("modules")}<div class="admin-sections">${content}</div>` });
+    const content = administrationSection("modules", "modules-heading", "Packaged capabilities", `${lifecycle}<p class="admin-section-note">Availability and entitlement are distinct from enablement. Controls are available only when your authority permits changes.</p>`);
+    const html = renderPage(assets, { pathname: "/admin/modules", title: `Module Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Inspect and configure packaged Guild Operations capabilities.", viewer, stylesheets: ["admin.css", "admin-modules.css"], scripts: canConfigureModules ? ["admin-modules.js"] : [], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Inspect and manage packaged Modules and Plugins.</p></div>`, body: `${administrationTabs("modules")}<div class="admin-sections">${content}</div>` });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
 
