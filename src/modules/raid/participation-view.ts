@@ -192,3 +192,8 @@ export async function raidSignupsForGuildie(raidId: string, guildieId: string): 
     (row) => row.anchorKind === "guildie" && row.anchorValue === guildieId,
   );
 }
+
+
+export async function activeRaidSignups(raidId: string): Promise<RaidSignupView[]> {
+  return (await raidSignupRows(raidId, false)).filter((row) => row.deniedAtUnix === null);
+}
