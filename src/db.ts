@@ -1,7 +1,7 @@
 import { Pool, type PoolClient } from "pg";
-import { config } from "./config.js";
+const PACKAGED_DATABASE_URL = "postgres://guild_operations:guild_operations@db:5432/guild_operations";
 
-export const pool = new Pool({ connectionString: config.databaseUrl });
+export const pool = new Pool({ connectionString: PACKAGED_DATABASE_URL });
 
 export async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await pool.connect();
