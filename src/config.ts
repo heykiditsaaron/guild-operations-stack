@@ -13,10 +13,7 @@ const optional = (name: string): string | null => {
   return value ? value : null;
 };
 
-const port = Number(process.env.PORT ?? "3100");
-if (!Number.isInteger(port) || port < 1 || port > 65535) {
-  throw new Error("PORT must be a valid TCP port");
-}
+const port = 3100;
 
 const appOriginUrl = new URL(required("APP_ORIGIN"));
 if (appOriginUrl.protocol !== "http:" && appOriginUrl.protocol !== "https:") {
@@ -47,7 +44,7 @@ if (!guildRegion) throw new Error("GUILD_REGION must be a supported Blizzard reg
 export const config = {
   port,
   appOrigin,
-  databaseUrl: required("DATABASE_URL"),
+  databaseUrl: "postgres://guild_operations:guild_operations@db:5432/guild_operations",
   blizzardClientId: required("BLIZZARD_CLIENT_ID"),
   blizzardClientSecret: required("BLIZZARD_CLIENT_SECRET"),
   blizzardRedirectUri: new URL("/auth/blizzard/callback", appOrigin).toString(),
