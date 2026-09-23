@@ -1,7 +1,7 @@
 import { config } from "../../config.js";
 import { pool } from "../../db.js";
 import { packagedCapabilityEnabled } from "../../packaged-capability-lifecycle.js";
-import { decryptSecret, encryptSecret, secretEncryptionAvailable } from "./secrets.js";
+import { decryptSecret, encryptSecret } from "./secrets.js";
 
 export type DiscordPluginConfiguration = {
   guildId: string;
@@ -11,7 +11,6 @@ export type DiscordPluginConfiguration = {
   discordGuildId: string | null;
   botTokenConfigured: boolean;
   inviteUrl: string | null;
-  secretEncryptionAvailable: boolean;
 };
 
 export type DiscordPluginRuntimeConfiguration = DiscordPluginConfiguration & {
@@ -79,7 +78,6 @@ export async function discordPluginConfiguration(
     discordGuildId: current?.discord_guild_id ?? null,
     botTokenConfigured: Boolean(current?.bot_token_ciphertext),
     inviteUrl: current?.invite_url ?? null,
-    secretEncryptionAvailable: secretEncryptionAvailable(),
   };
 }
 
@@ -100,7 +98,6 @@ export async function discordPluginRuntimeConfiguration(
     botTokenConfigured: Boolean(current?.bot_token_ciphertext),
     botToken: current?.bot_token_ciphertext ? decryptSecret(current.bot_token_ciphertext) : null,
     inviteUrl: current?.invite_url ?? null,
-    secretEncryptionAvailable: secretEncryptionAvailable(),
   };
 }
 
