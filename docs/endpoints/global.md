@@ -23,11 +23,8 @@ Global endpoints currently use five authority contexts:
 - **Application session** — requires a valid `guild_session` cookie resolving to a current Guildie.
 - **Application session plus capability** — requires a valid session and an explicit Guild Operations capability derived from current guild authority.
 - **REST read authority** — requires the read-only `API_READ_KEY` credential.
-- **REST write authority** — requires the mutation-capable `API_WRITE_KEY` credential.
 
-REST read authority grants no mutation or human operation authority. REST write authority permits only the explicit machine operations exposed under `/api/v1`; it does not create a human Guildie session or inherit human capabilities.
-
-During migration from the former `/query/*` surface, `EVENT_QUERY_API_KEY` is accepted as a read compatibility fallback when `API_READ_KEY` is not configured. New deployments and integrations should use `API_READ_KEY`.
+REST read authority grants no mutation or human operation authority.
 
 ## Service
 
@@ -126,12 +123,6 @@ Read operations require:
 
 ```http
 Authorization: Bearer <API_READ_KEY>
-```
-
-Mutation operations require:
-
-```http
-Authorization: Bearer <API_WRITE_KEY>
 ```
 
 ### GET `/api/v1/guildies/:guildieId`
