@@ -113,8 +113,7 @@ export async function discordGuildIntegrationConfigured(): Promise<boolean> {
   const current = await discordPluginConfiguration();
   return current.enabled
     && Boolean(current.discordGuildId)
-    && current.botTokenConfigured
-    && current.secretEncryptionAvailable;
+    && current.botTokenConfigured;
 }
 
 export async function getDiscordGuildMember(discordUserId: string): Promise<DiscordGuildMember | null> {
