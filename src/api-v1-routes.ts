@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { characterMembership } from "./core/guild/character-membership.js";
 import { effectiveGuildAuthority } from "./core/authority/guild-permissions.js";
 import { mainCharacterForGuildie } from "./core/identity/main-character.js";
-import { guildCharactersForGuildie } from "./guild.js";
+import { guildCharactersForGuildie } from "./core/guild/guild-characters.js";
 import { config, parseRegion } from "./config.js";
 
 function readAuthorized(request: FastifyRequest): boolean {
