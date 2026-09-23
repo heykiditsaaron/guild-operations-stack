@@ -19,16 +19,16 @@ Use an Offering when the Events shell should be able to promote an enduring part
 ### Contract
 
 ```ts
-type GuildEventOfferingArtwork =
+type GuildActivityOfferingArtwork =
   | { kind: "asset"; asset: string }
   | { kind: "url"; url: string };
 
-type GuildEventOffering = {
+type GuildActivityOffering = {
   offeringId: string;
   title: string;
   tagline: string;
   destination: string;
-  artwork?: GuildEventOfferingArtwork;
+  artwork?: GuildActivityOfferingArtwork;
 };
 ```
 
@@ -45,7 +45,7 @@ Artwork carries no layout instructions. Consumers own sizing, cropping, position
 Offerings are registered under:
 
 ```text
-src/guild-events/offerings/
+src/guild-activities/offerings/
 ```
 
 Registration is application composition rather than persisted guild truth.

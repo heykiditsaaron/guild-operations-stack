@@ -1,4 +1,4 @@
-export type GuildEventOfferingArtwork =
+export type GuildActivityOfferingArtwork =
   | Readonly<{
       kind: "asset";
       asset: string;
@@ -8,25 +8,25 @@ export type GuildEventOfferingArtwork =
       url: string;
     }>;
 
-export type GuildEventOffering = Readonly<{
+export type GuildActivityOffering = Readonly<{
   offeringId: string;
   title: string;
   tagline: string;
   destination: string;
-  artwork?: GuildEventOfferingArtwork;
+  artwork?: GuildActivityOfferingArtwork;
 }>;
 
-const offerings = new Map<string, GuildEventOffering>();
+const offerings = new Map<string, GuildActivityOffering>();
 
 function requireText(value: string, field: string): string {
   const normalized = value.trim();
   if (!normalized) {
-    throw new Error(`Guild Event Offering ${field} must not be empty`);
+    throw new Error(`Guild Activity Offering ${field} must not be empty`);
   }
   return normalized;
 }
 
-function normalizeArtwork(artwork: GuildEventOfferingArtwork | undefined): GuildEventOfferingArtwork | undefined {
+function normalizeArtwork(artwork: GuildActivityOfferingArtwork | undefined): GuildActivityOfferingArtwork | undefined {
   if (!artwork) return undefined;
 
   if (artwork.kind === "asset") {
@@ -42,8 +42,8 @@ function normalizeArtwork(artwork: GuildEventOfferingArtwork | undefined): Guild
   };
 }
 
-export function registerGuildEventOffering(offering: GuildEventOffering): void {
-  const registered: GuildEventOffering = {
+export function registerGuildActivityOffering(offering: GuildActivityOffering): void {
+  const registered: GuildActivityOffering = {
     offeringId: requireText(offering.offeringId, "offeringId"),
     title: requireText(offering.title, "title"),
     tagline: requireText(offering.tagline, "tagline"),
@@ -52,12 +52,12 @@ export function registerGuildEventOffering(offering: GuildEventOffering): void {
   };
 
   if (offerings.has(registered.offeringId)) {
-    throw new Error(`Guild Event Offering already registered: ${registered.offeringId}`);
+    throw new Error(`Guild Activity Offering already registered: ${registered.offeringId}`);
   }
 
   offerings.set(registered.offeringId, registered);
 }
 
-export function guildEventOfferings(): readonly GuildEventOffering[] {
+export function guildActivityOfferings(): readonly GuildActivityOffering[] {
   return [...offerings.values()];
 }
