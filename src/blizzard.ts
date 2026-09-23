@@ -50,6 +50,19 @@ export type BlizzardGuildRoster = {
   members?: BlizzardGuildRosterMember[];
 };
 
+export type BlizzardCharacterGuildReference = {
+  key?: { href?: string };
+  name?: string;
+  id: number | string;
+  realm: {
+    key?: { href?: string };
+    name?: string | Record<string, string>;
+    id: number | string;
+    slug?: string;
+  };
+  faction?: { type?: string; name?: string } | string;
+};
+
 export type BlizzardCharacterProfile = {
   id: number | string;
   name: string;
@@ -58,7 +71,7 @@ export type BlizzardCharacterProfile = {
   race?: { id?: number | string; name?: string | Record<string, string> };
   character_class?: { id?: number | string; name?: string | Record<string, string> };
   active_spec?: { id?: number | string; name?: string | Record<string, string> };
-  guild?: unknown;
+  guild?: BlizzardCharacterGuildReference;
   realm: {
     id: number | string;
     name?: string | Record<string, string>;
@@ -206,6 +219,19 @@ export async function acquireAuthority(region: Region, accessToken: string): Pro
   }
 
   return { principalId: userId, profile };
+}
+
+export async function acquireCharacterProfile(
+  target: { region: Region; realmSlug: string; characterName: string },
+  accessToken: string,
+): Promise<BlizzardCharacterProfile> {
+  const realm = encodeURIComponent(target.realmSlug.toLowerCase());
+  const character = encodeURIComponent(target.characterName.toLowerCase());
+  const suffix = `namespace=profile-${target.region}&locale=en_US`;
+  return getJsonWithRetry<BlizzardCharacterProfile>(
+    `https://${target.region}.api.blizzard.com/profile/wow/character/${realm}/${character}?${suffix}`,
+    accessToken,
+  );
 }
 
 export async function acquireGuildAuthority(target: {
