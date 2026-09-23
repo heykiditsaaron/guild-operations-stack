@@ -45,9 +45,6 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
 
     const moduleConfiguration = await discordPluginConfiguration();
 
-    const secretWarning = moduleConfiguration.secretEncryptionAvailable
-      ? ""
-      : `<p class="admin-unavailable">APPLICATION_ENCRYPTION_KEY is not configured. Discord secrets cannot be stored or used until an installation encryption key is provided.</p>`;
     const moduleState = moduleConfiguration.enabled
       ? '<p class="discord-projection-state">Discord is enabled from Settings → Modules.</p>'
       : '<p class="discord-projection-state">Discord is currently disabled. Configuration can be prepared here before enabling it from Settings → Modules.</p>';
@@ -55,7 +52,6 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     const body = `<div class="admin-sections">
       <section class="admin-section" aria-labelledby="discord-module-heading">
         <h2 id="discord-module-heading">Discord plugin</h2>
-        ${secretWarning}
         <div class="discord-admin settings-panel">
           <form class="discord-module-form" data-discord-module-form>
             <div class="discord-projection-heading discord-admin-heading">
@@ -143,7 +139,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
         });
         return reply.send({ settings });
       } catch (error) {
-        if (error instanceof Error && (error.message === "invalid_text" || error.message.includes("APPLICATION_ENCRYPTION_KEY") || error.message.includes("Discord invite URL"))) {
+        if (error instanceof Error && (error.message === "invalid_text" || error.message.includes("Discord invite URL"))) {
           return reply.code(400).send({ error: "invalid_module_configuration", message: error.message });
         }
         throw error;
