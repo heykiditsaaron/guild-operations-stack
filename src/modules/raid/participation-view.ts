@@ -1,5 +1,5 @@
 import { characterMembership } from "../../application-state.js";
-import { controlledCharactersForGuildie } from "../../controlled-characters.js";
+import { controlledCharactersForGuildie } from "../../core/identity/controlled-characters.js";
 import { pool } from "../../db.js";
 import { effectiveGuildAuthority } from "../../guild-permissions.js";
 import { specHasTrait, specsForClass } from "../../wow-traits/registry.js";

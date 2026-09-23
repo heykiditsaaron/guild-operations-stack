@@ -9,7 +9,7 @@ import {
 } from "./guild-character-enrichment.js";
 import { effectiveGuildAuthority } from "./guild-permissions.js";
 import { guildCharactersForGuildie } from "./guild.js";
-import { mainCharacterForGuildie, selectMainCharacter } from "./main-character.js";
+import { mainCharacterForGuildie, selectMainCharacter } from "./core/identity/main-character.js";
 import { publishOperationalRecord } from "./operational-inspection.js";
 import {
   establishOrResolveGuildie,
