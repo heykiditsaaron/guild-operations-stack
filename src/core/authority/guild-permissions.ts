@@ -69,7 +69,7 @@ export async function guildieHasGuildCapabilityOrOperator(guildieId: string, cap
   return guildieHasGuildCapability(guildieId, capability, guildId);
 }
 
-export async function requireGuildCapability(guildieId: string, capability: GuildCapability, guildId: string = config.guild.id): Promise<EffectiveGuildAuthority> {
+export async function requireGuildCapability(guildieId: string, capability: GuildCapability, guildId?: string): Promise<EffectiveGuildAuthority> {
   const authority = await effectiveGuildAuthority(guildieId, guildId);
   if (hasInherentGuildCapability(authority, guildieId)) {
     if (authority) return authority;
@@ -79,7 +79,7 @@ export async function requireGuildCapability(guildieId: string, capability: Guil
   return authority;
 }
 
-export async function requireGuildCapabilityOrOperator(guildieId: string, capability: GuildCapability, guildId: string = config.guild.id): Promise<void> {
+export async function requireGuildCapabilityOrOperator(guildieId: string, capability: GuildCapability, guildId?: string): Promise<void> {
   if (isConfiguredOperator(guildieId)) return;
   await requireGuildCapability(guildieId, capability, guildId);
 }
