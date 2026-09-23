@@ -1,8 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
-import { guildRefreshStatus } from "../../guild-admin.js";
 import {
-  GUILD_REFRESH_CAPABILITY,
   OPERATIONS_INSPECT_CAPABILITY,
   guildieHasGuildCapability,
 } from "../../guild-permissions.js";
@@ -59,32 +57,6 @@ function renderRecord(record: OperationalRecord): string {
 function normalizedKind(value: string | undefined): OperationalRecordKind | undefined {
   if (value === "result" || value === "exception") return value;
   return undefined;
-}
-
-function renderGuildRefresh(status: Awaited<ReturnType<typeof guildRefreshStatus>>): string {
-  const memberCount = status
-    ? status.currentMemberCount.toLocaleString("en-US")
-    : "—";
-  const lastReconciled = status
-    ? `<time data-unix-time="${status.lastReconciledAtUnix}">${status.lastReconciledAtUnix}</time>`
-    : "Not yet observed";
-
-  return `<section class="admin-section" aria-labelledby="guild-refresh-operation-heading">
-    <div class="guild-refresh-admin" data-guild-refresh-admin>
-      <div class="guild-refresh-admin-heading">
-        <div>
-          <h2 id="guild-refresh-operation-heading">Guild refresh</h2>
-          <p>Reconcile current guild membership and rank authority from Blizzard now.</p>
-        </div>
-        <button type="button" class="guild-refresh-button button-primary" data-guild-refresh-button>Refresh now</button>
-      </div>
-      <div class="guild-refresh-status">
-        <div class="guild-refresh-stat"><strong>${memberCount}</strong><span>current members</span></div>
-        <div class="guild-refresh-stat"><span>Last reconciled</span><strong>${lastReconciled}</strong></div>
-      </div>
-      <p class="guild-refresh-feedback" data-guild-refresh-feedback role="status" aria-live="polite"></p>
-    </div>
-  </section>`;
 }
 
 function renderInspection(
