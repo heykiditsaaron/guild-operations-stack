@@ -8,7 +8,7 @@ import {
   type CharacterPresentationAcquisitionTarget,
 } from "./guild-character-enrichment.js";
 import { effectiveGuildAuthority } from "./core/authority/guild-permissions.js";
-import { guildCharactersForGuildie } from "./guild.js";
+import { guildCharactersForGuildie } from "./core/guild/guild-characters.js";
 import { mainCharacterForGuildie, selectMainCharacter } from "./core/identity/main-character.js";
 import { publishOperationalRecord } from "./operational-inspection.js";
 import {

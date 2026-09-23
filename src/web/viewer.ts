@@ -1,4 +1,4 @@
-import { guildCharactersForGuildie } from "../guild.js";
+import { guildCharactersForGuildie } from "../core/guild/guild-characters.js";
 import { mainCharacterForGuildie } from "../core/identity/main-character.js";
 import { authenticatedGuildie } from "../auth.js";
 import { guildTheme } from "../guild-theme.js";
