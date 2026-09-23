@@ -53,7 +53,7 @@ function renderPackagedCapabilityLifecycle(capabilities: PackagedCapabilityState
     if (members.length === 0) return "";
     return `<section class="packaged-capability-group"><h3>${heading}</h3><div class="module-lifecycle-list">${members.map((module) => {
 
-    const configurationAction = module.key === "discord" && canConfigureDiscord ? `<a class="module-lifecycle-configure" href="/admin/modules/discord">Configure integration <span aria-hidden="true">→</span></a>` : "";
+    const configurationAction = module.key === "discord" && canConfigureDiscord ? `<a class="module-lifecycle-configure" href="/admin/plugins/discord">Configure integration <span aria-hidden="true">→</span></a>` : "";
     return `<article class="module-lifecycle-card settings-panel" data-module-key="${module.key}"><div class="module-lifecycle-copy"><div class="module-lifecycle-heading"><h3>${htmlText(module.label)}</h3><span class="module-lifecycle-availability">Available</span></div><p>${module.enabled ? "Enabled for Guild Operations." : "Installed but disabled."}</p>${configurationAction}</div><label class="switch module-lifecycle-toggle"><input type="checkbox" data-module-enabled${module.enabled ? " checked" : ""}><span class="switch-control" aria-hidden="true"></span><span data-module-switch-label>${module.enabled ? "On" : "Off"}</span></label><p class="module-lifecycle-feedback" data-module-feedback role="status" aria-live="polite"></p></article>`;
     }).join("\n")}</div></section>`;
   };
