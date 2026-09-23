@@ -1,7 +1,7 @@
 import { config } from "../../config.js";
 import { positionForSpec } from "../../wow-traits/registry.js";
 import { activeRaidSignups, type RaidSignupView } from "../raid/participation-view.js";
-import { raidEventFacts, raidSignupsAreOpen, type RaidEventFacts } from "../raid/application.js";
+import { raidEventFacts, raidEventFactsIncludingCancelled, raidSignupsAreOpen, type RaidEventFacts } from "../raid/application.js";
 import type { DiscordMessageInput } from "./client.js";
 
 export type DiscordRaidProjectionState = {
@@ -9,8 +9,8 @@ export type DiscordRaidProjectionState = {
   signups: RaidSignupView[];
 };
 
-export async function discordRaidProjectionState(raidId: string): Promise<DiscordRaidProjectionState | null> {
-  const raid = await raidEventFacts(raidId);
+export async function discordRaidProjectionState(raidId: string, includeCancelled = false): Promise<DiscordRaidProjectionState | null> {
+  const raid = includeCancelled ? await raidEventFactsIncludingCancelled(raidId) : await raidEventFacts(raidId);
   if (!raid) return null;
   const signups = await activeRaidSignups(raidId);
   return { raid, signups };
@@ -49,6 +49,23 @@ function occurrenceText(raid: RaidEventFacts): string {
 
 export function renderDiscordRaidProjection(state: DiscordRaidProjectionState): DiscordMessageInput {
   const { raid, signups } = state;
+  if (raid.cancelledAtUnix !== null) {
+    return {
+      embeds: [{
+        title: `${raid.label} · Cancelled`,
+        description: raid.description ?? undefined,
+        color: 0xED4245,
+        fields: [
+          { name: "Status", value: "This raid has been cancelled.", inline: false },
+          { name: "Was scheduled for", value: occurrenceText(raid), inline: false },
+          { name: "Difficulty", value: raid.difficulty[0].toUpperCase() + raid.difficulty.slice(1), inline: true },
+          ...raid.requirements.map((requirement) => ({ name: requirement.label, value: requirement.value, inline: true })),
+        ].slice(0, 25),
+        footer: { text: "Guild Operations · Raid" },
+      }],
+      components: [],
+    };
+  }
   const groups = groupedRoster(signups);
   const fields = [
     { name: "When", value: occurrenceText(raid), inline: false },
