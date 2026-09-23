@@ -1,4 +1,4 @@
-import { config } from "../../config.js";
+import { requireOperationalInstallationGuildBinding } from "../installation/guild-binding.js";
 import { pool } from "../../db.js";
 import { isConfiguredOperator } from "./operator-authority.js";
 
@@ -33,8 +33,9 @@ export type EffectiveGuildAuthority = {
 
 export async function effectiveGuildAuthority(
   guildieId: string,
-  guildId: string = config.guild.id,
+  guildId?: string,
 ): Promise<EffectiveGuildAuthority | null> {
+  const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
   const rankResult = await pool.query<{ rank_index: number; display_name: string | null }>(
     `SELECT grm.rank_index, grd.display_name
        FROM characters c
@@ -43,22 +44,22 @@ export async function effectiveGuildAuthority(
        LEFT JOIN guild_rank_definitions grd ON grd.guild_id = grm.guild_id AND grd.rank_index = grm.rank_index
       WHERE c.guildie_id = $1 AND c.currently_controlled = true AND grm.guild_id = $2
       ORDER BY grm.rank_index ASC LIMIT 1`,
-    [guildieId, guildId],
+    [guildieId, resolvedGuildId],
   );
   const rank = rankResult.rows[0];
   if (!rank) return null;
   const capabilityResult = await pool.query<{ capability: string }>(
     `SELECT capability FROM guild_rank_capabilities WHERE guild_id = $1 AND rank_index = $2 ORDER BY capability`,
-    [guildId, rank.rank_index],
+    [resolvedGuildId, rank.rank_index],
   );
-  return { guildieId, guildId, rankIndex: rank.rank_index, rankDisplayName: rank.display_name ?? `Rank ${rank.rank_index}`, capabilities: capabilityResult.rows.map((row) => row.capability), operator: isConfiguredOperator(guildieId) };
+  return { guildieId, guildId: resolvedGuildId, rankIndex: rank.rank_index, rankDisplayName: rank.display_name ?? `Rank ${rank.rank_index}`, capabilities: capabilityResult.rows.map((row) => row.capability), operator: isConfiguredOperator(guildieId) };
 }
 
 function hasInherentGuildCapability(authority: EffectiveGuildAuthority | null, guildieId: string): boolean {
   return isConfiguredOperator(guildieId) || authority?.rankIndex === 0;
 }
 
-export async function guildieHasGuildCapability(guildieId: string, capability: GuildCapability, guildId: string = config.guild.id): Promise<boolean> {
+export async function guildieHasGuildCapability(guildieId: string, capability: GuildCapability, guildId?: string): Promise<boolean> {
   const authority = await effectiveGuildAuthority(guildieId, guildId);
   if (hasInherentGuildCapability(authority, guildieId)) return true;
   return authority?.capabilities.includes(capability) ?? false;
@@ -72,9 +73,9 @@ export async function requireGuildCapability(guildieId: string, capability: Guil
   const authority = await effectiveGuildAuthority(guildieId, guildId);
   if (hasInherentGuildCapability(authority, guildieId)) {
     if (authority) return authority;
-    throw new GuildCapabilityDeniedError(guildId, capability);
+    throw new GuildCapabilityDeniedError(authority?.guildId ?? (await requireOperationalInstallationGuildBinding()).guildId, capability);
   }
-  if (!authority || !authority.capabilities.includes(capability)) throw new GuildCapabilityDeniedError(guildId, capability);
+  if (!authority || !authority.capabilities.includes(capability)) throw new GuildCapabilityDeniedError(authority?.guildId ?? (await requireOperationalInstallationGuildBinding()).guildId, capability);
   return authority;
 }
 
