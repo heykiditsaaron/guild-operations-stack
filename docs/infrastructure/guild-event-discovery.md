@@ -10,7 +10,7 @@ Guild Calendar Point
     → What concrete guild occurrence happens when?
 ```
 
-A capability may expose an enduring Offering without any concrete Guild Activity currently existing. Calendar points represent temporal projection state for authoritative subjects; Calendar itself is not a Guild Activity module.
+A capability may expose an enduring Offering without any concrete Guild Activity currently existing. Calendar points represent temporal state for authoritative subjects; Calendar itself is Core and is not a Guild Activity Module.
 
 ## Activity Offerings
 
@@ -102,9 +102,13 @@ Consumers derive temporal relevance from `occursAt`. Upcoming, happening, and hi
 
 The Calendar does not remove a point merely because time passed. A past occurrence and a withdrawn occurrence are distinct. Eventual cleanup of old points is Calendar-owned retention policy and does not manufacture source-domain withdrawal.
 
-### Generic Calendar-native points
+### Calendar-native scheduling
 
-Calendar does not currently own a generic event-insertion ceremony or external mutation API. If generic Calendar-native points are needed, that capability will be earned and owned by a separate module rather than broadening the temporal-map machinery itself.
+Calendar does not currently own a generic event-insertion ceremony or external mutation API.
+
+Calendar is nevertheless a Core capability, not merely a projection over Module-owned activities. When concrete product pressure earns it, Calendar may own simple scheduled occurrences or messages whose authoritative meaning is scheduling itself and which require no richer participation domain.
+
+That future capability must not turn Calendar into a generic Guild Activity engine. If an occurrence develops its own lifecycle, participation procedure, adjudication, or other substantial guild-owned domain truth, that pressure indicates a Module rather than additional Calendar metadata.
 
 ### Consumers
 

@@ -135,6 +135,26 @@ A temporal range uses two Unix values; an instant uses one. The owning contract 
 
 Legacy timestamp columns predating this rule are conformity debt. They do not weaken the rule for new persistence and should not trigger unrelated wholesale migrations.
 
+## Core, Modules, and Plugins
+
+Guild Operations distinguishes product ownership from distribution.
+
+**Core** owns shared truths and machinery required for Guild Operations to function coherently. Current Core concerns include member and guild identity, authority and permissioning, Calendar and scheduling, presentation policy, administration and operations, and the shared application infrastructure required to support them.
+
+**Modules** own native, concrete guild participation capabilities. A Module establishes a guild-owned domain in which members can participate or which authorized members can operate. Raid and Raffle are current Modules.
+
+**Plugins** integrate an external system with Guild Operations. A Plugin may resolve external identity toward Core identity, consume or project Guild Operations truth, or provide an external capability to a Module or Core surface. Discord is the current Plugin. A Plugin does not become authoritative for Guild Operations truth merely because it can observe, express, or mutate state in its external system.
+
+These categories answer **what owns the capability**. They do not answer how the capability is distributed. Required, bundled, optional, and entitled are separate distribution concerns. Core is not synonymous with free, Module with bundled, or Plugin with premium.
+
+Application composition and adapters are structural roles rather than product categories. Composition assembles the executable application. Web, REST, Discord-facing, CLI, and similar adapters express or invoke established application meaning without acquiring ownership merely because they are entrypoints.
+
+Physical code ownership should make these boundaries legible where doing so improves the repository. Do not force composition, adapters, or genuinely shared infrastructure into Core merely because they are not Modules or Plugins.
+
+A Module may consume a capability supplied by a Plugin without either category absorbing the other. For example, Raid may use Discord projection supplied by the Discord Plugin while Raid remains authoritative for Raid truth and Discord remains authoritative only for its integration behavior and external effects.
+
+Do not introduce a generic Plugin runtime, extension framework, loader, registry, or superclass merely because Plugins are now a named category. Build concrete integrations and let repeated pressure earn shared machinery.
+
 ## Modules and concrete pressure
 
 Concrete guild capabilities are the product pressure that should drive architecture.
@@ -147,7 +167,7 @@ Shared abstractions should be introduced only after multiple real features demon
 
 Application-wide module invariants live in [`module-conformity.md`](module-conformity.md). Guild Activity is one specialized semantic family governed by [`guild-activity.md`](guild-activity.md).
 
-Calendar and activity-discovery Offerings are current examples of earned shared presentation infrastructure. Calendar is not a Guild Activity module; it projects temporal truth owned elsewhere. Their operational contracts live under [`../infrastructure/`](../infrastructure/).
+Calendar and activity-discovery Offerings are current examples of earned shared participation and presentation infrastructure. Calendar is Core, not a Guild Activity Module. It owns temporal organization and may eventually own simple scheduled occurrences that require no richer participation domain. Modules remain authoritative for their own lifecycle, participation, and domain meaning when they project temporal relevance into Calendar. Their current operational contracts live under [`../infrastructure/`](../infrastructure/).
 
 ## Interface model
 
