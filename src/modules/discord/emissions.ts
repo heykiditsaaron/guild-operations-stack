@@ -1,6 +1,6 @@
 import type { Emission } from "../../emissions/contract.js";
 import { registerEmissionConsumer } from "../../emissions/registry.js";
-import { createDiscordChannelMessage, discordGuildIntegrationConfigured } from "./client.js";
+import { createDiscordChannelMessage, editDiscordChannelMessage, discordGuildIntegrationConfigured } from "./client.js";
 import { discordModuleConfiguration } from "./module-configuration.js";
 import { reconcileGuildieDiscordRoles } from "./roles.js";
 import {
@@ -25,14 +25,29 @@ async function consumeGuildieEmission(emission: Emission): Promise<void> {
   });
 }
 
+const DISCORD_RAID_RECONCILIATION_CODES = [
+  "raid.modified",
+  "raid.signup.established",
+  "raid.signup.revoked",
+  "raid.signup.denied",
+  "raid.assignment.established",
+  "raid.assignment.modified",
+  "raid.assignment.withdrawn",
+] as const;
+
 async function consumeRaidEstablishedEmission(emission: Emission): Promise<void> {
   const moduleConfiguration = await discordModuleConfiguration();
   if (!moduleConfiguration.enabled || !await discordGuildIntegrationConfigured()) return;
 
+  const existing = await discordRaidProjectionCoordinate(emission.subject);
+  if (existing) {
+    const state = await discordRaidProjectionState(emission.subject);
+    if (state) await editDiscordChannelMessage(existing.channelId, existing.messageId, renderDiscordRaidProjection(state));
+    return;
+  }
+
   const projectionConfiguration = await discordRaidProjectionConfiguration();
   if (!projectionConfiguration.channelId) return;
-  if (await discordRaidProjectionCoordinate(emission.subject)) return;
-
   const state = await discordRaidProjectionState(emission.subject);
   if (!state) return;
 
@@ -48,6 +63,22 @@ async function consumeRaidEstablishedEmission(emission: Emission): Promise<void>
   });
 }
 
+async function consumeRaidReconciliationEmission(emission: Emission): Promise<void> {
+  const moduleConfiguration = await discordModuleConfiguration();
+  if (!moduleConfiguration.enabled || !await discordGuildIntegrationConfigured()) return;
+
+  const coordinate = await discordRaidProjectionCoordinate(emission.subject);
+  if (!coordinate) return;
+  const state = await discordRaidProjectionState(emission.subject);
+  if (!state) return;
+
+  await editDiscordChannelMessage(
+    coordinate.channelId,
+    coordinate.messageId,
+    renderDiscordRaidProjection(state),
+  );
+}
+
 export function registerDiscordEmissionConsumers(): void {
   registerEmissionConsumer({
     consumerId: "discord.roles",
@@ -55,8 +86,13 @@ export function registerDiscordEmissionConsumers(): void {
     receive: consumeGuildieEmission,
   });
   registerEmissionConsumer({
-    consumerId: "discord.raid-projection",
+    consumerId: "discord.raid-projection-establish",
     codes: ["raid.established"],
     receive: consumeRaidEstablishedEmission,
+  });
+  registerEmissionConsumer({
+    consumerId: "discord.raid-projection-reconcile",
+    codes: DISCORD_RAID_RECONCILIATION_CODES,
+    receive: consumeRaidReconciliationEmission,
   });
 }
