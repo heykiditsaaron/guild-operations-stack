@@ -1,4 +1,4 @@
-import { config, type Region } from "../../config.js";
+import { requireOperationalInstallationGuildBinding } from "../installation/guild-binding.js";
 import { pool } from "../../db.js";
 
 export type GuildRankDefinition = {
@@ -7,8 +7,9 @@ export type GuildRankDefinition = {
   displayName: string;
 };
 export async function guildRankDefinitions(
-  guildId: string = config.guild.id,
+  guildId?: string,
 ): Promise<GuildRankDefinition[]> {
+  const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
   const result = await pool.query<{
     guild_id: string;
     rank_index: number;
@@ -19,7 +20,7 @@ export async function guildRankDefinitions(
       WHERE guild_id = $1
         AND active = true
       ORDER BY rank_index`,
-    [guildId],
+    [resolvedGuildId],
   );
 
   return result.rows.map((row) => ({
