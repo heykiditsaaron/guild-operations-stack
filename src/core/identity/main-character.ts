@@ -1,4 +1,4 @@
-import { config } from "../../config.js";
+import { requireOperationalInstallationGuildBinding } from "../installation/guild-binding.js";
 import { pool } from "../../db.js";
 
 export type SelectedMainCharacter = {
@@ -17,6 +17,10 @@ export async function selectMainCharacter(
   realmId: string,
   characterId: string,
 ): Promise<SelectedMainCharacter | null> {
+  const binding = await requireOperationalInstallationGuildBinding();
+  const guild = await pool.query<{ region: string }>("SELECT region FROM guilds WHERE guild_id = $1", [binding.guildId]);
+  const guildRegion = guild.rows[0]?.region;
+  if (!guildRegion) throw new Error("Bound guild is not persisted");
   const result = await pool.query<{
     guild_id: string;
     character_id: string;
@@ -49,7 +53,7 @@ export async function selectMainCharacter(
        AND grm.guild_id = $2
        AND c.realm_id = $3
        AND c.character_id = $4`,
-    [guildieId, config.guild.id, realmId, characterId],
+    [guildieId, binding.guildId, realmId, characterId],
   );
 
   if (!result.rowCount) return null;
@@ -60,7 +64,7 @@ export async function selectMainCharacter(
        FROM guildie_main_characters
       WHERE guildie_id = $1
         AND guild_id = $2`,
-    [guildieId, config.guild.id],
+    [guildieId, binding.guildId],
   );
   const previous = existing.rows[0];
   const changed = !previous || previous.realm_id !== realmId || previous.character_id !== characterId;
@@ -75,7 +79,7 @@ export async function selectMainCharacter(
          realm_id = EXCLUDED.realm_id,
          character_id = EXCLUDED.character_id,
          selected_at = now()`,
-      [guildieId, config.guild.id, config.guild.region, realmId, characterId],
+      [guildieId, binding.guildId, guildRegion, realmId, characterId],
     );
   }
 
@@ -92,6 +96,7 @@ export async function selectMainCharacter(
 }
 
 export async function mainCharacterForGuildie(guildieId: string): Promise<SelectedMainCharacter | null> {
+  const binding = await requireOperationalInstallationGuildBinding();
   const result = await pool.query<{
     guild_id: string;
     character_id: string;
@@ -128,7 +133,7 @@ export async function mainCharacterForGuildie(guildieId: string): Promise<Select
       AND wcp.character_id = gmc.character_id
      WHERE gmc.guildie_id = $1
        AND gmc.guild_id = $2`,
-    [guildieId, config.guild.id],
+    [guildieId, binding.guildId],
   );
 
   if (!result.rowCount) return null;
