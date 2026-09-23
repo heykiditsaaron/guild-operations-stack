@@ -23,7 +23,7 @@ export async function guildTheme(guildId?: string): Promise<GuildThemeKey> {
   return key && isGuildThemeKey(key) ? key : "default";
 }
 
-export async function setGuildTheme(themeKey: GuildThemeKey, guildId: string = config.guild.id): Promise<GuildThemeKey> {
+export async function setGuildTheme(themeKey: GuildThemeKey, guildId?: string): Promise<GuildThemeKey> {
   const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
   await pool.query(
     `INSERT INTO guild_presentation_settings (guild_id, theme_key, updated_at)
