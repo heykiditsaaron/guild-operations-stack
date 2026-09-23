@@ -10,7 +10,7 @@ import { registerApplicationEmissionConsumers } from "./emissions/consumers.js";
 import { startEmissionRecovery } from "./emissions/recovery.js";
 import { startGuildRefreshScheduler } from "./guild-refresh-scheduler.js";
 import { packagedCapabilityEnabled, type PackagedCapabilityKey } from "./packaged-capability-lifecycle.js";
-import { registerDiscordModule, registerDiscordModuleAdministration } from "./modules/discord/module.js";
+import { registerDiscordModule, registerDiscordModuleAdministration } from "./plugins/discord/module.js";
 import { registerRaffleApiV1Routes } from "./modules/raffle/api-v1-routes.js";
 import { registerRaffleGuildEventOffering } from "./modules/raffle/offering.js";
 import { registerRaffleCapabilityDefinitions } from "./modules/raffle/permissions.js";

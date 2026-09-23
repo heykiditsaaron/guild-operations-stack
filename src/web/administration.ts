@@ -6,7 +6,7 @@ import {
   effectiveGuildAuthority,
 } from "../guild-permissions.js";
 import { canAdministerGuildPermissions } from "../guild-capability-policy.js";
-import { DISCORD_ADMIN_CAPABILITY } from "../modules/discord/authorization.js";
+import { DISCORD_ADMIN_CAPABILITY } from "../plugins/discord/authorization.js";
 
 export type AdministrationAvailability = {
   available: boolean;
