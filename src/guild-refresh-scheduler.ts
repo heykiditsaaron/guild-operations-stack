@@ -1,6 +1,6 @@
 import type { FastifyBaseLogger } from "fastify";
 import { performGuildRefresh } from "./guild-refresh-operation.js";
-import { claimDueGuildRefresh } from "./guild-refresh-schedule.js";
+import { claimDueGuildRefresh } from "./core/guild/guild-refresh-schedule.js";
 
 const SCHEDULER_POLL_MILLISECONDS = 5000;
 
