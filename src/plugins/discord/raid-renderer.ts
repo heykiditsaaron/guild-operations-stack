@@ -1,7 +1,7 @@
 import { config } from "../../config.js";
 import { positionForSpec } from "../../wow-traits/registry.js";
-import { activeRaidSignups, type RaidSignupView } from "../raid/participation-view.js";
-import { raidEventFacts, raidEventFactsIncludingCancelled, raidSignupsAreOpen, type RaidEventFacts } from "../raid/application.js";
+import { activeRaidSignups, type RaidSignupView } from "../../modules/raid/participation-view.js";
+import { raidEventFacts, raidEventFactsIncludingCancelled, raidSignupsAreOpen, type RaidEventFacts } from "../../modules/raid/application.js";
 import type { DiscordMessageInput } from "./client.js";
 
 export type DiscordRaidProjectionState = {
