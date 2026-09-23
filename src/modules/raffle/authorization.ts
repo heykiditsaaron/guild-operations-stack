@@ -5,7 +5,7 @@ import {
   RAFFLE_STAGE_CAPABILITY,
   guildieHasGuildCapability,
   type GuildCapability,
-} from "../../guild-permissions.js";
+} from "../../core/authority/guild-permissions.js";
 
 const RAFFLE_OPERATION_CAPABILITIES: readonly GuildCapability[] = [
   RAFFLE_MODIFY_CAPABILITY,

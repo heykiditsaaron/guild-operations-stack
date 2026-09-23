@@ -1,5 +1,5 @@
-import { registerGuildCapabilityDefinitions } from "../../guild-capability-policy.js";
-import type { EffectiveGuildAuthority } from "../../guild-permissions.js";
+import { registerGuildCapabilityDefinitions } from "../../core/authority/guild-capability-policy.js";
+import type { EffectiveGuildAuthority } from "../../core/authority/guild-permissions.js";
 
 export const DISCORD_ADMIN_CAPABILITY = "guild.discord.manage";
 

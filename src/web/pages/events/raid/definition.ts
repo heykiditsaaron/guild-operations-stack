@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
-import { GuildCapabilityDeniedError, RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILITY, guildieHasGuildCapabilityOrOperator } from "../../../../guild-permissions.js";
+import { GuildCapabilityDeniedError, RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILITY, guildieHasGuildCapabilityOrOperator } from "../../../../core/authority/guild-permissions.js";
 import { cancelRaid, modifyRaid, raidEventFacts, raidHasOccurred, raidOccurrenceDestinations } from "../../../../modules/raid/application.js";
 import { RAID_DESCRIPTION_MAX_LENGTH, RAID_LABEL_MAX_LENGTH, type RaidDifficulty, type RaidEligibility, type RaidRequirement } from "../../../../modules/raid/domain.js";
 import type { AssetRegistry } from "../../../assets.js";

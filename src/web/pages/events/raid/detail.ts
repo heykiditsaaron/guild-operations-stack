@@ -6,7 +6,7 @@ import {
   RAID_MODIFY_CAPABILITY,
   RAID_STAGE_CAPABILITY,
   guildieHasGuildCapabilityOrOperator,
-} from "../../../../guild-permissions.js";
+} from "../../../../core/authority/guild-permissions.js";
 import {
   setRaidAssignment,
   raidEventFacts,

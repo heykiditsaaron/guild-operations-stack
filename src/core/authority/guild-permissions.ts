@@ -1,5 +1,5 @@
-import { config } from "./config.js";
-import { pool } from "./db.js";
+import { config } from "../../config.js";
+import { pool } from "../../db.js";
 import { isConfiguredOperator } from "./operator-authority.js";
 
 export type GuildCapability = string;

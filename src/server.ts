@@ -4,7 +4,7 @@ import { registerApiV1Routes } from "./api-v1-routes.js";
 import { config } from "./config.js";
 import { pool } from "./db.js";
 import { registerAuthRoutes } from "./auth.js";
-import { registerGlobalGuildCapabilityDefinitions, registerGuildCapabilityPolicyObserver } from "./guild-capability-policy.js";
+import { registerGlobalGuildCapabilityDefinitions, registerGuildCapabilityPolicyObserver } from "./core/authority/guild-capability-policy.js";
 import { registerGuildRoutes } from "./guild-routes.js";
 import { registerApplicationEmissionConsumers } from "./emissions/consumers.js";
 import { startEmissionRecovery } from "./emissions/recovery.js";

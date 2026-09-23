@@ -6,7 +6,7 @@ import {
   RAFFLE_MODIFY_CAPABILITY,
   RAFFLE_STAGE_CAPABILITY,
   requireGuildCapabilityOrOperator,
-} from "../../guild-permissions.js";
+} from "../../core/authority/guild-permissions.js";
 import {
   RaffleRuleError,
   approveRaffleClaim as approveRaffleClaimDomain,

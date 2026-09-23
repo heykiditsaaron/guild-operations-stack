@@ -1,6 +1,6 @@
 import type { PoolClient } from "pg";
-import { config } from "./config.js";
-import { pool, withTransaction } from "./db.js";
+import { config } from "../../config.js";
+import { pool, withTransaction } from "../../db.js";
 import {
   GUILD_REFRESH_CAPABILITY,
   GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY,
@@ -12,7 +12,7 @@ import {
   effectiveGuildAuthority,
   guildieHasGuildCapability,
 } from "./guild-permissions.js";
-import { registerGuildRefreshObserver } from "./guild-refresh-observers.js";
+import { registerGuildRefreshObserver } from "../../guild-refresh-observers.js";
 import { isConfiguredOperator } from "./operator-authority.js";
 
 export type GuildCapabilityDefinition = {

@@ -1,10 +1,10 @@
-import { registerGuildCapabilityDefinitions } from "../../guild-capability-policy.js";
+import { registerGuildCapabilityDefinitions } from "../../core/authority/guild-capability-policy.js";
 import {
   RAID_ASSIGN_CAPABILITY,
   RAID_MODIFY_CAPABILITY,
   RAID_PERMISSIONS_CAPABILITY,
   RAID_STAGE_CAPABILITY,
-} from "../../guild-permissions.js";
+} from "../../core/authority/guild-permissions.js";
 
 export function registerRaidCapabilityDefinitions(): void {
   registerGuildCapabilityDefinitions([

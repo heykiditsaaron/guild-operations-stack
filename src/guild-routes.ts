@@ -10,7 +10,7 @@ import {
   GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY,
   GuildCapabilityDeniedError,
   requireGuildCapability,
-} from "./guild-permissions.js";
+} from "./core/authority/guild-permissions.js";
 
 export async function registerGuildRoutes(app: FastifyInstance): Promise<void> {
   app.post("/guild/refresh", async (request, reply) => {

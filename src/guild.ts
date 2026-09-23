@@ -7,7 +7,7 @@ import {
   GUILD_REFRESH_CAPABILITY,
   GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY,
   OPERATIONS_INSPECT_CAPABILITY,
-} from "./guild-permissions.js";
+} from "./core/authority/guild-permissions.js";
 import { publishGuildRefreshObservation } from "./guild-refresh-observers.js";
 import {
   enrichGuildCharacters,

@@ -10,7 +10,7 @@ import {
   RAID_MODIFY_CAPABILITY,
   RAID_STAGE_CAPABILITY,
   requireGuildCapabilityOrOperator,
-} from "../../guild-permissions.js";
+} from "../../core/authority/guild-permissions.js";
 import { positionForSpec, traitsForSpec, type WowTrait } from "../../wow-traits/registry.js";
 import {
   normalizedRaidRequirements,

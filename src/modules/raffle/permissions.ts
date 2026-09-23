@@ -1,11 +1,11 @@
-import { registerGuildCapabilityDefinitions } from "../../guild-capability-policy.js";
+import { registerGuildCapabilityDefinitions } from "../../core/authority/guild-capability-policy.js";
 import {
   RAFFLE_CLAIMS_CAPABILITY,
   RAFFLE_DRAW_CAPABILITY,
   RAFFLE_MODIFY_CAPABILITY,
   RAFFLE_PERMISSIONS_CAPABILITY,
   RAFFLE_STAGE_CAPABILITY,
-} from "../../guild-permissions.js";
+} from "../../core/authority/guild-permissions.js";
 
 export function registerRaffleCapabilityDefinitions(): void {
   registerGuildCapabilityDefinitions([
