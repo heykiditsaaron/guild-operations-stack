@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { characterMembership } from "./core/guild/character-membership.js";
 import { effectiveGuildAuthority } from "./core/authority/guild-permissions.js";
 import { mainCharacterForGuildie } from "./core/identity/main-character.js";
+import { guildieExists } from "./core/identity/guildie.js";
 import { guildCharactersForGuildie } from "./core/guild/guild-characters.js";
 import { config, parseRegion } from "./config.js";
 
@@ -21,12 +22,13 @@ export async function registerApiV1Routes(app: FastifyInstance): Promise<void> {
       return reply.code(400).send({ error: "invalid_guildie_coordinate" });
     }
 
-    const characters = await guildCharactersForGuildie(params.guildieId);
+    const exists = await guildieExists(params.guildieId);
+    if (!exists) return reply.code(404).send({ error: "guildie_not_found" });
+
     const [selectedMain, guildAuthority] = await Promise.all([
       mainCharacterForGuildie(params.guildieId),
       effectiveGuildAuthority(params.guildieId),
     ]);
-    if (!characters.length && !selectedMain && !guildAuthority) return reply.code(404).send({ error: "guildie_not_found" });
 
     return reply.send({
       guildie_id: params.guildieId,
