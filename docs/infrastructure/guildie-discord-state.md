@@ -45,7 +45,7 @@ Rank Mapping configuration and enablement
 
 The application secret and bot token are write-only administrative secrets. The browser can see whether each secret is configured and may replace or remove it, but the stored plaintext is never returned to the browser.
 
-Persisted Discord secrets are encrypted at rest using the installation-level `APPLICATION_ENCRYPTION_KEY`. That value is application infrastructure rather than Discord configuration. The application may run without it, but Discord secrets cannot be stored or used until an encryption root is configured.
+Persisted Discord secrets are encrypted at rest using installation-owned key material. Guild Operations establishes and persists that encryption root in its installation data volume; administrators do not create or transcribe encryption keys. Existing installations may provide the former `APPLICATION_ENCRYPTION_KEY` once when no durable installation key exists; Guild Operations imports it into installation storage so existing ciphertext remains readable.
 
 The Discord OAuth callback remains derived from global `APP_ORIGIN` because application origin is a property of the installation rather than the Discord module.
 
