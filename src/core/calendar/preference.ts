@@ -1,4 +1,4 @@
-import { pool } from "./db.js";
+import { pool } from "../../db.js";
 
 export const CALENDAR_VIEW_MODES = ["agenda", "week", "month"] as const;
 export type CalendarViewMode = (typeof CALENDAR_VIEW_MODES)[number];

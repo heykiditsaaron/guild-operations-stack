@@ -6,7 +6,7 @@ import {
   isCalendarViewMode,
   setCalendarViewForGuildie,
   type CalendarViewMode,
-} from "../../../calendar-preference.js";
+} from "../../../core/calendar/preference.js";
 import {
   RAID_ASSIGN_CAPABILITY,
   RAID_MODIFY_CAPABILITY,
@@ -22,7 +22,7 @@ import {
   discoverableGuildCalendarPoints,
   type GuildCalendarOccursAt,
   type GuildCalendarPoint,
-} from "../../../guild-events/calendar/registry.js";
+} from "../../../core/calendar/registry.js";
 import {
   guildEventOfferings,
   type GuildEventOffering,
