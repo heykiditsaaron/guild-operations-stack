@@ -1,4 +1,4 @@
-import { refreshGuildAuthority, type GuildRefreshResult } from "./guild.js";
+import { refreshGuildAuthority, type GuildRefreshResult } from "./core/guild/guild-refresh.js";
 import { publishOperationalRecord } from "./operational-inspection.js";
 
 type GuildRefreshOperationOptions = {
