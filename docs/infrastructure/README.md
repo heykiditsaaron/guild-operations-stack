@@ -21,7 +21,7 @@ Use these documents when implementing against an existing facility, operating it
 ## Application infrastructure
 
 - [`web-rendering.md`](web-rendering.md) — shared rendering, shell, controls, navigation, origin, and asset behavior.
-- [`module-lifecycle.md`](module-lifecycle.md) — packaged-module enablement, persistence, administration, and runtime gating.
+- [`module-lifecycle.md`](module-lifecycle.md) — packaged Module/Plugin enablement, persistence, administration, and runtime gating.
 - [`operational-inspection.md`](operational-inspection.md) — publishing and inspecting durable administrative operation evidence.
 - [`privileged-surface-audit.md`](privileged-surface-audit.md) — current privileged web surface classification and migration ownership across participation, operations, and administration.
 
