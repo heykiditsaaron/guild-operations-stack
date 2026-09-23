@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
+import { guildRefreshStatus } from "../../guild-admin.js";
 import {
   canAdministerGuildPermissions,
   guildCapabilityPoliciesForActor,
@@ -12,6 +13,7 @@ import {
   type GuildRefreshSchedule,
 } from "../../guild-refresh-schedule.js";
 import {
+  GUILD_REFRESH_CAPABILITY,
   GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY,
   GUILD_PRESENTATION_CONFIGURE_CAPABILITY,
   MODULES_CONFIGURE_CAPABILITY,
@@ -37,8 +39,8 @@ function htmlText(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
 }
 
-function administrationTabs(current: "general" | "permissions"): string {
-  return `<nav class="admin-tabs" aria-label="Administration sections"><a href="/admin/general"${current === "general" ? ' aria-current="page"' : ""}>General</a><a href="/admin/permissions"${current === "permissions" ? ' aria-current="page"' : ""}>Permissions</a></nav>`;
+function administrationTabs(current: "general" | "modules" | "permissions" | "history"): string {
+  return `<nav class="admin-tabs" aria-label="Settings sections"><a href="/admin/general"${current === "general" ? ' aria-current="page"' : ""}>General</a><a href="/admin/modules"${current === "modules" ? ' aria-current="page"' : ""}>Modules</a><a href="/admin/permissions"${current === "permissions" ? ' aria-current="page"' : ""}>Permissions</a><a href="/admin/history"${current === "history" ? ' aria-current="page"' : ""}>History</a></nav>`;
 }
 
 function administrationSection(sectionId: string, headingId: string, heading: string, content: string): string {
@@ -47,7 +49,7 @@ function administrationSection(sectionId: string, headingId: string, heading: st
 
 function renderModuleLifecycle(modules: PackagedModuleState[], canConfigureDiscord: boolean): string {
   return `<div class="module-lifecycle-list">${modules.map((module) => {
-    const configurationAction = module.key === "discord" && canConfigureDiscord ? `<a class="module-lifecycle-configure" href="/admin/general/discord">Configure integration <span aria-hidden="true">→</span></a>` : "";
+    const configurationAction = module.key === "discord" && canConfigureDiscord ? `<a class="module-lifecycle-configure" href="/admin/modules/discord">Configure integration <span aria-hidden="true">→</span></a>` : "";
     return `<article class="module-lifecycle-card settings-panel" data-module-key="${module.key}"><div class="module-lifecycle-copy"><div class="module-lifecycle-heading"><h3>${htmlText(module.label)}</h3><span class="module-lifecycle-availability">Available</span></div><p>${module.enabled ? "Enabled for Guild Operations." : "Installed but disabled."}</p>${configurationAction}</div><label class="switch module-lifecycle-toggle"><input type="checkbox" data-module-enabled${module.enabled ? " checked" : ""}><span class="switch-control" aria-hidden="true"></span><span data-module-switch-label>${module.enabled ? "On" : "Off"}</span></label><p class="module-lifecycle-feedback" data-module-feedback role="status" aria-live="polite"></p></article>`;
   }).join("\n")}</div>`;
 }
@@ -55,6 +57,12 @@ function renderModuleLifecycle(modules: PackagedModuleState[], canConfigureDisco
 function renderGuildRefreshSchedule(schedule: GuildRefreshSchedule): string {
   const nextAutomaticRefresh = schedule.nextDueAtUnix === null ? "Disabled" : `<time data-unix-time="${schedule.nextDueAtUnix}">${schedule.nextDueAtUnix}</time>`;
   return `<form class="guild-refresh-schedule" data-guild-refresh-schedule-form><div class="guild-refresh-schedule-heading"><div><h3>Automatic guild refresh</h3><p>Reconcile current guild membership and rank authority from Blizzard on a repeating cadence.</p></div><label class="switch guild-refresh-toggle"><input type="checkbox" data-guild-refresh-schedule-enabled${schedule.enabled ? " checked" : ""}><span class="switch-control" aria-hidden="true"></span><span data-switch-label>${schedule.enabled ? "On" : "Off"}</span></label></div><div class="guild-refresh-schedule-controls"><label><span>Every</span><input type="number" min="${GUILD_REFRESH_MINIMUM_INTERVAL_SECONDS}" step="1" value="${schedule.intervalSeconds}" inputmode="numeric" data-guild-refresh-schedule-interval><span>seconds</span></label><button type="submit" class="button-primary" data-guild-refresh-schedule-save>Save</button></div><div class="guild-refresh-schedule-next"><span>Next automatic refresh</span><strong data-guild-refresh-schedule-next>${nextAutomaticRefresh}</strong></div><p class="guild-refresh-schedule-feedback" data-guild-refresh-schedule-feedback role="status" aria-live="polite"></p></form>`;
+}
+
+function renderGuildRefreshOperation(status: Awaited<ReturnType<typeof guildRefreshStatus>>, canRefresh: boolean): string {
+  const memberCount = status ? status.currentMemberCount.toLocaleString("en-US") : "—";
+  const lastReconciled = status ? `<time data-unix-time="${status.lastReconciledAtUnix}">${status.lastReconciledAtUnix}</time>` : "Not yet observed";
+  return `<div class="guild-refresh-admin" data-guild-refresh-admin><div class="guild-refresh-admin-heading"><div><h3>Manual guild refresh</h3><p>Reconcile current guild membership and rank authority from Blizzard now.</p></div><button type="button" class="guild-refresh-button button-primary" data-guild-refresh-button${canRefresh ? "" : " disabled"}>Refresh now</button></div><div class="guild-refresh-status"><div class="guild-refresh-stat"><strong>${memberCount}</strong><span>current members</span></div><div class="guild-refresh-stat"><span>Last reconciled</span><strong>${lastReconciled}</strong></div></div><p class="guild-refresh-feedback" data-guild-refresh-feedback role="status" aria-live="polite"></p></div>`;
 }
 
 function renderThemeSettings(theme: GuildThemeKey): string {
@@ -96,20 +104,48 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
   app.get("/admin/general", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie] = await Promise.all([viewerForRequest(sessionToken), authenticatedGuildie(sessionToken)]);
-    const [canConfigureModules, canConfigureGuildRefreshSchedule, canConfigureTheme, canConfigureGuildPresentation, administration] = guildie ? await Promise.all([guildieHasGuildCapabilityOrOperator(guildie.guildieId, MODULES_CONFIGURE_CAPABILITY), guildieHasGuildCapability(guildie.guildieId, GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY), guildieHasGuildCapability(guildie.guildieId, THEME_CONFIGURE_CAPABILITY), guildieHasGuildCapability(guildie.guildieId, GUILD_PRESENTATION_CONFIGURE_CAPABILITY), administrationAvailabilityForGuildie(guildie.guildieId)]) : [false, false, false, false, null];
-    const [refreshSchedule, modulesState, theme, presentation] = await Promise.all([canConfigureGuildRefreshSchedule ? guildRefreshSchedule() : Promise.resolve(null), canConfigureModules ? packagedModuleStates() : Promise.resolve([]), canConfigureTheme ? guildTheme() : Promise.resolve<GuildThemeKey>("default"), canConfigureGuildPresentation ? guildPresentation() : Promise.resolve(null)]);
-    const hasAdministration = administration?.available === true;
-    const moduleLifecycle = canConfigureModules ? administrationSection("modules", "modules-heading", "Modules", `${renderModuleLifecycle(modulesState, administration?.canConfigureDiscord === true)}<p class="admin-section-note">Enablement controls whether an installed module participates in Guild Operations. Acquisition or entitlement is a separate concern and is not implemented here.</p>`) : "";
-    const themeSettings = canConfigureTheme ? administrationSection("appearance", "appearance-heading", "Appearance", renderThemeSettings(theme)) : "";
-    const presentationSettings = canConfigureGuildPresentation && presentation ? administrationSection("guild-presentation", "guild-presentation-heading", "Guild presentation", renderGuildPresentationSettings(presentation)) : "";
-    const guildSettings = canConfigureGuildRefreshSchedule && refreshSchedule ? administrationSection("guild-settings", "guild-settings-heading", "Guild settings", renderGuildRefreshSchedule(refreshSchedule)) : "";
-    const content = hasAdministration ? `<div class="admin-sections">${moduleLifecycle}${themeSettings}${presentationSettings}${guildSettings}</div>` : `<section class="admin-unavailable" aria-labelledby="admin-unavailable-heading"><h2 id="admin-unavailable-heading">Administration is not available for this account.</h2></section>`;
-    const html = renderPage(assets, { pathname: "/admin/general", title: `General Administration · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Configure Guild Operations.", viewer, stylesheets: ["admin.css", "admin-modules.css"], scripts: ["admin.js", "admin-modules.js"], header: `<div class="admin-page-header"><h1 id="page-title">Administration</h1><p class="lede">Configure Guild Operations and its modules.</p></div>`, body: `${administrationTabs("general")}${content}` });
-    if (!hasAdministration) return reply.code(guildie ? 403 : 401).header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
+    if (!guildie) return reply.code(401).send("Authentication is required.");
+
+    const [canConfigureGuildRefreshSchedule, canConfigureTheme, canConfigureGuildPresentation, canRefresh] = await Promise.all([
+      guildieHasGuildCapability(guildie.guildieId, GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY),
+      guildieHasGuildCapability(guildie.guildieId, THEME_CONFIGURE_CAPABILITY),
+      guildieHasGuildCapability(guildie.guildieId, GUILD_PRESENTATION_CONFIGURE_CAPABILITY),
+      guildieHasGuildCapability(guildie.guildieId, GUILD_REFRESH_CAPABILITY),
+    ]);
+    const [refreshSchedule, theme, presentation, refreshStatus] = await Promise.all([
+      guildRefreshSchedule(),
+      guildTheme(),
+      guildPresentation(),
+      guildRefreshStatus(),
+    ]);
+
+    const themeSettings = administrationSection("appearance", "appearance-heading", "Appearance", renderThemeSettings(theme).replaceAll("<select data-theme-select>", `<select data-theme-select${canConfigureTheme ? "" : " disabled"}>`).replaceAll("<button type=\"submit\" class=\"button-primary\" data-theme-save>", `<button type="submit" class="button-primary" data-theme-save${canConfigureTheme ? "" : " disabled"}>`));
+    const presentationSettings = administrationSection("guild-presentation", "guild-presentation-heading", "Guild presentation", canConfigureGuildPresentation ? renderGuildPresentationSettings(presentation) : renderGuildPresentationSettings(presentation).replaceAll("<input ", "<input disabled ").replaceAll("<button type=\"submit\"", "<button disabled type=\"submit\""));
+    const schedule = canConfigureGuildRefreshSchedule ? renderGuildRefreshSchedule(refreshSchedule) : renderGuildRefreshSchedule(refreshSchedule).replaceAll("<input ", "<input disabled ").replaceAll("<button type=\"submit\"", "<button disabled type=\"submit\"");
+    const guildSettings = administrationSection("guild-settings", "guild-settings-heading", "Guild synchronization", `${schedule}${renderGuildRefreshOperation(refreshStatus, canRefresh)}`);
+    const content = `<div class="admin-sections">${themeSettings}${presentationSettings}${guildSettings}</div>`;
+
+    const html = renderPage(assets, { pathname: "/admin/general", title: `General Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Inspect and configure Guild Operations.", viewer, stylesheets: ["admin.css"], scripts: ["admin.js", "operations.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Inspect and manage Guild Operations according to your authority.</p></div>`, body: `${administrationTabs("general")}${content}` });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
 
-  app.put("/admin/general/modules/:moduleKey", async (request, reply) => {
+  app.get("/admin/modules", async (request, reply) => {
+    const sessionToken = request.cookies[SESSION_COOKIE_NAME];
+    const [viewer, guildie] = await Promise.all([viewerForRequest(sessionToken), authenticatedGuildie(sessionToken)]);
+    if (!guildie) return reply.code(401).send("Authentication is required.");
+    const [canConfigureModules, administration, modulesState] = await Promise.all([
+      guildieHasGuildCapabilityOrOperator(guildie.guildieId, MODULES_CONFIGURE_CAPABILITY),
+      administrationAvailabilityForGuildie(guildie.guildieId),
+      packagedModuleStates(),
+    ]);
+    let lifecycle = renderModuleLifecycle(modulesState, administration.canConfigureDiscord);
+    if (!canConfigureModules) lifecycle = lifecycle.replaceAll("<input type=\"checkbox\" data-module-enabled", "<input type=\"checkbox\" data-module-enabled disabled");
+    const content = administrationSection("modules", "modules-heading", "Modules", `${lifecycle}<p class="admin-section-note">Availability and entitlement are distinct from enablement. Controls are available only when your authority permits changes.</p>`);
+    const html = renderPage(assets, { pathname: "/admin/modules", title: `Module Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Inspect and configure Guild Operations modules.", viewer, stylesheets: ["admin.css", "admin-modules.css"], scripts: canConfigureModules ? ["admin-modules.js"] : [], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Inspect and manage Guild Operations modules.</p></div>`, body: `${administrationTabs("modules")}<div class="admin-sections">${content}</div>` });
+    return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
+  });
+
+  app.put("/admin/modules/:moduleKey", async (request, reply) => {
     const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
     if (!guildie) return reply.code(401).send({ error: "authentication_required" });
     if (!await guildieHasGuildCapabilityOrOperator(guildie.guildieId, MODULES_CONFIGURE_CAPABILITY)) return reply.code(403).send({ error: "module_configuration_not_authorized" });
@@ -148,7 +184,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     const policies = authorized && guildie ? await guildCapabilityPoliciesForActor(guildie.guildieId) : null;
     const operator = guildie ? isConfiguredOperator(guildie.guildieId) : false;
     const content = authorized && policies ? `<section class="permission-administration" aria-labelledby="permission-heading"><div class="permission-intro"><h2 id="permission-heading">Capability access</h2><p>Choose which current Blizzard guild ranks receive each Guild Operations capability in addition to Guild Master rank 0. Rank 0 and configured operator overrides are inherently capable and are not configurable here.</p>${operator ? `<p class="permission-operator-notice"><strong>Operator override active.</strong> This access is independent of your current guild rank.</p>` : ""}</div>${renderPermissionPolicies(policies)}</section>` : `<section class="admin-unavailable" aria-labelledby="admin-unavailable-heading"><h2 id="admin-unavailable-heading">Permission administration is not available for this account.</h2></section>`;
-    const html = renderPage(assets, { pathname: "/admin/permissions", title: `Permissions Administration · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Configure Guild Operations permission policy.", viewer, stylesheets: ["admin.css", "admin-permissions.css"], scripts: ["admin-permissions.js"], header: `<div class="admin-page-header"><h1 id="page-title">Administration</h1><p class="lede">Configure who may use Guild Operations capabilities.</p></div>`, body: `${administrationTabs("permissions")}${content}` });
+    const html = renderPage(assets, { pathname: "/admin/permissions", title: `Permissions Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Configure Guild Operations permission policy.", viewer, stylesheets: ["admin.css", "admin-permissions.css"], scripts: ["admin-permissions.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Configure who may use Guild Operations capabilities.</p></div>`, body: `${administrationTabs("permissions")}${content}` });
     if (!authorized) return reply.code(guildie ? 403 : 401).header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
