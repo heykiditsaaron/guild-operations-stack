@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../auth.js";
-import { packagedModuleEnabled } from "../../module-lifecycle.js";
+import { packagedCapabilityEnabled } from "../../packaged-capability-lifecycle.js";
 import { openRaffleFacts } from "../../modules/raffle/queries.js";
 import { assetUrl, type AssetName, type AssetRegistry } from "../assets.js";
 import { htmlText, renderPage } from "../render.js";
@@ -39,7 +39,7 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
   app.get("/", async (request, reply) => {
     const [viewer, raffleEnabled] = await Promise.all([
       viewerForRequest(request.cookies[SESSION_COOKIE_NAME]),
-      packagedModuleEnabled("raffle"),
+      packagedCapabilityEnabled("raffle"),
     ]);
     const openRaffles = raffleEnabled ? await openRaffleFacts() : [];
     const raffleOpen = openRaffles.length > 0;

@@ -22,11 +22,11 @@ import {
   guildieHasGuildCapabilityOrOperator,
 } from "../../guild-permissions.js";
 import {
-  isPackagedModuleKey,
-  packagedModuleStates,
-  setPackagedModuleEnabled,
-  type PackagedModuleState,
-} from "../../module-lifecycle.js";
+  isPackagedCapabilityKey,
+  packagedCapabilityStates,
+  setPackagedCapabilityEnabled,
+  type PackagedCapabilityState,
+} from "../../packaged-capability-lifecycle.js";
 import { isConfiguredOperator } from "../../operator-authority.js";
 import { GUILD_THEMES, guildTheme, isGuildThemeKey, setGuildTheme, type GuildThemeKey } from "../../guild-theme.js";
 import { guildPresentation, parseGuildPresentationUrl, setGuildPresentationDestinations, type GuildPresentation } from "../../guild-presentation.js";
@@ -47,7 +47,7 @@ function administrationSection(sectionId: string, headingId: string, heading: st
   return `<section id="${sectionId}" class="admin-section" aria-labelledby="${headingId}"><h2 id="${headingId}">${heading}</h2>${content}</section>`;
 }
 
-function renderModuleLifecycle(modules: PackagedModuleState[], canConfigureDiscord: boolean): string {
+function renderModuleLifecycle(modules: PackagedCapabilityState[], canConfigureDiscord: boolean): string {
   return `<div class="module-lifecycle-list">${modules.map((module) => {
     const configurationAction = module.key === "discord" && canConfigureDiscord ? `<a class="module-lifecycle-configure" href="/admin/modules/discord">Configure integration <span aria-hidden="true">→</span></a>` : "";
     return `<article class="module-lifecycle-card settings-panel" data-module-key="${module.key}"><div class="module-lifecycle-copy"><div class="module-lifecycle-heading"><h3>${htmlText(module.label)}</h3><span class="module-lifecycle-availability">Available</span></div><p>${module.enabled ? "Enabled for Guild Operations." : "Installed but disabled."}</p>${configurationAction}</div><label class="switch module-lifecycle-toggle"><input type="checkbox" data-module-enabled${module.enabled ? " checked" : ""}><span class="switch-control" aria-hidden="true"></span><span data-module-switch-label>${module.enabled ? "On" : "Off"}</span></label><p class="module-lifecycle-feedback" data-module-feedback role="status" aria-live="polite"></p></article>`;
@@ -136,7 +136,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     const [canConfigureModules, administration, modulesState] = await Promise.all([
       guildieHasGuildCapabilityOrOperator(guildie.guildieId, MODULES_CONFIGURE_CAPABILITY),
       administrationAvailabilityForGuildie(guildie.guildieId),
-      packagedModuleStates(),
+      packagedCapabilityStates(),
     ]);
     let lifecycle = renderModuleLifecycle(modulesState, administration.canConfigureDiscord);
     if (!canConfigureModules) lifecycle = lifecycle.replaceAll("<input type=\"checkbox\" data-module-enabled", "<input type=\"checkbox\" data-module-enabled disabled");
@@ -151,9 +151,9 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     if (!await guildieHasGuildCapabilityOrOperator(guildie.guildieId, MODULES_CONFIGURE_CAPABILITY)) return reply.code(403).send({ error: "module_configuration_not_authorized" });
     const params = request.params as { moduleKey?: unknown };
     const body = (request.body ?? {}) as { enabled?: unknown };
-    if (typeof params.moduleKey !== "string" || !isPackagedModuleKey(params.moduleKey)) return reply.code(404).send({ error: "unknown_module" });
+    if (typeof params.moduleKey !== "string" || !isPackagedCapabilityKey(params.moduleKey)) return reply.code(404).send({ error: "unknown_module" });
     if (typeof body.enabled !== "boolean") return reply.code(400).send({ error: "enabled_must_be_boolean" });
-    return reply.send({ module: await setPackagedModuleEnabled(params.moduleKey, body.enabled) });
+    return reply.send({ module: await setPackagedCapabilityEnabled(params.moduleKey, body.enabled) });
   });
 
 
