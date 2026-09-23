@@ -20,7 +20,7 @@ export async function registerDiscordModule(app: FastifyInstance, assets: AssetR
       "application/x-www-form-urlencoded",
       { parseAs: "string" },
       (_request, body, done) => {
-        const params = new URLSearchParams(body);
+        const params = new URLSearchParams(typeof body === "string" ? body : body.toString("utf8"));
         done(null, Object.fromEntries(params.entries()));
       },
     );
