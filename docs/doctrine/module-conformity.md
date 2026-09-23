@@ -1,6 +1,6 @@
 # Module Conformity
 
-Guild Operations modules own concrete guild capabilities. This doctrine defines the application-wide invariants every module must respect regardless of semantic family.
+Guild Operations Modules own native, concrete guild participation capabilities. This doctrine defines the application-wide invariants every Module must respect regardless of semantic family. External-system integrations are Plugins and are governed by the application-wide ownership rules in [Architecture](architecture.md), not classified as Modules merely because they are packaged or configurable.
 
 A module family may add stronger semantic governance. Guild Activity modules, for example, are additionally governed by [Guild Activity](guild-activity.md). Family doctrine does not transfer domain ownership into shared machinery.
 
@@ -42,7 +42,7 @@ Elevated authority does not determine information architecture. A module may exp
 
 Module enablement is administrative state. Operational use of an enabled module remains module-owned. A module does not earn an administrative destination merely because it exists; it contributes only configuration or configurable permission policy that has actually been earned.
 
-Module lifecycle concepts remain distinct where they exist:
+Capability lifecycle concepts remain distinct where they exist:
 
 ```text
 availability / entitlement
@@ -54,7 +54,7 @@ configuration readiness
 operational use
 ```
 
-Current behavior should model only states actually required by Guild Operations. Do not build speculative commerce, licensing, entitlement, administration, contribution, permission, or module-lifecycle frameworks merely because future machinery can be imagined.
+Current behavior should model only states actually required by Guild Operations. Do not build speculative commerce, licensing, entitlement, administration, contribution, permission, module-lifecycle, or plugin-lifecycle frameworks merely because future machinery can be imagined.
 
 ## Persistence
 

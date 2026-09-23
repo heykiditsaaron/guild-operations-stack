@@ -1,6 +1,8 @@
-# Packaged Module Lifecycle
+# Packaged Capability Lifecycle
 
-Guild Operations distinguishes whether a packaged module is available to the installation from whether that module is enabled for use.
+Guild Operations currently has a small enablement facility that predates the Core / Module / Plugin taxonomy. It distinguishes whether a packaged capability is available to the installation from whether that capability is enabled for use.
+
+Product ownership and distribution are separate concerns. A capability being packaged, optional, configurable, enabled, disabled, or eventually entitled does not determine whether it is Core, a Module, or a Plugin.
 
 Current lifecycle state is deliberately small:
 
@@ -9,76 +11,79 @@ packaged with the application
         ↓
 enabled for this guild
         ↓
-module-specific configuration
+capability-specific configuration
         ↓
-participation and operations
+operational use
 ```
 
-Future acquisition or entitlement may determine whether a module is available at all, but no licensing or commerce machinery is implemented by this facility.
+Future acquisition or entitlement may determine whether a capability is available at all, but no licensing or commerce machinery is implemented by this facility.
 
-## Current packaged modules
+## Current packaged capabilities
 
-The current packaged modules are:
+The current facility tracks:
 
-- Raffle;
-- Raid;
-- Discord.
+- Raffle — Module;
+- Raid — Module;
+- Discord — Plugin.
 
 Raffle and Raid default to enabled so introducing lifecycle state preserves existing guild behavior. Discord defaults to disabled, matching its established packaged-integration behavior.
 
+The implementation still uses historical `module` naming such as `guild_module_enablement`, `PackagedModuleKey`, and `modules.configure`. Those names are structural conformity debt. They do not reclassify Discord as a Module and should be corrected deliberately during the Core / Module / Plugin alignment rather than by introducing parallel authority.
+
 ## Persistence
 
-Per-guild module enablement is persisted in `guild_module_enablement` using the stable module key as the coordinate.
+Per-guild packaged-capability enablement is currently persisted in `guild_module_enablement` using the stable capability key as the coordinate.
 
-Enablement is global Guild Operations state. A module may own configuration required for its own behavior, but it must not establish a second authoritative enablement flag.
+Enablement is global Guild Operations state. An owning Module or Plugin may own configuration required for its own behavior, but it must not establish a second authoritative enablement flag.
 
-Discord predates the global lifecycle contract and still has a legacy `discord_module_settings.enabled` column. During migration that column is used to seed the global state, and current writes mirror global enablement into it for compatibility. Consumers resolve Discord enablement through the global lifecycle contract rather than treating the legacy column as authoritative.
+Discord predates the global lifecycle contract and still has a legacy `discord_module_settings.enabled` column. During migration that column was used to seed the global state, and current writes mirror global enablement into it for compatibility. Consumers resolve Discord enablement through the global lifecycle contract rather than treating the legacy column as authoritative.
 
 ## Administration
 
-Module enablement is configured from:
+Packaged capability enablement is currently configured from:
 
 ```text
-Administration → General → Modules
+Administration → Modules
 ```
 
-Changing module enablement requires the global capability:
+The current persisted capability key authorizing this administration is:
 
 ```text
 modules.configure
 ```
 
-The configured operator may also perform this administration. The initial migration grants `modules.configure` to Blizzard guild rank 0.
+That key is historical compatibility state and must not be renamed casually because persisted permission mappings may depend on it. The configured operator may also perform this administration.
 
-Module enablement is distinct from module-specific configuration. A disabled module may remain configurable where preparing its configuration before enablement is useful. Discord currently demonstrates this behavior.
+Enablement is distinct from capability-specific configuration. A disabled capability may remain configurable where preparing its configuration before enablement is useful. Discord currently demonstrates this behavior.
 
 ## Runtime behavior
 
-Disabling a module prevents its participation and operational surfaces from being used and removes active module-owned presentation where applicable.
+Disabling a packaged capability prevents its participation or operational surfaces from being used and removes active owned presentation where applicable.
 
 Current behavior includes:
 
 - disabled Raffle and Raid web and module API routes refuse requests;
-- disabled Raffle and Raid participation offerings are omitted from event discovery;
+- disabled Raffle and Raid participation offerings are omitted from activity discovery;
 - the home-page Raffle promotion is absent while Raffle is disabled;
 - disabled Discord removes Discord member-facing presentation and prevents Discord runtime integration from operating;
-- administrative configuration that is intentionally independent of operational use may remain reachable while the module is disabled.
+- administrative configuration intentionally independent of operational use may remain reachable while the capability is disabled.
 
-The current Calendar machinery is legacy and remains independent of module lifecycle in this work. Calendar listings, Calendar API behavior, and Calendar-specific projection semantics are intentionally not being redesigned here. They should be addressed as part of the dedicated Calendar work rather than coupled to this administration migration.
+Calendar is Core and is not governed by packaged Module/Plugin enablement merely because it consumes projections from Modules. Disabling a Module does not transfer its domain truth into Calendar.
 
-Disabling a module does not delete its durable domain history or configuration. Existing Raffle rounds, Raid records, Discord configuration, and similar module-owned facts remain persisted unless their owning procedure has a separate reason to change them.
+Disabling a capability does not delete its durable domain history or configuration. Existing Raffle rounds, Raid records, Discord configuration, and similar owned facts remain persisted unless their owning procedure has a separate reason to change them.
 
 ## Ownership boundary
 
-This facility owns only packaged-module enablement and the small packaged-module identity needed to resolve it.
+This facility owns only the currently earned packaged-capability enablement state and the small packaged identity needed to resolve it.
 
 It does not own:
 
-- module procedure;
-- module-specific configuration;
+- Module procedure;
+- Plugin integration procedure;
+- capability-specific configuration;
 - permission policy beyond the authority required to change enablement;
 - Calendar behavior or Calendar projection truth;
 - acquisition or entitlement;
 - licensing, billing, or premium tiers.
 
-Do not grow this into a generic plugin loader or entitlement framework. Add another lifecycle distinction only when a concrete module or distribution requirement proves it is needed.
+Do not grow this into a generic Module loader, Plugin loader, extension runtime, or entitlement framework. Add another lifecycle distinction only when a concrete capability or distribution requirement proves it is needed.
