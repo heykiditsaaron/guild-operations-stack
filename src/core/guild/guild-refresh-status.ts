@@ -1,4 +1,4 @@
-import { config } from "../../config.js";
+import { requireOperationalInstallationGuildBinding } from "../installation/guild-binding.js";
 import { pool } from "../../db.js";
 
 export type GuildRefreshStatus = {
@@ -9,6 +9,7 @@ export type GuildRefreshStatus = {
 };
 
 export async function guildRefreshStatus(): Promise<GuildRefreshStatus | null> {
+  const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
   const result = await pool.query<{
     guild_id: string;
     guild_name: string;
@@ -26,7 +27,7 @@ export async function guildRefreshStatus(): Promise<GuildRefreshStatus | null> {
       AND grm.currently_present = true
      WHERE g.guild_id = $1
      GROUP BY g.guild_id, g.name, g.last_seen_at`,
-    [config.guild.id],
+    [guildId],
   );
 
   const row = result.rows[0];
