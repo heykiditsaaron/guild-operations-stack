@@ -1,4 +1,4 @@
-import { config } from "../../config.js";
+import { requireOperationalInstallationGuildBinding } from "../installation/guild-binding.js";
 import { pool } from "../../db.js";
 
 export type GuildCharacter = {
@@ -18,6 +18,7 @@ export type GuildCharacter = {
 };
 
 export async function guildCharactersForGuildie(guildieId: string): Promise<GuildCharacter[]> {
+  const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
   const result = await pool.query<{
     guild_id: string; character_id: string; realm_id: string; character_name: string; realm_name: string | null;
     rank_index: number; level: number | null; class_name: string | null; race_name: string | null;
@@ -35,7 +36,7 @@ export async function guildCharactersForGuildie(guildieId: string): Promise<Guil
        ON wcp.region = grm.region AND wcp.realm_id = grm.realm_id AND wcp.character_id = grm.character_id
      WHERE c.guildie_id = $1 AND c.currently_controlled = true AND grm.guild_id = $2
      ORDER BY grm.rank_index, grm.character_name`,
-    [guildieId, config.guild.id],
+    [guildieId, guildId],
   );
 
   return result.rows.map((row) => ({
