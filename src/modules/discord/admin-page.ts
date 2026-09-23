@@ -30,9 +30,9 @@ function htmlText(value: string): string {
 }
 
 export async function registerDiscordAdminPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
-  app.get("/admin/discord", async (_request, reply) => reply.redirect("/admin/general/discord"));
+  app.get("/admin/discord", async (_request, reply) => reply.redirect("/admin/modules/discord"));
 
-  app.get("/admin/general/discord", async (request, reply) => {
+  app.get("/admin/modules/discord", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie] = await Promise.all([
       viewerForRequest(sessionToken),
@@ -49,8 +49,8 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       ? ""
       : `<p class="admin-unavailable">APPLICATION_ENCRYPTION_KEY is not configured. Discord secrets cannot be stored or used until an installation encryption key is provided.</p>`;
     const moduleState = moduleConfiguration.enabled
-      ? '<p class="discord-projection-state">Discord is enabled from Administration → General.</p>'
-      : '<p class="discord-projection-state">Discord is currently disabled. Configuration can be prepared here before enabling it from Administration → General.</p>';
+      ? '<p class="discord-projection-state">Discord is enabled from Settings → Modules.</p>'
+      : '<p class="discord-projection-state">Discord is currently disabled. Configuration can be prepared here before enabling it from Settings → Modules.</p>';
 
     const body = `<div class="admin-sections">
       <section class="admin-section" aria-labelledby="discord-module-heading">
@@ -81,7 +81,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       </section>
 
       <section class="admin-section">
-        <a class="admin-destination" href="/admin/general/discord/role-maps">
+        <a class="admin-destination" href="/admin/modules/discord/role-maps">
           <span class="admin-destination-title">Role Maps</span>
           <span class="admin-destination-description">Configure Discord role projection policy.</span>
           <span class="admin-destination-arrow" aria-hidden="true">→</span>
@@ -93,7 +93,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       .header("Cache-Control", "no-cache")
       .type("text/html; charset=utf-8")
       .send(renderPage(assets, {
-        pathname: "/admin/general/discord",
+        pathname: "/admin/modules/discord",
         title: `Discord configuration · ${viewer.guildPresentation.guildName} Guild Operations`,
         description: "Configure the packaged Discord integration.",
         viewer,
@@ -102,8 +102,8 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
         secondaryNavigation: {
           kind: "breadcrumb",
           items: [
-            { label: "Administration", href: "/admin/general" },
-            { label: "General", href: "/admin/general" },
+            { label: "Settings", href: "/admin/modules" },
+            { label: "Modules", href: "/admin/modules" },
             { label: "Discord" },
           ],
         },
@@ -196,6 +196,6 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     }
   };
 
-  app.post("/admin/general/discord", updateDiscordConfiguration);
+  app.post("/admin/modules/discord", updateDiscordConfiguration);
   app.post("/admin/discord", updateDiscordConfiguration);
 }
