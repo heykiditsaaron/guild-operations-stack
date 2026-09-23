@@ -16,9 +16,9 @@ import {
   UnknownDiscordProjectionRoleError,
 } from "./configuration.js";
 import {
-  discordModuleConfiguration,
-  updateDiscordModuleConfiguration,
-} from "./module-configuration.js";
+  discordPluginConfiguration,
+  updateDiscordPluginConfiguration,
+} from "./plugin-configuration.js";
 
 function htmlText(value: string): string {
   return value
@@ -43,7 +43,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       return reply.code(403).send("Discord administration is not available for this account.");
     }
 
-    const moduleConfiguration = await discordModuleConfiguration();
+    const moduleConfiguration = await discordPluginConfiguration();
 
     const secretWarning = moduleConfiguration.secretEncryptionAvailable
       ? ""
@@ -134,7 +134,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
         return value;
       };
       try {
-        const settings = await updateDiscordModuleConfiguration({
+        const settings = await updateDiscordPluginConfiguration({
           clientId: textOrNull(body.clientId) ?? null,
           discordGuildId: textOrNull(body.discordGuildId) ?? null,
           inviteUrl: textOrNull(body.inviteUrl) ?? null,

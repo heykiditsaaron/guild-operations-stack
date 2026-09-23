@@ -1,6 +1,6 @@
 import { registerModuleWebPresentationProvider, type ModuleWebPresentation } from "../../web/module-presentation.js";
 import { discordAssociationForGuildie } from "./association.js";
-import { discordModuleConfiguration } from "./module-configuration.js";
+import { discordPluginConfiguration } from "./plugin-configuration.js";
 
 function htmlText(value: string): string {
   return value
@@ -21,7 +21,7 @@ function discordGlyph(): string {
 }
 
 async function discordWebPresentation(guildieId: string | null): Promise<ModuleWebPresentation> {
-  const configuration = await discordModuleConfiguration();
+  const configuration = await discordPluginConfiguration();
   if (!configuration.enabled) {
     return { meMenuSections: [], footerCommunityLinks: [], homeCommunityActions: [] };
   }

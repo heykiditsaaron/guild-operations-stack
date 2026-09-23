@@ -1,7 +1,7 @@
 import {
-  discordModuleConfiguration,
-  discordModuleRuntimeConfiguration,
-} from "./module-configuration.js";
+  discordPluginConfiguration,
+  discordPluginRuntimeConfiguration,
+} from "./plugin-configuration.js";
 
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 const DISCORD_RATE_LIMIT_RETRIES = 4;
@@ -51,7 +51,7 @@ export class DiscordGuildIntegrationNotConfiguredError extends Error {
 }
 
 async function integrationConfig(): Promise<{ guildId: string; botToken: string }> {
-  const current = await discordModuleRuntimeConfiguration();
+  const current = await discordPluginRuntimeConfiguration();
   if (!current.enabled || !current.discordGuildId || !current.botToken) {
     throw new DiscordGuildIntegrationNotConfiguredError();
   }
@@ -110,7 +110,7 @@ async function discordRequest(path: string, init: RequestInit = {}): Promise<Res
 }
 
 export async function discordGuildIntegrationConfigured(): Promise<boolean> {
-  const current = await discordModuleConfiguration();
+  const current = await discordPluginConfiguration();
   return current.enabled
     && Boolean(current.discordGuildId)
     && current.botTokenConfigured

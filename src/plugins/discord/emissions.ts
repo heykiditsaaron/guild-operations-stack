@@ -1,7 +1,7 @@
 import type { Emission } from "../../emissions/contract.js";
 import { registerEmissionConsumer } from "../../emissions/registry.js";
 import { createDiscordChannelMessage, editDiscordChannelMessage, discordGuildIntegrationConfigured } from "./client.js";
-import { discordModuleConfiguration } from "./module-configuration.js";
+import { discordPluginConfiguration } from "./plugin-configuration.js";
 import { reconcileGuildieDiscordRoles } from "./roles.js";
 import {
   discordRaidProjectionConfiguration,
@@ -17,7 +17,7 @@ const DISCORD_GUILDIE_EMISSION_CODES = [
 ] as const;
 
 async function consumeGuildieEmission(emission: Emission): Promise<void> {
-  const moduleConfiguration = await discordModuleConfiguration();
+  const moduleConfiguration = await discordPluginConfiguration();
   if (!moduleConfiguration.enabled || !await discordGuildIntegrationConfigured()) return;
 
   await reconcileGuildieDiscordRoles(emission.subject, {
@@ -37,7 +37,7 @@ const DISCORD_RAID_RECONCILIATION_CODES = [
 ] as const;
 
 async function consumeRaidEstablishedEmission(emission: Emission): Promise<void> {
-  const moduleConfiguration = await discordModuleConfiguration();
+  const moduleConfiguration = await discordPluginConfiguration();
   if (!moduleConfiguration.enabled || !await discordGuildIntegrationConfigured()) return;
 
   const existing = await discordRaidProjectionCoordinate(emission.subject);
@@ -65,7 +65,7 @@ async function consumeRaidEstablishedEmission(emission: Emission): Promise<void>
 }
 
 async function consumeRaidReconciliationEmission(emission: Emission): Promise<void> {
-  const moduleConfiguration = await discordModuleConfiguration();
+  const moduleConfiguration = await discordPluginConfiguration();
   if (!moduleConfiguration.enabled || !await discordGuildIntegrationConfigured()) return;
 
   const coordinate = await discordRaidProjectionCoordinate(emission.subject);

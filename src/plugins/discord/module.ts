@@ -7,12 +7,12 @@ import { registerDiscordRaidAdminPage } from "./raid-admin-page.js";
 import { registerDiscordRoutes } from "./routes.js";
 import { registerDiscordWebPresentation } from "./web-presentation.js";
 
-export function registerDiscordModuleAdministration(): void {
+export function registerDiscordPluginAdministration(): void {
   registerDiscordCapabilityDefinitions();
   registerDiscordWebPresentation();
 }
 
-export async function registerDiscordModule(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
+export async function registerDiscordPlugin(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   await registerDiscordAdminPage(app, assets);
   await registerDiscordRoleMapsPage(app, assets);
   await app.register(async (raidAdminApp) => {

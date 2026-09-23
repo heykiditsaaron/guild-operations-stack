@@ -8,9 +8,9 @@ import {
   removeDiscordAssociation,
 } from "./association.js";
 import {
-  discordModuleRuntimeConfiguration,
+  discordPluginRuntimeConfiguration,
   discordOAuthRedirectUri,
-} from "./module-configuration.js";
+} from "./plugin-configuration.js";
 import {
   reconcileGuildieDiscordRoles,
   removeManagedDiscordRolesForUser,
@@ -44,7 +44,7 @@ class DiscordOAuthNotConfiguredError extends Error {
 }
 
 async function oauthConfiguration(): Promise<DiscordOAuthConfiguration> {
-  const current = await discordModuleRuntimeConfiguration();
+  const current = await discordPluginRuntimeConfiguration();
   if (!current.enabled || !current.clientId || !current.clientSecret) {
     throw new DiscordOAuthNotConfiguredError();
   }
@@ -188,7 +188,7 @@ export async function registerDiscordRoutes(app: FastifyInstance): Promise<void>
     const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
     if (!guildie) return reply.code(401).send({ error: "not_authenticated" });
 
-    const moduleConfiguration = await discordModuleRuntimeConfiguration();
+    const moduleConfiguration = await discordPluginRuntimeConfiguration();
     if (!moduleConfiguration.enabled) {
       return reply.code(503).send({ error: "discord_not_enabled" });
     }
