@@ -1,4 +1,5 @@
-import { config, type Region } from "../../config.js";
+import type { Region } from "../../config.js";
+import { requireOperationalInstallationGuildBinding } from "../installation/guild-binding.js";
 import { pool } from "../../db.js";
 
 export type GuildState = {
@@ -10,7 +11,8 @@ export type GuildState = {
   realmSlug: string;
   faction: string | null;
 };
-export async function guildState(guildId: string = config.guild.id): Promise<GuildState | null> {
+export async function guildState(guildId?: string): Promise<GuildState | null> {
+  const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
   const result = await pool.query<{
     guild_id: string;
     region: Region;
@@ -23,7 +25,7 @@ export async function guildState(guildId: string = config.guild.id): Promise<Gui
     `SELECT guild_id, region, realm_id, name, realm_name, realm_slug, faction
        FROM guilds
       WHERE guild_id = $1`,
-    [guildId],
+    [resolvedGuildId],
   );
 
   const row = result.rows[0];
