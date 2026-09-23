@@ -1,6 +1,6 @@
-import { guildState } from "./core/guild/guild-state.js";
-import { config } from "./config.js";
-import { pool } from "./db.js";
+import { guildState } from "../guild/guild-state.js";
+import { config } from "../../config.js";
+import { pool } from "../../db.js";
 
 export type GuildPresentation = {
   guildName: string;

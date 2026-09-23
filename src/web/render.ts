@@ -1,5 +1,5 @@
 import { config } from "../config.js";
-import type { GuildPresentation } from "../guild-presentation.js";
+import type { GuildPresentation } from "../core/presentation/guild-presentation.js";
 import type { AdministrationNavigationDestination } from "./admin-navigation.js";
 import { assetUrl, type AssetName, type AssetRegistry } from "./assets.js";
 import type { WebPresentationContributions } from "./presentation-contributions.js";

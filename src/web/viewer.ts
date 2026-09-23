@@ -1,8 +1,8 @@
 import { guildCharactersForGuildie } from "../core/guild/guild-characters.js";
 import { mainCharacterForGuildie } from "../core/identity/main-character.js";
 import { authenticatedGuildie } from "../auth.js";
-import { guildTheme } from "../guild-theme.js";
-import { guildPresentation } from "../guild-presentation.js";
+import { guildTheme } from "../core/presentation/guild-theme.js";
+import { guildPresentation } from "../core/presentation/guild-presentation.js";
 import {
   GUILD_REFRESH_CAPABILITY,
   OPERATIONS_INSPECT_CAPABILITY,
