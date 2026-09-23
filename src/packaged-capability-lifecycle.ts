@@ -2,9 +2,9 @@ import { config } from "./config.js";
 import { pool } from "./db.js";
 
 export const PACKAGED_CAPABILITIES = [
-  { key: "raffle", label: "Raffle", defaultEnabled: true },
-  { key: "raid", label: "Raid", defaultEnabled: true },
-  { key: "discord", label: "Discord", defaultEnabled: false },
+  { key: "raffle", label: "Raffle", kind: "module", defaultEnabled: true },
+  { key: "raid", label: "Raid", kind: "module", defaultEnabled: true },
+  { key: "discord", label: "Discord", kind: "plugin", defaultEnabled: false },
 ] as const;
 
 export type PackagedCapabilityKey = (typeof PACKAGED_CAPABILITIES)[number]["key"];
@@ -12,6 +12,7 @@ export type PackagedCapabilityKey = (typeof PACKAGED_CAPABILITIES)[number]["key"
 export type PackagedCapabilityState = {
   key: PackagedCapabilityKey;
   label: string;
+  kind: "module" | "plugin";
   available: true;
   enabled: boolean;
 };
@@ -38,6 +39,7 @@ export async function packagedCapabilityStates(
   return PACKAGED_CAPABILITIES.map((capability) => ({
     key: capability.key,
     label: capability.label,
+    kind: capability.kind,
     available: true,
     enabled: stored.get(capability.key) ?? capability.defaultEnabled,
   }));
@@ -92,6 +94,7 @@ export async function setPackagedCapabilityEnabled(
   return {
     key: capability.key,
     label: capability.label,
+    kind: capability.kind,
     available: true,
     enabled,
   };
