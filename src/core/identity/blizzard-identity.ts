@@ -1,7 +1,7 @@
 import type { PoolClient } from "pg";
-import type { BlizzardWowProfile } from "./blizzard.js";
-import { config, type Region } from "./config.js";
-import { withTransaction } from "./db.js";
+import type { BlizzardWowProfile } from "../../blizzard.js";
+import { config, type Region } from "../../config.js";
+import { withTransaction } from "../../db.js";
 
 function factionValue(value: unknown): string | null {
   if (typeof value === "string") return value;
