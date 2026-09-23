@@ -92,7 +92,7 @@ function renderInspection(
   source: string | undefined,
   kind: OperationalRecordKind | undefined,
 ): string {
-  const filters = `<form class="operations-filters" method="get" action="/operations">
+  const filters = `<form class="operations-filters" method="get" action="/admin/history">
     <label>
       <span>Source</span>
       <input type="text" name="source" value="${escapeHtml(source ?? "")}" placeholder="Any source">
@@ -106,7 +106,7 @@ function renderInspection(
       </select>
     </label>
     <button type="submit">Apply</button>
-    ${(source || kind) ? '<a href="/operations">Clear</a>' : ""}
+    ${(source || kind) ? '<a href="/admin/history">Clear</a>' : ""}
   </form>`;
 
   return `<section class="operations-inspection admin-section" aria-labelledby="operations-records-heading">
@@ -129,55 +129,46 @@ export async function registerOperationsAdminPage(
   app: FastifyInstance,
   assets: AssetRegistry,
 ): Promise<void> {
-  app.get("/admin/operations", async (_request, reply) => reply.redirect("/operations"));
+  app.get("/admin/operations", async (_request, reply) => reply.redirect("/admin/history"));
 
-  app.get("/operations", async (request, reply) => {
+  app.get("/operations", async (_request, reply) => reply.redirect("/admin/history"));
+
+  app.get("/admin/history", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie] = await Promise.all([
       viewerForRequest(sessionToken),
       authenticatedGuildie(sessionToken),
     ]);
 
-    const [canRefresh, canInspect] = guildie
-      ? await Promise.all([
-          guildieHasGuildCapability(guildie.guildieId, GUILD_REFRESH_CAPABILITY),
-          guildieHasGuildCapability(guildie.guildieId, OPERATIONS_INSPECT_CAPABILITY),
-        ])
-      : [false, false];
+    const canInspect = guildie ? await guildieHasGuildCapability(guildie.guildieId, OPERATIONS_INSPECT_CAPABILITY) : false;
 
     const query = request.query as { source?: string; kind?: string };
     const source = query.source?.trim() || undefined;
     const kind = normalizedKind(query.kind);
-    const [status, records] = await Promise.all([
-      canRefresh ? guildRefreshStatus() : Promise.resolve(null),
-      canInspect ? listOperationalRecords({ source, kind, limit: 100 }) : Promise.resolve([]),
-    ]);
+    const records = canInspect ? await listOperationalRecords({ source, kind, limit: 100 }) : [];
 
-    const sections = [
-      canRefresh ? renderGuildRefresh(status) : "",
-      canInspect ? renderInspection(records, source, kind) : "",
-    ].filter(Boolean).join("\n");
+    const sections = canInspect ? renderInspection(records, source, kind) : "";
 
     const body = sections
       ? `<div class="admin-sections">${sections}</div>`
-      : `<section class="admin-unavailable"><h2>Operations are not available for this account.</h2></section>`;
+      : `<section class="admin-unavailable"><h2>History is not available for this account.</h2></section>`;
 
     const html = renderPage(assets, {
-      pathname: "/operations",
-      title: `Operations · ${viewer.guildPresentation.guildName} Guild Operations`,
-      description: "Run and inspect privileged Guild Operations procedures.",
+      pathname: "/admin/history",
+      title: `History · ${viewer.guildPresentation.guildName} Guild Operations`,
+      description: "Inspect recorded Guild Operations history.",
       viewer,
       stylesheets: ["admin.css"],
       scripts: ["operations.js"],
       header: `
         <div class="admin-page-header">
-          <h1 id="page-title">Operations</h1>
-          <p class="lede">Run privileged guild procedures and inspect their recorded outcomes.</p>
+          <h1 id="page-title">Settings</h1>
+          <p class="lede">Inspect recorded Guild Operations outcomes.</p>
         </div>`,
-      body,
+      body: `<nav class="admin-tabs" aria-label="Settings sections"><a href="/admin/general">General</a><a href="/admin/modules">Modules</a><a href="/admin/permissions">Permissions</a><a href="/admin/history" aria-current="page">History</a></nav>${body}`,
     });
 
-    const available = canRefresh || canInspect;
+    const available = canInspect;
     const statusCode = !guildie ? 401 : available ? 200 : 403;
     return reply
       .code(statusCode)
