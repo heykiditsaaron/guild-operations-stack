@@ -73,9 +73,13 @@ export async function requireGuildCapability(guildieId: string, capability: Guil
   const authority = await effectiveGuildAuthority(guildieId, guildId);
   if (hasInherentGuildCapability(authority, guildieId)) {
     if (authority) return authority;
-    throw new GuildCapabilityDeniedError(authority?.guildId ?? (await requireOperationalInstallationGuildBinding()).guildId, capability);
+    const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
+    throw new GuildCapabilityDeniedError(resolvedGuildId, capability);
   }
-  if (!authority || !authority.capabilities.includes(capability)) throw new GuildCapabilityDeniedError(authority?.guildId ?? (await requireOperationalInstallationGuildBinding()).guildId, capability);
+  if (!authority || !authority.capabilities.includes(capability)) {
+    const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
+    throw new GuildCapabilityDeniedError(resolvedGuildId, capability);
+  }
   return authority;
 }
 
