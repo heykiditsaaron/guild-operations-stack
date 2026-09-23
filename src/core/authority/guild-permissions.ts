@@ -65,7 +65,7 @@ export async function guildieHasGuildCapability(guildieId: string, capability: G
   return authority?.capabilities.includes(capability) ?? false;
 }
 
-export async function guildieHasGuildCapabilityOrOperator(guildieId: string, capability: GuildCapability, guildId: string = config.guild.id): Promise<boolean> {
+export async function guildieHasGuildCapabilityOrOperator(guildieId: string, capability: GuildCapability, guildId?: string): Promise<boolean> {
   return guildieHasGuildCapability(guildieId, capability, guildId);
 }
 
