@@ -3,7 +3,7 @@ import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const KEY_BYTES = 32;
-const DATA_DIR = process.env.INSTALLATION_DATA_DIR?.trim() || "/var/lib/guild-operations";
+const DATA_DIR = "/var/lib/guild-operations";
 const KEY_PATH = join(DATA_DIR, "installation.key");
 
 function decodeKey(value: string, source: string): Buffer {
