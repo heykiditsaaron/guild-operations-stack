@@ -45,11 +45,11 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
     theme,
     guildPresentation: presentation,
     modulePresentation,
-    administrationAvailable: administration.available,
-    administrationDestinations: administration.available
-      ? [{ label: "Guild Operations", href: "/admin" }]
+    administrationAvailable: administration.available || canRefreshGuild || canInspectOperations,
+    administrationDestinations: administration.available || canRefreshGuild || canInspectOperations
+      ? [{ label: "Guild Operations Settings", href: "/admin" }]
       : [],
-    operationsAvailable: canRefreshGuild || canInspectOperations,
+    operationsAvailable: false,
     mainCharacter: state.selectedMain
       ? {
           characterId: state.selectedMain.characterId,
