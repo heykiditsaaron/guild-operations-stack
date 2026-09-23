@@ -179,3 +179,16 @@ export async function authorizeInstallationGuildBinding(
 export async function installationOperational(): Promise<boolean> {
   return (await installationGuildBinding())?.authorizedAt != null;
 }
+
+
+export async function requireInstallationGuildBinding(): Promise<InstallationGuildBinding> {
+  const binding = await installationGuildBinding();
+  if (!binding) throw new Error("Installation is not bound to a guild");
+  return binding;
+}
+
+export async function requireOperationalInstallationGuildBinding(): Promise<InstallationGuildBinding> {
+  const binding = await requireInstallationGuildBinding();
+  if (!binding.authorizedAt) throw new Error("Installation guild binding is not authorized");
+  return binding;
+}
