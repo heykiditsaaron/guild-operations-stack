@@ -51,7 +51,7 @@ export const config = {
   blizzardClientId: required("BLIZZARD_CLIENT_ID"),
   blizzardClientSecret: required("BLIZZARD_CLIENT_SECRET"),
   blizzardRedirectUri: new URL("/auth/blizzard/callback", appOrigin).toString(),
-  sessionCookieSecure: (process.env.SESSION_COOKIE_SECURE ?? "false") === "true",
+  sessionCookieSecure: appOriginUrl.protocol === "https:",
   authAttemptTtlMinutes: 10,
   sessionTtlDays: 30,
   operatorGuildieId: optional("OPERATOR_GUILDIE_ID"),
