@@ -1,4 +1,4 @@
-import { config } from "../../config.js";
+import { requireOperationalInstallationGuildBinding } from "../installation/guild-binding.js";
 import { pool } from "../../db.js";
 
 export const GUILD_REFRESH_MINIMUM_INTERVAL_SECONDS = 300;
@@ -18,6 +18,7 @@ export class InvalidGuildRefreshIntervalError extends Error {
 }
 
 export async function guildRefreshSchedule(): Promise<GuildRefreshSchedule> {
+  const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
   const result = await pool.query<{
     enabled: boolean;
     interval_seconds: number;
@@ -26,7 +27,7 @@ export async function guildRefreshSchedule(): Promise<GuildRefreshSchedule> {
     `SELECT enabled, interval_seconds, next_due_at_unix
        FROM guild_refresh_schedule
       WHERE guild_id = $1`,
-    [config.guild.id],
+    [guildId],
   );
 
   const row = result.rows[0];
@@ -53,6 +54,7 @@ export async function configureGuildRefreshSchedule(input: {
     throw new InvalidGuildRefreshIntervalError();
   }
 
+  const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
   const nowUnix = Math.floor(Date.now() / 1000);
   const nextDueAtUnix = input.enabled ? nowUnix + input.intervalSeconds : null;
 
@@ -68,7 +70,7 @@ export async function configureGuildRefreshSchedule(input: {
        interval_seconds = EXCLUDED.interval_seconds,
        next_due_at_unix = EXCLUDED.next_due_at_unix
      RETURNING enabled, interval_seconds, next_due_at_unix`,
-    [config.guild.id, input.enabled, input.intervalSeconds, nextDueAtUnix],
+    [guildId, input.enabled, input.intervalSeconds, nextDueAtUnix],
   );
 
   const row = result.rows[0];
@@ -82,6 +84,7 @@ export async function configureGuildRefreshSchedule(input: {
 }
 
 export async function claimDueGuildRefresh(nowUnix = Math.floor(Date.now() / 1000)): Promise<GuildRefreshSchedule | null> {
+  const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
   const result = await pool.query<{
     enabled: boolean;
     interval_seconds: number;
@@ -93,7 +96,7 @@ export async function claimDueGuildRefresh(nowUnix = Math.floor(Date.now() / 100
         AND enabled = true
         AND next_due_at_unix <= $2
       RETURNING enabled, interval_seconds, next_due_at_unix`,
-    [config.guild.id, nowUnix],
+    [guildId, nowUnix],
   );
 
   const row = result.rows[0];
