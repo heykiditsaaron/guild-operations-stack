@@ -3,6 +3,7 @@ import { acquireGuildAuthorityByReference, type BlizzardGuildProfile } from "../
 import type { Region } from "../../config.js";
 import { pool, withTransaction } from "../../db.js";
 import { controlledCharactersForGuildie } from "../identity/controlled-characters.js";
+import { isConfiguredOperator } from "../authority/operator-authority.js";
 import { discoverInstallationGuildCandidates } from "./guild-candidates.js";
 
 function localizedValue(value: unknown): string | null {
@@ -126,4 +127,55 @@ export async function establishPendingInstallationGuildBinding(input: {
   const binding = await installationGuildBinding();
   if (!binding) throw new Error("Installation guild binding was not persisted");
   return binding;
+}
+
+
+export async function authorizeInstallationGuildBinding(
+  guildieId: string,
+): Promise<InstallationGuildBinding> {
+  const binding = await installationGuildBinding();
+  if (!binding) throw new Error("Installation is not bound to a guild");
+  if (binding.authorizedAt) return binding;
+
+  const rankResult = await pool.query<{ rank_index: number }>(
+    `SELECT MIN(grm.rank_index)::integer AS rank_index
+       FROM characters c
+       JOIN guild_roster_memberships grm
+         ON grm.region = c.region
+        AND grm.realm_id = c.realm_id
+        AND grm.character_id = c.character_id
+        AND grm.currently_present = true
+      WHERE c.guildie_id = $1
+        AND c.currently_controlled = true
+        AND grm.guild_id = $2
+      HAVING count(*) > 0`,
+    [guildieId, binding.guildId],
+  );
+  const rankIndex = rankResult.rows[0]?.rank_index;
+  const authorizationKind = rankIndex === 0
+    ? "guild_master"
+    : isConfiguredOperator(guildieId)
+      ? "original_install_bypass"
+      : null;
+  if (!authorizationKind) {
+    throw new Error("Installation authorization requires current Guild Master authority");
+  }
+
+  await pool.query(
+    `UPDATE installation_guild_binding
+        SET authorized_at = now(),
+            authorized_by_guildie_id = $1,
+            authorization_kind = $2
+      WHERE singleton = true
+        AND authorized_at IS NULL`,
+    [guildieId, authorizationKind],
+  );
+
+  const authorized = await installationGuildBinding();
+  if (!authorized?.authorizedAt) throw new Error("Installation guild authorization was not persisted");
+  return authorized;
+}
+
+export async function installationOperational(): Promise<boolean> {
+  return (await installationGuildBinding())?.authorizedAt != null;
 }
