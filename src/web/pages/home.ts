@@ -46,7 +46,7 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
 
     const stylesheets: AssetName[] = ["home.css"];
     if (raffleOpen) stylesheets.push("home-raffle.css");
-    const communityActions = viewer.modulePresentation.homeCommunityActions.join("\n");
+    const communityActions = viewer.presentationContributions.homeCommunityActions.join("\n");
 
     const html = renderPage(assets, {
       pathname: "/",

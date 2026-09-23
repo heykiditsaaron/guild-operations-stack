@@ -8,7 +8,7 @@ import {
   guildieHasGuildCapability,
 } from "../guild-permissions.js";
 import { administrationAvailabilityForGuildie } from "./administration.js";
-import { moduleWebPresentationForGuildie } from "./module-presentation.js";
+import { webPresentationContributionsForGuildie } from "./presentation-contributions.js";
 import type { WebViewer } from "./render.js";
 
 export async function viewerForRequest(sessionToken: string | undefined): Promise<WebViewer> {
@@ -19,16 +19,16 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
       authenticated: false,
       theme,
       guildPresentation: presentation,
-      modulePresentation: await moduleWebPresentationForGuildie(null),
+      presentationContributions: await webPresentationContributionsForGuildie(null),
     };
   }
 
-  const [state, administration, canRefreshGuild, canInspectOperations, modulePresentation] = await Promise.all([
+  const [state, administration, canRefreshGuild, canInspectOperations, presentationContributions] = await Promise.all([
     guildieState(guildie.guildieId),
     administrationAvailabilityForGuildie(guildie.guildieId),
     guildieHasGuildCapability(guildie.guildieId, GUILD_REFRESH_CAPABILITY),
     guildieHasGuildCapability(guildie.guildieId, OPERATIONS_INSPECT_CAPABILITY),
-    moduleWebPresentationForGuildie(guildie.guildieId),
+    webPresentationContributionsForGuildie(guildie.guildieId),
   ]);
 
   if (!state) {
@@ -36,7 +36,7 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
       authenticated: false,
       theme,
       guildPresentation: presentation,
-      modulePresentation: await moduleWebPresentationForGuildie(null),
+      presentationContributions: await webPresentationContributionsForGuildie(null),
     };
   }
 
@@ -44,7 +44,7 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
     authenticated: true,
     theme,
     guildPresentation: presentation,
-    modulePresentation,
+    presentationContributions,
     administrationAvailable: administration.available || canRefreshGuild || canInspectOperations,
     administrationDestinations: administration.available || canRefreshGuild || canInspectOperations
       ? [{ label: "Guild Operations Settings", href: "/admin" }]

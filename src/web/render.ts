@@ -2,7 +2,7 @@ import { config } from "../config.js";
 import type { GuildPresentation } from "../guild-presentation.js";
 import type { AdministrationNavigationDestination } from "./admin-navigation.js";
 import { assetUrl, type AssetName, type AssetRegistry } from "./assets.js";
-import type { ModuleWebPresentation } from "./module-presentation.js";
+import type { WebPresentationContributions } from "./presentation-contributions.js";
 
 function escapeHtml(value: string): string {
   return value
@@ -28,7 +28,7 @@ export type WebViewerCharacter = {
 
 type WebViewerPresentation = {
   guildPresentation: GuildPresentation;
-  modulePresentation: ModuleWebPresentation;
+  presentationContributions: WebPresentationContributions;
   theme: "default" | "alliance" | "horde";
 };
 
@@ -106,7 +106,7 @@ function renderMeControl(viewer: WebViewer, pathname: string): string {
   const administration = viewer.administrationAvailable
     ? '<section class="me-menu-section me-administration-section"><a class="me-administration-link" href="/admin"><span>Settings</span><span aria-hidden="true">→</span></a></section>'
     : "";
-  const moduleSections = viewer.modulePresentation.meMenuSections.map((render) => render(pathname)).join("\n");
+  const moduleSections = viewer.presentationContributions.meMenuSections.map((render) => render(pathname)).join("\n");
   return `<details class="me-menu menu-surface">
     <summary class="me-control"><span data-me-label>${escapeHtml(label)}</span><span class="account-visual${viewer.mainCharacter?.avatarUrl ? " account-visual-portrait" : " account-visual-generic"}" data-me-visual>${portrait}</span></summary>
     <div class="menu-panel menu-panel-right me-menu-panel">
@@ -201,7 +201,7 @@ function externalFooterLink(url: string | null, label: string): string {
 }
 
 function renderFooter(viewer: WebViewer): string {
-  const communityLinks = viewer.modulePresentation.footerCommunityLinks.join("");
+  const communityLinks = viewer.presentationContributions.footerCommunityLinks.join("");
   const presentation = viewer.guildPresentation;
   const wowLinks = [externalFooterLink(presentation.wowArmoryUrl, "WoW Armory"), externalFooterLink(presentation.raiderIoUrl, "Raider.IO"), externalFooterLink(presentation.warcraftLogsUrl, "Warcraft Logs")].filter(Boolean).join("");
   return `<footer class="app-footer"><div class="app-footer-inner">
