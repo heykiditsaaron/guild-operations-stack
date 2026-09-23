@@ -234,6 +234,28 @@ export async function acquireCharacterProfile(
   );
 }
 
+export async function acquireGuildAuthorityByReference(target: {
+  region: Region;
+  referenceHref: string;
+}): Promise<{
+  profile: BlizzardGuildProfile;
+  roster: BlizzardGuildRoster;
+}> {
+  const reference = new URL(target.referenceHref);
+  if (reference.protocol !== "https:" || reference.hostname !== `${target.region}.api.blizzard.com`) {
+    throw new Error("Blizzard guild reference does not match the authenticated region");
+  }
+  const accessToken = await applicationAccessToken();
+  reference.searchParams.set("namespace", `profile-${target.region}`);
+  reference.searchParams.set("locale", "en_US");
+  const profile = await getJson<BlizzardGuildProfile>(reference.toString(), accessToken);
+
+  const rosterUrl = new URL(reference.toString());
+  rosterUrl.pathname = `${rosterUrl.pathname.replace(/\/$/, "")}/roster`;
+  const roster = await getJson<BlizzardGuildRoster>(rosterUrl.toString(), accessToken);
+  return { profile, roster };
+}
+
 export async function acquireGuildAuthority(target: {
   region: Region;
   realmSlug: string;
