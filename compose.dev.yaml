@@ -15,6 +15,7 @@ services:
     volumes:
       - .:/app
       - guild-operations-node-modules:/app/node_modules
+      - guild-operations-installation:/var/lib/guild-operations
     depends_on:
       db:
         condition: service_healthy
@@ -39,3 +40,4 @@ services:
 volumes:
   guild-operations-db:
   guild-operations-node-modules:
+  guild-operations-installation:
