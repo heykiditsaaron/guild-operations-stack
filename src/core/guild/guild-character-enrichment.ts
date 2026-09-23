@@ -281,6 +281,10 @@ export async function acquireCharacterPresentation(options: {
       if (character.needsProfile) {
         try {
           const profile = await getJsonWithRetry<BlizzardCharacterProfile>(`${base}?${suffix}`, accessToken, { onRequest });
+          console.warn("Blizzard character guild diagnostic", {
+            character: `${character.characterName}-${character.realmSlug}`,
+            guild: profile.guild ?? null,
+          });
           await persistProfile(character, profile, new Date());
           await recordAcquisitionAttempt(character, "profile", null);
           profilesUpdated += 1;
