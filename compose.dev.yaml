@@ -7,9 +7,6 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env.dev
-    environment:
-      DATABASE_URL: postgres://guild_operations:guild_operations@db:5432/guild_operations
-      PORT: 3100
     ports:
       - "3101:3100"
     volumes:
