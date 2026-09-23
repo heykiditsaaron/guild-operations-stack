@@ -1,6 +1,6 @@
 import { config } from "../../config.js";
 import { positionForSpec } from "../../wow-traits/registry.js";
-import { raidSignups, type RaidSignupView } from "../raid/participation-view.js";
+import { activeRaidSignups, type RaidSignupView } from "../raid/participation-view.js";
 import { raidEventFacts, raidSignupsAreOpen, type RaidEventFacts } from "../raid/application.js";
 import type { DiscordMessageInput } from "./client.js";
 
@@ -12,7 +12,7 @@ export type DiscordRaidProjectionState = {
 export async function discordRaidProjectionState(raidId: string): Promise<DiscordRaidProjectionState | null> {
   const raid = await raidEventFacts(raidId);
   if (!raid) return null;
-  const signups = (await raidSignups(raidId)).filter((signup) => signup.deniedAtUnix === null);
+  const signups = await activeRaidSignups(raidId);
   return { raid, signups };
 }
 
