@@ -28,10 +28,10 @@ import {
   type GuildEventOffering,
 } from "../../../guild-events/offerings/registry.js";
 import {
-  packagedModuleForPath,
-  packagedModuleStates,
-  type PackagedModuleState,
-} from "../../../module-lifecycle.js";
+  packagedCapabilityForPath,
+  packagedCapabilityStates,
+  type PackagedCapabilityState,
+} from "../../../packaged-capability-lifecycle.js";
 import { raffleCalendarProjection } from "../../../modules/raffle/application.js";
 import { raidCalendarProjection } from "../../../modules/raid/application.js";
 import { assetUrl, type AssetName, type AssetRegistry } from "../../assets.js";
@@ -98,9 +98,9 @@ function isHappeningNow(occurrence: GuildCalendarOccursAt, nowUnix: number): boo
 
 function offeringAvailable(
   destination: string,
-  modules: Map<string, PackagedModuleState>,
+  modules: Map<string, PackagedCapabilityState>,
 ): boolean {
-  const moduleKey = packagedModuleForPath(destination);
+  const moduleKey = packagedCapabilityForPath(destination);
   return moduleKey === null || modules.get(moduleKey)?.enabled !== false;
 }
 
@@ -275,7 +275,7 @@ export async function registerEventsPage(app: FastifyInstance, assets: AssetRegi
       authenticatedGuildie(sessionToken),
       discoverableGuildCalendarPoints(),
       guildState(),
-      packagedModuleStates(),
+      packagedCapabilityStates(),
     ]);
     const selectedView = guildie ? await calendarViewForGuildie(guildie.guildieId) : "agenda";
     const [canCreateRaid, canCreateRaffle, canOperateRaid, canOperateRaffle] = guildie

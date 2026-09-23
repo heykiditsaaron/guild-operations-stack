@@ -1,6 +1,6 @@
 import { config } from "../../config.js";
 import { pool } from "../../db.js";
-import { packagedModuleEnabled } from "../../module-lifecycle.js";
+import { packagedCapabilityEnabled } from "../../packaged-capability-lifecycle.js";
 import { decryptSecret, encryptSecret, secretEncryptionAvailable } from "./secrets.js";
 
 export type DiscordModuleConfiguration = {
@@ -69,7 +69,7 @@ export async function discordModuleConfiguration(
 ): Promise<DiscordModuleConfiguration> {
   const [current, enabled] = await Promise.all([
     row(guildId),
-    packagedModuleEnabled("discord", guildId),
+    packagedCapabilityEnabled("discord", guildId),
   ]);
   return {
     guildId,
@@ -88,7 +88,7 @@ export async function discordModuleRuntimeConfiguration(
 ): Promise<DiscordModuleRuntimeConfiguration> {
   const [current, enabled] = await Promise.all([
     row(guildId),
-    packagedModuleEnabled("discord", guildId),
+    packagedCapabilityEnabled("discord", guildId),
   ]);
   return {
     guildId,
