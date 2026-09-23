@@ -4,7 +4,7 @@ import { performGuildRefresh } from "./guild-refresh-operation.js";
 import {
   configureGuildRefreshSchedule,
   InvalidGuildRefreshIntervalError,
-} from "./guild-refresh-schedule.js";
+} from "./core/guild/guild-refresh-schedule.js";
 import {
   GUILD_REFRESH_CAPABILITY,
   GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY,
