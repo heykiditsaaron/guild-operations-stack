@@ -1,23 +1,23 @@
-export type ModuleWebPresentation = {
+export type WebPresentationContributions = {
   meMenuSections: Array<(pathname: string) => string>;
   footerCommunityLinks: string[];
   homeCommunityActions: string[];
 };
 
-export type ModuleWebPresentationProvider = (
+export type WebPresentationContributionProvider = (
   guildieId: string | null,
-) => Promise<ModuleWebPresentation>;
+) => Promise<WebPresentationContributions>;
 
-const providers: ModuleWebPresentationProvider[] = [];
+const providers: WebPresentationContributionProvider[] = [];
 
-export function registerModuleWebPresentationProvider(provider: ModuleWebPresentationProvider): void {
+export function registerWebPresentationContributionProvider(provider: WebPresentationContributionProvider): void {
   if (providers.includes(provider)) return;
   providers.push(provider);
 }
 
-export async function moduleWebPresentationForGuildie(
+export async function webPresentationContributionsForGuildie(
   guildieId: string | null,
-): Promise<ModuleWebPresentation> {
+): Promise<WebPresentationContributions> {
   const contributions = await Promise.all(providers.map((provider) => provider(guildieId)));
   return {
     meMenuSections: contributions.flatMap((contribution) => contribution.meMenuSections),

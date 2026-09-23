@@ -1,4 +1,4 @@
-import { registerModuleWebPresentationProvider, type ModuleWebPresentation } from "../../web/module-presentation.js";
+import { registerWebPresentationContributionProvider, type WebPresentationContributions } from "../../web/presentation-contributions.js";
 import { discordAssociationForGuildie } from "./association.js";
 import { discordPluginConfiguration } from "./plugin-configuration.js";
 
@@ -20,7 +20,7 @@ function discordGlyph(): string {
   </svg>`;
 }
 
-async function discordWebPresentation(guildieId: string | null): Promise<ModuleWebPresentation> {
+async function discordWebPresentation(guildieId: string | null): Promise<WebPresentationContributions> {
   const configuration = await discordPluginConfiguration();
   if (!configuration.enabled) {
     return { meMenuSections: [], footerCommunityLinks: [], homeCommunityActions: [] };
@@ -56,5 +56,5 @@ async function discordWebPresentation(guildieId: string | null): Promise<ModuleW
 }
 
 export function registerDiscordWebPresentation(): void {
-  registerModuleWebPresentationProvider(discordWebPresentation);
+  registerWebPresentationContributionProvider(discordWebPresentation);
 }
