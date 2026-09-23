@@ -30,9 +30,9 @@ function htmlText(value: string): string {
 }
 
 export async function registerDiscordAdminPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
-  app.get("/admin/discord", async (_request, reply) => reply.redirect("/admin/modules/discord"));
+  app.get("/admin/discord", async (_request, reply) => reply.redirect("/admin/plugins/discord"));
 
-  app.get("/admin/modules/discord", async (request, reply) => {
+  app.get("/admin/plugins/discord", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie] = await Promise.all([
       viewerForRequest(sessionToken),
@@ -54,7 +54,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
 
     const body = `<div class="admin-sections">
       <section class="admin-section" aria-labelledby="discord-module-heading">
-        <h2 id="discord-module-heading">Discord module</h2>
+        <h2 id="discord-module-heading">Discord plugin</h2>
         ${secretWarning}
         <div class="discord-admin settings-panel">
           <form class="discord-module-form" data-discord-module-form>
@@ -81,12 +81,12 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       </section>
 
       <section class="admin-section">
-        <a class="admin-destination" href="/admin/modules/discord/role-maps">
+        <a class="admin-destination" href="/admin/plugins/discord/role-maps">
           <span class="admin-destination-title">Role Maps</span>
           <span class="admin-destination-description">Configure Discord role projection policy.</span>
           <span class="admin-destination-arrow" aria-hidden="true">→</span>
         </a>
-        <a class="admin-destination" href="/admin/modules/discord/raid">
+        <a class="admin-destination" href="/admin/plugins/discord/raid">
           <span class="admin-destination-title">Raid</span>
           <span class="admin-destination-description">Configure how Raid occurrences are projected into Discord.</span>
           <span class="admin-destination-arrow" aria-hidden="true">→</span>
@@ -98,7 +98,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       .header("Cache-Control", "no-cache")
       .type("text/html; charset=utf-8")
       .send(renderPage(assets, {
-        pathname: "/admin/modules/discord",
+        pathname: "/admin/plugins/discord",
         title: `Discord configuration · ${viewer.guildPresentation.guildName} Guild Operations`,
         description: "Configure the packaged Discord integration.",
         viewer,
@@ -108,7 +108,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
           kind: "breadcrumb",
           items: [
             { label: "Settings", href: "/admin/modules" },
-            { label: "Modules", href: "/admin/modules" },
+            { label: "Plugins", href: "/admin/modules" },
             { label: "Discord" },
           ],
         },
@@ -201,6 +201,6 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     }
   };
 
-  app.post("/admin/modules/discord", updateDiscordConfiguration);
+  app.post("/admin/plugins/discord", updateDiscordConfiguration);
   app.post("/admin/discord", updateDiscordConfiguration);
 }

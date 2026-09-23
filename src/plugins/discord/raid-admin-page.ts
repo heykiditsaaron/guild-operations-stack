@@ -35,7 +35,7 @@ function channelOptions(channels: readonly DiscordGuildChannel[], selected: stri
 }
 
 export async function registerDiscordRaidAdminPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
-  app.get("/admin/modules/discord/raid", async (request, reply) => {
+  app.get("/admin/plugins/discord/raid", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie] = await Promise.all([
       viewerForRequest(sessionToken),
@@ -60,7 +60,7 @@ export async function registerDiscordRaidAdminPage(app: FastifyInstance, assets:
     }
 
     const unavailable = !configured
-      ? '<p class="admin-unavailable">Configure and enable the Discord module before selecting a Raid destination.</p>'
+      ? '<p class="admin-unavailable">Configure and enable the Discord plugin before selecting a Raid destination.</p>'
       : acquisitionFailed
         ? '<p class="admin-unavailable">Discord channels could not be loaded. Check runtime logs and try again.</p>'
         : "";
@@ -69,7 +69,7 @@ export async function registerDiscordRaidAdminPage(app: FastifyInstance, assets:
       <section class="admin-section" aria-labelledby="discord-raid-heading">
         <h2 id="discord-raid-heading">Raid projection</h2>
         ${unavailable}
-        <form class="settings-panel" method="post" action="/admin/modules/discord/raid">
+        <form class="settings-panel" method="post" action="/admin/plugins/discord/raid">
           <div>
             <h3>Destination</h3>
             <p>New Raid projections are created in this Discord channel. Existing Raid messages remain in the channel where they were created.</p>
@@ -86,7 +86,7 @@ export async function registerDiscordRaidAdminPage(app: FastifyInstance, assets:
       .header("Cache-Control", "no-cache")
       .type("text/html; charset=utf-8")
       .send(renderPage(assets, {
-        pathname: "/admin/modules/discord/raid",
+        pathname: "/admin/plugins/discord/raid",
         title: `Raid Discord projection · ${viewer.guildPresentation.guildName} Guild Operations`,
         description: "Configure Raid projection into Discord.",
         viewer,
@@ -95,8 +95,8 @@ export async function registerDiscordRaidAdminPage(app: FastifyInstance, assets:
           kind: "breadcrumb",
           items: [
             { label: "Settings", href: "/admin/modules" },
-            { label: "Modules", href: "/admin/modules" },
-            { label: "Discord", href: "/admin/modules/discord" },
+            { label: "Plugins", href: "/admin/modules" },
+            { label: "Discord", href: "/admin/plugins/discord" },
             { label: "Raid" },
           ],
         },
@@ -105,7 +105,7 @@ export async function registerDiscordRaidAdminPage(app: FastifyInstance, assets:
       }));
   });
 
-  app.post("/admin/modules/discord/raid", async (request, reply) => {
+  app.post("/admin/plugins/discord/raid", async (request, reply) => {
     const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
     if (!guildie) return reply.code(401).send("Authentication is required.");
     if (!await guildieHasGuildCapability(guildie.guildieId, DISCORD_ADMIN_CAPABILITY)) {
@@ -123,6 +123,6 @@ export async function registerDiscordRaidAdminPage(app: FastifyInstance, assets:
     }
 
     await configureDiscordRaidProjection(channelId || null);
-    return reply.redirect("/admin/modules/discord/raid");
+    return reply.redirect("/admin/plugins/discord/raid");
   });
 }
