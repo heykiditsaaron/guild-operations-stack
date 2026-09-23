@@ -6,7 +6,7 @@ for (const element of document.querySelectorAll("[data-unix-time]")) {
   if (element instanceof HTMLTimeElement) element.dateTime = date.toISOString();
 }
 
-const discordAdministrationEndpoint = "/admin/general/discord";
+const discordAdministrationEndpoint = "/admin/modules/discord";
 
 const moduleForm = document.querySelector("[data-discord-module-form]");
 if (moduleForm instanceof HTMLFormElement) {
