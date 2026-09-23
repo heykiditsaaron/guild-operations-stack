@@ -1,4 +1,4 @@
-import { config } from "../../config.js";
+import { requireOperationalInstallationGuildBinding } from "../installation/guild-binding.js";
 import { pool } from "../../db.js";
 
 export type GuildieAttribution = {
@@ -13,6 +13,7 @@ export async function guildieAttributionsForGuildies(
 ): Promise<Map<string, GuildieAttribution>> {
   const uniqueGuildieIds = [...new Set(guildieIds.filter((guildieId): guildieId is string => Boolean(guildieId)))];
   if (uniqueGuildieIds.length === 0) return new Map();
+  const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
 
   const result = await pool.query<{
     guildie_id: string;
@@ -38,7 +39,7 @@ export async function guildieAttributionsForGuildies(
       AND grm.realm_id = gmc.realm_id
       AND grm.character_id = gmc.character_id
      WHERE g.guildie_id = ANY($1::uuid[])`,
-    [uniqueGuildieIds, config.guild.id],
+    [uniqueGuildieIds, guildId],
   );
 
   return new Map(result.rows.map((row) => {
