@@ -1,4 +1,4 @@
-import { characterMembership } from "../../application-state.js";
+import { characterMembership } from "../../core/guild/character-membership.js";
 import { controlledCharactersForGuildie } from "../../core/identity/controlled-characters.js";
 import { pool } from "../../db.js";
 import { effectiveGuildAuthority } from "../../core/authority/guild-permissions.js";

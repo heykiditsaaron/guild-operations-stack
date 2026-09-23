@@ -1,4 +1,5 @@
-import { guildieState } from "../application-state.js";
+import { guildCharactersForGuildie } from "../guild.js";
+import { mainCharacterForGuildie } from "../core/identity/main-character.js";
 import { authenticatedGuildie } from "../auth.js";
 import { guildTheme } from "../guild-theme.js";
 import { guildPresentation } from "../guild-presentation.js";
@@ -23,22 +24,14 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
     };
   }
 
-  const [state, administration, canRefreshGuild, canInspectOperations, presentationContributions] = await Promise.all([
-    guildieState(guildie.guildieId),
+  const [characters, selectedMain, administration, canRefreshGuild, canInspectOperations, presentationContributions] = await Promise.all([
+    guildCharactersForGuildie(guildie.guildieId),
+    mainCharacterForGuildie(guildie.guildieId),
     administrationAvailabilityForGuildie(guildie.guildieId),
     guildieHasGuildCapability(guildie.guildieId, GUILD_REFRESH_CAPABILITY),
     guildieHasGuildCapability(guildie.guildieId, OPERATIONS_INSPECT_CAPABILITY),
     webPresentationContributionsForGuildie(guildie.guildieId),
   ]);
-
-  if (!state) {
-    return {
-      authenticated: false,
-      theme,
-      guildPresentation: presentation,
-      presentationContributions: await webPresentationContributionsForGuildie(null),
-    };
-  }
 
   return {
     authenticated: true,
@@ -50,20 +43,20 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
       ? [{ label: "Guild Operations Settings", href: "/admin" }]
       : [],
     operationsAvailable: false,
-    mainCharacter: state.selectedMain
+    mainCharacter: selectedMain
       ? {
-          characterId: state.selectedMain.characterId,
-          realmId: state.selectedMain.realmId,
-          name: state.selectedMain.name,
-          realmName: state.selectedMain.realmName,
-          rankIndex: state.selectedMain.rankIndex,
-          level: state.selectedMain.character?.level ?? null,
-          className: state.selectedMain.character?.className ?? null,
-          activeSpecName: state.selectedMain.character?.activeSpecName ?? null,
-          avatarUrl: state.selectedMain.avatarUrl,
+          characterId: selectedMain.characterId,
+          realmId: selectedMain.realmId,
+          name: selectedMain.name,
+          realmName: selectedMain.realmName,
+          rankIndex: selectedMain.rankIndex,
+          level: characters.find((character) => character.realmId === selectedMain.realmId && character.characterId === selectedMain.characterId)?.level ?? null,
+          className: characters.find((character) => character.realmId === selectedMain.realmId && character.characterId === selectedMain.characterId)?.className ?? null,
+          activeSpecName: characters.find((character) => character.realmId === selectedMain.realmId && character.characterId === selectedMain.characterId)?.activeSpecName ?? null,
+          avatarUrl: selectedMain.avatarUrl,
         }
       : null,
-    characters: state.characters.map((character) => ({
+    characters: characters.map((character) => ({
       characterId: character.characterId,
       realmId: character.realmId,
       name: character.name,

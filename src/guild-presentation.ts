@@ -1,4 +1,4 @@
-import { guildState } from "./application-state.js";
+import { guildState } from "./core/guild/guild-state.js";
 import { config } from "./config.js";
 import { pool } from "./db.js";
 

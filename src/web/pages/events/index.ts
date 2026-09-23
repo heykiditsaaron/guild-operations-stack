@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { guildState } from "../../../application-state.js";
+import { guildState } from "../../../core/guild/guild-state.js";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../auth.js";
 import {
   calendarViewForGuildie,
