@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
-import { GuildCapabilityDeniedError, RAFFLE_CLAIMS_CAPABILITY, requireGuildCapabilityOrOperator } from "../../guild-permissions.js";
+import { GuildCapabilityDeniedError, RAFFLE_CLAIMS_CAPABILITY, requireGuildCapabilityOrOperator } from "../../core/authority/guild-permissions.js";
 import {
   RaffleRuleError, approveRaffleClaim, cancelRaffle, pauseRaffleParticipation, resumeRaffleParticipation, denyRaffleClaim, drawRaffle,
   establishRaffle, establishRaffleClaim, getRaffle, listRaffleClaims, modifyRaffle, openRaffleParticipation,

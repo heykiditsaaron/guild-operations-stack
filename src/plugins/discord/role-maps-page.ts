@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { guildRankDefinitions } from "../../application-state.js";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
-import { guildieHasGuildCapability } from "../../guild-permissions.js";
+import { guildieHasGuildCapability } from "../../core/authority/guild-permissions.js";
 import type { AssetRegistry } from "../../web/assets.js";
 import { renderPage } from "../../web/render.js";
 import { viewerForRequest } from "../../web/viewer.js";

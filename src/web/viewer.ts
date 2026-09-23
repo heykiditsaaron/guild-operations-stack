@@ -6,7 +6,7 @@ import {
   GUILD_REFRESH_CAPABILITY,
   OPERATIONS_INSPECT_CAPABILITY,
   guildieHasGuildCapability,
-} from "../guild-permissions.js";
+} from "../core/authority/guild-permissions.js";
 import { administrationAvailabilityForGuildie } from "./administration.js";
 import { webPresentationContributionsForGuildie } from "./presentation-contributions.js";
 import type { WebViewer } from "./render.js";

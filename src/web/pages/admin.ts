@@ -6,7 +6,7 @@ import {
   guildCapabilityPoliciesForActor,
   setGuildCapabilityPermittedRanks,
   type GuildCapabilityPolicySet,
-} from "../../guild-capability-policy.js";
+} from "../../core/authority/guild-capability-policy.js";
 import {
   GUILD_REFRESH_MINIMUM_INTERVAL_SECONDS,
   guildRefreshSchedule,
@@ -20,14 +20,14 @@ import {
   THEME_CONFIGURE_CAPABILITY,
   guildieHasGuildCapability,
   guildieHasGuildCapabilityOrOperator,
-} from "../../guild-permissions.js";
+} from "../../core/authority/guild-permissions.js";
 import {
   isPackagedCapabilityKey,
   packagedCapabilityStates,
   setPackagedCapabilityEnabled,
   type PackagedCapabilityState,
 } from "../../packaged-capability-lifecycle.js";
-import { isConfiguredOperator } from "../../operator-authority.js";
+import { isConfiguredOperator } from "../../core/authority/operator-authority.js";
 import { GUILD_THEMES, guildTheme, isGuildThemeKey, setGuildTheme, type GuildThemeKey } from "../../guild-theme.js";
 import { guildPresentation, parseGuildPresentationUrl, setGuildPresentationDestinations, type GuildPresentation } from "../../guild-presentation.js";
 import { administrationAvailabilityForGuildie } from "../administration.js";

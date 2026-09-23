@@ -4,8 +4,8 @@ import {
   MODULES_CONFIGURE_CAPABILITY,
   THEME_CONFIGURE_CAPABILITY,
   effectiveGuildAuthority,
-} from "../guild-permissions.js";
-import { canAdministerGuildPermissions } from "../guild-capability-policy.js";
+} from "../core/authority/guild-permissions.js";
+import { canAdministerGuildPermissions } from "../core/authority/guild-capability-policy.js";
 import { DISCORD_ADMIN_CAPABILITY } from "../plugins/discord/authorization.js";
 
 export type AdministrationAvailability = {

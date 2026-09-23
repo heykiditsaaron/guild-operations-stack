@@ -1,7 +1,7 @@
 import { characterMembership } from "../../application-state.js";
 import { controlledCharactersForGuildie } from "../../core/identity/controlled-characters.js";
 import { pool } from "../../db.js";
-import { effectiveGuildAuthority } from "../../guild-permissions.js";
+import { effectiveGuildAuthority } from "../../core/authority/guild-permissions.js";
 import { specHasTrait, specsForClass } from "../../wow-traits/registry.js";
 import { raidEventFacts, type RaidEventFacts } from "./application.js";
 import type { RaidRole } from "./domain.js";

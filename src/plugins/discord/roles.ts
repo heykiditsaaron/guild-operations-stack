@@ -1,5 +1,5 @@
 import { config } from "../../config.js";
-import { effectiveGuildAuthority } from "../../guild-permissions.js";
+import { effectiveGuildAuthority } from "../../core/authority/guild-permissions.js";
 import { publishOperationalRecord } from "../../operational-inspection.js";
 import { discordAssociatedGuildieIds } from "./association.js";
 import {

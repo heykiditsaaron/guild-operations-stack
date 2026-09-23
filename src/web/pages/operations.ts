@@ -3,7 +3,7 @@ import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
 import {
   OPERATIONS_INSPECT_CAPABILITY,
   guildieHasGuildCapability,
-} from "../../guild-permissions.js";
+} from "../../core/authority/guild-permissions.js";
 import {
   listOperationalRecords,
   type OperationalRecord,

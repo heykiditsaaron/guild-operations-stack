@@ -17,7 +17,7 @@ import {
   RAFFLE_STAGE_CAPABILITY,
   guildieHasGuildCapability,
   guildieHasGuildCapabilityOrOperator,
-} from "../../../guild-permissions.js";
+} from "../../../core/authority/guild-permissions.js";
 import {
   discoverableGuildCalendarPoints,
   type GuildCalendarOccursAt,
