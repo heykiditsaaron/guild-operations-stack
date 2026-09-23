@@ -103,11 +103,8 @@ function renderMeControl(viewer: WebViewer, pathname: string): string {
   }
   const label = viewer.mainCharacter?.name ?? "Me";
   const portrait = viewer.mainCharacter?.avatarUrl ? `<img src="${escapeHtml(viewer.mainCharacter.avatarUrl)}" alt="" loading="eager" referrerpolicy="no-referrer">` : userGlyph();
-  const operations = viewer.operationsAvailable
-    ? '<section class="me-menu-section me-administration-section"><a class="me-administration-link" href="/operations"><span>Operations</span><span aria-hidden="true">→</span></a></section>'
-    : "";
   const administration = viewer.administrationAvailable
-    ? '<section class="me-menu-section me-administration-section"><a class="me-administration-link" href="/admin"><span>Administration</span><span aria-hidden="true">→</span></a></section>'
+    ? '<section class="me-menu-section me-administration-section"><a class="me-administration-link" href="/admin"><span>Settings</span><span aria-hidden="true">→</span></a></section>'
     : "";
   const moduleSections = viewer.modulePresentation.meMenuSections.map((render) => render(pathname)).join("\n");
   return `<details class="me-menu menu-surface">
@@ -115,7 +112,6 @@ function renderMeControl(viewer: WebViewer, pathname: string): string {
     <div class="menu-panel menu-panel-right me-menu-panel">
       <section class="me-menu-section me-character-section">${renderCurrentCharacter(viewer)}</section>
       ${moduleSections}
-      ${operations}
       ${administration}
       <section class="me-menu-section me-session-section"><button type="button" class="session-sign-out-action" data-logout>Sign out</button></section>
     </div>
@@ -178,9 +174,9 @@ function renderAdministrationNavigation(viewer: WebViewer, pathname: string): st
     .map((destination) => `<option value="${escapeHtml(destination.href)}"${destination.href === current.href ? " selected" : ""}>${escapeHtml(destination.label)}</option>`)
     .join("");
 
-  return `<nav class="administration-navigation" aria-label="Administration navigation">
+  return `<nav class="administration-navigation" aria-label="Settings navigation">
     <label class="administration-navigation-control">
-      <span>Admin area</span>
+      <span>Settings area</span>
       <select data-administration-navigation>${options}</select>
     </label>
   </nav>`;
