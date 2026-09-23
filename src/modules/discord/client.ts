@@ -21,6 +21,27 @@ export type DiscordGuildRole = {
   managed: boolean;
 };
 
+export type DiscordGuildChannel = {
+  id: string;
+  name: string;
+  type: number;
+  position: number;
+};
+
+export type DiscordMessageInput = {
+  content?: string;
+  embeds?: Array<{
+    title?: string;
+    description?: string;
+    fields?: Array<{ name: string; value: string; inline?: boolean }>;
+    footer?: { text: string };
+  }>;
+  components?: Array<{
+    type: 1;
+    components: Array<{ type: 2; style: 5; label: string; url: string }>;
+  }>;
+};
+
 export class DiscordGuildIntegrationNotConfiguredError extends Error {
   constructor() {
     super("Discord guild integration is not configured");
@@ -159,4 +180,60 @@ export async function removeDiscordGuildMemberRole(discordUserId: string, roleId
     { method: "DELETE" },
   );
   if (!response.ok) throw new Error(`Discord role removal failed with ${response.status}`);
+}
+
+
+export async function getDiscordGuildChannels(): Promise<DiscordGuildChannel[]> {
+  const { guildId } = await integrationConfig();
+  const response = await discordRequest(`/guilds/${encodeURIComponent(guildId)}/channels`);
+  if (!response.ok) throw new Error(`Discord guild-channel acquisition failed with ${response.status}`);
+
+  const payload = await response.json() as Array<{ id?: unknown; name?: unknown; type?: unknown; position?: unknown }>;
+  if (!Array.isArray(payload)) throw new Error("Discord guild-channel response was not an array");
+
+  return payload.map((channel) => {
+    if (typeof channel.id !== "string" || typeof channel.name !== "string" || typeof channel.type !== "number") {
+      throw new Error("Discord guild-channel response lacked required fields");
+    }
+    return {
+      id: channel.id,
+      name: channel.name,
+      type: channel.type,
+      position: typeof channel.position === "number" ? channel.position : 0,
+    };
+  }).sort((a, b) => a.position - b.position);
+}
+
+export async function createDiscordChannelMessage(
+  channelId: string,
+  message: DiscordMessageInput,
+): Promise<{ id: string }> {
+  const response = await discordRequest(
+    `/channels/${encodeURIComponent(channelId)}/messages`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(message),
+    },
+  );
+  if (!response.ok) throw new Error(`Discord message creation failed with ${response.status}`);
+  const payload = await response.json() as { id?: unknown };
+  if (typeof payload.id !== "string") throw new Error("Discord message response lacked an id");
+  return { id: payload.id };
+}
+
+export async function editDiscordChannelMessage(
+  channelId: string,
+  messageId: string,
+  message: DiscordMessageInput,
+): Promise<void> {
+  const response = await discordRequest(
+    `/channels/${encodeURIComponent(channelId)}/messages/${encodeURIComponent(messageId)}`,
+    {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(message),
+    },
+  );
+  if (!response.ok) throw new Error(`Discord message update failed with ${response.status}`);
 }
