@@ -27,6 +27,7 @@ async function consumeGuildieEmission(emission: Emission): Promise<void> {
 
 const DISCORD_RAID_RECONCILIATION_CODES = [
   "raid.modified",
+  "raid.cancelled",
   "raid.signup.established",
   "raid.signup.revoked",
   "raid.signup.denied",
@@ -69,7 +70,7 @@ async function consumeRaidReconciliationEmission(emission: Emission): Promise<vo
 
   const coordinate = await discordRaidProjectionCoordinate(emission.subject);
   if (!coordinate) return;
-  const state = await discordRaidProjectionState(emission.subject);
+  const state = await discordRaidProjectionState(emission.subject, emission.code === "raid.cancelled");
   if (!state) return;
 
   await editDiscordChannelMessage(
