@@ -13,7 +13,7 @@ import {
   guildieHasGuildCapability,
 } from "./guild-permissions.js";
 import { registerGuildRefreshObserver } from "../guild/guild-refresh-observers.js";
-import { isConfiguredOperator } from "./operator-authority.js";
+import { hasDevelopmentGuildMasterAuthority } from "./operator-authority.js";
 
 export type GuildCapabilityDefinition = {
   key: GuildCapability;
@@ -57,7 +57,7 @@ export function registerGuildCapabilityPolicyObserver(): void {
 export function registeredGuildCapabilityDefinitions(): GuildCapabilityDefinition[] { return [...definitions.values()]; }
 
 async function hasGlobalPermissionAdministration(guildieId: string, guildId: string): Promise<boolean> {
-  if (isConfiguredOperator(guildieId)) return true;
+  if (hasDevelopmentGuildMasterAuthority(guildieId)) return true;
   const authority = await effectiveGuildAuthority(guildieId, guildId);
   return authority?.rankIndex === 0;
 }
