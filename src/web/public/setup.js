@@ -67,3 +67,23 @@ document.querySelectorAll("[data-copy-value]").forEach((button) => button.addEve
     if (status) status.textContent = "Copy failed. Select the value and copy it manually.";
   }
 }));
+
+
+document.querySelector("[data-setup-restart]")?.addEventListener("click", async () => {
+  const confirmed = window.confirm("Restart setup? This clears the incomplete guild binding, Blizzard application configuration, and current setup sessions. Guild Operations will return to the beginning of first-run setup.");
+  if (!confirmed) return;
+  const button = document.querySelector("[data-setup-restart]");
+  if (button) button.disabled = true;
+  try {
+    const response = await fetch("/installation/restart", {
+      method: "POST",
+      headers: { "accept": "application/json" },
+    });
+    if (!response.ok) throw new Error("Restart failed");
+    window.location.assign("/setup");
+  } catch {
+    const status = document.querySelector("[data-setup-status]");
+    if (status) status.textContent = "Setup could not be restarted. Please try again.";
+    if (button) button.disabled = false;
+  }
+});
