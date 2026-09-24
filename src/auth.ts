@@ -217,7 +217,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       purpose: "login",
       guildieId: null,
     });
-    return reply.redirect(authorizationUrl(state));
+    return reply.redirect(await authorizationUrl(state));
   });
 
   app.get("/me/refresh", async (request, reply) => {
@@ -234,7 +234,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       purpose: "self_refresh",
       guildieId: guildie.guildieId,
     });
-    return reply.redirect(authorizationUrl(state));
+    return reply.redirect(await authorizationUrl(state));
   });
 
   app.get("/auth/blizzard/callback", async (request, reply) => {
