@@ -3,6 +3,8 @@ import { SESSION_COOKIE_NAME, authenticatedGuildie } from "../../auth.js";
 import { installationGuildBinding } from "../../core/installation/guild-binding.js";
 import { discoverInstallationGuildCandidates } from "../../core/installation/guild-candidates.js";
 import { assetUrl, type AssetRegistry } from "../assets.js";
+import { config } from "../../config.js";
+import { installationBlizzardConfigured } from "../../core/installation/blizzard-configuration.js";
 
 function escapeHtml(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
@@ -14,6 +16,23 @@ function document(assets: AssetRegistry, body: string): string {
 
 export async function registerSetupPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/setup", async (request, reply) => {
+    const blizzardConfigured = await installationBlizzardConfigured();
+    if (!blizzardConfigured) {
+      const callbackUrl = config.blizzardRedirectUri;
+      return reply.type("text/html; charset=utf-8").send(document(
+        assets,
+        `<p>Connect Guild Operations to a Blizzard application before identifying the guild this installation will serve.</p>
+        <p>Create a Blizzard application and register this callback URL:</p>
+        <p><code>${escapeHtml(callbackUrl)}</code></p>
+        <form method="post" data-setup-blizzard>
+          <label>Client ID<input name="client_id" autocomplete="off" required></label>
+          <label>Client Secret<input name="client_secret" type="password" autocomplete="new-password" required></label>
+          <button class="button-primary setup-action" type="submit">Connect Blizzard</button>
+        </form>
+        <p class="setup-status" data-setup-status aria-live="polite"></p>`,
+      ));
+    }
+
     const binding = await installationGuildBinding();
     if (binding?.authorizedAt) return reply.redirect("/");
 
