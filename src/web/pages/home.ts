@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../auth.js";
 import { packagedCapabilityEnabled } from "../../packaged-capability-lifecycle.js";
+import { installationOperational } from "../../core/installation/guild-binding.js";
 import { openRaffleFacts } from "../../modules/raffle/queries.js";
 import { assetUrl, type AssetName, type AssetRegistry } from "../assets.js";
 import { htmlText, renderPage } from "../render.js";
@@ -37,6 +38,8 @@ function participationPromotions(assets: AssetRegistry, raffleOpen: boolean): st
 
 export async function registerHomePage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/", async (request, reply) => {
+    if (!(await installationOperational())) return reply.redirect("/setup");
+
     const [viewer, raffleEnabled] = await Promise.all([
       viewerForRequest(request.cookies[SESSION_COOKIE_NAME]),
       packagedCapabilityEnabled("raffle"),
