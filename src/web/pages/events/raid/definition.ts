@@ -88,7 +88,7 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
       viewer,
       stylesheets: ["admin.css", "raid-admin.css"],
       scripts: ["admin.js", "raid-definition.js"],
-      secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Events", href: "/events" }, { label: "Raid operations", href: "/activities/raid/manage" }, { label: raid.label }] },
+      secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Activities", href: "/activities" }, { label: "Raid operations", href: "/activities/raid/manage" }, { label: raid.label }] },
       header: "",
       body: renderOccurrenceOperations({ title: raid.label, context: `<time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${htmlText(difficultyLabel(raid.difficulty))}${historical ? " · Historical" : ""}`, publicAction: publicDestination ? { label: publicDestination.label, href: publicDestination.href } : undefined, modes: [{ label: "Assign", href: basePath }, { label: "Edit", href: `${basePath}/definition`, current: true }], lifecycleActions, workspace: `<section class="raid-admin-setup">${edit}<p data-raid-definition-status role="status" aria-live="polite"></p></section>` }),
     });
