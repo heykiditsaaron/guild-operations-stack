@@ -1,6 +1,6 @@
 import { requireOperationalInstallationGuildBinding } from "../installation/guild-binding.js";
 import { pool } from "../../db.js";
-import { isConfiguredOperator } from "./operator-authority.js";
+import { hasDevelopmentGuildMasterAuthority } from "./operator-authority.js";
 
 export type GuildCapability = string;
 
@@ -28,7 +28,7 @@ export type EffectiveGuildAuthority = {
   rankIndex: number;
   rankDisplayName: string;
   capabilities: GuildCapability[];
-  operator: boolean;
+  developmentGuildMasterAuthority: boolean;
 };
 
 export async function effectiveGuildAuthority(
@@ -52,11 +52,11 @@ export async function effectiveGuildAuthority(
     `SELECT capability FROM guild_rank_capabilities WHERE guild_id = $1 AND rank_index = $2 ORDER BY capability`,
     [resolvedGuildId, rank.rank_index],
   );
-  return { guildieId, guildId: resolvedGuildId, rankIndex: rank.rank_index, rankDisplayName: rank.display_name ?? `Rank ${rank.rank_index}`, capabilities: capabilityResult.rows.map((row) => row.capability), operator: isConfiguredOperator(guildieId) };
+  return { guildieId, guildId: resolvedGuildId, rankIndex: rank.rank_index, rankDisplayName: rank.display_name ?? `Rank ${rank.rank_index}`, capabilities: capabilityResult.rows.map((row) => row.capability), developmentGuildMasterAuthority: hasDevelopmentGuildMasterAuthority(guildieId) };
 }
 
 function hasInherentGuildCapability(authority: EffectiveGuildAuthority | null, guildieId: string): boolean {
-  return isConfiguredOperator(guildieId) || authority?.rankIndex === 0;
+  return hasDevelopmentGuildMasterAuthority(guildieId) || authority?.rankIndex === 0;
 }
 
 export async function guildieHasGuildCapability(guildieId: string, capability: GuildCapability, guildId?: string): Promise<boolean> {
@@ -84,7 +84,7 @@ export async function requireGuildCapability(guildieId: string, capability: Guil
 }
 
 export async function requireGuildCapabilityOrOperator(guildieId: string, capability: GuildCapability, guildId?: string): Promise<void> {
-  if (isConfiguredOperator(guildieId)) return;
+  if (hasDevelopmentGuildMasterAuthority(guildieId)) return;
   await requireGuildCapability(guildieId, capability, guildId);
 }
 
