@@ -8,7 +8,10 @@ import {
 } from "./guild-binding.js";
 import { discoverInstallationGuildCandidates } from "./guild-candidates.js";
 
-export async function registerInstallationRoutes(app: FastifyInstance): Promise<void> {
+export async function registerInstallationRoutes(
+  app: FastifyInstance,
+  options: { onOperational?: () => void | Promise<void> } = {},
+): Promise<void> {
   app.get("/installation", async (request, reply) => {
     const binding = await installationGuildBinding();
     const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
@@ -59,6 +62,7 @@ export async function registerInstallationRoutes(app: FastifyInstance): Promise<
 
     try {
       const binding = await authorizeInstallationGuildBinding(guildie.guildieId);
+      await options.onOperational?.();
       return reply.send({ state: "operational", binding });
     } catch (error) {
       request.log.warn({ err: error }, "Installation guild authorization was not established");
