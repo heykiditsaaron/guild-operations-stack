@@ -68,9 +68,9 @@ function requireRaidSignupsOpen(raid:RaidEventFacts):void { if(!raidSignupsAreOp
 function requireUpcomingRaid(raid:RaidEventFacts):void { if(raidHasOccurred(raid))throw new Error("Raid has already occurred"); }
 function requireFullOperationalBuffer(occursAt:readonly [number]|readonly [number,number]):void { if(occursAt[0]-nowUnix()<RAID_OPERATIONAL_BUFFER_SECONDS)throw new Error("Raid occurrence must preserve the full operational buffer"); }
 
-function raidPublicDestination(raidId:string):string { return `/events/raid/${encodeURIComponent(raidId)}`; }
-function raidParticipationDestination(raidId:string):string { return `/events/raid/${encodeURIComponent(raidId)}/participation`; }
-function raidManageDestination(raidId:string):string { return `/events/raid/manage/${encodeURIComponent(raidId)}`; }
+function raidPublicDestination(raidId:string):string { return `/activities/raid/${encodeURIComponent(raidId)}`; }
+function raidParticipationDestination(raidId:string):string { return `/activities/raid/${encodeURIComponent(raidId)}/participation`; }
+function raidManageDestination(raidId:string):string { return `/activities/raid/manage/${encodeURIComponent(raidId)}`; }
 export type RaidDestination = { kind: string; label: string; href: string };
 export function raidOccurrenceDestinations(raidId:string):readonly RaidDestination[] {
   return [
