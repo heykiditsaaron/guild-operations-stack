@@ -26,7 +26,10 @@ export async function registerSetupPage(app: FastifyInstance, assets: AssetRegis
         <p><a class="button-secondary setup-external-action" href="https://develop.battle.net/access/clients" target="_blank" rel="noopener noreferrer">Open Blizzard Developer Portal ↗</a></p>
         <div class="setup-copy-value">
           <code>${escapeHtml(callbackUrl)}</code>
-          <button class="button-secondary setup-copy-action" type="button" data-copy-value="${escapeHtml(callbackUrl)}">Copy</button>
+          <button class="setup-copy-action" type="button" data-copy-value="${escapeHtml(callbackUrl)}" aria-label="Copy callback URL" title="Copy callback URL">
+            <svg class="setup-copy-icon setup-copy-icon-copy" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3"></path></svg>
+            <svg class="setup-copy-icon setup-copy-icon-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg>
+          </button>
         </div>
         <form method="post" data-setup-blizzard>
           <label>Client ID<input name="client_id" autocomplete="off" required></label>
