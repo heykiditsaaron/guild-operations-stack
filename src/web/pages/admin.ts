@@ -39,10 +39,6 @@ function htmlText(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
 }
 
-function administrationTabs(current: "general" | "modules" | "permissions" | "history"): string {
-  return `<nav class="admin-tabs" aria-label="Settings sections"><a href="/admin/general"${current === "general" ? ' aria-current="page"' : ""}>General</a><a href="/admin/modules"${current === "modules" ? ' aria-current="page"' : ""}>Modules</a><a href="/admin/permissions"${current === "permissions" ? ' aria-current="page"' : ""}>Permissions</a><a href="/admin/history"${current === "history" ? ' aria-current="page"' : ""}>History</a></nav>`;
-}
-
 function administrationSection(sectionId: string, headingId: string, heading: string, content: string): string {
   return `<section id="${sectionId}" class="admin-section" aria-labelledby="${headingId}"><h2 id="${headingId}">${heading}</h2>${content}</section>`;
 }
@@ -131,7 +127,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     const guildSettings = administrationSection("guild-settings", "guild-settings-heading", "Guild synchronization", `${schedule}${renderGuildRefreshOperation(refreshStatus, canRefresh)}`);
     const content = `<div class="admin-sections">${themeSettings}${presentationSettings}${guildSettings}</div>`;
 
-    const html = renderPage(assets, { pathname: "/admin/general", title: `General Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Inspect and configure Guild Operations.", viewer, stylesheets: ["admin.css"], scripts: ["admin.js", "operations.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Inspect and manage Guild Operations according to your authority.</p></div>`, body: `${administrationTabs("general")}${content}` });
+    const html = renderPage(assets, { pathname: "/admin/general", title: `General Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Inspect and configure Guild Operations.", viewer, stylesheets: ["admin.css"], scripts: ["admin.js", "operations.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Inspect and manage Guild Operations according to your authority.</p></div>`, body: `${content}` });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
 
@@ -147,7 +143,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     let lifecycle = renderPackagedCapabilityLifecycle(modulesState, administration.canConfigureDiscord);
     if (!canConfigureModules) lifecycle = lifecycle.replaceAll("<input type=\"checkbox\" data-module-enabled", "<input type=\"checkbox\" data-module-enabled disabled");
     const content = administrationSection("modules", "modules-heading", "Packaged capabilities", `${lifecycle}<p class="admin-section-note">Availability and entitlement are distinct from enablement. Controls are available only when your authority permits changes.</p>`);
-    const html = renderPage(assets, { pathname: "/admin/modules", title: `Module Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Inspect and configure packaged Guild Operations capabilities.", viewer, stylesheets: ["admin.css", "admin-modules.css"], scripts: canConfigureModules ? ["admin-modules.js"] : [], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Inspect and manage packaged Modules and Plugins.</p></div>`, body: `${administrationTabs("modules")}<div class="admin-sections">${content}</div>` });
+    const html = renderPage(assets, { pathname: "/admin/modules", title: `Module Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Inspect and configure packaged Guild Operations capabilities.", viewer, stylesheets: ["admin.css", "admin-modules.css"], scripts: canConfigureModules ? ["admin-modules.js"] : [], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Inspect and manage packaged Modules and Plugins.</p></div>`, body: `<div class="admin-sections">${content}</div>` });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
 
@@ -190,7 +186,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     const policies = authorized && guildie ? await guildCapabilityPoliciesForActor(guildie.guildieId) : null;
     const developmentAuthority = guildie ? hasDevelopmentGuildMasterAuthority(guildie.guildieId) : false;
     const content = authorized && policies ? `<section class="permission-administration" aria-labelledby="permission-heading"><div class="permission-intro"><h2 id="permission-heading">Capability access</h2><p>Choose which current Blizzard guild ranks receive each Guild Operations capability in addition to Guild Master rank 0. Rank 0 and the development authority override are inherently capable and are not configurable here.</p>${developmentAuthority ? `<p class="permission-operator-notice"><strong>Development authority override active.</strong> This access is independent of your current guild rank.</p>` : ""}</div>${renderPermissionPolicies(policies)}</section>` : `<section class="admin-unavailable" aria-labelledby="admin-unavailable-heading"><h2 id="admin-unavailable-heading">Permission administration is not available for this account.</h2></section>`;
-    const html = renderPage(assets, { pathname: "/admin/permissions", title: `Permissions Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Configure Guild Operations permission policy.", viewer, stylesheets: ["admin.css", "admin-permissions.css"], scripts: ["admin-permissions.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Configure who may use Guild Operations capabilities.</p></div>`, body: `${administrationTabs("permissions")}${content}` });
+    const html = renderPage(assets, { pathname: "/admin/permissions", title: `Permissions Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Configure Guild Operations permission policy.", viewer, stylesheets: ["admin.css", "admin-permissions.css"], scripts: ["admin-permissions.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Configure who may use Guild Operations capabilities.</p></div>`, body: `${content}` });
     if (!authorized) return reply.code(guildie ? 403 : 401).header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
