@@ -9,7 +9,7 @@ import { viewerForRequest } from "../viewer.js";
 
 function openRafflePromotion(assets: AssetRegistry): string {
   return `
-    <a class="home-raffle-promo" href="/events/raffle" aria-labelledby="home-raffle-promo-title">
+    <a class="home-raffle-promo" href="/activities/raffle" aria-labelledby="home-raffle-promo-title">
       <img class="home-raffle-promo-art" src="${assetUrl(assets, "images/raffle/gold-sack.png")}" alt="" aria-hidden="true">
       <div class="home-raffle-promo-main">
         <p class="home-raffle-promo-kicker">Guild raffle open</p>
