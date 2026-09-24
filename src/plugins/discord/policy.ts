@@ -1,4 +1,4 @@
-import { config } from "../../config.js";
+import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import { pool, withTransaction } from "../../db.js";
 
 export type DiscordRankRoleMapping = {
@@ -16,9 +16,10 @@ export type GuildDiscordProjectionSettings = {
 };
 
 export async function guildDiscordProjectionSettings(
-  guildId: string = config.guild.id,
+  guildId?: string,
   includeInactiveMappings = false,
 ): Promise<GuildDiscordProjectionSettings> {
+  const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
   const [settingsResult, rankRolesResult] = await Promise.all([
     pool.query<{
       linked_enabled: boolean;
@@ -28,14 +29,14 @@ export async function guildDiscordProjectionSettings(
       `SELECT linked_enabled, rank_enabled, linked_role_id
          FROM guild_discord_projection_settings
         WHERE guild_id = $1`,
-      [guildId],
+      [resolvedGuildId],
     ),
     pool.query<{ rank_index: number; discord_role_id: string }>(
       `SELECT rank_index, discord_role_id
          FROM guild_discord_rank_roles
         WHERE guild_id = $1
         ORDER BY rank_index`,
-      [guildId],
+      [resolvedGuildId],
     ),
   ]);
 
@@ -48,7 +49,7 @@ export async function guildDiscordProjectionSettings(
   }));
 
   return {
-    guildId,
+    guildId: resolvedGuildId,
     enabled: linkedMappingEnabled || rankMappingEnabled,
     linkedMappingEnabled,
     rankMappingEnabled,
@@ -64,7 +65,7 @@ export async function replaceGuildDiscordProjectionSettings(input: {
   linkedRoleId: string | null;
   rankRoles: DiscordRankRoleMapping[];
 }): Promise<GuildDiscordProjectionSettings> {
-  const guildId = input.guildId ?? config.guild.id;
+  const guildId = input.guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
   const linkedRoleId = input.linkedRoleId?.trim() || null;
   const normalizedRankRoles = input.rankRoles
     .filter((mapping) => Number.isInteger(mapping.rankIndex) && mapping.rankIndex >= 0 && mapping.discordRoleId.trim())
