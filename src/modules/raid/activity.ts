@@ -2,7 +2,7 @@ import {
   registerActivity,
   type ActivityTemporalProjection,
 } from "../../core/activity/registry.js";
-import { raidEventFactsIncludingCancelled } from "./application.js";
+import { raidEventFactsIncludingCancelled, raidCalendarProjection } from "./application.js";
 import { raidParticipationReferencesForGuildie } from "./participation-view.js";
 
 const RAID_TEMPORAL_EMISSION_CODES = [
@@ -46,6 +46,7 @@ export function registerRaidActivityIntegration(): void {
     temporal: {
       emissionCodes: RAID_TEMPORAL_EMISSION_CODES,
       projection: raidTemporalProjection,
+      presentation: raidCalendarProjection,
     },
   });
 }
