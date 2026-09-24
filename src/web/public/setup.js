@@ -54,9 +54,14 @@ document.querySelectorAll("[data-copy-value]").forEach((button) => button.addEve
   if (!value) return;
   try {
     await navigator.clipboard.writeText(value);
-    const previousLabel = button.textContent;
-    button.textContent = "Copied";
-    window.setTimeout(() => { button.textContent = previousLabel; }, 1500);
+    button.classList.add("setup-copy-action-copied");
+    button.setAttribute("aria-label", "Copied");
+    button.setAttribute("title", "Copied");
+    window.setTimeout(() => {
+      button.classList.remove("setup-copy-action-copied");
+      button.setAttribute("aria-label", "Copy callback URL");
+      button.setAttribute("title", "Copy callback URL");
+    }, 1500);
   } catch {
     const status = document.querySelector("[data-setup-status]");
     if (status) status.textContent = "Copy failed. Select the value and copy it manually.";
