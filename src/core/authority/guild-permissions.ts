@@ -56,7 +56,8 @@ export async function effectiveGuildAuthority(
 }
 
 function hasInherentGuildCapability(authority: EffectiveGuildAuthority | null, guildieId: string): boolean {
-  return hasDevelopmentGuildMasterAuthority(guildieId) || authority?.rankIndex === 0;
+  return authority !== null
+    && (hasDevelopmentGuildMasterAuthority(guildieId) || authority.rankIndex === 0);
 }
 
 export async function guildieHasGuildCapability(guildieId: string, capability: GuildCapability, guildId?: string): Promise<boolean> {
@@ -84,7 +85,6 @@ export async function requireGuildCapability(guildieId: string, capability: Guil
 }
 
 export async function requireGuildCapabilityOrOperator(guildieId: string, capability: GuildCapability, guildId?: string): Promise<void> {
-  if (hasDevelopmentGuildMasterAuthority(guildieId)) return;
   await requireGuildCapability(guildieId, capability, guildId);
 }
 
