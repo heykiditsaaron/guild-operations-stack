@@ -157,13 +157,13 @@ async function renderRaidOrganizer(request: FastifyRequest<{ Params: RaidParams 
       title: `Raid Operations · ${viewer.guildPresentation.guildName} Guild Operations`,
       viewer,
       stylesheets: ["admin.css", "raid-admin.css"],
-      secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Events", href: "/events" }, { label: "Raid operations", href: "/events/raid/manage" }, { label: "Unavailable" }] },
+      secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Events", href: "/events" }, { label: "Raid operations", href: "/activities/raid/manage" }, { label: "Unavailable" }] },
       header: `<div class="admin-page-header"><h1>Raid</h1></div>`,
       body: `<section class="admin-unavailable"><h2>Raid operations are not available for this account.</h2></section>`,
     });
     return reply.code(guildie ? 403 : 401).header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   }
-  if (!canAssign && (canModify || canStage)) return reply.redirect(`/events/raid/manage/${encodeURIComponent(request.params.raidId)}/definition`);
+  if (!canAssign && (canModify || canStage)) return reply.redirect(`/activities/raid/manage/${encodeURIComponent(request.params.raidId)}/definition`);
 
   const raid = await raidEventFacts(request.params.raidId);
   if (!raid) return reply.code(404).send({ error: "Raid not found" });
@@ -176,7 +176,7 @@ async function renderRaidOrganizer(request: FastifyRequest<{ Params: RaidParams 
   const [rows, diagnostics] = await Promise.all([raidSignups(raid.raidId), raidRosterDiagnostics(raid.raidId)]);
   const assigned = rows.filter((row) => row.assignmentId !== null);
   const available = rows.filter((row) => row.assignmentId === null && row.deniedAtUnix === null && !rows.some((candidate) => candidate.applicantId === row.applicantId && candidate.assignmentId !== null));
-  const navigation: SecondaryNavigation = { kind: "breadcrumb", items: [{ label: "Events", href: "/events" }, { label: "Raid operations", href: "/events/raid/manage" }, { label: raid.label }] };
+  const navigation: SecondaryNavigation = { kind: "breadcrumb", items: [{ label: "Events", href: "/events" }, { label: "Raid operations", href: "/activities/raid/manage" }, { label: raid.label }] };
   const raidBuffItems = (await Promise.all(RAID_BUFF_TRAITS.map((trait) => raidBuffDiagnosticItem(trait, assigned)))).join("");
   const utilityItems = UTILITY_TRAITS.map((trait) => textDiagnosticItem(capabilityLabel(trait), coverageCount(assigned, trait))).join("");
   const armorItems = ARMOR_TRAITS.map((trait) => textDiagnosticItem(armorLabel(trait), coverageCount(assigned, trait))).join("");
@@ -229,7 +229,7 @@ async function unassignParticipant(request: FastifyRequest<{ Params: RaidParams;
 }
 
 export async function registerRaidOperationDetailPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
-  app.get<{ Params: RaidParams }>("/events/raid/manage/:raidId", async (request, reply) => renderRaidOrganizer(request, reply, assets));
-  app.post<{ Params: RaidParams; Body: AssignBody }>("/events/raid/manage/:raidId/assign", assignParticipant);
-  app.post<{ Params: RaidParams; Body: UnassignBody }>("/events/raid/manage/:raidId/unassign", unassignParticipant);
+  app.get<{ Params: RaidParams }>("/activities/raid/manage/:raidId", async (request, reply) => renderRaidOrganizer(request, reply, assets));
+  app.post<{ Params: RaidParams; Body: AssignBody }>("/activities/raid/manage/:raidId/assign", assignParticipant);
+  app.post<{ Params: RaidParams; Body: UnassignBody }>("/activities/raid/manage/:raidId/unassign", unassignParticipant);
 }
