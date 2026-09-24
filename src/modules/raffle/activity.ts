@@ -3,6 +3,7 @@ import {
   type ActivityTemporalProjection,
 } from "../../core/activity/registry.js";
 import { getRaffle } from "./application.js";
+import { pool } from "../../db.js";
 
 const RAFFLE_TEMPORAL_EMISSION_CODES = [
   "raffle.established",
@@ -25,6 +26,22 @@ async function raffleTemporalProjection(raffleId: string): Promise<ActivityTempo
 export function registerRaffleActivityIntegration(): void {
   registerActivity({
     kind: "raffle",
+    participation: {
+      async forGuildie(guildieId) {
+        const result = await pool.query<{ raffle_id: string; claim_id: string }>(
+          `SELECT raffle_id, claim_id
+             FROM raffle_claims
+            WHERE claimant_guildie_id = $1
+            ORDER BY created_at_unix DESC, claim_id DESC`,
+          [guildieId],
+        );
+        return result.rows.map((row) => ({
+          activityKind: "raffle",
+          activityId: row.raffle_id,
+          participationId: row.claim_id,
+        }));
+      },
+    },
     temporal: {
       emissionCodes: RAFFLE_TEMPORAL_EMISSION_CODES,
       projection: raffleTemporalProjection,
