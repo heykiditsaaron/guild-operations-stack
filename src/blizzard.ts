@@ -1,4 +1,5 @@
 import { config, type Region } from "./config.js";
+import { installationBlizzardConfiguration } from "./core/installation/blizzard-configuration.js";
 
 export type BlizzardUserInfo = {
   id: number | string;
@@ -109,9 +110,16 @@ function waitForBlizzardRequestBudget(): Promise<void> {
   return scheduled;
 }
 
-export function authorizationUrl(state: string): string {
+async function requiredBlizzardConfiguration(): Promise<{ clientId: string; clientSecret: string }> {
+  const current = await installationBlizzardConfiguration();
+  if (!current) throw new Error("Blizzard application is not configured");
+  return current;
+}
+
+export async function authorizationUrl(state: string): Promise<string> {
+  const credentials = await requiredBlizzardConfiguration();
   const url = new URL("https://oauth.battle.net/authorize");
-  url.searchParams.set("client_id", config.blizzardClientId);
+  url.searchParams.set("client_id", credentials.clientId);
   url.searchParams.set("redirect_uri", config.blizzardRedirectUri);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("scope", "wow.profile");
@@ -120,7 +128,8 @@ export function authorizationUrl(state: string): string {
 }
 
 export async function exchangeAuthorizationCode(code: string): Promise<string> {
-  const credentials = Buffer.from(`${config.blizzardClientId}:${config.blizzardClientSecret}`).toString("base64");
+  const configured = await requiredBlizzardConfiguration();
+  const credentials = Buffer.from(`${configured.clientId}:${configured.clientSecret}`).toString("base64");
   const body = new URLSearchParams({
     grant_type: "authorization_code",
     code,
@@ -149,7 +158,8 @@ export async function exchangeAuthorizationCode(code: string): Promise<string> {
 }
 
 export async function applicationAccessToken(): Promise<string> {
-  const credentials = Buffer.from(`${config.blizzardClientId}:${config.blizzardClientSecret}`).toString("base64");
+  const configured = await requiredBlizzardConfiguration();
+  const credentials = Buffer.from(`${configured.clientId}:${configured.clientSecret}`).toString("base64");
   const response = await fetch("https://oauth.battle.net/token", {
     method: "POST",
     headers: {
