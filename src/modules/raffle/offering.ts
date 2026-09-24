@@ -3,7 +3,7 @@ import { registerGuildActivityOffering } from "../../guild-activities/offerings/
 export const RAFFLE_GUILD_ACTIVITY_OFFERING_ID = "raffle";
 export const RAFFLE_GUILD_ACTIVITY_OFFERING_TITLE = "Raffle";
 export const RAFFLE_GUILD_ACTIVITY_OFFERING_TAGLINE = "Take your shot at the pot.";
-export const RAFFLE_GUILD_ACTIVITY_OFFERING_DESTINATION = "/events/raffle";
+export const RAFFLE_GUILD_ACTIVITY_OFFERING_DESTINATION = "/activities/raffle";
 export const RAFFLE_GUILD_ACTIVITY_OFFERING_ARTWORK = "images/raffle/gold-sack.png";
 
 export function registerRaffleGuildActivityOffering(): void {
