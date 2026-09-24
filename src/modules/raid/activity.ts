@@ -1,7 +1,7 @@
 import {
-  registerActivityTemporalIntegration,
+  registerActivity,
   type ActivityTemporalProjection,
-} from "../../core/activity/temporal.js";
+} from "../../core/activity/registry.js";
 import { raidEventFactsIncludingCancelled } from "./application.js";
 
 const RAID_TEMPORAL_EMISSION_CODES = [
@@ -22,9 +22,11 @@ async function raidTemporalProjection(raidId: string): Promise<ActivityTemporalP
 }
 
 export function registerRaidActivityIntegration(): void {
-  registerActivityTemporalIntegration({
-    activityKind: "raid",
-    emissionCodes: RAID_TEMPORAL_EMISSION_CODES,
-    temporalProjection: raidTemporalProjection,
+  registerActivity({
+    kind: "raid",
+    temporal: {
+      emissionCodes: RAID_TEMPORAL_EMISSION_CODES,
+      projection: raidTemporalProjection,
+    },
   });
 }
