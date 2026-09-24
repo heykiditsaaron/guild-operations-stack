@@ -1,62 +1,17 @@
 import type { FastifyInstance } from "fastify";
-import { guildState } from "../../core/guild/guild-state.js";
-import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
-import {
-  calendarViewForGuildie,
-  isCalendarViewMode,
-  setCalendarViewForGuildie,
-  type CalendarViewMode,
-} from "../../core/calendar/preference.js";
-import {
-  RAID_ASSIGN_CAPABILITY,
-  RAID_MODIFY_CAPABILITY,
-  RAID_STAGE_CAPABILITY,
-  RAFFLE_CLAIMS_CAPABILITY,
-  RAFFLE_DRAW_CAPABILITY,
-  RAFFLE_MODIFY_CAPABILITY,
-  RAFFLE_STAGE_CAPABILITY,
-  guildieHasGuildCapability,
-  guildieHasGuildCapabilityOrOperator,
-} from "../../core/authority/guild-permissions.js";
-import {
-  discoverableGuildCalendarPoints,
-  type GuildCalendarOccursAt,
-  type GuildCalendarPoint,
-} from "../../core/calendar/registry.js";
-import {
-  guildActivityOfferings,
-  type GuildActivityOffering,
-} from "../../guild-activities/offerings/registry.js";
-import {
-  packagedCapabilityForPath,
-  packagedCapabilityStates,
-  type PackagedCapabilityState,
-} from "../../packaged-capability-lifecycle.js";
-import { raffleCalendarProjection } from "../../modules/raffle/application.js";
-import { raidCalendarProjection } from "../../modules/raid/application.js";
-import { assetUrl, type AssetName, type AssetRegistry } from "../assets.js";
+import { activityPresentation, type ActivityPresentation } from "../../core/activity/registry.js";
+import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
 
-type CalendarProjection = {
-  title: string;
-  description: string | null;
-  category: string;
-  publicAction: { label: string; href: string };
-  participationAction: { label: string; href: string } | null;
-  operationAction: { label: string; href: string };
-};
-
-type CalendarOccurrence = {
+type CalendarProjection = ActivityPresentation;\n\ntype CalendarOccurrence = {
   point: GuildCalendarPoint;
   projection: CalendarProjection;
   occursAt: GuildCalendarOccursAt;
 };
 
 async function projectionForPoint(point: GuildCalendarPoint): Promise<CalendarProjection | null> {
-  if (point.sourceKind === "raid") return raidCalendarProjection(point.sourceSubject);
-  if (point.sourceKind === "raffle") return raffleCalendarProjection(point.sourceSubject);
-  return null;
+  return activityPresentation(point.sourceKind, point.sourceSubject);
 }
 
 async function calendarOccurrences(points: readonly GuildCalendarPoint[]): Promise<CalendarOccurrence[]> {
@@ -94,59 +49,6 @@ function isHappeningNow(occurrence: GuildCalendarOccursAt, nowUnix: number): boo
   const [start, end] = occurrence;
   if (end === undefined) return start === nowUnix;
   return start <= nowUnix && nowUnix <= end;
-}
-
-function offeringAvailable(
-  destination: string,
-  modules: Map<string, PackagedCapabilityState>,
-): boolean {
-  const moduleKey = packagedCapabilityForPath(destination);
-  return moduleKey === null || modules.get(moduleKey)?.enabled !== false;
-}
-
-function offeringArtworkUrl(offering: GuildActivityOffering, assets: AssetRegistry): string | null {
-  if (!offering.artwork) return null;
-  if (offering.artwork.kind === "url") return offering.artwork.url;
-  return assetUrl(assets, offering.artwork.asset as AssetName);
-}
-
-function renderOffering(offering: GuildActivityOffering, assets: AssetRegistry): string {
-  const title = htmlText(offering.title);
-  const tagline = htmlText(offering.tagline);
-  const destination = htmlText(offering.destination);
-  const artwork = offeringArtworkUrl(offering, assets);
-  const artworkMarkup = artwork
-    ? `<img class="events-offering-art" src="${htmlText(artwork)}" alt="" aria-hidden="true">`
-    : "";
-  const artworkClass = artwork ? " events-offering-with-art" : "";
-
-  return `
-    <a class="events-offering${artworkClass}" href="${destination}" aria-label="Check out ${title}">
-      <div class="events-offering-main">
-        ${artworkMarkup}
-        <div class="events-offering-copy">
-          <p class="events-offering-kicker">Guild activity</p>
-          <h2>${title}</h2>
-          <p class="events-offering-tagline">${tagline}</p>
-        </div>
-      </div>
-      <span class="events-offering-action">
-        <span>Check it out</span>
-        <span class="events-offering-arrow" aria-hidden="true">→</span>
-      </span>
-    </a>`;
-}
-
-function renderOfferings(offerings: readonly GuildActivityOffering[], assets: AssetRegistry): string {
-  if (!offerings.length) return "";
-
-  return `
-    <section class="events-offerings" aria-labelledby="events-offerings-title">
-      <h2 class="eyebrow events-section-title" id="events-offerings-title">More ways to participate</h2>
-      <div class="events-offering-grid">
-        ${offerings.map((offering) => renderOffering(offering, assets)).join("\n")}
-      </div>
-    </section>`;
 }
 
 function renderEventItem(item: CalendarOccurrence, canOperate: boolean): string {
@@ -270,57 +172,20 @@ export async function registerCalendarPage(app: FastifyInstance, assets: AssetRe
   app.get("/calendar", async (request, reply) => {
     const nowUnix = Math.floor(Date.now() / 1000);
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, guildie, calendarPoints, guild, moduleStates] = await Promise.all([
+    const [viewer, guildie, calendarPoints, guild] = await Promise.all([
       viewerForRequest(sessionToken),
       authenticatedGuildie(sessionToken),
       discoverableGuildCalendarPoints(),
       guildState(),
-      packagedCapabilityStates(),
     ]);
     const selectedView = guildie ? await calendarViewForGuildie(guildie.guildieId) : "agenda";
-    const [canCreateRaid, canCreateRaffle, canOperateRaid, canOperateRaffle] = guildie
-      ? await Promise.all([
-          guildieHasGuildCapability(guildie.guildieId, RAID_MODIFY_CAPABILITY),
-          guildieHasGuildCapability(guildie.guildieId, RAFFLE_MODIFY_CAPABILITY),
-          Promise.all([
-            RAID_MODIFY_CAPABILITY,
-            RAID_STAGE_CAPABILITY,
-            RAID_ASSIGN_CAPABILITY,
-          ].map((capability) => guildieHasGuildCapabilityOrOperator(guildie.guildieId, capability))).then((values) => values.some(Boolean)),
-          Promise.all([
-            RAFFLE_MODIFY_CAPABILITY,
-            RAFFLE_STAGE_CAPABILITY,
-            RAFFLE_CLAIMS_CAPABILITY,
-            RAFFLE_DRAW_CAPABILITY,
-          ].map((capability) => guildieHasGuildCapabilityOrOperator(guildie.guildieId, capability))).then((values) => values.some(Boolean)),
-        ])
-      : [false, false, false, false];
-    const moduleStateByKey = new Map(moduleStates.map((module) => [module.key, module]));
-    const offerings = guildActivityOfferings().filter((offering) => offeringAvailable(offering.destination, moduleStateByKey));
-    const raidEnabled = moduleStateByKey.get("raid")?.enabled !== false;
-    const raffleEnabled = moduleStateByKey.get("raffle")?.enabled !== false;
-    const createChoices = [
-      raidEnabled && canCreateRaid
-        ? `<a href="/events/raid/manage"><strong>Raid</strong><span>Schedule a guild raid</span></a>`
-        : "",
-      raffleEnabled && canCreateRaffle
-        ? `<a href="/events/raffle/manage"><strong>Raffle</strong><span>Establish a guild raffle</span></a>`
-        : "",
-    ].filter(Boolean).join("");
-    const createEvent = createChoices
-      ? `<details class="events-create"><summary class="button button-primary">Create New Event</summary><div class="events-create-menu" role="menu">${createChoices}</div></details>`
-      : "";
+    const createEvent = "";
 
     const occurrences = await calendarOccurrences(calendarPoints);
     const relevant = occurrences.filter((event) => occursThrough(event.occursAt) >= nowUnix);
     const happeningNow = relevant.filter((event) => isHappeningNow(event.occursAt, nowUnix));
     const upcoming = relevant.filter((event) => !isHappeningNow(event.occursAt, nowUnix));
-    const canOperateOccurrence = (event: CalendarOccurrence): boolean =>
-      event.point.sourceKind === "raid"
-        ? canOperateRaid
-        : event.point.sourceKind === "raffle"
-          ? canOperateRaffle
-          : false;
+    const canOperateOccurrence = (_event: CalendarOccurrence): boolean => false;
     const guildCommunity = guild ? `${htmlText(guild.name)}&apos;s community` : "the guild&apos;s community";
     const body = `
       <div class="events-shell">
