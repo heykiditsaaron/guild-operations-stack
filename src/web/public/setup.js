@@ -47,3 +47,18 @@ document.querySelector("form[data-setup-signout]")?.addEventListener("submit", a
     if (button) button.disabled = false;
   }
 });
+
+
+document.querySelectorAll("[data-copy-value]").forEach((button) => button.addEventListener("click", async () => {
+  const value = button.dataset.copyValue;
+  if (!value) return;
+  try {
+    await navigator.clipboard.writeText(value);
+    const previousLabel = button.textContent;
+    button.textContent = "Copied";
+    window.setTimeout(() => { button.textContent = previousLabel; }, 1500);
+  } catch {
+    const status = document.querySelector("[data-setup-status]");
+    if (status) status.textContent = "Copy failed. Select the value and copy it manually.";
+  }
+}));
