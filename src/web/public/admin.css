@@ -496,3 +496,55 @@
 .theme-settings-feedback {
   min-height: 1.15rem;
 }
+
+.admin-orientation {
+  max-width: 54rem;
+  margin: 0 0 2rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(232, 201, 134, 0.24);
+  border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.admin-orientation-copy h2,
+.admin-orientation-copy p,
+.admin-orientation-feedback {
+  margin: 0;
+}
+
+.admin-orientation-copy h2 {
+  font-size: 1rem;
+}
+
+.admin-orientation-copy p {
+  margin-top: 0.35rem;
+  color: var(--theme-text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.admin-orientation-acknowledgement {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+  margin-top: 0.9rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.admin-orientation-acknowledgement input {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--theme-accent);
+}
+
+.admin-orientation-acknowledgement input:disabled + span {
+  color: var(--theme-text-muted);
+}
+
+.admin-orientation-feedback {
+  min-height: 1.15rem;
+  margin-top: 0.45rem;
+  color: var(--theme-text-muted);
+  font-size: 0.82rem;
+}
