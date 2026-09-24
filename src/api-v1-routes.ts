@@ -4,7 +4,8 @@ import { effectiveGuildAuthority } from "./core/authority/guild-permissions.js";
 import { mainCharacterForGuildie } from "./core/identity/main-character.js";
 import { guildieExists } from "./core/identity/guildie.js";
 import { guildCharactersForGuildie } from "./core/guild/guild-characters.js";
-import { config, parseRegion } from "./config.js";
+import { requireOperationalInstallationGuildBinding } from "./core/installation/guild-binding.js";
+import { parseRegion } from "./config.js";
 
 function readAuthorized(request: FastifyRequest): boolean {
   const configured = process.env.API_READ_KEY;
@@ -76,7 +77,8 @@ export async function registerApiV1Routes(app: FastifyInstance): Promise<void> {
       }
       const region = parseRegion(params.region);
       if (!region) return reply.code(400).send({ error: "invalid_character_coordinate" });
-      if (params.guildId !== config.guild.id) return reply.code(404).send({ error: "guild_not_found" });
+      const installationGuild = await requireOperationalInstallationGuildBinding();
+      if (params.guildId !== installationGuild.guildId) return reply.code(404).send({ error: "guild_not_found" });
 
       const membership = await characterMembership({
         guildId: params.guildId,
