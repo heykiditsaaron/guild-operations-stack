@@ -1,6 +1,6 @@
 import type { PoolClient } from "pg";
-import { acquireGuildAuthority, type BlizzardGuildProfile, type BlizzardGuildRoster } from "../../blizzard.js";
-import { config, type Region } from "../../config.js";
+import { acquireGuildAuthorityByReference, type BlizzardGuildProfile, type BlizzardGuildRoster } from "../../blizzard.js";
+import type { Region } from "../../config.js";
 import { pool, withTransaction } from "../../db.js";
 import { deliverEmission, publishEmission } from "../../emissions/registry.js";
 import {
@@ -9,6 +9,7 @@ import {
   OPERATIONS_INSPECT_CAPABILITY,
 } from "../authority/guild-permissions.js";
 import { publishGuildRefreshObservation } from "./guild-refresh-observers.js";
+import { requireOperationalInstallationGuildBinding } from "../installation/guild-binding.js";
 import {
   enrichGuildCharacters,
   guildCharactersNeedingEnrichment,
@@ -223,14 +224,26 @@ export type GuildRefreshResult = {
 };
 
 export async function refreshGuildAuthority(): Promise<GuildRefreshResult> {
-  const authority = await acquireGuildAuthority(config.guild);
-  if (String(authority.profile.id) !== config.guild.id) throw new Error(`Configured guild locator resolved unexpected Blizzard guild id ${String(authority.profile.id)}`);
-  if (String(authority.roster.guild.id) !== config.guild.id) throw new Error("Blizzard guild roster does not corroborate the configured guild id");
+  const binding = await requireOperationalInstallationGuildBinding();
+  const guildResult = await pool.query<{ region: Region; blizzard_reference_href: string | null }>(
+    "SELECT region, blizzard_reference_href FROM guilds WHERE guild_id = $1",
+    [binding.guildId],
+  );
+  const guild = guildResult.rows[0];
+  if (!guild) throw new Error("Bound guild is not persisted");
+  if (!guild.blizzard_reference_href) throw new Error("Bound guild does not have a persisted Blizzard reference");
+
+  const authority = await acquireGuildAuthorityByReference({
+    region: guild.region,
+    referenceHref: guild.blizzard_reference_href,
+  });
+  if (String(authority.profile.id) !== binding.guildId) throw new Error(`Persisted guild locator resolved unexpected Blizzard guild id ${String(authority.profile.id)}`);
+  if (String(authority.roster.guild.id) !== binding.guildId) throw new Error("Blizzard guild roster does not corroborate the bound guild id");
 
   const persisted = await withTransaction(async (client) => {
-    const guildId = await persistGuild(client, config.guild.region, authority.profile);
+    const guildId = await persistGuild(client, guild.region, authority.profile);
     const beforeGuildies = await guildieRosterState(client, guildId);
-    const roster = await persistRoster(client, guildId, config.guild.region, authority.roster);
+    const roster = await persistRoster(client, guildId, guild.region, authority.roster);
     const afterGuildies = await guildieRosterState(client, guildId);
     const guildieTransitions = guildieRosterTransitions(beforeGuildies, afterGuildies);
     const publications = [];
