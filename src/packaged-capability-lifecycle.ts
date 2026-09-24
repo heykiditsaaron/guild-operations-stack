@@ -104,8 +104,8 @@ export async function setPackagedCapabilityEnabled(
 }
 
 export function packagedCapabilityForPath(pathname: string): PackagedCapabilityKey | null {
-  if (pathname === "/events/raffle" || pathname.startsWith("/events/raffle/")) return "raffle";
-  if (pathname === "/events/raid" || pathname.startsWith("/events/raid/")) return "raid";
+  if (pathname === "/activities/raffle" || pathname.startsWith("/activities/raffle/")) return "raffle";
+  if (pathname === "/activities/raid" || pathname.startsWith("/activities/raid/")) return "raid";
   if (pathname === "/me/discord" || pathname.startsWith("/me/discord/") || pathname.startsWith("/auth/discord/")) return "discord";
   return null;
 }
