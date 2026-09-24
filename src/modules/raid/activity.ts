@@ -28,11 +28,11 @@ export function registerRaidActivityIntegration(): void {
     discovery: {
       title: "Raid",
       tagline: "Organized guild raiding and roster participation.",
-      destination: "/events/raid",
+      destination: "/activities/raid",
     },
     participation: {
       destination(reference) {
-        return `/events/raid/${encodeURIComponent(reference.activityId)}`;
+        return `/activities/raid/${encodeURIComponent(reference.activityId)}`;
       },
       async forGuildie(guildieId) {
         const references = await raidParticipationReferencesForGuildie(guildieId);
