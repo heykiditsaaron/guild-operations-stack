@@ -21,7 +21,7 @@ export async function registerSetupPage(app: FastifyInstance, assets: AssetRegis
     if (!guildie) {
       return reply.type("text/html; charset=utf-8").send(document(
         assets,
-        '<p>Connect your Blizzard account to identify the guild this installation will serve.</p><p><a href="/auth/blizzard/start?return_to=%2Fsetup">Continue with Blizzard</a></p>',
+        '<p>Connect your Blizzard account to identify the guild this installation will serve.</p><p><a class="button-primary setup-action" href="/auth/blizzard/start?return_to=%2Fsetup">Continue with Blizzard</a></p>',
       ));
     }
 
@@ -31,7 +31,7 @@ export async function registerSetupPage(app: FastifyInstance, assets: AssetRegis
         <form method="post" data-setup-guild>
           <input type="hidden" name="region" value="${escapeHtml(candidate.region)}">
           <input type="hidden" name="guild_id" value="${escapeHtml(candidate.guildId)}">
-          <button type="submit">${escapeHtml(candidate.name)} — ${escapeHtml(candidate.realmName ?? candidate.realmSlug)}</button>
+          <button class="button-primary setup-action" type="submit">${escapeHtml(candidate.name)} — ${escapeHtml(candidate.realmName ?? candidate.realmSlug)}</button>
         </form>`).join("");
       return reply.type("text/html; charset=utf-8").send(document(
         assets,
@@ -41,7 +41,7 @@ export async function registerSetupPage(app: FastifyInstance, assets: AssetRegis
 
     return reply.type("text/html; charset=utf-8").send(document(
       assets,
-      '<p>The guild has been identified. A current Guild Master must authorize this installation before it can operate.</p><form method="post" data-setup-authorize><button type="submit">Authorize Guild Operations</button></form><p class="setup-status" data-setup-status aria-live="polite"></p>',
+      '<p>The guild has been identified. A current Guild Master must authorize this installation before it can operate.</p><form method="post" data-setup-authorize><button class="button-primary setup-action" type="submit">Authorize Guild Operations</button></form><p class="setup-status" data-setup-status aria-live="polite"></p>',
     ));
   });
 }
