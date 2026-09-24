@@ -37,7 +37,7 @@ function eligibilityLabel(value: RaidEligibility): string {
 }
 
 export async function registerRaidDefinitionPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
-  app.get<{ Params: RaidParams }>("/events/raid/manage/:raidId/definition", async (request, reply) => {
+  app.get<{ Params: RaidParams }>("/activities/raid/manage/:raidId/definition", async (request, reply) => {
     const token = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie, raid] = await Promise.all([
       viewerForRequest(token),
@@ -88,14 +88,14 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
       viewer,
       stylesheets: ["admin.css", "raid-admin.css"],
       scripts: ["admin.js", "raid-definition.js"],
-      secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Events", href: "/events" }, { label: "Raid operations", href: "/events/raid/manage" }, { label: raid.label }] },
+      secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Events", href: "/events" }, { label: "Raid operations", href: "/activities/raid/manage" }, { label: raid.label }] },
       header: "",
       body: renderOccurrenceOperations({ title: raid.label, context: `<time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${htmlText(difficultyLabel(raid.difficulty))}${historical ? " · Historical" : ""}`, publicAction: publicDestination ? { label: publicDestination.label, href: publicDestination.href } : undefined, modes: [{ label: "Assign", href: basePath }, { label: "Edit", href: `${basePath}/definition`, current: true }], lifecycleActions, workspace: `<section class="raid-admin-setup">${edit}<p data-raid-definition-status role="status" aria-live="polite"></p></section>` }),
     });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
 
-  app.post<{ Params: RaidParams; Body: DefinitionBody }>("/events/raid/manage/:raidId/definition", async (request, reply) => {
+  app.post<{ Params: RaidParams; Body: DefinitionBody }>("/activities/raid/manage/:raidId/definition", async (request, reply) => {
     const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
     if (!guildie) return reply.code(401).send({ error: "Authentication required" });
     const body = request.body ?? {};
@@ -109,7 +109,7 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
     }
   });
 
-  app.post<{ Params: RaidParams }>("/events/raid/manage/:raidId/cancel", async (request, reply) => {
+  app.post<{ Params: RaidParams }>("/activities/raid/manage/:raidId/cancel", async (request, reply) => {
     const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
     if (!guildie) return reply.code(401).send({ error: "Authentication required" });
     try {
