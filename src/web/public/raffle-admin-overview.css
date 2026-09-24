@@ -65,13 +65,13 @@
   flex: none;
 }
 
-.raffle-admin-overview .raffle-management-controls > a[href^="/events/raffle/manage/"],
+.raffle-admin-overview .raffle-management-controls > a[href^="/activities/raffle/"],
 .raffle-admin-overview .raffle-management-controls > button[data-draw-raffle],
 .raffle-admin-overview .raffle-management-controls > button[data-cancel-raffle] {
   font-size: 0;
 }
 
-.raffle-admin-overview .raffle-management-controls > a[href^="/events/raffle/manage/"]::after {
+.raffle-admin-overview .raffle-management-controls > a[href^="/activities/raffle/"]::after {
   content: "Manage";
   font-size: 0.88rem;
 }
