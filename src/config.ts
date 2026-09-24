@@ -29,6 +29,7 @@ if (
   throw new Error("APP_ORIGIN must contain only scheme, host, and optional port");
 }
 const appOrigin = appOriginUrl.origin;
+const development = process.env.GUILD_OPERATIONS_DEVELOPMENT === "true";
 
 export const supportedRegions = new Set<Region>(["us", "eu", "kr", "tw"]);
 
@@ -38,7 +39,6 @@ export function parseRegion(value: unknown): Region | null {
   return supportedRegions.has(region) ? region : null;
 }
 
-
 export const config = {
   port,
   appOrigin,
@@ -47,5 +47,5 @@ export const config = {
   sessionCookieSecure: appOriginUrl.protocol === "https:",
   authAttemptTtlMinutes: 10,
   sessionTtlDays: 30,
-  operatorGuildieId: optional("OPERATOR_GUILDIE_ID"),
+  developmentAuthorityGuildieId: development ? optional("DEVELOPMENT_AUTHORITY_GUILDIE_ID") : null,
 } as const;
