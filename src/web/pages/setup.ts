@@ -34,12 +34,12 @@ export async function registerSetupPage(
           <button type="submit">${escapeHtml(candidate.name)} — ${escapeHtml(candidate.realmName ?? candidate.realmSlug)}</button>
         </form>`).join("");
       return reply.type("text/html; charset=utf-8").send(document(assets, 
-        `<p>Select the guild this installation will serve.</p>${choices || "<p>No current guilds were found for your controlled characters.</p>"}`,
+        `<p>Select the guild this installation will serve.</p>${choices || "<p>No current guilds were found for your controlled characters.</p>"}<p class="setup-status" data-setup-status aria-live="polite"></p>`,
       ));
     }
 
     return reply.type("text/html; charset=utf-8").send(document(assets, 
-      '<p>The guild has been identified. A current Guild Master must authorize this installation before it can operate.</p><form method="post" data-setup-authorize><button type="submit">Authorize Guild Operations</button></form>',
+      '<p>The guild has been identified. A current Guild Master must authorize this installation before it can operate.</p><form method="post" data-setup-authorize><button type="submit">Authorize Guild Operations</button></form><p class="setup-status" data-setup-status aria-live="polite"></p>',
     ));
   });
 
