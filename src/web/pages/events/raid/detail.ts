@@ -163,7 +163,7 @@ async function renderRaidOrganizer(request: FastifyRequest<{ Params: RaidParams 
     });
     return reply.code(guildie ? 403 : 401).header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   }
-  if (!canAssign && (canModify || canStage)) return reply.redirect(`/activities/raid/manage/${encodeURIComponent(request.params.raidId)}/definition`);
+  if (!canAssign && (canModify || canStage)) return reply.redirect(`/activities/raid/${encodeURIComponent(request.params.raidId)}/manage/definition`);
 
   const raid = await raidEventFacts(request.params.raidId);
   if (!raid) return reply.code(404).send({ error: "Raid not found" });
@@ -229,7 +229,7 @@ async function unassignParticipant(request: FastifyRequest<{ Params: RaidParams;
 }
 
 export async function registerRaidOperationDetailPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
-  app.get<{ Params: RaidParams }>("/activities/raid/manage/:raidId", async (request, reply) => renderRaidOrganizer(request, reply, assets));
-  app.post<{ Params: RaidParams; Body: AssignBody }>("/activities/raid/manage/:raidId/assign", assignParticipant);
-  app.post<{ Params: RaidParams; Body: UnassignBody }>("/activities/raid/manage/:raidId/unassign", unassignParticipant);
+  app.get<{ Params: RaidParams }>("/activities/raid/:raidId/manage", async (request, reply) => renderRaidOrganizer(request, reply, assets));
+  app.post<{ Params: RaidParams; Body: AssignBody }>("/activities/raid/:raidId/manage/assign", assignParticipant);
+  app.post<{ Params: RaidParams; Body: UnassignBody }>("/activities/raid/:raidId/manage/unassign", unassignParticipant);
 }
