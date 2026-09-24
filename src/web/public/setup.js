@@ -47,22 +47,3 @@ document.querySelector("form[data-setup-signout]")?.addEventListener("submit", a
     if (button) button.disabled = false;
   }
 });
-
-document.querySelector("form[data-setup-signout]")?.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const button = form.querySelector("button[type=submit]");
-  if (button) button.disabled = true;
-  try {
-    const response = await fetch("/auth/logout", {
-      method: "POST",
-      headers: { "accept": "application/json" },
-    });
-    if (!response.ok) throw new Error("Sign out failed");
-    window.location.assign("/setup");
-  } catch {
-    const status = document.querySelector("[data-setup-status]");
-    if (status) status.textContent = "Sign out could not be completed. Please try again.";
-    if (button) button.disabled = false;
-  }
-});
