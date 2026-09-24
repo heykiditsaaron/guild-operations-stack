@@ -1,4 +1,4 @@
-import { config } from "../../config.js";
+import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import { effectiveGuildAuthority } from "../../core/authority/guild-permissions.js";
 import { publishOperationalRecord } from "../../operational-inspection.js";
 import { discordAssociatedGuildieIds } from "./association.js";
@@ -458,12 +458,13 @@ export async function reconcileGuildiesBestEffort(
 ): Promise<void> {
   const associated = await discordAssociatedGuildieIds();
   const result = await reconcileGuildieSet([...guildieIds, ...associated], context);
+  const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
   for (const failure of result.failures) {
     console.error("Discord role reconciliation failed", {
       guildieId: failure.guildieId,
       stage: failure.stage,
       error: failure.error,
-      guildId: config.guild.id,
+      guildId,
     });
   }
 }
