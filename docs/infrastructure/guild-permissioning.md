@@ -44,20 +44,19 @@ Global permission policy machinery owns reading and replacing those rank arrays.
 
 ## Permission administration root authority
 
-Permission administration is deliberately not another configurable capability. It has two roots:
-
-- current Blizzard Guild Master rank `0` may administer capability-to-rank policy innately;
-- the configured deployment operator may administer it through the separate operator authority seam.
+Permission administration is deliberately not another configurable capability. In supported customer topology, current Blizzard Guild Master rank `0` may administer capability-to-rank policy innately.
 
 No editable capability grant can remove rank 0's ability to administer permission policy or manufacture that root authority for another rank.
 
-## Operator authority
+## Development authority override
 
-Guild Operations has a deliberately separate operator authority seam for deployment ownership. The configured operator is identified by the durable Guildie coordinate supplied as `OPERATOR_GUILDIE_ID`.
+Development topology may designate one Guildie through `DEVELOPMENT_AUTHORITY_GUILDIE_ID`. The development Compose topology explicitly enables this seam; supported customer topology does not.
 
-Operator authority is not a synthetic guild rank and does not add entries to `guild_rank_capabilities`. It must not rewrite Blizzard-observed rank or membership facts. Procedures opt into operator override explicitly when deployment ownership needs to survive ordinary guild rank policy.
+The designated development Guildie satisfies the same inherent application authority checks as a current Blizzard Guild Master. This exists so development can exercise GM-authorized workflows when the developer's real guild character is not rank 0.
 
-The operator seam is not an implicit superuser capability applied to every module or operation.
+This override is application authority only. It does not synthesize a guild rank, add entries to `guild_rank_capabilities`, or rewrite Blizzard-observed membership or rank facts. Effective authority continues to report the Guildie's real Blizzard rank.
+
+Host or deployment control is not guild authority. The development override is development machinery, not a supported customer/deployer ownership mechanism. Clean-room release validation must exercise the real rank-0 Guild Master authorization path without this override.
 
 ## Administration projection
 
