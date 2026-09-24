@@ -1,4 +1,4 @@
-import { config } from "../../config.js";
+import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import { pool } from "../../db.js";
 import { getRaffle, raffleParticipationIsOpen, type Raffle, type RaffleClaim } from "./application.js";
 import type { RaffleClaimResolution } from "./domain.js";
@@ -99,7 +99,7 @@ async function raffleWinnerFacts(raffle: Raffle): Promise<RaffleWinnerFacts | nu
        LEFT JOIN guild_roster_memberships grm ON grm.guild_id=$2 AND grm.region=c.region AND grm.realm_id=c.realm_id AND grm.character_id=c.character_id
        LEFT JOIN wow_character_profiles profile ON profile.region=c.region AND profile.realm_id=c.realm_id AND profile.character_id=c.character_id
        WHERE rc.claim_id=$1`,
-    [raffle.winningClaimId,config.guild.id],
+    [raffle.winningClaimId,raffle.guildId],
   );
   const row=result.rows[0];
   if(!row) return null;
@@ -114,6 +114,7 @@ export async function raffleFacts(raffleId:string):Promise<RaffleFacts|null>{
 }
 
 export async function getRaffleClaim(claimId:string):Promise<RaffleClaimFacts|null>{
+  const guildId=(await requireOperationalInstallationGuildBinding()).guildId;
   const result=await pool.query<{
     claim_id:string;raffle_id:string;claimant_guildie_id:string;character_record_id:string;character_id:string;character_name:string;
     realm_id:string;realm_name:string|null;realm_slug:string|null;requested_entry_count:number;promised_gold_value:string;created_at_unix:string;
@@ -129,7 +130,7 @@ export async function getRaffleClaim(claimId:string):Promise<RaffleClaimFacts|nu
        JOIN characters c ON c.character_record_id=rc.character_record_id
        LEFT JOIN guild_roster_memberships grm ON grm.guild_id=r.guild_id AND grm.region=c.region AND grm.realm_id=c.realm_id AND grm.character_id=c.character_id
        WHERE rc.claim_id=$1`,
-    [claimId,config.guild.id],
+    [claimId,guildId],
   );
   const row=result.rows[0];
   if(!row) return null;
@@ -151,17 +152,19 @@ async function claimFactsForIds(ids:string[]):Promise<RaffleClaimFacts[]>{
 }
 
 export async function raffleClaimFactsForRaffle(raffleId:string):Promise<RaffleClaimFacts[]>{
+  const guildId=(await requireOperationalInstallationGuildBinding()).guildId;
   const result=await pool.query<{claim_id:string}>(
     `SELECT rc.claim_id FROM raffle_claims rc JOIN raffles r ON r.raffle_id=rc.raffle_id AND r.guild_id=$2
-       WHERE rc.raffle_id=$1 ORDER BY rc.created_at_unix ASC,rc.claim_id ASC`,[raffleId,config.guild.id]);
+       WHERE rc.raffle_id=$1 ORDER BY rc.created_at_unix ASC,rc.claim_id ASC`,[raffleId,guildId]);
   return claimFactsForIds(result.rows.map(row=>String(row.claim_id)));
 }
 
 export async function raffleClaimFactsForMember(guildieId:string,raffleId:string):Promise<RaffleClaimFacts[]>{
+  const guildId=(await requireOperationalInstallationGuildBinding()).guildId;
   const result=await pool.query<{claim_id:string}>(
     `SELECT rc.claim_id FROM raffle_claims rc JOIN raffles r ON r.raffle_id=rc.raffle_id AND r.guild_id=$3
        WHERE rc.raffle_id=$1 AND rc.claimant_guildie_id=$2 ORDER BY rc.created_at_unix DESC,rc.claim_id DESC`,
-    [raffleId,guildieId,config.guild.id]);
+    [raffleId,guildieId,guildId]);
   return claimFactsForIds(result.rows.map(row=>String(row.claim_id)));
 }
 
@@ -171,16 +174,18 @@ async function raffleFactsForIds(ids:string[]):Promise<RaffleFacts[]>{
 }
 
 export async function raffleFactsForOperation():Promise<RaffleFacts[]>{
+  const guildId=(await requireOperationalInstallationGuildBinding()).guildId;
   const result=await pool.query<{raffle_id:string}>(
     `SELECT raffle_id FROM raffles WHERE guild_id=$1 AND conclusion IS NULL
-       ORDER BY drawing_at_unix ASC,created_at_unix ASC,raffle_id ASC`,[config.guild.id]);
+       ORDER BY drawing_at_unix ASC,created_at_unix ASC,raffle_id ASC`,[guildId]);
   return raffleFactsForIds(result.rows.map(row=>String(row.raffle_id)));
 }
 
 export async function concludedRaffleFacts():Promise<RaffleFacts[]>{
+  const guildId=(await requireOperationalInstallationGuildBinding()).guildId;
   const result=await pool.query<{raffle_id:string}>(
     `SELECT raffle_id FROM raffles WHERE guild_id=$1 AND conclusion IS NOT NULL
-       ORDER BY concluded_at_unix DESC NULLS LAST,raffle_id DESC`,[config.guild.id]);
+       ORDER BY concluded_at_unix DESC NULLS LAST,raffle_id DESC`,[guildId]);
   return raffleFactsForIds(result.rows.map(row=>String(row.raffle_id)));
 }
 
