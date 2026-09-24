@@ -118,7 +118,7 @@
     if (view === "week") renderWeek();
     if (view === "month") renderMonth();
     if (persist) {
-      fetch("/events/view", {
+      fetch("/calendar/view", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ view }),
