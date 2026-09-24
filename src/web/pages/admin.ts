@@ -29,7 +29,7 @@ import {
 } from "../../packaged-capability-lifecycle.js";
 import { hasDevelopmentGuildMasterAuthority } from "../../core/authority/operator-authority.js";
 import { GUILD_THEMES, guildTheme, isGuildThemeKey, setGuildTheme, type GuildThemeKey } from "../../core/presentation/guild-theme.js";
-import { guildPresentation, parseGuildPresentationUrl, setGuildPresentationDestinations, type GuildPresentation } from "../../core/presentation/guild-presentation.js";
+import { guildPresentation, parseGuildPresentationUrl, setGuildPresentationDestinations, setGuildSettingsLocationAcknowledged, type GuildPresentation } from "../../core/presentation/guild-presentation.js";
 import { administrationAvailabilityForGuildie } from "../administration.js";
 import type { AssetRegistry } from "../assets.js";
 import { renderPage } from "../render.js";
@@ -74,6 +74,12 @@ function renderThemeSettings(theme: GuildThemeKey): string {
 
 function renderGuildPresentationSettings(presentation: GuildPresentation): string {
   return `<form class="settings-panel guild-presentation-settings" data-guild-presentation-form><div><h3>Guild links</h3><p>Optional third-party destinations presented for this guild. Blizzard identity and the WoW Armory destination are derived from observed guild truth.</p></div><div class="theme-settings-controls"><label><span>Raider.IO URL</span><input type="url" value="${htmlText(presentation.raiderIoUrl ?? "")}" placeholder="https://" data-raider-io-url></label><label><span>Warcraft Logs URL</span><input type="url" value="${htmlText(presentation.warcraftLogsUrl ?? "")}" placeholder="https://" data-warcraft-logs-url></label><button type="submit" class="button-primary" data-guild-presentation-save>Save</button></div><p class="theme-settings-feedback" data-guild-presentation-feedback role="status" aria-live="polite"></p></form>`;
+}
+
+function renderAdministrationOrientation(presentation: GuildPresentation, canConfigure: boolean): string {
+  const checked = presentation.guildSettingsLocationAcknowledged ? " checked" : "";
+  const disabled = canConfigure ? "" : " disabled";
+  return `<section class="admin-orientation" aria-labelledby="admin-orientation-heading"><div class="admin-orientation-copy"><h2 id="admin-orientation-heading">Guild administration</h2><p>You are in your guild's administrative area. What you can view or change here depends on your permissions.</p></div><label class="admin-orientation-acknowledgement"><input type="checkbox" data-guild-settings-location-acknowledged${checked}${disabled}><span>I know where to find Guild Settings</span></label><p class="admin-orientation-feedback" data-guild-settings-orientation-feedback role="status" aria-live="polite"></p></section>`;
 }
 
 function rankSummary(policy: GuildCapabilityPolicySet["capabilities"][number], ranks: GuildCapabilityPolicySet["ranks"]): string {
@@ -125,7 +131,8 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     const presentationSettings = administrationSection("guild-presentation", "guild-presentation-heading", "Guild presentation", canConfigureGuildPresentation ? renderGuildPresentationSettings(presentation) : renderGuildPresentationSettings(presentation).replaceAll("<input ", "<input disabled ").replaceAll("<button type=\"submit\"", "<button disabled type=\"submit\""));
     const schedule = canConfigureGuildRefreshSchedule ? renderGuildRefreshSchedule(refreshSchedule) : renderGuildRefreshSchedule(refreshSchedule).replaceAll("<input ", "<input disabled ").replaceAll("<button type=\"submit\"", "<button disabled type=\"submit\"");
     const guildSettings = administrationSection("guild-settings", "guild-settings-heading", "Guild synchronization", `${schedule}${renderGuildRefreshOperation(refreshStatus, canRefresh)}`);
-    const content = `<div class="admin-sections">${themeSettings}${presentationSettings}${guildSettings}</div>`;
+    const orientation = renderAdministrationOrientation(presentation, canConfigureGuildPresentation);
+    const content = `${orientation}<div class="admin-sections">${themeSettings}${presentationSettings}${guildSettings}</div>`;
 
     const html = renderPage(assets, { pathname: "/admin/general", title: `General Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Inspect and configure Guild Operations.", viewer, stylesheets: ["admin.css"], scripts: ["admin.js", "operations.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Inspect and manage Guild Operations according to your authority.</p></div>`, body: `${content}` });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
@@ -166,6 +173,15 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     const body = (request.body ?? {}) as { theme?: unknown };
     if (typeof body.theme !== "string" || !isGuildThemeKey(body.theme)) return reply.code(400).send({ error: "unknown_theme" });
     return reply.send({ theme: await setGuildTheme(body.theme) });
+  });
+
+  app.put("/admin/general/orientation", async (request, reply) => {
+    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
+    if (!guildie) return reply.code(401).send({ error: "authentication_required" });
+    if (!await guildieHasGuildCapability(guildie.guildieId, GUILD_PRESENTATION_CONFIGURE_CAPABILITY)) return reply.code(403).send({ error: "guild_presentation_configuration_not_authorized" });
+    const body = (request.body ?? {}) as { acknowledged?: unknown };
+    if (typeof body.acknowledged !== "boolean") return reply.code(400).send({ error: "acknowledged_must_be_boolean" });
+    return reply.send({ acknowledged: await setGuildSettingsLocationAcknowledged(body.acknowledged) });
   });
 
   app.put("/admin/general/presentation", async (request, reply) => {
