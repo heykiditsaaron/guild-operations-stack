@@ -64,6 +64,18 @@ async function row(guildId: string): Promise<{
   return result.rows[0] ?? null;
 }
 
+export async function discordEncryptedSecretsExist(): Promise<boolean> {
+  const result = await pool.query<{ exists: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1
+         FROM discord_module_settings
+        WHERE client_secret_ciphertext IS NOT NULL
+           OR bot_token_ciphertext IS NOT NULL
+     ) AS exists`,
+  );
+  return result.rows[0]?.exists ?? false;
+}
+
 export async function discordPluginConfiguration(
   guildId?: string,
 ): Promise<DiscordPluginConfiguration> {
