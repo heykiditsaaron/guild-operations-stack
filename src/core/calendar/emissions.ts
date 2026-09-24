@@ -3,7 +3,7 @@ import { registerEmissionConsumer } from "../../emissions/registry.js";
 import {
   activityTemporalEmissionCodes,
   activityTemporalProjectionForEmission,
-} from "../activity/temporal.js";
+} from "../activity/registry.js";
 import { establishGuildCalendarPoint, withdrawGuildCalendarPoint } from "./registry.js";
 
 async function consumeCalendarEmission(emission: Emission): Promise<void> {
