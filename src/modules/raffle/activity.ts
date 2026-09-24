@@ -3,7 +3,7 @@ import {
   type ActivityTemporalProjection,
 } from "../../core/activity/registry.js";
 import { getRaffle } from "./application.js";
-import { pool } from "../../db.js";
+import { raffleParticipationReferencesForGuildie } from "./queries.js";
 
 const RAFFLE_TEMPORAL_EMISSION_CODES = [
   "raffle.established",
@@ -28,17 +28,11 @@ export function registerRaffleActivityIntegration(): void {
     kind: "raffle",
     participation: {
       async forGuildie(guildieId) {
-        const result = await pool.query<{ raffle_id: string; claim_id: string }>(
-          `SELECT raffle_id, claim_id
-             FROM raffle_claims
-            WHERE claimant_guildie_id = $1
-            ORDER BY created_at_unix DESC, claim_id DESC`,
-          [guildieId],
-        );
-        return result.rows.map((row) => ({
+        const references = await raffleParticipationReferencesForGuildie(guildieId);
+        return references.map((reference) => ({
           activityKind: "raffle",
-          activityId: row.raffle_id,
-          participationId: row.claim_id,
+          activityId: reference.raffleId,
+          participationId: reference.claimId,
         }));
       },
     },
