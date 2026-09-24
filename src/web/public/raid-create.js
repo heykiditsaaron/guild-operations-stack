@@ -39,7 +39,7 @@ if (createForm instanceof HTMLFormElement) {
 
     createStatus.textContent = "Creating raid…";
     try {
-      const response = await fetch("/events/raid/manage", {
+      const response = await fetch("/activities/raid/manage", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -53,7 +53,7 @@ if (createForm instanceof HTMLFormElement) {
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? "Raid could not be created");
-      window.location.href = `/events/raid/manage/${encodeURIComponent(payload.raid.raidId)}`;
+      window.location.href = `/activities/raid/manage/${encodeURIComponent(payload.raid.raidId)}`;
     } catch (error) {
       createStatus.textContent = error instanceof Error ? error.message : "Raid could not be created.";
     }
