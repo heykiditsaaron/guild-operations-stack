@@ -2,7 +2,7 @@ import {
   registerActivity,
   type ActivityTemporalProjection,
 } from "../../core/activity/registry.js";
-import { getRaffle } from "./application.js";
+import { getRaffle, raffleCalendarProjection } from "./application.js";
 import { raffleParticipationReferencesForGuildie } from "./queries.js";
 
 const RAFFLE_TEMPORAL_EMISSION_CODES = [
@@ -47,6 +47,7 @@ export function registerRaffleActivityIntegration(): void {
     temporal: {
       emissionCodes: RAFFLE_TEMPORAL_EMISSION_CODES,
       projection: raffleTemporalProjection,
+      presentation: raffleCalendarProjection,
     },
   });
 }
