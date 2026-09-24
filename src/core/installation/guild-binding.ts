@@ -3,7 +3,7 @@ import { acquireGuildAuthorityByReference, type BlizzardGuildProfile } from "../
 import type { Region } from "../../config.js";
 import { pool, withTransaction } from "../../db.js";
 import { controlledCharactersForGuildie } from "../identity/controlled-characters.js";
-import { isConfiguredOperator } from "../authority/operator-authority.js";
+import { hasDevelopmentGuildMasterAuthority } from "../authority/operator-authority.js";
 import { discoverInstallationGuildCandidates } from "./guild-candidates.js";
 
 function localizedValue(value: unknown): string | null {
@@ -155,7 +155,7 @@ export async function authorizeInstallationGuildBinding(
   const rankIndex = rankResult.rows[0]?.rank_index;
   const authorizationKind = rankIndex === 0
     ? "guild_master"
-    : isConfiguredOperator(guildieId)
+    : hasDevelopmentGuildMasterAuthority(guildieId)
       ? "original_install_bypass"
       : null;
   if (!authorizationKind) {
