@@ -3,6 +3,7 @@ import { acquireGuildAuthorityByReference, type BlizzardGuildProfile } from "../
 import type { Region } from "../../config.js";
 import { pool, withTransaction } from "../../db.js";
 import { controlledCharactersForGuildie } from "../identity/controlled-characters.js";
+import { persistGuildRoster } from "../guild/guild-refresh.js";
 import { hasDevelopmentGuildMasterAuthority } from "../authority/operator-authority.js";
 import { discoverInstallationGuildCandidates } from "./guild-candidates.js";
 
@@ -118,6 +119,7 @@ export async function establishPendingInstallationGuildBinding(input: {
 
   await withTransaction(async (client) => {
     const guildId = await persistGuild(client, candidate.region, authority.profile, candidate.referenceHref);
+    await persistGuildRoster(client, guildId, candidate.region, authority.roster);
     await client.query(
       `INSERT INTO installation_guild_binding (singleton, guild_id, bound_by_guildie_id)
        VALUES (true, $1, $2)`,
