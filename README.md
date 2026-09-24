@@ -1,92 +1,99 @@
 # Guild Operations
 
-Guild Operations is the interactive participation and operation layer for **OH CRIT I Pulled!** outside World of Warcraft.
+Guild Operations is a self-hosted application for World of Warcraft guilds. One deployment represents one guild. Blizzard remains authoritative for account control, Characters, current guild membership, and numeric guild rank; Guild Operations owns the application facts created by the guild itself.
 
-The guild primarily exists and operates through World of Warcraft and Discord. Those are essential places where members play, communicate, and participate, but neither is well suited to being a neutral, knowledgeable place where the guild can establish its own operational truth and then express that truth appropriately across different interfaces.
+## Requirements
 
-Guild Operations fills that gap. It enables guild activities outside the game client, gives members durable ways to participate in them, provides the procedures needed to operate them, and preserves their results and history.
+A normal installation requires Docker with Docker Compose, an address through which Guild Operations can be reached, a Blizzard account that can create an application in the Blizzard Developer Portal, and a current rank-0 Guild Master who can authorize the selected guild.
 
-It is not an Armory replacement, a generic identity platform, a generic guild-management product, or an attempt to move the guild out of WoW or Discord. It exists around those places so OH CRIT I Pulled! can participate as a guild across interfaces and across time.
+PostgreSQL is packaged with Guild Operations and is not exposed on the host.
 
-A useful product test is:
+## Install
 
-> **Does this help establish authority to participate, enable guild participation, operate that participation, or preserve its history?**
+Clone the repository and start the application:
 
-If not, it probably does not belong.
+    git clone https://github.com/heykiditsaaron/guild-operations-stack.git
+    cd guild-operations-stack
+    docker compose up -d
 
-## What the application does
+The web service is published on host port 3100 by default. Browse to the address through which members will reach the application. A new installation automatically redirects the root URL to /setup.
 
-Guild Operations is built around concrete guild participation capabilities rather than around infrastructure for its own sake.
+### Optional deployment settings
 
-Current examples include the guild's Raffle and Events experiences. A member can encounter an activity through a member-facing surface while authorized guild members operate that same activity through administrative surfaces. Both are projections over the same backend-owned operational truth.
+No .env file is required for an ordinary installation. If host port 3100 is occupied, create .env in the repository root containing:
 
-This relationship is intentional:
+    HTTP_PORT=8765
 
-```text
-Guild activity
-    ↓
-Guild Operations owns its operational truth
-    ↓
-member participation + guild operation
-    ↓
-web / Discord / future WoW-facing expressions
-```
+A published image may also be pinned instead of using the default latest tag:
 
-The interfaces may express an activity differently because their mediums differ. They should not become independent owners of the same operational facts.
+    GUILD_OPERATIONS_VERSION=v0.1.0
 
-## Authority to participate
+These are deployment choices, not application configuration.
 
-Participation needs a trustworthy answer to who is acting and what guild authority they currently possess.
+## First-run setup
 
-Guild Operations therefore maintains a deliberately WoW-rooted member model:
+### 1. Configure Blizzard
 
-```text
-Guildie
-├── Blizzard account authority
-├── WoW account(s)
-│   └── Character(s)
-├── selected main
-├── optional Discord association
-└── derived Guild Operations capabilities
-```
+Guild Operations displays the exact OAuth callback URL for the address through which setup was opened. Copy that value and register it for an application in the Blizzard Developer Portal.
 
-A **Guildie** provides durable continuity for the real-world guild member. A **Character** is the durable WoW object through which that member is normally recognized in game. Blizzard authentication establishes account control, while Blizzard's current guild roster independently establishes current Character membership and numeric guild rank. Guild Operations joins those facts to determine current guild participation and authority.
+Enter the application's Client ID and Client Secret into Guild Operations. They are validated with Blizzard before persistence. The Client Secret is encrypted and does not belong in .env.
 
-A selected main is presentation preference, not identity or authorization. Discord may resolve to an existing Guildie after association, but Discord does not create the canonical member.
+### 2. Continue with Blizzard
 
-The member and authority machinery exists to make participation trustworthy. It is infrastructure supporting the guild activities, not the product destination itself.
+Authenticate with Blizzard. Guild Operations discovers guild candidates from the account's controlled Characters and current Blizzard data.
 
-## Ownership of truth
+### 3. Select the guild
 
-Authority follows the system or person that can legitimately establish the fact.
+Choose the guild represented by this deployment. Guild Operations corroborates it with Blizzard and acquires its current authoritative roster.
 
-- **Blizzard** owns facts such as authenticated account control, Characters, current WoW guild membership, and numeric guild rank.
-- **Guild Operations** owns facts and meanings established by OH CRIT I Pulled! outside WoW, including the operational state of its own participation capabilities.
-- **Guild members and officers** remain authoritative for judgments no machine can legitimately make. Software may constrain, record, enforce, and present those decisions without manufacturing the judgment itself.
+### 4. Authorize the installation
 
-The backend owns singular Guild Operations operational state. Web, Discord, and future WoW integrations are projections or interaction surfaces over that state.
+A currently controlled Character belonging to the authenticated Guildie must be a current rank-0 Guild Master of the selected guild. That Blizzard-backed authority authorizes the installation.
 
-## Building the project
+Host or deployment control is not guild authority.
 
-Guild Operations favors concrete guild capabilities over generalized foundations.
+After authorization, the installation becomes operational and the root URL opens the normal application.
 
-Build the guild activity first. Let common machinery reveal itself under pressure. Shared abstractions should be introduced only after multiple real features demonstrate that the same responsibility is genuinely shared.
+### Restart an incomplete setup
 
-The existing identity, authority, persistence, rendering, activity-discovery, and Calendar machinery should therefore be treated as infrastructure that has been earned by concrete needs, not as an invitation to generalize the application into a platform.
+Before the installation becomes operational, Restart setup is available on the setup screen. It clears the incomplete guild binding, Blizzard application configuration, established public origin, and setup authentication state, then returns to the beginning.
 
-When future expression is likely but the feature itself has not been earned, prepare an inexpensive semantic seam rather than implementing the speculative feature.
+It does not factory-reset the database or delete previously observed Guildies and Characters.
 
-> **Prepare the seam, not the speculative feature.**
+## Persistent data
 
-## Documentation
+The packaged deployment uses two Docker named volumes:
 
-Documentation is organized by reader intent. Start with [`docs/README.md`](docs/README.md) for the distinction between doctrine, infrastructure, feature, and reference material.
+| Volume | Purpose |
+| --- | --- |
+| guild-operations-db | PostgreSQL application and installation state |
+| guild-operations-installation | Installation-owned encryption material |
 
-Core doctrine currently lives in:
+Containers are disposable. Ordinary restarts, replacements, upgrades, and docker compose down leave these volumes intact.
 
-- [`docs/doctrine/architecture.md`](docs/doctrine/architecture.md) — system purpose, architectural laws, and ownership boundaries.
-- [`docs/doctrine/member-objects.md`](docs/doctrine/member-objects.md) — Guildie, Character, roster, selected-main, session, Discord, and capability meanings.
-- [`docs/doctrine/module-conformity.md`](docs/doctrine/module-conformity.md) — application-wide invariants for concrete modules.
-- [`docs/doctrine/guild-activity.md`](docs/doctrine/guild-activity.md) — semantic governance for lifecycle-bound temporal Guild Activity modules.
+Do not use docker compose down -v unless you intend to delete persistent deployment state.
 
-Shared implementation guidance lives under [`docs/infrastructure/`](docs/infrastructure/). Concrete globally owned capabilities live under [`docs/features/`](docs/features/), empirical evidence under [`docs/reference/`](docs/reference/), endpoint reference under [`docs/endpoints/`](docs/endpoints/), and module-owned documentation remains with its owning module documentation.
+### Backups
+
+A recoverable backup must preserve both the PostgreSQL data and the installation volume, including /var/lib/guild-operations/installation.key.
+
+The database contains encrypted secrets whose encryption key deliberately lives outside the database. A database backup without the matching installation key is therefore not a complete recoverable backup. Guild Operations will not silently generate a replacement key when encrypted installation secrets already exist.
+
+## Restarting
+
+A normal container restart does not require setup again:
+
+    docker compose down
+    docker compose up -d
+
+Inspect the deployment with:
+
+    docker compose ps
+
+Do not add -v during an ordinary restart or update.
+
+## Development and architecture
+
+Customer installation and development topology are intentionally different. Development-only authority facilities are not part of customer installation and must not be used to establish a real deployment.
+
+Implementation and architecture documentation begins at docs/README.md. Core doctrine lives under docs/doctrine/. Repository documentation and implementation are authoritative for development behavior.
