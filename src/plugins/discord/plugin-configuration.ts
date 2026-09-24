@@ -1,4 +1,5 @@
 import { config } from "../../config.js";
+import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import { pool } from "../../db.js";
 import { packagedCapabilityEnabled } from "../../packaged-capability-lifecycle.js";
 import { decryptSecret, encryptSecret } from "./secrets.js";
@@ -41,7 +42,7 @@ function optionalHttpUrl(value: string | null): string | null {
   return url.toString();
 }
 
-async function row(guildId: string = config.guild.id): Promise<{
+async function row(guildId: string): Promise<{
   client_id: string | null;
   client_secret_ciphertext: string | null;
   discord_guild_id: string | null;
@@ -64,14 +65,15 @@ async function row(guildId: string = config.guild.id): Promise<{
 }
 
 export async function discordPluginConfiguration(
-  guildId: string = config.guild.id,
+  guildId?: string,
 ): Promise<DiscordPluginConfiguration> {
+  const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
   const [current, enabled] = await Promise.all([
-    row(guildId),
-    packagedCapabilityEnabled("discord", guildId),
+    row(resolvedGuildId),
+    packagedCapabilityEnabled("discord", resolvedGuildId),
   ]);
   return {
-    guildId,
+    guildId: resolvedGuildId,
     enabled,
     clientId: current?.client_id ?? null,
     clientSecretConfigured: Boolean(current?.client_secret_ciphertext),
@@ -82,14 +84,15 @@ export async function discordPluginConfiguration(
 }
 
 export async function discordPluginRuntimeConfiguration(
-  guildId: string = config.guild.id,
+  guildId?: string,
 ): Promise<DiscordPluginRuntimeConfiguration> {
+  const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
   const [current, enabled] = await Promise.all([
-    row(guildId),
-    packagedCapabilityEnabled("discord", guildId),
+    row(resolvedGuildId),
+    packagedCapabilityEnabled("discord", resolvedGuildId),
   ]);
   return {
-    guildId,
+    guildId: resolvedGuildId,
     enabled,
     clientId: current?.client_id ?? null,
     clientSecretConfigured: Boolean(current?.client_secret_ciphertext),
@@ -103,9 +106,10 @@ export async function discordPluginRuntimeConfiguration(
 
 export async function updateDiscordPluginConfiguration(
   input: UpdateDiscordPluginConfigurationInput,
-  guildId: string = config.guild.id,
+  guildId?: string,
 ): Promise<DiscordPluginConfiguration> {
-  const existing = await row(guildId);
+  const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
+  const existing = await row(resolvedGuildId);
   const clientSecretCiphertext = input.clientSecret === undefined
     ? existing?.client_secret_ciphertext ?? null
     : input.clientSecret === null || !input.clientSecret.trim()
@@ -129,7 +133,7 @@ export async function updateDiscordPluginConfiguration(
        invite_url = EXCLUDED.invite_url,
        updated_at = now()`,
     [
-      guildId,
+      resolvedGuildId,
       optionalText(input.clientId),
       clientSecretCiphertext,
       optionalText(input.discordGuildId),
@@ -138,7 +142,7 @@ export async function updateDiscordPluginConfiguration(
     ],
   );
 
-  return discordPluginConfiguration(guildId);
+  return discordPluginConfiguration(resolvedGuildId);
 }
 
 export function discordOAuthRedirectUri(): string {
