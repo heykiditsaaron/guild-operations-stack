@@ -133,7 +133,7 @@ a.raffle-action {
 .raffle-overview-attention { margin: 0.8rem 0 0; color: var(--theme-text-muted); line-height: 1.5; }
 .raffle-overview-participation { margin: 0.35rem 0 0; color: var(--theme-text-muted); font-size: 0.9rem; }
 
-.raffle-overview-item-live .raffle-management-controls > a[href="/events/raffle"] {
+.raffle-overview-item-live .raffle-management-controls > a[href="/activities/raffle"] {
   flex-basis: 100%;
   width: fit-content;
   min-height: 0;
@@ -146,8 +146,8 @@ a.raffle-action {
   font-weight: 650;
 }
 
-.raffle-overview-item-live .raffle-management-controls > a[href="/events/raffle"]:hover,
-.raffle-overview-item-live .raffle-management-controls > a[href="/events/raffle"]:focus-visible {
+.raffle-overview-item-live .raffle-management-controls > a[href="/activities/raffle"]:hover,
+.raffle-overview-item-live .raffle-management-controls > a[href="/activities/raffle"]:focus-visible {
   color: var(--theme-text);
   text-decoration: underline;
   text-underline-offset: 0.18em;
