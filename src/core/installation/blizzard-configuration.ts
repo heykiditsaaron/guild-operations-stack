@@ -62,3 +62,21 @@ export async function storeInstallationBlizzardConfiguration(input: {
     [input.clientId.trim(), encrypt(input.clientSecret.trim())],
   );
 }
+
+export async function validateBlizzardApplicationCredentials(input: {
+  clientId: string;
+  clientSecret: string;
+}): Promise<boolean> {
+  const credentials = Buffer.from(`${input.clientId.trim()}:${input.clientSecret.trim()}`).toString("base64");
+  const response = await fetch("https://oauth.battle.net/token", {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${credentials}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({ grant_type: "client_credentials" }),
+  });
+  if (!response.ok) return false;
+  const payload = (await response.json()) as { access_token?: string };
+  return Boolean(payload.access_token);
+}
