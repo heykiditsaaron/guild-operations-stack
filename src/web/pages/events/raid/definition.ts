@@ -37,7 +37,7 @@ function eligibilityLabel(value: RaidEligibility): string {
 }
 
 export async function registerRaidDefinitionPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
-  app.get<{ Params: RaidParams }>("/activities/raid/manage/:raidId/definition", async (request, reply) => {
+  app.get<{ Params: RaidParams }>("/activities/raid/:raidId/manage/definition", async (request, reply) => {
     const token = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie, raid] = await Promise.all([
       viewerForRequest(token),
@@ -95,7 +95,7 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
 
-  app.post<{ Params: RaidParams; Body: DefinitionBody }>("/activities/raid/manage/:raidId/definition", async (request, reply) => {
+  app.post<{ Params: RaidParams; Body: DefinitionBody }>("/activities/raid/:raidId/manage/definition", async (request, reply) => {
     const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
     if (!guildie) return reply.code(401).send({ error: "Authentication required" });
     const body = request.body ?? {};
@@ -109,7 +109,7 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
     }
   });
 
-  app.post<{ Params: RaidParams }>("/activities/raid/manage/:raidId/cancel", async (request, reply) => {
+  app.post<{ Params: RaidParams }>("/activities/raid/:raidId/manage/cancel", async (request, reply) => {
     const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
     if (!guildie) return reply.code(401).send({ error: "Authentication required" });
     try {
