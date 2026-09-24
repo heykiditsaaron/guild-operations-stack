@@ -1,10 +1,16 @@
 import type { FastifyInstance } from "fastify";
+import { guildState } from "../../core/guild/guild-state.js";
+import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
+import { calendarViewForGuildie, isCalendarViewMode, setCalendarViewForGuildie, type CalendarViewMode } from "../../core/calendar/preference.js";
+import { discoverableGuildCalendarPoints, type GuildCalendarOccursAt, type GuildCalendarPoint } from "../../core/calendar/registry.js";
 import { activityPresentation, type ActivityPresentation } from "../../core/activity/registry.js";
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
 
-type CalendarProjection = ActivityPresentation;\n\ntype CalendarOccurrence = {
+type CalendarProjection = ActivityPresentation;
+
+type CalendarOccurrence = {
   point: GuildCalendarPoint;
   projection: CalendarProjection;
   occursAt: GuildCalendarOccursAt;
