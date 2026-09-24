@@ -1,5 +1,5 @@
 import { guildState } from "../guild/guild-state.js";
-import { config } from "../../config.js";
+import { requireOperationalInstallationGuildBinding } from "../installation/guild-binding.js";
 import { pool } from "../../db.js";
 
 export type GuildPresentation = {
@@ -29,6 +29,15 @@ export function parseGuildPresentationUrl(value: unknown): string | null | undef
   return httpUrl(value) ?? undefined;
 }
 
+function guildNameSlugFromReference(referenceHref: string): string {
+  const reference = new URL(referenceHref);
+  const segments = reference.pathname.split("/").filter(Boolean);
+  const guildIndex = segments.findIndex((segment) => segment === "guild");
+  const guildNameSlug = guildIndex >= 0 ? segments[guildIndex + 2] : undefined;
+  if (!guildNameSlug) throw new Error("Persisted Blizzard guild reference does not contain a guild name slug");
+  return decodeURIComponent(guildNameSlug);
+}
+
 function armoryUrl(region: string, realmSlug: string, guildNameSlug: string): string {
   const locale = region === "us" ? "en-us" : region === "eu" ? "en-gb" : region === "kr" ? "ko-kr" : "zh-tw";
   return `https://worldofwarcraft.blizzard.com/${locale}/worldsoul/${region}/armory/guild/${encodeURIComponent(realmSlug)}/${encodeURIComponent(guildNameSlug)}`;
@@ -37,8 +46,11 @@ function armoryUrl(region: string, realmSlug: string, guildNameSlug: string): st
 export async function guildPresentation(): Promise<GuildPresentation> {
   const guild = await guildState();
   if (!guild) throw new Error("Guild presentation requires observed guild state");
-  const result = await pool.query<{ raider_io_url: string | null; warcraft_logs_url: string | null }>(
-    "SELECT raider_io_url, warcraft_logs_url FROM guild_presentation_settings WHERE guild_id = $1",
+  const result = await pool.query<{ raider_io_url: string | null; warcraft_logs_url: string | null; blizzard_reference_href: string | null }>(
+    `SELECT gps.raider_io_url, gps.warcraft_logs_url, g.blizzard_reference_href
+       FROM guilds g
+       LEFT JOIN guild_presentation_settings gps ON gps.guild_id = g.guild_id
+      WHERE g.guild_id = $1`,
     [guild.guildId],
   );
   const settings = result.rows[0];
@@ -46,7 +58,7 @@ export async function guildPresentation(): Promise<GuildPresentation> {
     guildName: guild.name,
     realmName: guild.realmName,
     region: guild.region.toUpperCase(),
-    wowArmoryUrl: armoryUrl(guild.region, guild.realmSlug, config.guild.nameSlug),
+    wowArmoryUrl: armoryUrl(guild.region, guild.realmSlug, guildNameSlugFromReference(settings?.blizzard_reference_href ?? "")),
     raiderIoUrl: httpUrl(settings?.raider_io_url),
     warcraftLogsUrl: httpUrl(settings?.warcraft_logs_url),
   };
@@ -55,6 +67,7 @@ export async function guildPresentation(): Promise<GuildPresentation> {
 export async function setGuildPresentationDestinations(
   destinations: GuildPresentationDestinations,
 ): Promise<GuildPresentationDestinations> {
+  const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
   await pool.query(
     `INSERT INTO guild_presentation_settings (guild_id, raider_io_url, warcraft_logs_url, updated_at)
      VALUES ($1, $2, $3, now())
@@ -62,7 +75,7 @@ export async function setGuildPresentationDestinations(
        raider_io_url = EXCLUDED.raider_io_url,
        warcraft_logs_url = EXCLUDED.warcraft_logs_url,
        updated_at = now()`,
-    [config.guild.id, destinations.raiderIoUrl, destinations.warcraftLogsUrl],
+    [guildId, destinations.raiderIoUrl, destinations.warcraftLogsUrl],
   );
   return destinations;
 }
