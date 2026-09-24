@@ -103,7 +103,7 @@ export async function ensureGuildCapabilityPolicies(guildId?: string): Promise<v
         permittedRanks = existing.rows.length > 0 ? existing.rows.map((row) => row.rank_index) : [...(definition.defaultPermittedRanks ?? [])].filter((rankIndex) => knownRanks.has(rankIndex));
       }
       permittedRanks = configurableRanks(permittedRanks).filter((rankIndex) => knownRanks.has(rankIndex));
-      await client.query(`INSERT INTO guild_capability_policy_configuration (guild_id, capability, permitted_ranks, updated_at) VALUES ($1, $2, $3::integer[], now()) ON CONFLICT (guild_id, capability) DO UPDATE SET permitted_ranks = EXCLUDED.permitted_ranks, updated_at = CASE WHEN guild_capability_policy_configuration.permitted_ranks IS DISTINCT FROM EXCLUDED.permitted_ranks THEN now() ELSE guild_capability_policy_configuration.updated_at END`, [guildId, definition.key, permittedRanks]);
+      await client.query(`INSERT INTO guild_capability_policy_configuration (guild_id, capability, permitted_ranks, updated_at) VALUES ($1, $2, $3::integer[], now()) ON CONFLICT (guild_id, capability) DO UPDATE SET permitted_ranks = EXCLUDED.permitted_ranks, updated_at = CASE WHEN guild_capability_policy_configuration.permitted_ranks IS DISTINCT FROM EXCLUDED.permitted_ranks THEN now() ELSE guild_capability_policy_configuration.updated_at END`, [resolvedGuildId, definition.key, permittedRanks]);
       await replaceCapabilityProjection(client, resolvedGuildId, definition.key, permittedRanks);
     }
   });
@@ -114,7 +114,7 @@ export async function guildCapabilityPolicies(guildId?: string): Promise<GuildCa
   await ensureGuildCapabilityPolicies(resolvedGuildId);
   const capabilityDefinitions = registeredGuildCapabilityDefinitions();
   const [ranksResult, policiesResult] = await Promise.all([
-    pool.query<{ rank_index: number; display_name: string | null; active: boolean }>(`SELECT rank_index, display_name, active FROM guild_rank_definitions WHERE guild_id = $1 ORDER BY rank_index`, [guildId]),
+    pool.query<{ rank_index: number; display_name: string | null; active: boolean }>(`SELECT rank_index, display_name, active FROM guild_rank_definitions WHERE guild_id = $1 ORDER BY rank_index`, [resolvedGuildId]),
     pool.query<{ capability: string; permitted_ranks: number[] }>(`SELECT capability, permitted_ranks FROM guild_capability_policy_configuration WHERE guild_id = $1 AND capability = ANY($2::text[])`, [resolvedGuildId, capabilityDefinitions.map((definition) => definition.key)]),
   ]);
   const configured = new Map(policiesResult.rows.map((row) => [row.capability, configurableRanks(row.permitted_ranks)]));
@@ -125,34 +125,37 @@ export async function guildCapabilityPolicies(guildId?: string): Promise<GuildCa
 }
 
 export async function guildCapabilityPoliciesForActor(guildieId: string, guildId?: string): Promise<GuildCapabilityPolicySet> {
-  const policies = await guildCapabilityPolicies(guildId);
-  if (await hasGlobalPermissionAdministration(guildieId, guildId)) return policies;
+  const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
+  const policies = await guildCapabilityPolicies(resolvedGuildId);
+  if (await hasGlobalPermissionAdministration(guildieId, resolvedGuildId)) return policies;
   const allowedNamespaces = new Set<string>();
   for (const capability of policies.capabilities) {
     if (capability.namespace === "global" || allowedNamespaces.has(capability.namespace)) continue;
-    if (await guildieHasGuildCapability(guildieId, `${capability.namespace}.permissions`, guildId)) allowedNamespaces.add(capability.namespace);
+    if (await guildieHasGuildCapability(guildieId, `${capability.namespace}.permissions`, resolvedGuildId)) allowedNamespaces.add(capability.namespace);
   }
   return { ranks: policies.ranks, capabilities: policies.capabilities.filter((capability) => allowedNamespaces.has(capability.namespace)) };
 }
 
 export async function permittedGuildRanksForCapability(capability: GuildCapability, guildId?: string): Promise<number[]> {
-  await ensureGuildCapabilityPolicies(guildId);
-  const result = await pool.query<{ permitted_ranks: number[] }>(`SELECT permitted_ranks FROM guild_capability_policy_configuration WHERE guild_id = $1 AND capability = $2`, [guildId, capability]);
+  const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
+  await ensureGuildCapabilityPolicies(resolvedGuildId);
+  const result = await pool.query<{ permitted_ranks: number[] }>(`SELECT permitted_ranks FROM guild_capability_policy_configuration WHERE guild_id = $1 AND capability = $2`, [resolvedGuildId, capability]);
   return configurableRanks(result.rows[0]?.permitted_ranks ?? []);
 }
 
 export async function setGuildCapabilityPermittedRanks(actorGuildieId: string, capability: GuildCapability, permittedRanks: readonly number[], guildId?: string): Promise<number[]> {
+  const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
   const definition = definitions.get(capability);
   if (!definition) throw new Error("Unknown configurable guild capability");
-  if (!await canAdministerCapabilityDefinition(actorGuildieId, definition, guildId)) throw new Error("Guildie cannot administer guild permissions");
+  if (!await canAdministerCapabilityDefinition(actorGuildieId, definition, resolvedGuildId)) throw new Error("Guildie cannot administer guild permissions");
   if (permittedRanks.some((rankIndex) => !Number.isInteger(rankIndex) || rankIndex < 0)) throw new Error("Guild permission rank is invalid");
   const normalized = configurableRanks(permittedRanks);
   await withTransaction(async (client) => {
     const rankResult = await client.query<{ rank_index: number }>(`SELECT rank_index FROM guild_rank_definitions WHERE guild_id = $1`, [resolvedGuildId]);
     const knownRanks = new Set(rankResult.rows.map((row) => row.rank_index));
     if (normalized.some((rankIndex) => !knownRanks.has(rankIndex))) throw new Error("Guild permission update referenced an unknown guild rank");
-    await client.query(`INSERT INTO guild_capability_policy_configuration (guild_id, capability, permitted_ranks, updated_at) VALUES ($1, $2, $3::integer[], now()) ON CONFLICT (guild_id, capability) DO UPDATE SET permitted_ranks = EXCLUDED.permitted_ranks, updated_at = now()`, [guildId, capability, normalized]);
-    await replaceCapabilityProjection(client, guildId, capability, normalized);
+    await client.query(`INSERT INTO guild_capability_policy_configuration (guild_id, capability, permitted_ranks, updated_at) VALUES ($1, $2, $3::integer[], now()) ON CONFLICT (guild_id, capability) DO UPDATE SET permitted_ranks = EXCLUDED.permitted_ranks, updated_at = now()`, [resolvedGuildId, capability, normalized]);
+    await replaceCapabilityProjection(client, resolvedGuildId, capability, normalized);
   });
   return normalized;
 }
