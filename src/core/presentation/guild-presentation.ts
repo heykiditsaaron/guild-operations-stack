@@ -9,6 +9,7 @@ export type GuildPresentation = {
   wowArmoryUrl: string;
   raiderIoUrl: string | null;
   warcraftLogsUrl: string | null;
+  guildSettingsLocationAcknowledged: boolean;
 };
 
 export type GuildPresentationDestinations = Pick<GuildPresentation, "raiderIoUrl" | "warcraftLogsUrl">;
@@ -46,8 +47,8 @@ function armoryUrl(region: string, realmSlug: string, guildNameSlug: string): st
 export async function guildPresentation(): Promise<GuildPresentation> {
   const guild = await guildState();
   if (!guild) throw new Error("Guild presentation requires observed guild state");
-  const result = await pool.query<{ raider_io_url: string | null; warcraft_logs_url: string | null; blizzard_reference_href: string | null }>(
-    `SELECT gps.raider_io_url, gps.warcraft_logs_url, g.blizzard_reference_href
+  const result = await pool.query<{ raider_io_url: string | null; warcraft_logs_url: string | null; guild_settings_location_acknowledged: boolean | null; blizzard_reference_href: string | null }>(
+    `SELECT gps.raider_io_url, gps.warcraft_logs_url, gps.guild_settings_location_acknowledged, g.blizzard_reference_href
        FROM guilds g
        LEFT JOIN guild_presentation_settings gps ON gps.guild_id = g.guild_id
       WHERE g.guild_id = $1`,
@@ -61,6 +62,7 @@ export async function guildPresentation(): Promise<GuildPresentation> {
     wowArmoryUrl: armoryUrl(guild.region, guild.realmSlug, guildNameSlugFromReference(settings?.blizzard_reference_href ?? "")),
     raiderIoUrl: httpUrl(settings?.raider_io_url),
     warcraftLogsUrl: httpUrl(settings?.warcraft_logs_url),
+    guildSettingsLocationAcknowledged: settings?.guild_settings_location_acknowledged ?? false,
   };
 }
 
@@ -78,4 +80,17 @@ export async function setGuildPresentationDestinations(
     [guildId, destinations.raiderIoUrl, destinations.warcraftLogsUrl],
   );
   return destinations;
+}
+
+export async function setGuildSettingsLocationAcknowledged(acknowledged: boolean): Promise<boolean> {
+  const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
+  await pool.query(
+    `INSERT INTO guild_presentation_settings (guild_id, guild_settings_location_acknowledged, updated_at)
+     VALUES ($1, $2, now())
+     ON CONFLICT (guild_id) DO UPDATE SET
+       guild_settings_location_acknowledged = EXCLUDED.guild_settings_location_acknowledged,
+       updated_at = now()`,
+    [guildId, acknowledged],
+  );
+  return acknowledged;
 }
