@@ -43,8 +43,6 @@ export const config = {
   port,
   appOrigin,
   databaseUrl: "postgres://guild_operations:guild_operations@db:5432/guild_operations",
-  blizzardClientId: required("BLIZZARD_CLIENT_ID"),
-  blizzardClientSecret: required("BLIZZARD_CLIENT_SECRET"),
   blizzardRedirectUri: new URL("/auth/blizzard/callback", appOrigin).toString(),
   sessionCookieSecure: appOriginUrl.protocol === "https:",
   authAttemptTtlMinutes: 10,
