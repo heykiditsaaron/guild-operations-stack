@@ -23,6 +23,8 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env.dev
+    environment:
+      GUILD_OPERATIONS_DEVELOPMENT: "true"
     depends_on:
       db:
         condition: service_healthy
@@ -35,6 +37,8 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env.dev
+    environment:
+      GUILD_OPERATIONS_DEVELOPMENT: "true"
     ports:
       - "3101:3100"
     volumes:
