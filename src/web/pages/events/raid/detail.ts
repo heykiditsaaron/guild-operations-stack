@@ -157,7 +157,7 @@ async function renderRaidOrganizer(request: FastifyRequest<{ Params: RaidParams 
       title: `Raid Operations · ${viewer.guildPresentation.guildName} Guild Operations`,
       viewer,
       stylesheets: ["admin.css", "raid-admin.css"],
-      secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Events", href: "/events" }, { label: "Raid operations", href: "/activities/raid/manage" }, { label: "Unavailable" }] },
+      secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Activities", href: "/activities" }, { label: "Raid operations", href: "/activities/raid/manage" }, { label: "Unavailable" }] },
       header: `<div class="admin-page-header"><h1>Raid</h1></div>`,
       body: `<section class="admin-unavailable"><h2>Raid operations are not available for this account.</h2></section>`,
     });
@@ -176,7 +176,7 @@ async function renderRaidOrganizer(request: FastifyRequest<{ Params: RaidParams 
   const [rows, diagnostics] = await Promise.all([raidSignups(raid.raidId), raidRosterDiagnostics(raid.raidId)]);
   const assigned = rows.filter((row) => row.assignmentId !== null);
   const available = rows.filter((row) => row.assignmentId === null && row.deniedAtUnix === null && !rows.some((candidate) => candidate.applicantId === row.applicantId && candidate.assignmentId !== null));
-  const navigation: SecondaryNavigation = { kind: "breadcrumb", items: [{ label: "Events", href: "/events" }, { label: "Raid operations", href: "/activities/raid/manage" }, { label: raid.label }] };
+  const navigation: SecondaryNavigation = { kind: "breadcrumb", items: [{ label: "Activities", href: "/activities" }, { label: "Raid operations", href: "/activities/raid/manage" }, { label: raid.label }] };
   const raidBuffItems = (await Promise.all(RAID_BUFF_TRAITS.map((trait) => raidBuffDiagnosticItem(trait, assigned)))).join("");
   const utilityItems = UTILITY_TRAITS.map((trait) => textDiagnosticItem(capabilityLabel(trait), coverageCount(assigned, trait))).join("");
   const armorItems = ARMOR_TRAITS.map((trait) => textDiagnosticItem(armorLabel(trait), coverageCount(assigned, trait))).join("");
