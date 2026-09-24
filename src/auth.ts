@@ -8,7 +8,7 @@ import {
   type CharacterPresentationAcquisitionTarget,
 } from "./core/guild/guild-character-enrichment.js";
 import { effectiveGuildAuthority } from "./core/authority/guild-permissions.js";
-import { installationGuildBinding, requireOperationalInstallationGuildBinding } from "./core/installation/guild-binding.js";
+import { installationGuildBinding, installationOperational, requireOperationalInstallationGuildBinding } from "./core/installation/guild-binding.js";
 import { guildCharactersForGuildie } from "./core/guild/guild-characters.js";
 import { mainCharacterForGuildie, selectMainCharacter } from "./core/identity/main-character.js";
 import { publishOperationalRecord } from "./operational-inspection.js";
@@ -186,6 +186,7 @@ async function redirectAfterIdentityCeremony(
   returnTo: string,
   refreshResult?: "success" | "failed",
 ): Promise<string> {
+  if (!(await installationOperational())) return "/setup";
   let destination = returnTo;
   if (refreshResult) destination = withQueryValue(destination, "refresh", refreshResult);
   const mainCharacter = await mainCharacterForGuildie(guildieId);
