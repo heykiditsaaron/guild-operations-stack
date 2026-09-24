@@ -1,3 +1,7 @@
+document.querySelector("form[data-setup-blizzard]")?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  void submitSetup(event.currentTarget, "/installation/blizzard");
+});
 async function submitSetup(form, endpoint) {
   const button = form.querySelector("button[type=submit]");
   if (button) button.disabled = true;
