@@ -27,7 +27,7 @@ function factionValue(value: unknown): string | null {
   return null;
 }
 
-async function persistGuild(client: PoolClient, region: Region, profile: BlizzardGuildProfile): Promise<string> {
+async function persistGuild(client: PoolClient, region: Region, profile: BlizzardGuildProfile, referenceHref: string): Promise<string> {
   const guildId = String(profile.id);
   const realmId = String(profile.realm.id);
   const realmSlug = profile.realm.slug;
@@ -35,14 +35,15 @@ async function persistGuild(client: PoolClient, region: Region, profile: Blizzar
 
   await client.query(
     `INSERT INTO guilds (
-       guild_id, region, realm_id, name, realm_name, realm_slug, faction, created_timestamp
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       guild_id, region, realm_id, name, realm_name, realm_slug, faction, created_timestamp, blizzard_reference_href
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
      ON CONFLICT (guild_id) DO UPDATE SET
        region=EXCLUDED.region, realm_id=EXCLUDED.realm_id, name=EXCLUDED.name,
        realm_name=EXCLUDED.realm_name, realm_slug=EXCLUDED.realm_slug,
-       faction=EXCLUDED.faction, created_timestamp=EXCLUDED.created_timestamp, last_seen_at=now()`,
+       faction=EXCLUDED.faction, created_timestamp=EXCLUDED.created_timestamp,
+       blizzard_reference_href=EXCLUDED.blizzard_reference_href, last_seen_at=now()`,
     [guildId, region, realmId, profile.name, localizedValue(profile.realm.name), realmSlug,
-      factionValue(profile.faction), profile.created_timestamp ?? null],
+      factionValue(profile.faction), profile.created_timestamp ?? null, referenceHref],
   );
   return guildId;
 }
@@ -116,7 +117,7 @@ export async function establishPendingInstallationGuildBinding(input: {
   if (!currentlyPresent) throw new Error("Selected guild roster does not contain a currently controlled character");
 
   await withTransaction(async (client) => {
-    const guildId = await persistGuild(client, candidate.region, authority.profile);
+    const guildId = await persistGuild(client, candidate.region, authority.profile, candidate.referenceHref);
     await client.query(
       `INSERT INTO installation_guild_binding (singleton, guild_id, bound_by_guildie_id)
        VALUES (true, $1, $2)`,
