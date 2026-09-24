@@ -26,7 +26,7 @@ function persistKey(key: Buffer): void {
 
 let cachedKey: Buffer | null = null;
 
-export function installationSecretKey(): Buffer {
+export function installationSecretKey(options: { encryptedDataExists?: boolean } = {}): Buffer {
   if (cachedKey) return cachedKey;
 
   try {
@@ -38,6 +38,12 @@ export function installationSecretKey(): Buffer {
   }
 
   const legacy = process.env.APPLICATION_ENCRYPTION_KEY?.trim();
+  if (!legacy && options.encryptedDataExists) {
+    throw new Error(
+      "Installation key is missing while encrypted application secrets exist; restore /var/lib/guild-operations/installation.key before starting Guild Operations",
+    );
+  }
+
   const key = legacy
     ? decodeKey(legacy, "APPLICATION_ENCRYPTION_KEY")
     : randomBytes(KEY_BYTES);
