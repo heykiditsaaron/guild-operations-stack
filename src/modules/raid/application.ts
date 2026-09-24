@@ -70,7 +70,7 @@ function requireFullOperationalBuffer(occursAt:readonly [number]|readonly [numbe
 
 function raidPublicDestination(raidId:string):string { return `/activities/raid/${encodeURIComponent(raidId)}`; }
 function raidParticipationDestination(raidId:string):string { return `/activities/raid/${encodeURIComponent(raidId)}/participation`; }
-function raidManageDestination(raidId:string):string { return `/activities/raid/manage/${encodeURIComponent(raidId)}`; }
+function raidManageDestination(raidId:string):string { return `/activities/raid/${encodeURIComponent(raidId)}/manage`; }
 export type RaidDestination = { kind: string; label: string; href: string };
 export function raidOccurrenceDestinations(raidId:string):readonly RaidDestination[] {
   return [
