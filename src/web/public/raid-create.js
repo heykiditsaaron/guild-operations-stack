@@ -53,7 +53,7 @@ if (createForm instanceof HTMLFormElement) {
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? "Raid could not be created");
-      window.location.href = `/activities/raid/manage/${encodeURIComponent(payload.raid.raidId)}`;
+      window.location.href = `/activities/raid/${encodeURIComponent(payload.raid.raidId)}/manage`;
     } catch (error) {
       createStatus.textContent = error instanceof Error ? error.message : "Raid could not be created.";
     }
