@@ -1,12 +1,12 @@
 import type { FastifyInstance } from "fastify";
-import { guildState } from "../../../core/guild/guild-state.js";
-import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../auth.js";
+import { guildState } from "../../core/guild/guild-state.js";
+import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
 import {
   calendarViewForGuildie,
   isCalendarViewMode,
   setCalendarViewForGuildie,
   type CalendarViewMode,
-} from "../../../core/calendar/preference.js";
+} from "../../core/calendar/preference.js";
 import {
   RAID_ASSIGN_CAPABILITY,
   RAID_MODIFY_CAPABILITY,
@@ -17,26 +17,26 @@ import {
   RAFFLE_STAGE_CAPABILITY,
   guildieHasGuildCapability,
   guildieHasGuildCapabilityOrOperator,
-} from "../../../core/authority/guild-permissions.js";
+} from "../../core/authority/guild-permissions.js";
 import {
   discoverableGuildCalendarPoints,
   type GuildCalendarOccursAt,
   type GuildCalendarPoint,
-} from "../../../core/calendar/registry.js";
+} from "../../core/calendar/registry.js";
 import {
   guildActivityOfferings,
   type GuildActivityOffering,
-} from "../../../guild-activities/offerings/registry.js";
+} from "../../guild-activities/offerings/registry.js";
 import {
   packagedCapabilityForPath,
   packagedCapabilityStates,
   type PackagedCapabilityState,
-} from "../../../packaged-capability-lifecycle.js";
-import { raffleCalendarProjection } from "../../../modules/raffle/application.js";
-import { raidCalendarProjection } from "../../../modules/raid/application.js";
-import { assetUrl, type AssetName, type AssetRegistry } from "../../assets.js";
-import { htmlText, renderPage } from "../../render.js";
-import { viewerForRequest } from "../../viewer.js";
+} from "../../packaged-capability-lifecycle.js";
+import { raffleCalendarProjection } from "../../modules/raffle/application.js";
+import { raidCalendarProjection } from "../../modules/raid/application.js";
+import { assetUrl, type AssetName, type AssetRegistry } from "../assets.js";
+import { htmlText, renderPage } from "../render.js";
+import { viewerForRequest } from "../viewer.js";
 
 type CalendarProjection = {
   title: string;
