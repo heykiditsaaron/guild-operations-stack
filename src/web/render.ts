@@ -103,16 +103,12 @@ function renderMeControl(viewer: WebViewer, pathname: string): string {
   }
   const label = viewer.mainCharacter?.name ?? "Me";
   const portrait = viewer.mainCharacter?.avatarUrl ? `<img src="${escapeHtml(viewer.mainCharacter.avatarUrl)}" alt="" loading="eager" referrerpolicy="no-referrer">` : userGlyph();
-  const administration = viewer.administrationAvailable
-    ? '<section class="me-menu-section me-administration-section"><a class="me-administration-link" href="/admin"><span>Settings</span><span aria-hidden="true">→</span></a></section>'
-    : "";
   const moduleSections = viewer.presentationContributions.meMenuSections.map((render) => render(pathname)).join("\n");
   return `<details class="me-menu menu-surface">
     <summary class="me-control"><span data-me-label>${escapeHtml(label)}</span><span class="account-visual${viewer.mainCharacter?.avatarUrl ? " account-visual-portrait" : " account-visual-generic"}" data-me-visual>${portrait}</span></summary>
     <div class="menu-panel menu-panel-right me-menu-panel">
       <section class="me-menu-section me-character-section">${renderCurrentCharacter(viewer)}</section>
       ${moduleSections}
-      ${administration}
       <section class="me-menu-section me-session-section"><button type="button" class="session-sign-out-action" data-logout>Sign out</button></section>
     </div>
   </details>`;
@@ -148,7 +144,34 @@ function renderMainPicker(viewer: WebViewer): string {
   </dialog>`;
 }
 
+function renderUtilityBar(viewer: WebViewer, pathname: string): string {
+  if (!viewer.authenticated) return "";
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    return `<nav class="utility-bar" aria-label="Application context"><div class="utility-bar-inner"><a class="utility-dimension-swap" href="/">← Return to ${escapeHtml(viewer.guildPresentation.guildName)}</a></div></nav>`;
+  }
+  if (!viewer.administrationAvailable) return "";
+  return `<nav class="utility-bar" aria-label="Application context"><div class="utility-bar-inner"><a class="utility-dimension-swap" href="/admin">Guild Settings <span aria-hidden="true">⚙</span></a></div></nav>`;
+}
+
 function renderActionBar(viewer: WebViewer, pathname: string): string {
+  const administration = pathname === "/admin" || pathname.startsWith("/admin/");
+  if (administration) {
+    const destinations = [
+      { label: "General", href: "/admin/general" },
+      { label: "Modules", href: "/admin/modules" },
+      { label: "Permissions", href: "/admin/permissions" },
+      { label: "History", href: "/admin/history" },
+    ];
+    const links = destinations.map((destination) => {
+      const active = pathname === destination.href || pathname.startsWith(`${destination.href}/`);
+      return `<a href="${destination.href}"${active ? ' aria-current="page"' : ""}>${destination.label}</a>`;
+    }).join("");
+    return `<nav class="action-bar action-bar-administration" aria-label="Administration navigation"><div class="action-bar-inner">
+      <details class="mobile-nav menu-surface"><summary class="icon-control" aria-label="Open administration navigation"><span></span><span></span><span></span></summary><div class="menu-panel menu-panel-left mobile-nav-panel">${links}</div></details>
+      <div class="desktop-nav">${links}</div>
+    </div></nav>`;
+  }
+
   const homeActive = pathname === "/" ? ' aria-current="page"' : "";
   const eventsActive = pathname === "/events" || pathname.startsWith("/events/") ? ' aria-current="page"' : "";
   return `<nav class="action-bar" aria-label="Primary navigation"><div class="action-bar-inner">
@@ -267,6 +290,7 @@ export function renderPage(assets: AssetRegistry, input: RenderPageInput): strin
   const stylesheets = (input.stylesheets ?? []).map((name) => `  <link rel="stylesheet" href="${assetUrl(assets, name)}">`).join("\n");
   const scripts = (input.scripts ?? []).map((name) => `  <script src="${assetUrl(assets, name)}" defer></script>`).join("\n");
   const administrationNavigation = renderAdministrationNavigation(input.viewer, input.pathname);
+  const utilityBar = renderUtilityBar(input.viewer, input.pathname);
   const secondaryNavigation = renderSecondaryNavigation(input.secondaryNavigation);
   return `<!doctype html>
 <html lang="en" data-theme="${theme}">
@@ -283,6 +307,7 @@ ${stylesheets ? `${stylesheets}\n` : ""}  <title>${title}</title>
 </head>
 <body>
   <div class="app-shell">
+    ${utilityBar}
     ${renderActionBar(input.viewer, input.pathname)}
     ${administrationNavigation ? `<div class="administration-navigation-zone">${administrationNavigation}</div>` : ""}
     ${secondaryNavigation ? `<div class="secondary-navigation-zone">${secondaryNavigation}</div>` : ""}
