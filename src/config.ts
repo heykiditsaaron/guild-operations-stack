@@ -38,8 +38,6 @@ export function parseRegion(value: unknown): Region | null {
   return supportedRegions.has(region) ? region : null;
 }
 
-const guildRegion = parseRegion(required("GUILD_REGION"));
-if (!guildRegion) throw new Error("GUILD_REGION must be a supported Blizzard region");
 
 export const config = {
   port,
@@ -52,10 +50,4 @@ export const config = {
   authAttemptTtlMinutes: 10,
   sessionTtlDays: 30,
   operatorGuildieId: optional("OPERATOR_GUILDIE_ID"),
-  guild: {
-    id: required("GUILD_BLIZZARD_ID"),
-    region: guildRegion,
-    realmSlug: required("GUILD_REALM_SLUG"),
-    nameSlug: required("GUILD_NAME_SLUG"),
-  },
 } as const;
