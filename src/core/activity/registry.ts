@@ -6,9 +6,19 @@ export type ActivityTemporalProjection = {
   occursAt: ActivityTemporalRelevance | null;
 };
 
+export type ActivityPresentation = {
+  title: string;
+  description: string | null;
+  category: string;
+  publicAction: { label: string; href: string };
+  participationAction: { label: string; href: string } | null;
+  operationAction: { label: string; href: string };
+};
+
 export type ActivityTemporalCapability = {
   emissionCodes: readonly string[];
   projection(activityId: string): Promise<ActivityTemporalProjection>;
+  presentation(activityId: string): Promise<ActivityPresentation | null>;
 };
 
 export type ActivityParticipationReference = {
@@ -66,6 +76,12 @@ export function registerActivity(input: ActivityRegistration): void {
   for (const codeInput of input.temporal?.emissionCodes ?? []) {
     activitiesByTemporalEmissionCode.set(codeInput.trim(), input);
   }
+}
+
+export async function activityPresentation(activityKind: string, activityId: string): Promise<ActivityPresentation | null> {
+  const activity = activitiesByKind.get(requiredText(activityKind, "kind"));
+  if (!activity?.temporal) return null;
+  return activity.temporal.presentation(requiredText(activityId, "id"));
 }
 
 export function activityTemporalEmissionCodes(): readonly string[] {
