@@ -5,7 +5,8 @@ import {
   type BlizzardCharacterMedia,
   type BlizzardCharacterProfile,
 } from "../../blizzard.js";
-import { config, type Region } from "../../config.js";
+import type { Region } from "../../config.js";
+import { requireOperationalInstallationGuildBinding } from "../installation/guild-binding.js";
 import { pool } from "../../db.js";
 
 export type GuildCharacterCoordinate = {
@@ -323,7 +324,7 @@ export async function enrichGuildCharacters(options: {
   concurrency?: number;
   targets?: GuildCharacterEnrichmentTarget[];
 } = {}): Promise<GuildCharacterEnrichmentResult> {
-  const guildId = options.guildId ?? config.guild.id;
+  const guildId = options.guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
   const fullRoster = await currentRosterCharacters(guildId);
   const requested = options.targets ? new Map(options.targets.map((target) => [coordinateKey(target), target])) : null;
   const acquisitionTargets: CharacterPresentationAcquisitionTarget[] = requested
