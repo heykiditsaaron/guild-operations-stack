@@ -26,6 +26,11 @@ async function raffleTemporalProjection(raffleId: string): Promise<ActivityTempo
 export function registerRaffleActivityIntegration(): void {
   registerActivity({
     kind: "raffle",
+    discovery: {
+      title: "Raffle",
+      tagline: "Take your shot at the pot.",
+      destination: "/events/raffle",
+    },
     participation: {
       destination(reference) {
         return `/events/raffle/${encodeURIComponent(reference.activityId)}`;
