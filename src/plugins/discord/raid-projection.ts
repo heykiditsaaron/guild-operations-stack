@@ -1,4 +1,4 @@
-import { config } from "../../config.js";
+import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import { pool } from "../../db.js";
 
 export type DiscordRaidProjectionConfiguration = {
@@ -14,19 +14,21 @@ export type DiscordRaidProjectionCoordinate = {
 };
 
 export async function discordRaidProjectionConfiguration(
-  guildId: string = config.guild.id,
+  guildId?: string,
 ): Promise<DiscordRaidProjectionConfiguration> {
+  const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
   const result = await pool.query<{ channel_id: string | null }>(
     "SELECT channel_id FROM discord_raid_projection_settings WHERE guild_id = $1",
-    [guildId],
+    [resolvedGuildId],
   );
-  return { guildId, channelId: result.rows[0]?.channel_id ?? null };
+  return { guildId: resolvedGuildId, channelId: result.rows[0]?.channel_id ?? null };
 }
 
 export async function configureDiscordRaidProjection(
   channelId: string | null,
-  guildId: string = config.guild.id,
+  guildId?: string,
 ): Promise<DiscordRaidProjectionConfiguration> {
+  const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
   const normalized = channelId?.trim() || null;
   await pool.query(
     `INSERT INTO discord_raid_projection_settings (guild_id, channel_id)
@@ -34,9 +36,9 @@ export async function configureDiscordRaidProjection(
      ON CONFLICT (guild_id) DO UPDATE SET
        channel_id = EXCLUDED.channel_id,
        updated_at = now()`,
-    [guildId, normalized],
+    [resolvedGuildId, normalized],
   );
-  return { guildId, channelId: normalized };
+  return { guildId: resolvedGuildId, channelId: normalized };
 }
 
 export async function discordRaidProjectionCoordinate(
