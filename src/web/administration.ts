@@ -34,10 +34,10 @@ export async function administrationAvailabilityForGuildie(
   const authority = await effectiveGuildAuthority(guildieId);
   if (!authority) return unavailableAdministration;
 
-  const canConfigureModules = authority.operator || authority.capabilities.includes(MODULES_CONFIGURE_CAPABILITY);
+  const canConfigureModules = authority.developmentGuildMasterAuthority || authority.capabilities.includes(MODULES_CONFIGURE_CAPABILITY);
   const canConfigurePermissions = await canAdministerGuildPermissions(guildieId);
-  const canConfigureTheme = authority.operator || authority.rankIndex === 0 || authority.capabilities.includes(THEME_CONFIGURE_CAPABILITY);
-  const canConfigureGuildPresentation = authority.operator || authority.rankIndex === 0 || authority.capabilities.includes(GUILD_PRESENTATION_CONFIGURE_CAPABILITY);
+  const canConfigureTheme = authority.developmentGuildMasterAuthority || authority.rankIndex === 0 || authority.capabilities.includes(THEME_CONFIGURE_CAPABILITY);
+  const canConfigureGuildPresentation = authority.developmentGuildMasterAuthority || authority.rankIndex === 0 || authority.capabilities.includes(GUILD_PRESENTATION_CONFIGURE_CAPABILITY);
   const canConfigureDiscord = authority.capabilities.includes(DISCORD_ADMIN_CAPABILITY);
   const canConfigureGuildRefreshSchedule = authority.capabilities.includes(GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY);
   const available = canConfigureModules
