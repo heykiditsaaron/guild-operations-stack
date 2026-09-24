@@ -73,6 +73,8 @@ The utility bar is the explicit dimension swap. It answers one question: **where
 - In the Application shell, authorized members receive **Guild Settings**.
 - In the Administration shell, the bar returns to the named guild application.
 
+Guild Settings also owns a durable, reversible orientation aid. Until the guild-level **I know where to find Guild Settings** state is checked, the Application shell emphasizes the Guild Settings destination with a **Start here** prompt. The control remains visible at the top of General Administration after acknowledgement so an authorized operator can deliberately turn the teaching aid back on for future administrators. Administrative viewers without configuration authority may inspect the state but cannot change it.
+
 The utility bar is intentionally vertically compact and is not a general-purpose shelf. Unrelated controls, status, and destinations belong to their semantic navigation or page owner.
 
 Rendering may hide the Administration swap when the viewer has no administrative availability, but backend authorization remains authoritative.
