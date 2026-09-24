@@ -1,7 +1,7 @@
 import {
-  registerActivityTemporalIntegration,
+  registerActivity,
   type ActivityTemporalProjection,
-} from "../../core/activity/temporal.js";
+} from "../../core/activity/registry.js";
 import { getRaffle } from "./application.js";
 
 const RAFFLE_TEMPORAL_EMISSION_CODES = [
@@ -23,9 +23,11 @@ async function raffleTemporalProjection(raffleId: string): Promise<ActivityTempo
 }
 
 export function registerRaffleActivityIntegration(): void {
-  registerActivityTemporalIntegration({
-    activityKind: "raffle",
-    emissionCodes: RAFFLE_TEMPORAL_EMISSION_CODES,
-    temporalProjection: raffleTemporalProjection,
+  registerActivity({
+    kind: "raffle",
+    temporal: {
+      emissionCodes: RAFFLE_TEMPORAL_EMISSION_CODES,
+      projection: raffleTemporalProjection,
+    },
   });
 }
