@@ -27,6 +27,9 @@ export function registerRaffleActivityIntegration(): void {
   registerActivity({
     kind: "raffle",
     participation: {
+      destination(reference) {
+        return `/events/raffle/${encodeURIComponent(reference.activityId)}`;
+      },
       async forGuildie(guildieId) {
         const references = await raffleParticipationReferencesForGuildie(guildieId);
         return references.map((reference) => ({
