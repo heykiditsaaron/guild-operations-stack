@@ -26,6 +26,9 @@ export function registerRaidActivityIntegration(): void {
   registerActivity({
     kind: "raid",
     participation: {
+      destination(reference) {
+        return `/events/raid/${encodeURIComponent(reference.activityId)}`;
+      },
       async forGuildie(guildieId) {
         const references = await raidParticipationReferencesForGuildie(guildieId);
         return references.map((reference) => ({
