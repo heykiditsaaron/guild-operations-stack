@@ -1347,3 +1347,18 @@ h1 {
   color: var(--theme-text-muted);
   line-height: 1.55;
 }
+
+.utility-dimension-swap-orientation {
+  font-weight: 800;
+}
+
+.utility-orientation-prompt {
+  color: var(--theme-accent);
+}
+
+.utility-orientation-arrow {
+  display: inline-block;
+  margin: 0 0.2rem;
+  font-size: 1.05em;
+  transform: translateY(-0.02em);
+}
