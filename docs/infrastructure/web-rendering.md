@@ -6,13 +6,18 @@ Guild Operations' web layer owns presentation composition and delivery. Routes a
 
 The shared shell owns application-level presentation including:
 
-- primary navigation;
-- optional administration navigation;
+- the compact utility bar that swaps between member-facing and Administration dimensions;
+- dimension-specific primary navigation;
+- optional legacy administration navigation during migration;
 - optional secondary navigation;
 - shared action surfaces;
 - responsive shell behavior;
 - common page composition;
 - persistent member context.
+
+The member-facing and Administration dimensions share the same application, rendering foundations, guild presentation, authentication, and authorization context. They differ in navigation composition. The utility bar is the explicit boundary crossing between them: authorized members see **Guild Settings** from the member-facing dimension, while Administration provides a return to the guild-facing application. The utility bar should remain vertically compact and should not become a general-purpose destination shelf.
+
+The member-facing primary navigation owns ordinary application destinations and persistent member context. The Me shelf is personal context and quick access; guild administration does not belong there.
 
 Authenticated member context is projected from the current Guildie. Selected-main or Character imagery may improve recognition but does not determine continuity or authorization.
 
@@ -40,18 +45,22 @@ A missing or disabled control is presentation, not access control. Routes and pr
 
 `/admin` is the global Administration entry and currently redirects to `/admin/general`.
 
-The Administration shell owns two stable concerns:
+The Administration shell uses its own primary navigation rather than retaining the member-facing Home / Events / Me navigation:
 
 ```text
 Administration
 ├── General
-└── Permissions
+├── Modules
+├── Permissions
+└── History
 ```
 
-- `/admin/general` is the home for durable application/module configuration and, as module lifecycle work lands, module enablement.
+- `/admin/general` is the home for durable guild and application configuration.
+- `/admin/modules` owns packaged Module and Plugin enablement and configuration entrypoints.
 - `/admin/permissions` is the home for administratively configurable permission policy.
+- `/admin/history` exposes authorized operational history.
 
-The shell owns the concern navigation and current-section treatment. Modules do not receive top-level Administration tabs merely because they exist.
+The shell owns this concern navigation and current-section treatment. Module-specific administrative depth may exist beneath the appropriate concern, but Modules do not receive top-level Administration destinations merely because they exist.
 
 The current migration still contains legacy module administrative destinations below `/admin` for Raid, Raffle, and Discord. Those routes remain reachable while their contents are classified and moved to the correct configuration or domain-operation surface. They are compatibility structure during the separation, not the target Administration information architecture.
 
