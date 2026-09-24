@@ -137,7 +137,7 @@ export async function registerOperationsAdminPage(
           <h1 id="page-title">Settings</h1>
           <p class="lede">Inspect recorded Guild Operations outcomes.</p>
         </div>`,
-      body: `<nav class="admin-tabs" aria-label="Settings sections"><a href="/admin/general">General</a><a href="/admin/modules">Modules</a><a href="/admin/permissions">Permissions</a><a href="/admin/history" aria-current="page">History</a></nav>${body}`,
+      body,
     });
 
     const available = canInspect;
