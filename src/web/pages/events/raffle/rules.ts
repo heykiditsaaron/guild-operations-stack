@@ -50,12 +50,12 @@ function rulesBody(guildName: string): string {
 }
 
 export async function registerRaffleRulesPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
-  app.get("/events/raffle/rules", async (request, reply) => {
+  app.get("/activities/raffle/rules", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const viewer = await viewerForRequest(sessionToken);
 
     const html = renderPage(assets, {
-      pathname: "/events/raffle/rules",
+      pathname: "/activities/raffle/rules",
       title: `Rules and Regulations · ${viewer.guildPresentation.guildName} Guild Operations`,
       description: `Rules and regulations for ${viewer.guildPresentation.guildName} guild raffles.`,
       viewer,
@@ -63,7 +63,7 @@ export async function registerRaffleRulesPage(app: FastifyInstance, assets: Asse
         kind: "breadcrumb",
         items: [
           { label: "Events" },
-          { label: "Raffle", href: "/events/raffle" },
+          { label: "Raffle", href: "/activities/raffle" },
           { label: "Rules and Regulations" },
         ],
       },
