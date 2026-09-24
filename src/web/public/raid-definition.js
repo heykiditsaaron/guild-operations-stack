@@ -43,7 +43,7 @@ if (cancel instanceof HTMLButtonElement) {
       const response = await fetch(`${manageBasePath()}/cancel`, { method: "POST" });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? "Raid could not be cancelled");
-      window.location.assign("/events/raid/manage");
+      window.location.assign("/activities/raid/manage");
     } catch (error) { setStatus(error instanceof Error ? error.message : "Raid could not be cancelled."); }
   });
 }
