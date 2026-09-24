@@ -1,5 +1,6 @@
 import { applicationAccessToken, getJsonWithRetry } from "./blizzard.js";
-import { config } from "./config.js";
+import { requireOperationalInstallationGuildBinding } from "./core/installation/guild-binding.js";
+import { guildState } from "./core/guild/guild-state.js";
 import type { WowTrait } from "./wow-traits/registry.js";
 
 type BlizzardMedia = {
@@ -103,7 +104,10 @@ async function mediaIcon(kind: "playable-specialization" | "spell", id: number):
   if (iconCache.has(cacheKey)) return iconCache.get(cacheKey) ?? null;
 
   const accessToken = await iconAccessToken();
-  const region = config.guild.region;
+  const binding = await requireOperationalInstallationGuildBinding();
+  const guild = await guildState(binding.guildId);
+  if (!guild) throw new Error("Authorized installation guild was not found");
+  const region = guild.region;
   try {
     const media = await getJsonWithRetry<BlizzardMedia>(
       `https://${region}.api.blizzard.com/data/wow/media/${kind}/${id}?namespace=static-${region}&locale=en_US`,
