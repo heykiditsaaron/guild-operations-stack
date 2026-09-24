@@ -41,7 +41,7 @@ export async function registerSetupPage(app: FastifyInstance, assets: AssetRegis
 
     return reply.type("text/html; charset=utf-8").send(document(
       assets,
-      '<p>The guild has been identified. A current Guild Master must authorize this installation before it can operate.</p><form method="post" data-setup-authorize><button class="button-primary setup-action" type="submit">Authorize Guild Operations</button></form><p class="setup-status" data-setup-status aria-live="polite"></p>',
+      '<p>The guild has been identified. A current Guild Master must authorize this installation before it can operate.</p><form method="post" data-setup-authorize><button class="button-primary setup-action" type="submit">Authorize Guild Operations</button></form><p>If you are not the Guild Master, sign out and have them continue setup with their Blizzard account.</p><form method="post" data-setup-signout><button class="button-secondary setup-action" type="submit">Sign out for Guild Master</button></form><p class="setup-status" data-setup-status aria-live="polite"></p>',
     ));
   });
 }
