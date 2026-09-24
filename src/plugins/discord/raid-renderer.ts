@@ -79,8 +79,8 @@ export async function renderDiscordRaidProjection(state: DiscordRaidProjectionSt
   ].slice(0, 25);
 
   const publicOrigin = await requireInstallationPublicOrigin();
-  const viewUrl = new URL(`/events/raid/${encodeURIComponent(raid.raidId)}`, publicOrigin).toString();
-  const signupUrl = new URL(`/events/raid/${encodeURIComponent(raid.raidId)}/participation`, publicOrigin).toString();
+  const viewUrl = new URL(`/activities/raid/${encodeURIComponent(raid.raidId)}`, publicOrigin).toString();
+  const signupUrl = new URL(`/activities/raid/${encodeURIComponent(raid.raidId)}/participation`, publicOrigin).toString();
   const buttons: Array<{ type: 2; style: 5; label: string; url: string }> = [
     { type: 2, style: 5, label: "Open Raid", url: viewUrl },
   ];
