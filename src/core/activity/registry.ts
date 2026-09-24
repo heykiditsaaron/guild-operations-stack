@@ -19,6 +19,7 @@ export type ActivityParticipationReference = {
 
 export type ActivityParticipationCapability = {
   forGuildie(guildieId: string): Promise<readonly ActivityParticipationReference[]>;
+  destination(reference: ActivityParticipationReference): string;
 };
 
 export type ActivityRegistration = {
@@ -88,7 +89,7 @@ export async function activityTemporalProjectionForEmission(
 
 export async function activityParticipationForGuildie(
   guildieId: string,
-): Promise<ActivityParticipationReference[]> {
+): Promise<Array<ActivityParticipationReference & { destination: string }>> {
   const normalizedGuildieId = requiredText(guildieId, "participation Guildie id");
   const participating = [...activitiesByKind.values()].filter(
     (activity): activity is ActivityRegistration & { participation: ActivityParticipationCapability } =>
@@ -107,7 +108,10 @@ export async function activityParticipationForGuildie(
         requiredText(reference.activityId, "participation activity id");
         requiredText(reference.participationId, "participation id");
       }
-      return references;
+      return references.map((reference) => ({
+        ...reference,
+        destination: activity.participation.destination(reference),
+      }));
     }),
   );
 
