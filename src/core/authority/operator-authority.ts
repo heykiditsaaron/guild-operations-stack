@@ -1,5 +1,6 @@
 import { config } from "../../config.js";
 
-export function isConfiguredOperator(guildieId: string): boolean {
-  return config.operatorGuildieId !== null && guildieId === config.operatorGuildieId;
+export function hasDevelopmentGuildMasterAuthority(guildieId: string): boolean {
+  return config.developmentAuthorityGuildieId !== null
+    && guildieId === config.developmentAuthorityGuildieId;
 }
