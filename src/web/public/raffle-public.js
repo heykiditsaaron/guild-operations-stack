@@ -12,7 +12,7 @@ function closeHomeRafflePromotion(element) {
   const promotion = element.closest("[data-home-raffle-promo]");
   if (!(promotion instanceof HTMLAnchorElement)) return;
 
-  promotion.href = "/events/raffle";
+  promotion.href = "/activities/raffle";
   const label = promotion.querySelector("[data-home-raffle-cta-label]");
   if (label instanceof HTMLElement) label.textContent = "Entries closed · View raffle";
 }
