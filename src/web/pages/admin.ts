@@ -27,7 +27,7 @@ import {
   setPackagedCapabilityEnabled,
   type PackagedCapabilityState,
 } from "../../packaged-capability-lifecycle.js";
-import { isConfiguredOperator } from "../../core/authority/operator-authority.js";
+import { hasDevelopmentGuildMasterAuthority } from "../../core/authority/operator-authority.js";
 import { GUILD_THEMES, guildTheme, isGuildThemeKey, setGuildTheme, type GuildThemeKey } from "../../core/presentation/guild-theme.js";
 import { guildPresentation, parseGuildPresentationUrl, setGuildPresentationDestinations, type GuildPresentation } from "../../core/presentation/guild-presentation.js";
 import { administrationAvailabilityForGuildie } from "../administration.js";
@@ -188,8 +188,8 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     const [viewer, guildie] = await Promise.all([viewerForRequest(sessionToken), authenticatedGuildie(sessionToken)]);
     const authorized = guildie ? await canAdministerGuildPermissions(guildie.guildieId) : false;
     const policies = authorized && guildie ? await guildCapabilityPoliciesForActor(guildie.guildieId) : null;
-    const operator = guildie ? isConfiguredOperator(guildie.guildieId) : false;
-    const content = authorized && policies ? `<section class="permission-administration" aria-labelledby="permission-heading"><div class="permission-intro"><h2 id="permission-heading">Capability access</h2><p>Choose which current Blizzard guild ranks receive each Guild Operations capability in addition to Guild Master rank 0. Rank 0 and configured operator overrides are inherently capable and are not configurable here.</p>${operator ? `<p class="permission-operator-notice"><strong>Operator override active.</strong> This access is independent of your current guild rank.</p>` : ""}</div>${renderPermissionPolicies(policies)}</section>` : `<section class="admin-unavailable" aria-labelledby="admin-unavailable-heading"><h2 id="admin-unavailable-heading">Permission administration is not available for this account.</h2></section>`;
+    const developmentAuthority = guildie ? hasDevelopmentGuildMasterAuthority(guildie.guildieId) : false;
+    const content = authorized && policies ? `<section class="permission-administration" aria-labelledby="permission-heading"><div class="permission-intro"><h2 id="permission-heading">Capability access</h2><p>Choose which current Blizzard guild ranks receive each Guild Operations capability in addition to Guild Master rank 0. Rank 0 and the development authority override are inherently capable and are not configurable here.</p>${developmentAuthority ? `<p class="permission-operator-notice"><strong>Development authority override active.</strong> This access is independent of your current guild rank.</p>` : ""}</div>${renderPermissionPolicies(policies)}</section>` : `<section class="admin-unavailable" aria-labelledby="admin-unavailable-heading"><h2 id="admin-unavailable-heading">Permission administration is not available for this account.</h2></section>`;
     const html = renderPage(assets, { pathname: "/admin/permissions", title: `Permissions Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Configure Guild Operations permission policy.", viewer, stylesheets: ["admin.css", "admin-permissions.css"], scripts: ["admin-permissions.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Configure who may use Guild Operations capabilities.</p></div>`, body: `${administrationTabs("permissions")}${content}` });
     if (!authorized) return reply.code(guildie ? 403 : 401).header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
