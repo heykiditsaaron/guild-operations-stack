@@ -29,11 +29,11 @@ export function registerRaffleActivityIntegration(): void {
     discovery: {
       title: "Raffle",
       tagline: "Take your shot at the pot.",
-      destination: "/events/raffle",
+      destination: "/activities/raffle",
     },
     participation: {
       destination(reference) {
-        return `/events/raffle/${encodeURIComponent(reference.activityId)}`;
+        return `/activities/raffle/${encodeURIComponent(reference.activityId)}`;
       },
       async forGuildie(guildieId) {
         const references = await raffleParticipationReferencesForGuildie(guildieId);
