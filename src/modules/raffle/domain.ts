@@ -1,6 +1,6 @@
 import { randomInt } from "node:crypto";
 import type { PoolClient } from "pg";
-import { config } from "../../config.js";
+import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import { pool, withTransaction } from "../../db.js";
 
 export const RAFFLE_OPERATIONAL_BUFFER_SECONDS = 60 * 60;
@@ -192,19 +192,21 @@ function mapClaim(row: Record<string, unknown>): RaffleClaim {
 }
 
 async function lockedRaffle(client: PoolClient, raffleId: string): Promise<Record<string, unknown>> {
-  const result = await client.query("SELECT * FROM raffles WHERE raffle_id = $1 AND guild_id = $2 FOR UPDATE", [raffleId, config.guild.id]);
+  const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
+  const result = await client.query("SELECT * FROM raffles WHERE raffle_id = $1 AND guild_id = $2 FOR UPDATE", [raffleId, guildId]);
   if (!result.rowCount) throw new RaffleRuleError("raffle_not_found", "Raffle was not found", 404);
   return result.rows[0] as Record<string, unknown>;
 }
 
 async function lockedClaim(client: PoolClient, claimId: string): Promise<Record<string, unknown>> {
+  const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
   const result = await client.query(
     `SELECT rc.*, r.conclusion AS raffle_conclusion
        FROM raffle_claims rc
        JOIN raffles r ON r.raffle_id = rc.raffle_id
       WHERE rc.claim_id = $1 AND r.guild_id = $2
       FOR UPDATE OF rc, r`,
-    [claimId, config.guild.id],
+    [claimId, guildId],
   );
   if (!result.rowCount) throw new RaffleRuleError("claim_not_found", "Raffle claim was not found", 404);
   return result.rows[0] as Record<string, unknown>;
@@ -213,12 +215,13 @@ async function lockedClaim(client: PoolClient, claimId: string): Promise<Record<
 export async function establishRaffle(actorGuildieId: string, termsInput: RaffleTerms, client: PoolClient | null = null): Promise<Raffle> {
   const terms = validateTerms(termsInput);
   requireFullOperationalBuffer(terms.drawingAtUnix);
+  const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
   const result = await (client ?? pool).query(
     `INSERT INTO raffles (
        guild_id, title, drawing_at_unix, entry_price_gold, prize_kind,
        winner_percentage, prize_description, created_by_guildie_id, created_at_unix
      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-    [config.guild.id, terms.title, terms.drawingAtUnix, String(terms.entryPriceGold), terms.prizeKind, terms.winnerPercentage, terms.prizeDescription, actorGuildieId, unixNow()],
+    [guildId, terms.title, terms.drawingAtUnix, String(terms.entryPriceGold), terms.prizeKind, terms.winnerPercentage, terms.prizeDescription, actorGuildieId, unixNow()],
   );
   return mapRaffle(result.rows[0] as Record<string, unknown>);
 }
@@ -318,7 +321,7 @@ export async function establishRaffleClaim(claimantGuildieId: string, raffleId: 
          FROM characters c JOIN guild_roster_memberships grm
            ON grm.region=c.region AND grm.realm_id=c.realm_id AND grm.character_id=c.character_id AND grm.currently_present=true
         WHERE c.guildie_id=$1 AND c.currently_controlled=true AND grm.guild_id=$2 AND c.realm_id=$3 AND c.character_id=$4`,
-      [claimantGuildieId, config.guild.id, realmId, characterId],
+      [claimantGuildieId, raffle.guildId, realmId, characterId],
     );
     if (!characterResult.rowCount) throw new RaffleRuleError("character_not_eligible", "Claim character must be a currently controlled character on the current guild roster", 403);
     const character=characterResult.rows[0];
@@ -395,11 +398,13 @@ export async function drawRaffle(actorGuildieId:string, raffleId:string, client:
 }
 
 export async function raffle(raffleId:string):Promise<Raffle|null> {
-  const result=await pool.query("SELECT * FROM raffles WHERE raffle_id=$1 AND guild_id=$2",[raffleId,config.guild.id]);
+  const guildId=(await requireOperationalInstallationGuildBinding()).guildId;
+  const result=await pool.query("SELECT * FROM raffles WHERE raffle_id=$1 AND guild_id=$2",[raffleId,guildId]);
   return result.rowCount?mapRaffle(result.rows[0] as Record<string,unknown>):null;
 }
 
 export async function raffleClaims(raffleId:string):Promise<RaffleClaim[]> {
+  const guildId=(await requireOperationalInstallationGuildBinding()).guildId;
   const result=await pool.query(
     `SELECT rc.*, c.character_id, c.realm_id, COALESCE(grm.character_name,c.name) AS character_name
        FROM raffle_claims rc
@@ -407,6 +412,6 @@ export async function raffleClaims(raffleId:string):Promise<RaffleClaim[]> {
        JOIN characters c ON c.character_record_id=rc.character_record_id
        LEFT JOIN guild_roster_memberships grm ON grm.guild_id=r.guild_id AND grm.region=c.region AND grm.realm_id=c.realm_id AND grm.character_id=c.character_id
       WHERE rc.raffle_id=$1 ORDER BY rc.created_at_unix ASC, rc.claim_id ASC`,
-    [raffleId,config.guild.id]);
+    [raffleId,guildId]);
   return result.rows.map(row=>mapClaim(row as Record<string,unknown>));
 }
