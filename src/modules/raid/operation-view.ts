@@ -1,4 +1,4 @@
-import { config } from "../../config.js";
+import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import { pool } from "../../db.js";
 import type { RaidDifficulty, RaidEligibility } from "./domain.js";
 
@@ -13,6 +13,7 @@ export type RaidOperationEvent = {
 };
 
 export async function raidsForOperation(): Promise<RaidOperationEvent[]> {
+  const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
   const result = await pool.query<{
     raid_id: string; label: string; description: string | null; occurs_start_unix: string; occurs_end_unix: string | null;
     tags: string[]; eligibility: RaidEligibility; difficulty: RaidDifficulty;
@@ -23,7 +24,7 @@ export async function raidsForOperation(): Promise<RaidOperationEvent[]> {
       WHERE guild_id = $1
         AND cancelled_at_unix IS NULL
       ORDER BY occurs_start_unix ASC, created_at_unix ASC`,
-    [config.guild.id],
+    [guildId],
   );
 
   return result.rows.map((row) => {
