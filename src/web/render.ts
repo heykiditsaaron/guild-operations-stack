@@ -149,7 +149,11 @@ function renderUtilityBar(viewer: WebViewer, pathname: string): string {
     return `<nav class="utility-bar" aria-label="Application area"><div class="utility-bar-inner"><a class="utility-dimension-swap" href="/">← Return to ${escapeHtml(viewer.guildPresentation.guildName)}</a></div></nav>`;
   }
   if (!viewer.administrationAvailable) return "";
-  return `<nav class="utility-bar" aria-label="Application area"><div class="utility-bar-inner"><a class="utility-dimension-swap" href="/admin">Guild Settings <span aria-hidden="true">⚙</span></a></div></nav>`;
+  const orientation = viewer.guildPresentation.guildSettingsLocationAcknowledged
+    ? `Guild Settings <span aria-hidden="true">⚙</span>`
+    : `<span class="utility-orientation-prompt">Start here <span class="utility-orientation-arrow" aria-hidden="true">→</span></span> Guild Settings <span aria-hidden="true">⚙</span>`;
+  const orientationClass = viewer.guildPresentation.guildSettingsLocationAcknowledged ? "" : " utility-dimension-swap-orientation";
+  return `<nav class="utility-bar" aria-label="Application area"><div class="utility-bar-inner"><a class="utility-dimension-swap${orientationClass}" href="/admin">${orientation}</a></div></nav>`;
 }
 
 function renderActionBar(viewer: WebViewer, pathname: string): string {
