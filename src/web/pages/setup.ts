@@ -22,8 +22,12 @@ export async function registerSetupPage(app: FastifyInstance, assets: AssetRegis
       return reply.type("text/html; charset=utf-8").send(document(
         assets,
         `<p>Connect Guild Operations to a Blizzard application before identifying the guild this installation will serve.</p>
-        <p>Create a Blizzard application and register this callback URL:</p>
-        <p><code>${escapeHtml(callbackUrl)}</code></p>
+        <p>Create a Blizzard application, then register this callback URL.</p>
+        <p><a class="button-secondary setup-external-action" href="https://develop.battle.net/access/clients" target="_blank" rel="noopener noreferrer">Open Blizzard Developer Portal ↗</a></p>
+        <div class="setup-copy-value">
+          <code>${escapeHtml(callbackUrl)}</code>
+          <button class="button-secondary setup-copy-action" type="button" data-copy-value="${escapeHtml(callbackUrl)}">Copy</button>
+        </div>
         <form method="post" data-setup-blizzard>
           <label>Client ID<input name="client_id" autocomplete="off" required></label>
           <label>Client Secret<input name="client_secret" type="password" autocomplete="new-password" required></label>
