@@ -13,6 +13,7 @@ import {
   validateBlizzardApplicationCredentials,
 } from "./blizzard-configuration.js";
 import { establishInstallationPublicOrigin, publicOriginForRequest } from "./public-origin.js";
+import { withTransaction } from "../../db.js";
 
 export async function registerInstallationRoutes(
   app: FastifyInstance,
@@ -34,6 +35,23 @@ export async function registerInstallationRoutes(
     await establishInstallationPublicOrigin(publicOriginForRequest(request));
     await storeInstallationBlizzardConfiguration({ clientId, clientSecret });
     return reply.code(201).send({ configured: true });
+  });
+
+  app.post("/installation/restart", async (request, reply) => {
+    const binding = await installationGuildBinding();
+    if (binding?.authorizedAt) {
+      return reply.code(409).send({ error: "operational_installation_cannot_restart_setup" });
+    }
+
+    await withTransaction(async (client) => {
+      await client.query("DELETE FROM installation_guild_binding WHERE singleton = true");
+      await client.query("DELETE FROM installation_blizzard_configuration WHERE singleton = true");
+      await client.query("DELETE FROM installation_web_configuration WHERE singleton = true");
+      await client.query("DELETE FROM authentication_attempts");
+      await client.query("UPDATE application_sessions SET revoked_at = now() WHERE revoked_at IS NULL");
+    });
+    reply.clearCookie(SESSION_COOKIE_NAME, { path: "/" });
+    return reply.code(204).send();
   });
 
   app.get("/installation", async (request, reply) => {
