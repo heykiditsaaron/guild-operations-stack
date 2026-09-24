@@ -11,9 +11,20 @@ export type ActivityTemporalCapability = {
   projection(activityId: string): Promise<ActivityTemporalProjection>;
 };
 
+export type ActivityParticipationReference = {
+  activityKind: string;
+  activityId: string;
+  participationId: string;
+};
+
+export type ActivityParticipationCapability = {
+  forGuildie(guildieId: string): Promise<readonly ActivityParticipationReference[]>;
+};
+
 export type ActivityRegistration = {
   kind: string;
   temporal?: ActivityTemporalCapability;
+  participation?: ActivityParticipationCapability;
 };
 
 const activitiesByKind = new Map<string, ActivityRegistration>();
@@ -72,4 +83,33 @@ export async function activityTemporalProjectionForEmission(
     );
   }
   return projection;
+}
+
+
+export async function activityParticipationForGuildie(
+  guildieId: string,
+): Promise<ActivityParticipationReference[]> {
+  const normalizedGuildieId = requiredText(guildieId, "participation Guildie id");
+  const participating = [...activitiesByKind.values()].filter(
+    (activity): activity is ActivityRegistration & { participation: ActivityParticipationCapability } =>
+      activity.participation !== undefined,
+  );
+
+  const resolved = await Promise.all(
+    participating.map(async (activity) => {
+      const references = await activity.participation.forGuildie(normalizedGuildieId);
+      for (const reference of references) {
+        if (reference.activityKind !== activity.kind) {
+          throw new Error(
+            `Activity participation kind ${reference.activityKind} does not match registered kind ${activity.kind}`,
+          );
+        }
+        requiredText(reference.activityId, "participation activity id");
+        requiredText(reference.participationId, "participation id");
+      }
+      return references;
+    }),
+  );
+
+  return resolved.flat();
 }
