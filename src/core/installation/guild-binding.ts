@@ -155,7 +155,7 @@ export async function authorizeInstallationGuildBinding(
   const rankIndex = rankResult.rows[0]?.rank_index;
   const authorizationKind = rankIndex === 0
     ? "guild_master"
-    : hasDevelopmentGuildMasterAuthority(guildieId)
+    : rankIndex !== undefined && hasDevelopmentGuildMasterAuthority(guildieId)
       ? "original_install_bypass"
       : null;
   if (!authorizationKind) {
