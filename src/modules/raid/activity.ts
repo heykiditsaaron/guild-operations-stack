@@ -25,6 +25,11 @@ async function raidTemporalProjection(raidId: string): Promise<ActivityTemporalP
 export function registerRaidActivityIntegration(): void {
   registerActivity({
     kind: "raid",
+    discovery: {
+      title: "Raid",
+      tagline: "Organized guild raiding and roster participation.",
+      destination: "/events/raid",
+    },
     participation: {
       destination(reference) {
         return `/events/raid/${encodeURIComponent(reference.activityId)}`;
