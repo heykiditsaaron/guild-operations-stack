@@ -22,8 +22,15 @@ export type ActivityParticipationCapability = {
   destination(reference: ActivityParticipationReference): string;
 };
 
+export type ActivityDiscovery = {
+  title: string;
+  tagline: string;
+  destination: string;
+};
+
 export type ActivityRegistration = {
   kind: string;
+  discovery?: ActivityDiscovery;
   temporal?: ActivityTemporalCapability;
   participation?: ActivityParticipationCapability;
 };
@@ -116,4 +123,8 @@ export async function activityParticipationForGuildie(
   );
 
   return resolved.flat();
+}
+
+export function discoverableActivities(): readonly (ActivityDiscovery & { kind: string })[] {
+  return [...activitiesByKind.values()].flatMap((activity) => activity.discovery ? [{ kind: activity.kind, ...activity.discovery }] : []);
 }
