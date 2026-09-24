@@ -62,7 +62,7 @@ export async function registerRaffleRulesPage(app: FastifyInstance, assets: Asse
       secondaryNavigation: {
         kind: "breadcrumb",
         items: [
-          { label: "Events" },
+          { label: "Activities" },
           { label: "Raffle", href: "/activities/raffle" },
           { label: "Rules and Regulations" },
         ],
@@ -70,7 +70,7 @@ export async function registerRaffleRulesPage(app: FastifyInstance, assets: Asse
       stylesheets: ["raffle.css"],
       header: `
         <div class="raffle-page-header">
-          <p class="eyebrow">Events · Raffle</p>
+          <p class="eyebrow">Activities · Raffle</p>
           <h1 id="page-title">Rules and Regulations</h1>
           <p class="lede">The standing rules for participating in guild raffles.</p>
         </div>`,
