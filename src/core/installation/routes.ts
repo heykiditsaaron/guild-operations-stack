@@ -7,11 +7,33 @@ import {
   installationGuildBinding,
 } from "./guild-binding.js";
 import { discoverInstallationGuildCandidates } from "./guild-candidates.js";
+import {
+  installationBlizzardConfigured,
+  storeInstallationBlizzardConfiguration,
+  validateBlizzardApplicationCredentials,
+} from "./blizzard-configuration.js";
 
 export async function registerInstallationRoutes(
   app: FastifyInstance,
   options: { onOperational?: () => void | Promise<void> } = {},
 ): Promise<void> {
+  app.post("/installation/blizzard", async (request, reply) => {
+    if (await installationBlizzardConfigured()) {
+      return reply.code(409).send({ error: "blizzard_already_configured" });
+    }
+    const body = request.body as { client_id?: unknown; client_secret?: unknown } | null;
+    const clientId = typeof body?.client_id === "string" ? body.client_id.trim() : "";
+    const clientSecret = typeof body?.client_secret === "string" ? body.client_secret.trim() : "";
+    if (!clientId || !clientSecret) {
+      return reply.code(400).send({ error: "invalid_blizzard_configuration" });
+    }
+    if (!await validateBlizzardApplicationCredentials({ clientId, clientSecret })) {
+      return reply.code(400).send({ error: "blizzard_credentials_rejected" });
+    }
+    await storeInstallationBlizzardConfiguration({ clientId, clientSecret });
+    return reply.code(201).send({ configured: true });
+  });
+
   app.get("/installation", async (request, reply) => {
     const binding = await installationGuildBinding();
     const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
