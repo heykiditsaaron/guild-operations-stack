@@ -151,7 +151,7 @@ async function ensureObservedRankDefinition(client: PoolClient, guildId: string,
   }
 }
 
-async function persistRoster(client: PoolClient, guildId: string, region: Region, roster: BlizzardGuildRoster): Promise<{
+export async function persistGuildRoster(client: PoolClient, guildId: string, region: Region, roster: BlizzardGuildRoster): Promise<{
   observed: number;
   changedPresentationCoordinates: GuildCharacterCoordinate[];
 }> {
@@ -243,7 +243,7 @@ export async function refreshGuildAuthority(): Promise<GuildRefreshResult> {
   const persisted = await withTransaction(async (client) => {
     const guildId = await persistGuild(client, guild.region, authority.profile);
     const beforeGuildies = await guildieRosterState(client, guildId);
-    const roster = await persistRoster(client, guildId, guild.region, authority.roster);
+    const roster = await persistGuildRoster(client, guildId, guild.region, authority.roster);
     const afterGuildies = await guildieRosterState(client, guildId);
     const guildieTransitions = guildieRosterTransitions(beforeGuildies, afterGuildies);
     const publications = [];
