@@ -1,4 +1,4 @@
-import { config } from "../../config.js";
+import { requireInstallationPublicOrigin } from "../../core/installation/public-origin.js";
 import { positionForSpec } from "../../wow-traits/registry.js";
 import { activeRaidSignups, type RaidSignupView } from "../../modules/raid/participation-view.js";
 import { raidEventFacts, raidEventFactsIncludingCancelled, raidSignupsAreOpen, type RaidEventFacts } from "../../modules/raid/application.js";
@@ -47,7 +47,7 @@ function occurrenceText(raid: RaidEventFacts): string {
     : `<t:${start}:F> – <t:${end}:t> · <t:${start}:R>`;
 }
 
-export function renderDiscordRaidProjection(state: DiscordRaidProjectionState): DiscordMessageInput {
+export async function renderDiscordRaidProjection(state: DiscordRaidProjectionState): Promise<DiscordMessageInput> {
   const { raid, signups } = state;
   if (raid.cancelledAtUnix !== null) {
     return {
@@ -78,8 +78,9 @@ export function renderDiscordRaidProjection(state: DiscordRaidProjectionState): 
     })),
   ].slice(0, 25);
 
-  const viewUrl = new URL(`/events/raid/${encodeURIComponent(raid.raidId)}`, config.appOrigin).toString();
-  const signupUrl = new URL(`/events/raid/${encodeURIComponent(raid.raidId)}/participation`, config.appOrigin).toString();
+  const publicOrigin = await requireInstallationPublicOrigin();
+  const viewUrl = new URL(`/events/raid/${encodeURIComponent(raid.raidId)}`, publicOrigin).toString();
+  const signupUrl = new URL(`/events/raid/${encodeURIComponent(raid.raidId)}/participation`, publicOrigin).toString();
   const buttons: Array<{ type: 2; style: 5; label: string; url: string }> = [
     { type: 2, style: 5, label: "Open Raid", url: viewUrl },
   ];

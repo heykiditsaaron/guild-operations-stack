@@ -51,7 +51,7 @@ async function oauthConfiguration(): Promise<DiscordOAuthConfiguration> {
   return {
     clientId: current.clientId,
     clientSecret: current.clientSecret,
-    redirectUri: discordOAuthRedirectUri(),
+    redirectUri: await discordOAuthRedirectUri(),
   };
 }
 
@@ -66,7 +66,7 @@ function safeReturnTo(value: unknown): string | null {
 }
 
 function withDiscordResult(path: string, result: "connected" | "failed" | "conflict"): string {
-  const url = new URL(path, config.appOrigin);
+  const url = new URL(path, "http://guild-operations.local");
   url.searchParams.set("discord", result);
   return `${url.pathname}${url.search}${url.hash}`;
 }

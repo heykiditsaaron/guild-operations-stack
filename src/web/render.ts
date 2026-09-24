@@ -1,4 +1,3 @@
-import { config } from "../config.js";
 import type { GuildPresentation } from "../core/presentation/guild-presentation.js";
 import type { AdministrationNavigationDestination } from "./admin-navigation.js";
 import { assetUrl, type AssetName, type AssetRegistry } from "./assets.js";
@@ -263,7 +262,7 @@ export function renderPage(assets: AssetRegistry, input: RenderPageInput): strin
   const theme = input.viewer.theme;
   const title = escapeHtml(input.title);
   const description = escapeHtml(input.description ?? input.viewer.guildPresentation.guildName);
-  const canonicalUrl = new URL(input.pathname, config.appOrigin).toString();
+  const canonicalUrl = input.pathname;
   const stylesheets = (input.stylesheets ?? []).map((name) => `  <link rel="stylesheet" href="${assetUrl(assets, name)}">`).join("\n");
   const scripts = (input.scripts ?? []).map((name) => `  <script src="${assetUrl(assets, name)}" defer></script>`).join("\n");
   const administrationNavigation = renderAdministrationNavigation(input.viewer, input.pathname);

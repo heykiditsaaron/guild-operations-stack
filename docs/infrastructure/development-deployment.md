@@ -17,7 +17,7 @@ Second, the development Compose project owns its own:
 - API container and network;
 - PostgreSQL container and database volume;
 - Node modules volume;
-- application origin and host ports; and
+- host ports and development-only authority configuration; and
 - environment file.
 
 Default host bindings are:
@@ -49,14 +49,9 @@ cd ~/dev/guild-operations-stack-dev
 cp .env.dev.example .env.dev
 ```
 
-Populate the required Blizzard and Discord OAuth client values locally. Do not commit `.env.dev`.
+The development environment file is only for development-only process configuration such as `DEVELOPMENT_AUTHORITY_GUILDIE_ID`. Blizzard application configuration is established through first-run setup and Discord configuration is managed by its module surface.
 
-The tracked development example uses `APP_ORIGIN=https://dev.guild.gameweenies.net` and secure session cookies. If the development hostname changes, update the local `APP_ORIGIN` and the tracked example together.
-
-Blizzard and Discord callback configuration must permit the development origin before authentication can be validated there. Guild Operations derives the callbacks as:
-
-- `${APP_ORIGIN}/auth/blizzard/callback`
-- `${APP_ORIGIN}/auth/discord/callback`
+Guild Operations learns the externally visible application origin from first-run setup rather than requiring `APP_ORIGIN`. The setup surface presents the exact Blizzard callback URL to copy into the Blizzard Developer Portal. Discord similarly derives its callback from the persisted installation origin.
 
 ## First start
 

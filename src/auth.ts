@@ -16,6 +16,7 @@ import {
   establishOrResolveGuildie,
   reconcileExistingGuildieBlizzardObservation,
 } from "./core/identity/blizzard-identity.js";
+import { installationPublicOrigin } from "./core/installation/public-origin.js";
 
 export const SESSION_COOKIE_NAME = "guild_session";
 
@@ -39,7 +40,7 @@ function safeReturnTo(value: unknown): string | null {
 }
 
 function withQueryValue(path: string, key: string, value: string): string {
-  const url = new URL(path, config.appOrigin);
+  const url = new URL(path, "http://guild-operations.local");
   url.searchParams.set(key, value);
   return `${url.pathname}${url.search}${url.hash}`;
 }
@@ -54,11 +55,11 @@ async function createSession(guildieId: string): Promise<string> {
   return token;
 }
 
-function setSessionCookie(reply: FastifyReply, token: string): void {
+function setSessionCookie(reply: FastifyReply, token: string, secure: boolean): void {
   reply.setCookie(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: config.sessionCookieSecure,
+    secure,
     path: "/",
     maxAge: config.sessionTtlDays * 24 * 60 * 60,
   });
@@ -364,7 +365,8 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
         profile: authority.profile,
       });
       const sessionToken = await createSession(guildieId);
-      setSessionCookie(reply, sessionToken);
+      const publicOrigin = await installationPublicOrigin();
+      setSessionCookie(reply, sessionToken, publicOrigin?.startsWith("https://") ?? false);
       return reply.redirect(await redirectAfterIdentityCeremony(guildieId, returnTo));
     } catch (error) {
       request.log.error({ err: error }, "Blizzard authentication ceremony failed");

@@ -1,5 +1,5 @@
-import { config } from "../../config.js";
 import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
+import { installationAbsoluteUrl } from "../../core/installation/public-origin.js";
 import { pool } from "../../db.js";
 import { packagedCapabilityEnabled } from "../../packaged-capability-lifecycle.js";
 import { decryptSecret, encryptSecret } from "./secrets.js";
@@ -157,6 +157,6 @@ export async function updateDiscordPluginConfiguration(
   return discordPluginConfiguration(resolvedGuildId);
 }
 
-export function discordOAuthRedirectUri(): string {
-  return new URL("/auth/discord/callback", config.appOrigin).toString();
+export async function discordOAuthRedirectUri(): Promise<string> {
+  return installationAbsoluteUrl("/auth/discord/callback");
 }

@@ -43,7 +43,7 @@ async function consumeRaidEstablishedEmission(emission: Emission): Promise<void>
   const existing = await discordRaidProjectionCoordinate(emission.subject);
   if (existing) {
     const state = await discordRaidProjectionState(emission.subject);
-    if (state) await editDiscordChannelMessage(existing.channelId, existing.messageId, renderDiscordRaidProjection(state));
+    if (state) await editDiscordChannelMessage(existing.channelId, existing.messageId, await renderDiscordRaidProjection(state));
     return;
   }
 
@@ -54,7 +54,7 @@ async function consumeRaidEstablishedEmission(emission: Emission): Promise<void>
 
   const message = await createDiscordChannelMessage(
     projectionConfiguration.channelId,
-    renderDiscordRaidProjection(state),
+    await renderDiscordRaidProjection(state),
   );
   await recordDiscordRaidProjection({
     raidId: state.raid.raidId,
@@ -76,7 +76,7 @@ async function consumeRaidReconciliationEmission(emission: Emission): Promise<vo
   await editDiscordChannelMessage(
     coordinate.channelId,
     coordinate.messageId,
-    renderDiscordRaidProjection(state),
+    await renderDiscordRaidProjection(state),
   );
 }
 

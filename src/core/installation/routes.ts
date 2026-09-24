@@ -12,6 +12,7 @@ import {
   storeInstallationBlizzardConfiguration,
   validateBlizzardApplicationCredentials,
 } from "./blizzard-configuration.js";
+import { establishInstallationPublicOrigin, publicOriginForRequest } from "./public-origin.js";
 
 export async function registerInstallationRoutes(
   app: FastifyInstance,
@@ -30,6 +31,7 @@ export async function registerInstallationRoutes(
     if (!await validateBlizzardApplicationCredentials({ clientId, clientSecret })) {
       return reply.code(400).send({ error: "blizzard_credentials_rejected" });
     }
+    await establishInstallationPublicOrigin(publicOriginForRequest(request));
     await storeInstallationBlizzardConfiguration({ clientId, clientSecret });
     return reply.code(201).send({ configured: true });
   });

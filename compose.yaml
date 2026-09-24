@@ -15,8 +15,6 @@ services:
 
   migrate:
     image: ghcr.io/heykiditsaaron/guild-operations:${GUILD_OPERATIONS_VERSION:-latest}
-    env_file:
-      - .env
     depends_on:
       db:
         condition: service_healthy
@@ -25,10 +23,8 @@ services:
 
   api:
     image: ghcr.io/heykiditsaaron/guild-operations:${GUILD_OPERATIONS_VERSION:-latest}
-    env_file:
-      - .env
     ports:
-      - "3100:3100"
+      - "${HTTP_PORT:-3100}:3100"
     volumes:
       - guild-operations-installation:/var/lib/guild-operations
     depends_on:

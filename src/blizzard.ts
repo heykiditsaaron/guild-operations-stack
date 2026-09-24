@@ -1,5 +1,6 @@
 import { config, type Region } from "./config.js";
 import { installationBlizzardConfiguration } from "./core/installation/blizzard-configuration.js";
+import { installationAbsoluteUrl } from "./core/installation/public-origin.js";
 
 export type BlizzardUserInfo = {
   id: number | string;
@@ -120,7 +121,7 @@ export async function authorizationUrl(state: string): Promise<string> {
   const credentials = await requiredBlizzardConfiguration();
   const url = new URL("https://oauth.battle.net/authorize");
   url.searchParams.set("client_id", credentials.clientId);
-  url.searchParams.set("redirect_uri", config.blizzardRedirectUri);
+  url.searchParams.set("redirect_uri", await installationAbsoluteUrl("/auth/blizzard/callback"));
   url.searchParams.set("response_type", "code");
   url.searchParams.set("scope", "wow.profile");
   url.searchParams.set("state", state);
@@ -133,7 +134,7 @@ export async function exchangeAuthorizationCode(code: string): Promise<string> {
   const body = new URLSearchParams({
     grant_type: "authorization_code",
     code,
-    redirect_uri: config.blizzardRedirectUri,
+    redirect_uri: await installationAbsoluteUrl("/auth/blizzard/callback"),
   });
 
   const response = await fetch("https://oauth.battle.net/token", {

@@ -3,8 +3,8 @@ import { SESSION_COOKIE_NAME, authenticatedGuildie } from "../../auth.js";
 import { installationGuildBinding } from "../../core/installation/guild-binding.js";
 import { discoverInstallationGuildCandidates } from "../../core/installation/guild-candidates.js";
 import { assetUrl, type AssetRegistry } from "../assets.js";
-import { config } from "../../config.js";
 import { installationBlizzardConfigured } from "../../core/installation/blizzard-configuration.js";
+import { publicOriginForRequest } from "../../core/installation/public-origin.js";
 
 function escapeHtml(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
@@ -18,7 +18,7 @@ export async function registerSetupPage(app: FastifyInstance, assets: AssetRegis
   app.get("/setup", async (request, reply) => {
     const blizzardConfigured = await installationBlizzardConfigured();
     if (!blizzardConfigured) {
-      const callbackUrl = config.blizzardRedirectUri;
+      const callbackUrl = new URL("/auth/blizzard/callback", publicOriginForRequest(request)).toString();
       return reply.type("text/html; charset=utf-8").send(document(
         assets,
         `<p>Connect Guild Operations to a Blizzard application before identifying the guild this installation will serve.</p>
