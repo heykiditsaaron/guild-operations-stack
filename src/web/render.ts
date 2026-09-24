@@ -178,7 +178,7 @@ function renderActionBar(viewer: WebViewer, pathname: string): string {
 
   const homeActive = pathname === "/" ? ' aria-current="page"' : "";
   const calendarActive = pathname === "/calendar" ? ' aria-current="page"' : "";
-  const activitiesActive = pathname === "/activities" || pathname.startsWith("/events/") ? ' aria-current="page"' : "";
+  const activitiesActive = pathname === "/activities" || pathname.startsWith("/activities/") ? ' aria-current="page"' : "";
   return `<nav class="action-bar" aria-label="Primary navigation"><div class="action-bar-inner">
     <details class="mobile-nav menu-surface"><summary class="icon-control" aria-label="Open navigation"><span></span><span></span><span></span></summary><div class="menu-panel menu-panel-left mobile-nav-panel"><a href="/"${homeActive}>Home</a><a href="/calendar"${calendarActive}>Calendar</a><a href="/activities"${activitiesActive}>Activities</a></div></details>
     <div class="desktop-nav"><a href="/"${homeActive}>Home</a><a href="/calendar"${calendarActive}>Calendar</a><a href="/activities"${activitiesActive}>Activities</a></div><div class="action-bar-spacer"></div>${renderMeControl(viewer, pathname)}
@@ -267,7 +267,7 @@ export type OccurrenceParticipationFrame = {
 };
 
 export function renderOccurrenceParticipation(input: OccurrenceParticipationFrame): string {
-  return `<section class="occurrence-participation-frame"><header class="occurrence-participation-header"><p class="eyebrow">Events · ${escapeHtml(input.activity)}</p><h1>Participation</h1><p class="occurrence-participation-title">${escapeHtml(input.title)}</p>${input.context ? `<div class="occurrence-participation-context">${input.context}</div>` : ""}</header>${input.existingParticipation ? `<div class="occurrence-participation-existing">${input.existingParticipation}</div>` : ""}<div class="occurrence-participation-intake">${input.intake}</div></section>`;
+  return `<section class="occurrence-participation-frame"><header class="occurrence-participation-header"><p class="eyebrow">Activities · ${escapeHtml(input.activity)}</p><h1>Participation</h1><p class="occurrence-participation-title">${escapeHtml(input.title)}</p>${input.context ? `<div class="occurrence-participation-context">${input.context}</div>` : ""}</header>${input.existingParticipation ? `<div class="occurrence-participation-existing">${input.existingParticipation}</div>` : ""}<div class="occurrence-participation-intake">${input.intake}</div></section>`;
 }
 
 export type OccurrenceOperationsMode = { label: string; href: string; current?: boolean };
