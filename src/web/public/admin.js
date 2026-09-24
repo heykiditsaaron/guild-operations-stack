@@ -304,3 +304,33 @@ if (
     }
   });
 }
+
+
+const guildSettingsOrientation = document.querySelector("[data-guild-settings-location-acknowledged]");
+const guildSettingsOrientationFeedback = document.querySelector("[data-guild-settings-orientation-feedback]");
+
+if (
+  guildSettingsOrientation instanceof HTMLInputElement
+  && guildSettingsOrientationFeedback instanceof HTMLElement
+) {
+  guildSettingsOrientation.addEventListener("change", async () => {
+    if (guildSettingsOrientation.disabled) return;
+    const requested = guildSettingsOrientation.checked;
+    guildSettingsOrientation.disabled = true;
+    guildSettingsOrientationFeedback.textContent = "Updating Guild Settings guidance…";
+    try {
+      const response = await fetch("/admin/general/orientation", {
+        method: "PUT",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({ acknowledged: requested }),
+      });
+      if (!response.ok) throw new Error(`Guild Settings orientation update returned ${response.status}`);
+      window.location.reload();
+    } catch (error) {
+      console.error("Guild Settings orientation update failed", error);
+      guildSettingsOrientation.checked = !requested;
+      guildSettingsOrientation.disabled = false;
+      guildSettingsOrientationFeedback.textContent = "Guild Settings guidance could not be updated.";
+    }
+  });
+}
