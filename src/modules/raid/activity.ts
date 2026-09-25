@@ -3,6 +3,7 @@ import {
   type ActivityTemporalProjection,
 } from "../../core/activity/registry.js";
 import { raidEventFactsIncludingCancelled, raidCalendarProjection } from "./application.js";
+import { RAID_CAPABILITY_DEFINITIONS } from "./permissions.js";
 
 const RAID_TEMPORAL_EMISSION_CODES = [
   "raid.established",
@@ -24,6 +25,7 @@ async function raidTemporalProjection(raidId: string): Promise<ActivityTemporalP
 export function registerRaidActivityIntegration(): void {
   registerActivity({
     kind: "raid",
+    administration: { capabilities: RAID_CAPABILITY_DEFINITIONS },
     discovery: {
       title: "Raid",
       tagline: "Organized guild raiding and roster participation.",
