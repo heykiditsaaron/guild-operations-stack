@@ -3,7 +3,6 @@ import {
   type ActivityTemporalProjection,
 } from "../../core/activity/registry.js";
 import { getRaffle, raffleCalendarProjection } from "./application.js";
-import { raffleParticipationReferencesForGuildie } from "./queries.js";
 
 const RAFFLE_TEMPORAL_EMISSION_CODES = [
   "raffle.established",
@@ -34,14 +33,6 @@ export function registerRaffleActivityIntegration(): void {
     participation: {
       destination(reference) {
         return `/activities/raffle/${encodeURIComponent(reference.activityId)}`;
-      },
-      async forGuildie(guildieId) {
-        const references = await raffleParticipationReferencesForGuildie(guildieId);
-        return references.map((reference) => ({
-          activityKind: "raffle",
-          activityId: reference.raffleId,
-          participationId: reference.claimId,
-        }));
       },
     },
     temporal: {
