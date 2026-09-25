@@ -38,8 +38,9 @@ export async function registerInstalledActivityPlugins(
 
     try {
       plugin.register();
-      if (isPackagedCapabilityKey(plugin.kind)) {
-        configureActivityActivation(plugin.kind, { enabled: () => packagedCapabilityEnabled(plugin.kind) });
+      const packagedCapabilityKey = plugin.kind;
+      if (isPackagedCapabilityKey(packagedCapabilityKey)) {
+        configureActivityActivation(plugin.kind, { enabled: () => packagedCapabilityEnabled(packagedCapabilityKey) });
       }
     } catch (error) {
       logger.warn({ err: error, activityKind: plugin.kind }, "Activity plugin failed to activate");
