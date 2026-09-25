@@ -100,11 +100,8 @@ export async function registerInstalledActivityPlugins(
       continue;
     }
 
-    const state = await activityRegistrationState(plugin.kind);
-    if (state?.active) {
-      await app.register(async (activityApp) => {
-        await plugin.registerRoutes(activityApp, assets);
-      });
-    }
+    await app.register(async (activityApp) => {
+      await plugin.registerRoutes(activityApp, assets);
+    });
   }
 }
