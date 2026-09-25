@@ -59,7 +59,7 @@ async function loadActivityPlugin(
     }
     if (loaded.activityPlugin.kind !== expectedKind) {
       throw new Error(
-        `Activity plugin kind ${loaded.activityPlugin.kind} does not match cartridge directory ${expectedKind}`,
+        `Activity plugin kind ${loaded.activityPlugin.kind} does not match Activity plugin directory ${expectedKind}`,
       );
     }
     return loaded.activityPlugin;
