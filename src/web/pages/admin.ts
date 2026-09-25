@@ -4,6 +4,7 @@ import { guildRefreshStatus } from "../../core/guild/guild-refresh-status.js";
 import {
   canAdministerGuildPermissions,
   guildCapabilityPoliciesForActor,
+  guildCapabilityPoliciesForDefinitions,
   setGuildCapabilityPermittedRanks,
   type GuildCapabilityPolicySet,
 } from "../../core/authority/guild-capability-policy.js";
@@ -21,6 +22,9 @@ import {
   guildieHasGuildCapability,
   guildieHasGuildCapabilityOrOperator,
 } from "../../core/authority/guild-permissions.js";
+import { activityAdministration, activityRegistrationStates, type ActivityRegistrationState } from "../../core/activity/registry.js";
+import { knownActivityPlugins } from "../../core/activity/plugin-control.js";
+import { setActivityPluginEnabled } from "../../core/activity/plugin-enablement.js";
 import {
   isPackagedCapabilityKey,
   packagedCapabilityStates,
@@ -54,6 +58,22 @@ function renderPackagedCapabilityLifecycle(capabilities: PackagedCapabilityState
     }).join("\n")}</div></section>`;
   };
   return `${renderGroup("module", "Modules")}${renderGroup("plugin", "Plugins")}`;
+}
+
+async function renderActivityAdministration(guildieId: string, canConfigureModules: boolean): Promise<string> {
+  const [states, fingerprints] = await Promise.all([activityRegistrationStates(), knownActivityPlugins()]);
+  const labels = new Map(fingerprints.map((plugin) => [plugin.kind, plugin.label]));
+  const cards = await Promise.all(states.map(async (state: ActivityRegistrationState) => {
+    const administration = await activityAdministration(state.kind);
+    const definitions = administration?.capabilities ?? [];
+    const policies = await guildCapabilityPoliciesForDefinitions(definitions);
+    const editable = Boolean(administration?.authoritative && state.status !== "failed");
+    const permissionView = policies.capabilities.length ? `<div class="permission-capabilities">${policies.capabilities.map((policy) => renderPermissionCapability(policy, policies.ranks)).join("\n")}</div>` : '<p class="admin-section-note">This Activity declares no configurable capabilities.</p>';
+    const frozen = editable ? "" : '<p class="admin-section-note"><strong>Last known declaration.</strong> Permission values are read-only until this Activity successfully registers again.</p>';
+    const toggleDisabled = canConfigureModules && state.available && state.status !== "failed" ? "" : " disabled";
+    return `<article class="module-lifecycle-card settings-panel" data-activity-key="${htmlText(state.kind)}"><div class="module-lifecycle-copy"><div class="module-lifecycle-heading"><h3>${htmlText(labels.get(state.kind) ?? state.kind)}</h3><span class="module-lifecycle-availability">${htmlText(state.status)}</span></div><p>${state.active ? "Active in Guild Operations." : "Activity procedure is not currently active."}</p>${frozen}${editable ? permissionView : permissionView.replaceAll("<input ", "<input disabled ").replaceAll("<button type=\"submit\"", "<button disabled type=\"submit\"")}</div><label class="switch module-lifecycle-toggle"><input type="checkbox" data-activity-enabled${state.enabled === false ? "" : " checked"}${toggleDisabled}><span class="switch-control" aria-hidden="true"></span><span data-activity-switch-label>${state.enabled === false ? "Off" : "On"}</span></label><p class="module-lifecycle-feedback" data-activity-feedback role="status" aria-live="polite"></p></article>`;
+  }));
+  return `<section class="packaged-capability-group"><h3>Activities</h3><div class="module-lifecycle-list">${cards.join("\n")}</div></section>`;
 }
 
 function renderGuildRefreshSchedule(schedule: GuildRefreshSchedule): string {
@@ -147,11 +167,25 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       administrationAvailabilityForGuildie(guildie.guildieId),
       packagedCapabilityStates(),
     ]);
-    let lifecycle = renderPackagedCapabilityLifecycle(modulesState, administration.canConfigureDiscord);
+    const activityLifecycle = await renderActivityAdministration(guildie.guildieId, canConfigureModules);
+    let lifecycle = renderPackagedCapabilityLifecycle(modulesState.filter((module) => module.key === "discord"), administration.canConfigureDiscord);
+    lifecycle = activityLifecycle + lifecycle;
     if (!canConfigureModules) lifecycle = lifecycle.replaceAll("<input type=\"checkbox\" data-module-enabled", "<input type=\"checkbox\" data-module-enabled disabled");
     const content = administrationSection("modules", "modules-heading", "Packaged capabilities", `${lifecycle}<p class="admin-section-note">Availability and entitlement are distinct from enablement. Controls are available only when your authority permits changes.</p>`);
     const html = renderPage(assets, { pathname: "/admin/modules", title: `Module Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Inspect and configure packaged Guild Operations capabilities.", viewer, stylesheets: ["admin.css", "admin-modules.css"], scripts: canConfigureModules ? ["admin-modules.js"] : [], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Inspect and manage packaged Modules and Plugins.</p></div>`, body: `<div class="admin-sections">${content}</div>` });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
+  });
+
+  app.put("/admin/activities/:activityKind", async (request, reply) => {
+    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
+    if (!guildie) return reply.code(401).send({ error: "authentication_required" });
+    if (!await guildieHasGuildCapabilityOrOperator(guildie.guildieId, MODULES_CONFIGURE_CAPABILITY)) return reply.code(403).send({ error: "module_configuration_not_authorized" });
+    const params = request.params as { activityKind?: unknown }; const body = (request.body ?? {}) as { enabled?: unknown };
+    if (typeof params.activityKind !== "string" || typeof body.enabled !== "boolean") return reply.code(400).send({ error: "invalid_activity_configuration" });
+    const state = (await activityRegistrationStates()).find((candidate) => candidate.kind === params.activityKind);
+    if (!state) return reply.code(404).send({ error: "unknown_activity" });
+    if (!state.available || state.status === "failed") return reply.code(409).send({ error: "activity_declaration_not_authoritative" });
+    await setActivityPluginEnabled(params.activityKind, body.enabled); return reply.send({ activityKind: params.activityKind, enabled: body.enabled });
   });
 
   app.put("/admin/modules/:moduleKey", async (request, reply) => {
