@@ -1,3 +1,5 @@
+import { activityParticipationsForGuildie } from "./participation.js";
+
 export type ActivityTemporalRelevance = readonly [number] | readonly [number, number];
 
 export type ActivityTemporalProjection = {
@@ -28,7 +30,6 @@ export type ActivityParticipationReference = {
 };
 
 export type ActivityParticipationCapability = {
-  forGuildie(guildieId: string): Promise<readonly ActivityParticipationReference[]>;
   destination(reference: ActivityParticipationReference): string;
 };
 
@@ -113,32 +114,19 @@ export async function activityTemporalProjectionForEmission(
 export async function activityParticipationForGuildie(
   guildieId: string,
 ): Promise<Array<ActivityParticipationReference & { destination: string }>> {
-  const normalizedGuildieId = requiredText(guildieId, "participation Guildie id");
-  const participating = [...activitiesByKind.values()].filter(
-    (activity): activity is ActivityRegistration & { participation: ActivityParticipationCapability } =>
-      activity.participation !== undefined,
-  );
+  const relationships = await activityParticipationsForGuildie(requiredText(guildieId, "participation Guildie id"));
 
-  const resolved = await Promise.all(
-    participating.map(async (activity) => {
-      const references = await activity.participation.forGuildie(normalizedGuildieId);
-      for (const reference of references) {
-        if (reference.activityKind !== activity.kind) {
-          throw new Error(
-            `Activity participation kind ${reference.activityKind} does not match registered kind ${activity.kind}`,
-          );
-        }
-        requiredText(reference.activityId, "participation activity id");
-        requiredText(reference.participationId, "participation id");
-      }
-      return references.map((reference) => ({
-        ...reference,
-        destination: activity.participation.destination(reference),
-      }));
-    }),
-  );
+  return relationships.flatMap((relationship) => {
+    const activity = activitiesByKind.get(relationship.activityKind);
+    if (!activity?.participation) return [];
 
-  return resolved.flat();
+    const reference: ActivityParticipationReference = {
+      activityKind: relationship.activityKind,
+      activityId: relationship.activityId,
+      participationId: relationship.participationId,
+    };
+    return [{ ...reference, destination: activity.participation.destination(reference) }];
+  });
 }
 
 export function discoverableActivities(): readonly (ActivityDiscovery & { kind: string })[] {
