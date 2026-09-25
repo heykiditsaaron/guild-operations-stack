@@ -3,13 +3,13 @@ import { registerRaffleActivityIntegration } from "./activity.js";
 import { registerRaffleGuildActivityOffering } from "./offering.js";
 import { registerRaffleApiV1Routes } from "./api-v1-routes.js";
 import { registerRaffleRoutes } from "./routes.js";
-import { registerRaffleClaimsPage } from "../../web/pages/events/raffle/claims.js";
-import { registerRaffleEntryPage } from "../../web/pages/events/raffle/enter.js";
-import { registerRaffleHistoryPage } from "../../web/pages/events/raffle/history.js";
-import { registerRafflePage } from "../../web/pages/events/raffle/index.js";
-import { registerRaffleOperationPage } from "../../web/pages/events/raffle/operation.js";
-import { registerRaffleRecordPage } from "../../web/pages/events/raffle/record.js";
-import { registerRaffleRulesPage } from "../../web/pages/events/raffle/rules.js";
+import { registerRaffleClaimsPage } from "./web/claims.js";
+import { registerRaffleEntryPage } from "./web/enter.js";
+import { registerRaffleHistoryPage } from "./web/history.js";
+import { registerRafflePage } from "./web/index.js";
+import { registerRaffleOperationPage } from "./web/operation.js";
+import { registerRaffleRecordPage } from "./web/record.js";
+import { registerRaffleRulesPage } from "./web/rules.js";
 
 export const activityPlugin: InstalledActivityPlugin = {
   kind: "raffle", label: "Raffle",
