@@ -15,6 +15,7 @@ export type InstalledActivityPlugin = {
 };
 
 type ActivityPluginModule = { activityPlugin: InstalledActivityPlugin };
+type InstalledActivityPluginModule = { kind: string; modulePath: string };
 
 const failedActivityPlugins = new Map<string, Error>();
 const availableActivityPlugins = new Set<string>();
@@ -25,8 +26,6 @@ export function activityPluginRuntimeState(activityKind: string): ActivityRuntim
   if (failedActivityPlugins.has(activityKind)) return "failed";
   return availableActivityPlugins.has(activityKind) ? "available" : null;
 }
-
-type InstalledActivityPluginModule = { kind: string; modulePath: string };
 
 async function installedActivityPluginModules(): Promise<InstalledActivityPluginModule[]> {
   const activitiesDirectory = new URL("./activities/", import.meta.url);
@@ -41,14 +40,28 @@ async function installedActivityPluginModules(): Promise<InstalledActivityPlugin
 
   return entries
     .filter((entry) => entry.isDirectory())
-    .map((entry) => `./activities/${entry.name}/plugin.js`)
-    .sort();
+    .map((entry) => ({
+      kind: entry.name,
+      modulePath: `./activities/${entry.name}/plugin.js`,
+    }))
+    .sort((left, right) => left.kind.localeCompare(right.kind));
 }
 
-async function loadActivityPlugin(expectedKind: string, modulePath: string, logger: FastifyBaseLogger): Promise<InstalledActivityPlugin> {
+async function loadActivityPlugin(
+  expectedKind: string,
+  modulePath: string,
+  logger: FastifyBaseLogger,
+): Promise<InstalledActivityPlugin> {
   try {
     const loaded = await import(modulePath) as ActivityPluginModule;
-    if (!loaded.activityPlugin) throw new Error(`Activity plugin module ${modulePath} did not export activityPlugin`);
+    if (!loaded.activityPlugin) {
+      throw new Error(`Activity plugin module ${modulePath} did not export activityPlugin`);
+    }
+    if (loaded.activityPlugin.kind !== expectedKind) {
+      throw new Error(
+        `Activity plugin kind ${loaded.activityPlugin.kind} does not match cartridge directory ${expectedKind}`,
+      );
+    }
     return loaded.activityPlugin;
   } catch (error) {
     logger.warn({ err: error, modulePath }, "Activity plugin failed to load");
@@ -64,10 +77,13 @@ export async function registerInstalledActivityPlugins(
   for (const { kind, modulePath } of await installedActivityPluginModules()) {
     let plugin: InstalledActivityPlugin;
     try {
-      plugin = await loadActivityPlugin(modulePath, logger);
-    } catch {
+      plugin = await loadActivityPlugin(kind, modulePath, logger);
+    } catch (error) {
+      failedActivityPlugins.set(kind, error instanceof Error ? error : new Error(String(error)));
+      markActivityActivationFailed(kind);
       continue;
     }
+
     availableActivityPlugins.add(plugin.kind);
 
     try {
