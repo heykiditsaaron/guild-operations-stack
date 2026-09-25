@@ -1,22 +1,98 @@
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
+import { extname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FastifyInstance } from "fastify";
 
-export type AssetName =
-  | "app.css" | "footer.css" | "me.css" | "app.js"
-  | "navigation-shelves.css" | "navigation-shelves.js"
-  | "home.css" | "home-raffle.css" | "setup.css" | "setup.js" | "events.css" | "events.js" | "site-information.css"
-  | "admin.css" | "admin.js" | "admin-modules.css" | "admin-modules.js"
-  | "admin-permissions.css" | "admin-permissions.js" | "discord-admin.js" | "operations.js"
-  | "raffle.css" | "raffle-admin.css" | "raffle-admin-overview.css" | "raffle-winner.css" | "raffle-round.css"
-  | "raffle.js" | "raffle-entry.js" | "raffle-public.js"
-  | "raid.css" | "raid.js" | "raid-admin.css" | "raid-iconography.css" | "raid-organizer.css"
-  | "raid-admin.js" | "raid-create.js" | "raid-organizer.js" | "raid-definition.js"
-  | "images/raffle/gold-sack.png";
+export type AssetName = string;
 
 type WebAsset = { name: AssetName; contentType: string; body: Buffer; pathname: string; url: string };
-const assetDefinitions: Array<{ name: AssetName; contentType: string }> = [
-  { name:"app.css",contentType:"text/css; charset=utf-8"},{name:"setup.css",contentType:"text/css; charset=utf-8"},{name:"setup.js",contentType:"text/javascript; charset=utf-8"},{name:"footer.css",contentType:"text/css; charset=utf-8"},{name:"me.css",contentType:"text/css; charset=utf-8"},{name:"navigation-shelves.css",contentType:"text/css; charset=utf-8"},{name:"home.css",contentType:"text/css; charset=utf-8"},{name:"home-raffle.css",contentType:"text/css; charset=utf-8"},{name:"events.css",contentType:"text/css; charset=utf-8"},{name:"events.js",contentType:"text/javascript; charset=utf-8"},{name:"site-information.css",contentType:"text/css; charset=utf-8"},{name:"admin.css",contentType:"text/css; charset=utf-8"},{name:"admin-modules.css",contentType:"text/css; charset=utf-8"},{name:"admin-permissions.css",contentType:"text/css; charset=utf-8"},{name:"raffle.css",contentType:"text/css; charset=utf-8"},{name:"raffle-admin.css",contentType:"text/css; charset=utf-8"},{name:"raffle-admin-overview.css",contentType:"text/css; charset=utf-8"},{name:"raffle-winner.css",contentType:"text/css; charset=utf-8"},{name:"raffle-round.css",contentType:"text/css; charset=utf-8"},{name:"raid.css",contentType:"text/css; charset=utf-8"},{name:"raid-admin.css",contentType:"text/css; charset=utf-8"},{name:"raid-iconography.css",contentType:"text/css; charset=utf-8"},{name:"raid-organizer.css",contentType:"text/css; charset=utf-8"},{name:"app.js",contentType:"text/javascript; charset=utf-8"},{name:"navigation-shelves.js",contentType:"text/javascript; charset=utf-8"},{name:"admin.js",contentType:"text/javascript; charset=utf-8"},{name:"admin-modules.js",contentType:"text/javascript; charset=utf-8"},{name:"admin-permissions.js",contentType:"text/javascript; charset=utf-8"},{name:"discord-admin.js",contentType:"text/javascript; charset=utf-8"},{name:"operations.js",contentType:"text/javascript; charset=utf-8"},{name:"raffle.js",contentType:"text/javascript; charset=utf-8"},{name:"raffle-entry.js",contentType:"text/javascript; charset=utf-8"},{name:"raffle-public.js",contentType:"text/javascript; charset=utf-8"},{name:"raid.js",contentType:"text/javascript; charset=utf-8"},{name:"raid-admin.js",contentType:"text/javascript; charset=utf-8"},{name:"raid-create.js",contentType:"text/javascript; charset=utf-8"},{name:"raid-organizer.js",contentType:"text/javascript; charset=utf-8"},{name:"raid-definition.js",contentType:"text/javascript; charset=utf-8"},{name:"images/raffle/gold-sack.png",contentType:"image/png"},
-];
-function fingerprint(body:Buffer):string{return createHash("sha256").update(body).digest("hex").slice(0,12);}export type AssetRegistry=ReadonlyMap<AssetName,WebAsset>;export async function loadAssetRegistry():Promise<AssetRegistry>{const entries=await Promise.all(assetDefinitions.map(async({name,contentType})=>{const sourceUrl=new URL(`./public/${name}`,import.meta.url);const body=await readFile(fileURLToPath(sourceUrl));const extensionIndex=name.lastIndexOf(".");const basename=name.slice(0,extensionIndex);const extension=name.slice(extensionIndex);const pathname=`/assets/${basename}.${fingerprint(body)}${extension}`;return[name,{name,contentType,body,pathname,url:pathname}] as const;}));return new Map(entries);}export function assetUrl(assets:AssetRegistry,name:AssetName):string{const asset=assets.get(name);if(!asset)throw new Error(`Unknown web asset: ${name}`);return asset.url;}export async function registerAssetRoutes(app:FastifyInstance,assets:AssetRegistry):Promise<void>{for(const asset of assets.values())app.get(asset.pathname,async(_request,reply)=>reply.header("Cache-Control","public, max-age=31536000, immutable").type(asset.contentType).send(asset.body));}
+
+const contentTypes = new Map([
+  [".css", "text/css; charset=utf-8"],
+  [".js", "text/javascript; charset=utf-8"],
+  [".png", "image/png"],
+]);
+
+function fingerprint(body: Buffer): string {
+  return createHash("sha256").update(body).digest("hex").slice(0, 12);
+}
+
+function contentType(name: string): string {
+  const type = contentTypes.get(extname(name).toLowerCase());
+  if (!type) throw new Error(`Unsupported web asset type: ${name}`);
+  return type;
+}
+
+async function assetFiles(directory: URL): Promise<Array<{ name: string; source: string }>> {
+  const root = fileURLToPath(directory);
+  let entries;
+  try {
+    entries = await readdir(root, { recursive: true, withFileTypes: true });
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error ? error.code : null;
+    if (code === "ENOENT") return [];
+    throw error;
+  }
+
+  return entries
+    .filter((entry) => entry.isFile() && entry.name !== ".gitkeep")
+    .map((entry) => {
+      const source = join(entry.parentPath, entry.name);
+      return { name: relative(root, source).replaceAll("\\", "/"), source };
+    });
+}
+
+async function activityAssetFiles(): Promise<Array<{ name: string; source: string }>> {
+  const activitiesDirectory = new URL("../activities/", import.meta.url);
+  let activities;
+  try {
+    activities = await readdir(activitiesDirectory, { withFileTypes: true });
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error ? error.code : null;
+    if (code === "ENOENT") return [];
+    throw error;
+  }
+
+  const files = await Promise.all(
+    activities
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => assetFiles(new URL(`../activities/${entry.name}/public/`, import.meta.url))),
+  );
+  return files.flat();
+}
+
+export type AssetRegistry = ReadonlyMap<AssetName, WebAsset>;
+
+export async function loadAssetRegistry(): Promise<AssetRegistry> {
+  const files = [
+    ...(await assetFiles(new URL("./public/", import.meta.url))),
+    ...(await activityAssetFiles()),
+  ];
+  const assets = new Map<AssetName, WebAsset>();
+
+  for (const { name, source } of files) {
+    if (assets.has(name)) throw new Error(`Duplicate web asset: ${name}`);
+    const body = await readFile(source);
+    const extension = extname(name);
+    const basename = name.slice(0, -extension.length);
+    const pathname = `/assets/${basename}.${fingerprint(body)}${extension}`;
+    assets.set(name, { name, contentType: contentType(name), body, pathname, url: pathname });
+  }
+
+  return assets;
+}
+
+export function assetUrl(assets: AssetRegistry, name: AssetName): string {
+  const asset = assets.get(name);
+  if (!asset) throw new Error(`Unknown web asset: ${name}`);
+  return asset.url;
+}
+
+export async function registerAssetRoutes(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
+  for (const asset of assets.values()) {
+    app.get(asset.pathname, async (_request, reply) =>
+      reply.header("Cache-Control", "public, max-age=31536000, immutable").type(asset.contentType).send(asset.body),
+    );
+  }
+}
