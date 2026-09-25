@@ -1,10 +1,13 @@
 import type { FastifyInstance, FastifyBaseLogger } from "fastify";
 import { activityRegistrationState, configureActivityActivation } from "./core/activity/registry.js";
+import { rememberActivityPlugin } from "./core/activity/plugin-control.js";
 import { isPackagedCapabilityKey, packagedCapabilityEnabled } from "./packaged-capability-lifecycle.js";
 import type { AssetRegistry } from "./web/assets.js";
 
 export type InstalledActivityPlugin = {
   kind: string;
+  label: string;
+  version?: string;
   register(): void;
   registerRoutes(app: FastifyInstance, assets: AssetRegistry): Promise<void>;
 };
@@ -38,6 +41,7 @@ export async function registerInstalledActivityPlugins(
 
     try {
       plugin.register();
+      await rememberActivityPlugin({ kind: plugin.kind, label: plugin.label, version: plugin.version });
       const packagedCapabilityKey = plugin.kind;
       if (isPackagedCapabilityKey(packagedCapabilityKey)) {
         configureActivityActivation(plugin.kind, { enabled: () => packagedCapabilityEnabled(packagedCapabilityKey) });
