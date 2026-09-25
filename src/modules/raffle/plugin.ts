@@ -1,6 +1,4 @@
 import type { InstalledActivityPlugin } from "../../activity-plugins.js";
-import { packagedCapabilityEnabled } from "../../packaged-capability-lifecycle.js";
-import { configureActivityActivation } from "../../core/activity/registry.js";
 import { registerRaffleActivityIntegration } from "./activity.js";
 import { registerRaffleGuildActivityOffering } from "./offering.js";
 import { registerRaffleCapabilityDefinitions } from "./permissions.js";
@@ -19,7 +17,6 @@ export const activityPlugin: InstalledActivityPlugin = {
   register() {
     registerRaffleCapabilityDefinitions();
     registerRaffleActivityIntegration();
-    configureActivityActivation("raffle", { enabled: () => packagedCapabilityEnabled("raffle") });
     registerRaffleGuildActivityOffering();
   },
   async registerRoutes(app, assets) {
