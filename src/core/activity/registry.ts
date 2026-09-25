@@ -227,3 +227,15 @@ export async function activityAdministration(activityKind: string): Promise<Acti
   const capabilities = await knownActivityCapabilityDeclarations(kind);
   return capabilities.length ? { capabilities, authoritative: false } : { authoritative: false };
 }
+
+
+export async function activityCapabilityDeclarationState(capability: string): Promise<{ activityKind: string; authoritative: boolean } | null> {
+  const key = requiredText(capability, "capability");
+  for (const state of await activityRegistrationStates()) {
+    const administration = await activityAdministration(state.kind);
+    if (administration?.capabilities?.some((definition) => definition.key === key)) {
+      return { activityKind: state.kind, authoritative: administration.authoritative };
+    }
+  }
+  return null;
+}
