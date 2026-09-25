@@ -1,11 +1,5 @@
-import {
-  RAFFLE_CLAIMS_CAPABILITY,
-  RAFFLE_DRAW_CAPABILITY,
-  RAFFLE_MODIFY_CAPABILITY,
-  RAFFLE_STAGE_CAPABILITY,
-  guildieHasGuildCapability,
-  type GuildCapability,
-} from "../../core/authority/guild-permissions.js";
+import { guildieHasGuildCapability, type GuildCapability } from "../../core/authority/guild-permissions.js";
+import { RAFFLE_CLAIMS_CAPABILITY, RAFFLE_DRAW_CAPABILITY, RAFFLE_MODIFY_CAPABILITY, RAFFLE_STAGE_CAPABILITY } from "./permissions.js";
 
 const RAFFLE_OPERATION_CAPABILITIES: readonly GuildCapability[] = [
   RAFFLE_MODIFY_CAPABILITY,
