@@ -101,6 +101,14 @@ export async function registerInstalledActivityPlugins(
     }
 
     await app.register(async (activityApp) => {
+      activityApp.addHook("onRequest", async (_request, reply) => {
+        const state = await activityRegistrationState(plugin.kind);
+        if (state?.active) return;
+        return reply
+          .code(503)
+          .header("Cache-Control", "no-cache")
+          .send({ error: "activity_unavailable", activityKind: plugin.kind, status: state?.status ?? "unavailable" });
+      });
       await plugin.registerRoutes(activityApp, assets);
     });
   }
