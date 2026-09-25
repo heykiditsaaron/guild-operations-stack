@@ -46,7 +46,21 @@ export type ActivityRegistration = {
   participation?: ActivityParticipationCapability;
 };
 
+export type ActivityActivationGate = {
+  entitled?: () => boolean | Promise<boolean>;
+  enabled?: () => boolean | Promise<boolean>;
+};
+
+export type ActivityRegistrationState = {
+  kind: string;
+  available: true;
+  entitled: boolean;
+  enabled: boolean;
+  active: boolean;
+};
+
 const activitiesByKind = new Map<string, ActivityRegistration>();
+const activationByKind = new Map<string, ActivityActivationGate>();
 const activitiesByTemporalEmissionCode = new Map<string, ActivityRegistration>();
 
 function requiredText(value: string, field: string): string {
@@ -79,8 +93,32 @@ export function registerActivity(input: ActivityRegistration): void {
   }
 }
 
+export function configureActivityActivation(activityKind: string, gate: ActivityActivationGate): void {
+  const kind = requiredText(activityKind, "kind");
+  if (!activitiesByKind.has(kind)) throw new Error(`Activity ${kind} must be registered before activation is configured`);
+  activationByKind.set(kind, gate);
+}
+
+export async function activityRegistrationState(activityKind: string): Promise<ActivityRegistrationState | null> {
+  const kind = requiredText(activityKind, "kind");
+  if (!activitiesByKind.has(kind)) return null;
+
+  const gate = activationByKind.get(kind);
+  const [entitled, enabled] = await Promise.all([
+    gate?.entitled ? gate.entitled() : true,
+    gate?.enabled ? gate.enabled() : true,
+  ]);
+
+  return { kind, available: true, entitled, enabled, active: entitled && enabled };
+}
+
+async function activeActivity(activityKind: string): Promise<ActivityRegistration | null> {
+  const state = await activityRegistrationState(activityKind);
+  return state?.active ? activitiesByKind.get(state.kind) ?? null : null;
+}
+
 export async function activityPresentation(activityKind: string, activityId: string): Promise<ActivityPresentation | null> {
-  const activity = activitiesByKind.get(requiredText(activityKind, "kind"));
+  const activity = await activeActivity(requiredText(activityKind, "kind"));
   if (!activity?.temporal) return null;
   return activity.temporal.presentation(requiredText(activityId, "id"));
 }
@@ -93,7 +131,9 @@ export async function activityTemporalProjectionForEmission(
   code: string,
   activityId: string,
 ): Promise<ActivityTemporalProjection | null> {
-  const activity = activitiesByTemporalEmissionCode.get(code);
+  const registered = activitiesByTemporalEmissionCode.get(code);
+  if (!registered?.temporal) return null;
+  const activity = await activeActivity(registered.kind);
   if (!activity?.temporal) return null;
 
   const projection = await activity.temporal.projection(activityId);
@@ -116,19 +156,25 @@ export async function activityParticipationForGuildie(
 ): Promise<Array<ActivityParticipationReference & { destination: string }>> {
   const relationships = await activityParticipationsForGuildie(requiredText(guildieId, "participation Guildie id"));
 
-  return relationships.flatMap((relationship) => {
-    const activity = activitiesByKind.get(relationship.activityKind);
-    if (!activity?.participation) return [];
+  const resolved = await Promise.all(relationships.map(async (relationship) => {
+    const activity = await activeActivity(relationship.activityKind);
+    if (!activity?.participation) return null;
 
     const reference: ActivityParticipationReference = {
       activityKind: relationship.activityKind,
       activityId: relationship.activityId,
       participationId: relationship.participationId,
     };
-    return [{ ...reference, destination: activity.participation.destination(reference) }];
-  });
+    return { ...reference, destination: activity.participation.destination(reference) };
+  }));
+
+  return resolved.filter((reference): reference is ActivityParticipationReference & { destination: string } => reference !== null);
 }
 
-export function discoverableActivities(): readonly (ActivityDiscovery & { kind: string })[] {
-  return [...activitiesByKind.values()].flatMap((activity) => activity.discovery ? [{ kind: activity.kind, ...activity.discovery }] : []);
+export async function discoverableActivities(): Promise<readonly (ActivityDiscovery & { kind: string })[]> {
+  const activities = await Promise.all([...activitiesByKind.values()].map(async (activity) => {
+    if (!activity.discovery || !(await activeActivity(activity.kind))) return null;
+    return { kind: activity.kind, ...activity.discovery };
+  }));
+  return activities.filter((activity): activity is ActivityDiscovery & { kind: string } => activity !== null);
 }

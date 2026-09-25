@@ -8,7 +8,7 @@ import { SESSION_COOKIE_NAME } from "../../auth.js";
 export async function registerActivitiesPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/activities", async (request, reply) => {
     const viewer = await viewerForRequest(request.cookies[SESSION_COOKIE_NAME]);
-    const activities = discoverableActivities();
+    const activities = await discoverableActivities();
     const body = activities.length
       ? `<div class="activity-card-list">${activities.map((activity) => `
           <a class="activity-card" href="${htmlText(activity.destination)}">
