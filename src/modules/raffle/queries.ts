@@ -194,18 +194,3 @@ export async function openRaffleFacts():Promise<RaffleFacts[]>{
   return operational.filter(facts=>facts.participationOpen);
 }
 
-
-export async function raffleParticipationReferencesForGuildie(
-  guildieId: string,
-): Promise<readonly { raffleId: string; claimId: string }[]> {
-  const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
-  const result = await pool.query<{ raffle_id: string; claim_id: string }>(
-    `SELECT rc.raffle_id, rc.claim_id
-       FROM raffle_claims rc
-       JOIN raffles r ON r.raffle_id = rc.raffle_id AND r.guild_id = $2
-      WHERE rc.claimant_guildie_id = $1
-      ORDER BY rc.created_at_unix DESC, rc.claim_id DESC`,
-    [guildieId, guildId],
-  );
-  return result.rows.map((row) => ({ raffleId: row.raffle_id, claimId: row.claim_id }));
-}
