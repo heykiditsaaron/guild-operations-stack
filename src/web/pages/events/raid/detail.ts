@@ -1,7 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
-import {
-  GuildCapabilityDeniedError, guildieHasGuildCapabilityOrOperator } from "../../../../auth.js";
+import { GuildCapabilityDeniedError, guildieHasGuildCapabilityOrOperator } from "../../../../core/authority/guild-permissions.js";
 import { RAID_ASSIGN_CAPABILITY, RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILITY } from "../../../../modules/raid/permissions.js";
 
 import {
