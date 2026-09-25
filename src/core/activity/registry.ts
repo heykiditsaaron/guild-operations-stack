@@ -1,4 +1,5 @@
 import { activityParticipationsForGuildie } from "./participation.js";
+import { knownActivityPlugin } from "./plugin-control.js";
 
 export type ActivityTemporalRelevance = readonly [number] | readonly [number, number];
 
@@ -53,7 +54,7 @@ export type ActivityActivationGate = {
 
 export type ActivityRegistrationState = {
   kind: string;
-  available: true;
+  available: boolean;
   entitled: boolean;
   enabled: boolean;
   active: boolean;
@@ -101,7 +102,10 @@ export function configureActivityActivation(activityKind: string, gate: Activity
 
 export async function activityRegistrationState(activityKind: string): Promise<ActivityRegistrationState | null> {
   const kind = requiredText(activityKind, "kind");
-  if (!activitiesByKind.has(kind)) return null;
+  if (!activitiesByKind.has(kind)) {
+    const known = await knownActivityPlugin(kind);
+    return known ? { kind, available: false, entitled: false, enabled: false, active: false } : null;
+  }
 
   const gate = activationByKind.get(kind);
   const [entitled, enabled] = await Promise.all([
