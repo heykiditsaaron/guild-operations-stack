@@ -1,4 +1,5 @@
 import { pool } from "../../db.js";
+import { requireOperationalInstallationGuildBinding } from "../installation/guild-binding.js";
 
 export type ActivityPluginFingerprint = {
   kind: string;
@@ -101,4 +102,18 @@ export async function knownActivityPlugins(): Promise<ActivityPluginFingerprint[
     lastRegisteredAtUnix: Number(row.last_registered_at_unix),
     lastPluginVersion: row.last_plugin_version,
   }));
+}
+
+
+export async function activityPluginEnabled(activityKind: string, guildId?: string): Promise<boolean> {
+  const kind = requiredText(activityKind, "kind");
+  const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
+  const result = await pool.query<{ enabled: boolean }>(
+    `SELECT enabled
+       FROM guild_module_enablement
+      WHERE guild_id = $1
+        AND module_key = $2`,
+    [resolvedGuildId, kind],
+  );
+  return result.rows[0]?.enabled ?? true;
 }
