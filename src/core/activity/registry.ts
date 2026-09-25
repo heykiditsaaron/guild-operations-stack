@@ -1,5 +1,5 @@
 import { activityParticipationsForGuildie } from "./participation.js";
-import { knownActivityPlugin } from "./plugin-control.js";
+import { knownActivityPlugin, knownActivityPlugins } from "./plugin-control.js";
 import { knownActivityCapabilityDeclarations } from "./plugin-administration.js";
 import { registerGuildCapabilityDefinitions, type GuildCapabilityDefinition } from "../authority/guild-capability-policy.js";
 
@@ -117,6 +117,13 @@ export function configureActivityActivation(activityKind: string, gate: Activity
   const kind = requiredText(activityKind, "kind");
   if (!activitiesByKind.has(kind)) throw new Error(`Activity ${kind} must be registered before activation is configured`);
   activationByKind.set(kind, gate);
+}
+
+export async function activityRegistrationStates(): Promise<ActivityRegistrationState[]> {
+  const known = await knownActivityPlugins();
+  const kinds = new Set([...known.map((plugin) => plugin.kind), ...activitiesByKind.keys()]);
+  const states = await Promise.all([...kinds].map((kind) => activityRegistrationState(kind)));
+  return states.filter((state): state is ActivityRegistrationState => state !== null);
 }
 
 export async function activityRegistrationState(activityKind: string): Promise<ActivityRegistrationState | null> {
