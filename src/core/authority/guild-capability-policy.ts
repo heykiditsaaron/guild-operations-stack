@@ -68,6 +68,12 @@ async function canAdministerCapabilityDefinition(guildieId: string, definition: 
   return guildieHasGuildCapability(guildieId, `${definition.namespace}.permissions`, guildId);
 }
 
+export async function canAdministerGuildCapability(guildieId: string, capability: GuildCapability, guildId?: string): Promise<boolean> {
+  const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
+  const definition = definitions.get(capability);
+  return definition ? canAdministerCapabilityDefinition(guildieId, definition, resolvedGuildId) : false;
+}
+
 export async function canAdministerGuildPermissions(guildieId: string, guildId?: string): Promise<boolean> {
   const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
   if (await hasGlobalPermissionAdministration(guildieId, resolvedGuildId)) return true;
