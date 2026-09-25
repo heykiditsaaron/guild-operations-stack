@@ -26,7 +26,9 @@ export function activityPluginRuntimeState(activityKind: string): ActivityRuntim
   return availableActivityPlugins.has(activityKind) ? "available" : null;
 }
 
-type InstalledActivityPluginModule = { kind: string; modulePath: string };\n\nasync function installedActivityPluginModules(): Promise<InstalledActivityPluginModule[]> {
+type InstalledActivityPluginModule = { kind: string; modulePath: string };
+
+async function installedActivityPluginModules(): Promise<InstalledActivityPluginModule[]> {
   const activitiesDirectory = new URL("./activities/", import.meta.url);
   let entries;
   try {
