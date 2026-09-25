@@ -2,7 +2,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { extname, join, relative, resolve } from "node:path";
 
 const root = resolve("src");
-const applicationPath = "modules/raffle/application.ts";
+const applicationPath = "activities/raffle/application.ts";
 const mutationNames = [
   "establishRaffle",
   "modifyRaffle",
@@ -45,7 +45,7 @@ for (const path of await sourceFiles(root)) {
 }
 
 if (violations.length) {
-  console.error("Raffle authoritative mutations must enter through src/modules/raffle/application.ts.");
+  console.error("Raffle authoritative mutations must enter through src/activities/raffle/application.ts.");
   for (const violation of violations) console.error(`- ${violation}`);
   process.exit(1);
 }
