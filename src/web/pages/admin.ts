@@ -3,6 +3,7 @@ import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
 import { guildRefreshStatus } from "../../core/guild/guild-refresh-status.js";
 import {
   canAdministerGuildPermissions,
+  canAdministerGuildCapability,
   guildCapabilityPoliciesForActor,
   guildCapabilityPoliciesForDefinitions,
   setGuildCapabilityPermittedRanks,
@@ -22,7 +23,7 @@ import {
   guildieHasGuildCapability,
   guildieHasGuildCapabilityOrOperator,
 } from "../../core/authority/guild-permissions.js";
-import { activityAdministration, activityRegistrationStates, type ActivityRegistrationState } from "../../core/activity/registry.js";
+import { activityAdministration, activityCapabilityDeclarationState, activityRegistrationStates, type ActivityRegistrationState } from "../../core/activity/registry.js";
 import { knownActivityPlugins } from "../../core/activity/plugin-control.js";
 import { setActivityPluginEnabled } from "../../core/activity/plugin-enablement.js";
 import {
@@ -67,7 +68,8 @@ async function renderActivityAdministration(guildieId: string, canConfigureModul
     const administration = await activityAdministration(state.kind);
     const definitions = administration?.capabilities ?? [];
     const policies = await guildCapabilityPoliciesForDefinitions(definitions);
-    const editable = Boolean(administration?.authoritative && state.status !== "failed");
+    const authorityChecks = await Promise.all(definitions.map((definition) => canAdministerGuildCapability(guildieId, definition.key)));
+    const editable = Boolean(administration?.authoritative && state.status !== "failed" && authorityChecks.some(Boolean));
     const permissionView = policies.capabilities.length ? `<div class="permission-capabilities">${policies.capabilities.map((policy) => renderPermissionCapability(policy, policies.ranks)).join("\n")}</div>` : '<p class="admin-section-note">This Activity declares no configurable capabilities.</p>';
     const frozen = editable ? "" : '<p class="admin-section-note"><strong>Last known declaration.</strong> Permission values are read-only until this Activity successfully registers again.</p>';
     const toggleDisabled = canConfigureModules && state.available && state.status !== "failed" ? "" : " disabled";
@@ -172,7 +174,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     lifecycle = activityLifecycle + lifecycle;
     if (!canConfigureModules) lifecycle = lifecycle.replaceAll("<input type=\"checkbox\" data-module-enabled", "<input type=\"checkbox\" data-module-enabled disabled");
     const content = administrationSection("modules", "modules-heading", "Packaged capabilities", `${lifecycle}<p class="admin-section-note">Availability and entitlement are distinct from enablement. Controls are available only when your authority permits changes.</p>`);
-    const html = renderPage(assets, { pathname: "/admin/modules", title: `Module Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Inspect and configure packaged Guild Operations capabilities.", viewer, stylesheets: ["admin.css", "admin-modules.css"], scripts: canConfigureModules ? ["admin-modules.js"] : [], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Inspect and manage packaged Modules and Plugins.</p></div>`, body: `<div class="admin-sections">${content}</div>` });
+    const html = renderPage(assets, { pathname: "/admin/modules", title: `Module Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Inspect and configure packaged Guild Operations capabilities.", viewer, stylesheets: ["admin.css", "admin-modules.css"], scripts: ["admin-modules.js", "admin-permissions.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Inspect and manage packaged Modules and Plugins.</p></div>`, body: `<div class="admin-sections">${content}</div>` });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
 
@@ -250,6 +252,8 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     if (typeof params.capability !== "string") return reply.code(400).send({ error: "capability_required" });
     if (!Array.isArray(body.permittedRanks) || !body.permittedRanks.every(Number.isInteger)) return reply.code(400).send({ error: "permitted_ranks_must_be_integer_array" });
     try {
+      const activityDeclaration = await activityCapabilityDeclarationState(params.capability);
+      if (activityDeclaration && !activityDeclaration.authoritative) return reply.code(409).send({ error: "activity_declaration_not_authoritative" });
       const permittedRanks = await setGuildCapabilityPermittedRanks(guildie.guildieId, params.capability, body.permittedRanks as number[]);
       return reply.send({ capability: params.capability, permittedRanks });
     } catch (error) {
