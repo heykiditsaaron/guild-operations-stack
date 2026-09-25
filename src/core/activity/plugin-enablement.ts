@@ -1,4 +1,4 @@
-import { requireOperationalInstallationGuildBinding } from "../installation/guild-binding.js";
+import { installationGuildBinding, requireOperationalInstallationGuildBinding } from "../installation/guild-binding.js";
 import { pool } from "../../db.js";
 
 const DEFAULT_ACTIVITY_ENABLED = true;
@@ -11,7 +11,9 @@ function requiredText(value: string, field: string): string {
 
 export async function activityPluginEnabled(activityKind: string, guildId?: string): Promise<boolean> {
   const kind = requiredText(activityKind, "kind");
-  const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
+  const resolvedGuildId = guildId ?? (await installationGuildBinding())?.guildId;
+  if (!resolvedGuildId) return DEFAULT_ACTIVITY_ENABLED;
+
   const result = await pool.query<{ enabled: boolean }>(
     `SELECT enabled
        FROM guild_module_enablement
