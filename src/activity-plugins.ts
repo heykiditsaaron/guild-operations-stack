@@ -43,14 +43,14 @@ async function installedActivityPluginModules(): Promise<string[]> {
     .sort();
 }
 
-async function loadActivityPlugin(modulePath: string, logger: FastifyBaseLogger): Promise<InstalledActivityPlugin | null> {
+async function loadActivityPlugin(modulePath: string, logger: FastifyBaseLogger): Promise<InstalledActivityPlugin> {
   try {
     const loaded = await import(modulePath) as ActivityPluginModule;
     if (!loaded.activityPlugin) throw new Error(`Activity plugin module ${modulePath} did not export activityPlugin`);
     return loaded.activityPlugin;
   } catch (error) {
-    logger.warn({ err: error, modulePath }, "Activity plugin is unavailable");
-    return null;
+    logger.warn({ err: error, modulePath }, "Activity plugin failed to load");
+    throw error;
   }
 }
 
@@ -60,8 +60,12 @@ export async function registerInstalledActivityPlugins(
   logger: FastifyBaseLogger,
 ): Promise<void> {
   for (const modulePath of await installedActivityPluginModules()) {
-    const plugin = await loadActivityPlugin(modulePath, logger);
-    if (!plugin) continue;
+    let plugin: InstalledActivityPlugin;
+    try {
+      plugin = await loadActivityPlugin(modulePath, logger);
+    } catch {
+      continue;
+    }
     availableActivityPlugins.add(plugin.kind);
 
     try {
