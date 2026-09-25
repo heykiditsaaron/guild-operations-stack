@@ -3,6 +3,7 @@ import {
   type ActivityTemporalProjection,
 } from "../../core/activity/registry.js";
 import { getRaffle, raffleCalendarProjection } from "./application.js";
+import { RAFFLE_CAPABILITY_DEFINITIONS } from "./permissions.js";
 
 const RAFFLE_TEMPORAL_EMISSION_CODES = [
   "raffle.established",
@@ -25,6 +26,7 @@ async function raffleTemporalProjection(raffleId: string): Promise<ActivityTempo
 export function registerRaffleActivityIntegration(): void {
   registerActivity({
     kind: "raffle",
+    administration: { capabilities: RAFFLE_CAPABILITY_DEFINITIONS },
     discovery: {
       title: "Raffle",
       tagline: "Take your shot at the pot.",
