@@ -1,3 +1,4 @@
+import { readdir } from "node:fs/promises";
 import type { FastifyInstance, FastifyBaseLogger } from "fastify";
 import { activityAdministration, activityRegistrationState, configureActivityActivation, markActivityActivationFailed } from "./core/activity/registry.js";
 import { rememberActivityCapabilityDeclarations } from "./core/activity/plugin-administration.js";
@@ -25,10 +26,22 @@ export function activityPluginRuntimeState(activityKind: string): ActivityRuntim
   return availableActivityPlugins.has(activityKind) ? "available" : null;
 }
 
-const installedActivityPluginModules = [
-  "./activities/raid/plugin.js",
-  "./activities/raffle/plugin.js",
-] as const;
+async function installedActivityPluginModules(): Promise<string[]> {
+  const activitiesDirectory = new URL("./activities/", import.meta.url);
+  let entries;
+  try {
+    entries = await readdir(activitiesDirectory, { withFileTypes: true });
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error ? error.code : null;
+    if (code === "ENOENT") return [];
+    throw error;
+  }
+
+  return entries
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => `./activities/${entry.name}/plugin.js`)
+    .sort();
+}
 
 async function loadActivityPlugin(modulePath: string, logger: FastifyBaseLogger): Promise<InstalledActivityPlugin | null> {
   try {
@@ -46,7 +59,7 @@ export async function registerInstalledActivityPlugins(
   assets: AssetRegistry,
   logger: FastifyBaseLogger,
 ): Promise<void> {
-  for (const modulePath of installedActivityPluginModules) {
+  for (const modulePath of await installedActivityPluginModules()) {
     const plugin = await loadActivityPlugin(modulePath, logger);
     if (!plugin) continue;
     availableActivityPlugins.add(plugin.kind);
