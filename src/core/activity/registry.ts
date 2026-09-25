@@ -1,5 +1,6 @@
 import { activityParticipationsForGuildie } from "./participation.js";
 import { knownActivityPlugin } from "./plugin-control.js";
+import type { GuildCapabilityDefinition } from "../authority/guild-capability-policy.js";
 
 export type ActivityTemporalRelevance = readonly [number] | readonly [number, number];
 
@@ -41,8 +42,7 @@ export type ActivityDiscovery = {
 };
 
 export type ActivityAdministration = {
-  destination: string;
-  label?: string;
+  capabilities?: readonly GuildCapabilityDefinition[];
 };
 
 export type ActivityRegistration = {
@@ -204,7 +204,7 @@ export async function discoverableActivities(): Promise<readonly (ActivityDiscov
 }
 
 
-export async function activityAdministrationDestination(activityKind: string): Promise<ActivityAdministration | null> {
+export async function activityAdministration(activityKind: string): Promise<ActivityAdministration | null> {
   const activity = await activeActivity(requiredText(activityKind, "kind"));
   return activity?.administration ?? null;
 }
