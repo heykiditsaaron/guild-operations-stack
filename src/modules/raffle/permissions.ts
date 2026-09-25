@@ -1,5 +1,3 @@
-import { registerGuildCapabilityDefinitions } from "../../core/authority/guild-capability-policy.js";
-
 export const RAFFLE_PERMISSIONS_CAPABILITY = "raffle.permissions";
 export const RAFFLE_MODIFY_CAPABILITY = "raffle.modify";
 export const RAFFLE_STAGE_CAPABILITY = "raffle.stage";
@@ -14,6 +12,3 @@ export const RAFFLE_CAPABILITY_DEFINITIONS = [
   { key: RAFFLE_DRAW_CAPABILITY, namespace: "raffle", namespaceLabel: "Raffle", label: "Draw raffles", description: "Perform raffle winner selection.", defaultPermittedRanks: [1, 2] },
 ] as const;
 
-export function registerRaffleCapabilityDefinitions(): void {
-  registerGuildCapabilityDefinitions(RAFFLE_CAPABILITY_DEFINITIONS);
-}
