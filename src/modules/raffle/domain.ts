@@ -1,5 +1,6 @@
 import { randomInt } from "node:crypto";
 import type { PoolClient } from "pg";
+import { offerActivityParticipation, revokeActivityParticipation } from "../../core/activity/participation.js";
 import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import { pool, withTransaction } from "../../db.js";
 
@@ -310,38 +311,72 @@ export async function cancelRaffle(actorGuildieId: string, raffleId: string, cli
 }
 
 export async function establishRaffleClaim(claimantGuildieId: string, raffleId: string, realmId: string, characterId: string, requestedEntryCount: number): Promise<RaffleClaim> {
-  if (!Number.isInteger(requestedEntryCount) || requestedEntryCount <= 0) throw new RaffleRuleError("invalid_entry_count", "Requested entry count must be a positive integer", 400);
+  if (!Number.isInteger(requestedEntryCount) || requestedEntryCount <= 0) {
+    throw new RaffleRuleError("invalid_entry_count", "Requested entry count must be a positive integer", 400);
+  }
+
   return withTransaction(async (client) => {
     const raffleRow = await lockedRaffle(client, raffleId);
     const raffle = mapRaffle(raffleRow);
     if (!raffleParticipationIsOpen(raffle)) throw new RaffleRuleError("participation_closed", "Raffle participation is closed");
 
-    const characterResult = await client.query<{ character_record_id:string; character_id:string; realm_id:string; character_name:string }>(
+    const characterResult = await client.query<{ character_record_id: string; character_id: string; realm_id: string; character_name: string }>(
       `SELECT c.character_record_id, c.character_id, c.realm_id, grm.character_name
-         FROM characters c JOIN guild_roster_memberships grm
+         FROM characters c
+         JOIN guild_roster_memberships grm
            ON grm.region=c.region AND grm.realm_id=c.realm_id AND grm.character_id=c.character_id AND grm.currently_present=true
         WHERE c.guildie_id=$1 AND c.currently_controlled=true AND grm.guild_id=$2 AND c.realm_id=$3 AND c.character_id=$4`,
       [claimantGuildieId, raffle.guildId, realmId, characterId],
     );
-    if (!characterResult.rowCount) throw new RaffleRuleError("character_not_eligible", "Claim character must be a currently controlled character on the current guild roster", 403);
-    const character=characterResult.rows[0];
-    const promisedGoldValue=BigInt(String(raffleRow.entry_price_gold))*BigInt(requestedEntryCount);
-    const insert=await client.query(
+    if (!characterResult.rowCount) {
+      throw new RaffleRuleError("character_not_eligible", "Claim character must be a currently controlled character on the current guild roster", 403);
+    }
+
+    const character = characterResult.rows[0];
+    const promisedGoldValue = BigInt(String(raffleRow.entry_price_gold)) * BigInt(requestedEntryCount);
+    const insert = await client.query(
       `INSERT INTO raffle_claims (raffle_id, claimant_guildie_id, character_record_id, requested_entry_count, promised_gold_value, created_at_unix)
        VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
       [raffleId, claimantGuildieId, character.character_record_id, requestedEntryCount, promisedGoldValue.toString(), unixNow()],
     );
-    return mapClaim({...insert.rows[0] as Record<string,unknown>, character_id:character.character_id, realm_id:character.realm_id, character_name:character.character_name});
+    const claim = mapClaim({
+      ...insert.rows[0] as Record<string, unknown>,
+      character_id: character.character_id,
+      realm_id: character.realm_id,
+      character_name: character.character_name,
+    });
+
+    await offerActivityParticipation(client, {
+      activityKind: "raffle",
+      activityId: raffleId,
+      party: { kind: "guildie", reference: claimantGuildieId },
+      procedureReference: claim.claimId,
+      offeredAtUnix: claim.createdAtUnix,
+    });
+
+    return claim;
   });
 }
 
 export async function revokeRaffleClaim(claimantGuildieId: string, claimId: string): Promise<void> {
   await withTransaction(async (client) => {
-    const claim=await lockedClaim(client, claimId);
-    if (claim.claimant_guildie_id!==claimantGuildieId) throw new RaffleRuleError("claim_not_owned", "A member may only revoke their own Raffle claim", 403);
-    if (claim.raffle_conclusion!==null) throw new RaffleRuleError("raffle_concluded", "Claims cannot be revoked after the Raffle concludes");
-    if (claim.resolution_kind!==null) throw new RaffleRuleError("claim_already_resolved", "Only an unresolved claim can be revoked");
-    await client.query("UPDATE raffle_claims SET resolution_kind='revoked', revoked_by_guildie_id=$2, revoked_at_unix=$3 WHERE claim_id=$1", [claimId, claimantGuildieId, unixNow()]);
+    const claim = await lockedClaim(client, claimId);
+    if (claim.claimant_guildie_id !== claimantGuildieId) throw new RaffleRuleError("claim_not_owned", "A member may only revoke their own Raffle claim", 403);
+    if (claim.raffle_conclusion !== null) throw new RaffleRuleError("raffle_concluded", "Claims cannot be revoked after the Raffle concludes");
+    if (claim.resolution_kind !== null) throw new RaffleRuleError("claim_already_resolved", "Only an unresolved claim can be revoked");
+
+    const revokedAtUnix = unixNow();
+    await client.query(
+      "UPDATE raffle_claims SET resolution_kind='revoked', revoked_by_guildie_id=$2, revoked_at_unix=$3 WHERE claim_id=$1",
+      [claimId, claimantGuildieId, revokedAtUnix],
+    );
+    await revokeActivityParticipation(client, {
+      activityKind: "raffle",
+      activityId: String(claim.raffle_id),
+      party: { kind: "guildie", reference: claimantGuildieId },
+      procedureReference: claimId,
+      revokedAtUnix,
+    });
   });
 }
 
