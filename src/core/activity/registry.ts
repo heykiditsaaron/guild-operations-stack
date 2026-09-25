@@ -1,5 +1,6 @@
 import { activityParticipationsForGuildie } from "./participation.js";
 import { knownActivityPlugin } from "./plugin-control.js";
+import { knownActivityCapabilityDeclarations } from "./plugin-administration.js";
 import { registerGuildCapabilityDefinitions, type GuildCapabilityDefinition } from "../authority/guild-capability-policy.js";
 
 export type ActivityTemporalRelevance = readonly [number] | readonly [number, number];
@@ -208,7 +209,14 @@ export async function discoverableActivities(): Promise<readonly (ActivityDiscov
 }
 
 
-export async function activityAdministration(activityKind: string): Promise<ActivityAdministration | null> {
-  const activity = await activeActivity(requiredText(activityKind, "kind"));
-  return activity?.administration ?? null;
+export type ActivityAdministrationState = ActivityAdministration & { authoritative: boolean };
+
+export async function activityAdministration(activityKind: string): Promise<ActivityAdministrationState | null> {
+  const kind = requiredText(activityKind, "kind");
+  const state = await activityRegistrationState(kind);
+  if (!state) return null;
+  const activity = activitiesByKind.get(kind);
+  if (state.available && state.status !== "failed") return { ...(activity?.administration ?? {}), authoritative: true };
+  const capabilities = await knownActivityCapabilityDeclarations(kind);
+  return capabilities.length ? { capabilities, authoritative: false } : { authoritative: false };
 }
