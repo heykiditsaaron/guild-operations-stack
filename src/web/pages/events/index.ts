@@ -2,22 +2,11 @@ import type { FastifyInstance } from "fastify";
 import { guildState } from "../../../core/guild/guild-state.js";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../auth.js";
 import {
-  calendarViewForGuildie,
-  isCalendarViewMode,
-  setCalendarViewForGuildie,
-  type CalendarViewMode,
-} from "../../../core/calendar/preference.js";
+  calendarViewForGuildie, isCalendarViewMode, setCalendarViewForGuildie, type CalendarViewMode, } from "../../../core/calendar/preference.js";
 import {
-  RAID_ASSIGN_CAPABILITY,
-  RAID_MODIFY_CAPABILITY,
-  RAID_STAGE_CAPABILITY,
-  RAFFLE_CLAIMS_CAPABILITY,
-  RAFFLE_DRAW_CAPABILITY,
-  RAFFLE_MODIFY_CAPABILITY,
-  RAFFLE_STAGE_CAPABILITY,
-  guildieHasGuildCapability,
-  guildieHasGuildCapabilityOrOperator,
-} from "../../../core/authority/guild-permissions.js";
+  RAID_ASSIGN_CAPABILITY, guildieHasGuildCapability, guildieHasGuildCapabilityOrOperator } from "../../../core/guild/guild-state.js";
+import { RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILITY } from "../../../modules/raid/permissions.js";
+import { RAFFLE_CLAIMS_CAPABILITY, RAFFLE_DRAW_CAPABILITY, RAFFLE_MODIFY_CAPABILITY, RAFFLE_STAGE_CAPABILITY } from "../../../modules/raffle/permissions.js";
 import {
   discoverableGuildCalendarPoints,
   type GuildCalendarOccursAt,
