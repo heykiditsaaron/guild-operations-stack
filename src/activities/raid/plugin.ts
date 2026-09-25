@@ -1,5 +1,5 @@
 import type { InstalledActivityPlugin } from "../../activity-plugins.js";
-import { registerRaidActivityIntegration } from "../../modules/raid/activity.js";
+import { registerRaidActivityIntegration } from "./activity.js";
 import { registerRaidOperationDetailPage } from "../../web/pages/events/raid/detail.js";
 import { registerRaidDefinitionPage } from "../../web/pages/events/raid/definition.js";
 import { registerRaidPage } from "../../web/pages/events/raid/index.js";
