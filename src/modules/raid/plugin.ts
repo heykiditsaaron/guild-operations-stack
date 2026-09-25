@@ -1,6 +1,4 @@
 import type { InstalledActivityPlugin } from "../../activity-plugins.js";
-import { packagedCapabilityEnabled } from "../../packaged-capability-lifecycle.js";
-import { configureActivityActivation } from "../../core/activity/registry.js";
 import { registerRaidActivityIntegration } from "./activity.js";
 import { registerRaidCapabilityDefinitions } from "./permissions.js";
 import { registerRaidOperationDetailPage } from "../../web/pages/events/raid/detail.js";
@@ -13,7 +11,6 @@ export const activityPlugin: InstalledActivityPlugin = {
   register() {
     registerRaidCapabilityDefinitions();
     registerRaidActivityIntegration();
-    configureActivityActivation("raid", { enabled: () => packagedCapabilityEnabled("raid") });
   },
   async registerRoutes(app, assets) {
     await registerRaidOperationPage(app, assets);
