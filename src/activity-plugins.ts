@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyBaseLogger } from "fastify";
-import { activityRegistrationState } from "./core/activity/registry.js";
+import { activityRegistrationState, configureActivityActivation } from "./core/activity/registry.js";
+import { isPackagedCapabilityKey, packagedCapabilityEnabled } from "./packaged-capability-lifecycle.js";
 import type { AssetRegistry } from "./web/assets.js";
 
 export type InstalledActivityPlugin = {
@@ -35,7 +36,15 @@ export async function registerInstalledActivityPlugins(
     const plugin = await loadActivityPlugin(modulePath, logger);
     if (!plugin) continue;
 
-    plugin.register();
+    try {
+      plugin.register();
+      if (isPackagedCapabilityKey(plugin.kind)) {
+        configureActivityActivation(plugin.kind, { enabled: () => packagedCapabilityEnabled(plugin.kind) });
+      }
+    } catch (error) {
+      logger.warn({ err: error, activityKind: plugin.kind }, "Activity plugin failed to activate");
+      continue;
+    }
 
     await app.register(async (activityApp) => {
       activityApp.addHook("preHandler", async (_request, reply) => {
