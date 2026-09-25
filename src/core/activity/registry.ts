@@ -40,9 +40,15 @@ export type ActivityDiscovery = {
   destination: string;
 };
 
+export type ActivityAdministration = {
+  destination: string;
+  label?: string;
+};
+
 export type ActivityRegistration = {
   kind: string;
   discovery?: ActivityDiscovery;
+  administration?: ActivityAdministration;
   temporal?: ActivityTemporalCapability;
   participation?: ActivityParticipationCapability;
 };
@@ -195,4 +201,10 @@ export async function discoverableActivities(): Promise<readonly (ActivityDiscov
     return { kind: activity.kind, ...activity.discovery };
   }));
   return activities.filter((activity): activity is ActivityDiscovery & { kind: string } => activity !== null);
+}
+
+
+export async function activityAdministrationDestination(activityKind: string): Promise<ActivityAdministration | null> {
+  const activity = await activeActivity(requiredText(activityKind, "kind"));
+  return activity?.administration ?? null;
 }
