@@ -7,7 +7,7 @@ import { htmlText, renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
 
 export async function registerActivityBoundaryRoutes(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
-  app.get<{ Params: { kind: string; "*": string } }>("/activities/:kind/*", async (request, reply) => {
+  const unavailable = async (request: any, reply: any) => {
     const kind = request.params.kind;
     const state = await activityRegistrationState(kind);
     if (!state) return reply.callNotFound();
@@ -30,5 +30,8 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
         header: `<div><p class="eyebrow">Guild activity</p><h1 id="page-title">${htmlText(label)}</h1><p class="lede">This activity is currently unavailable.</p></div>`,
         body: `<section><h2>Activity unavailable</h2><p>${htmlText(label)} is known to Guild Operations, but it is not currently active.</p><a class="button-primary" href="/activities">Back to activities</a></section>`,
       }));
-  });
+  };
+
+  app.get<{ Params: { kind: string } }>("/activities/:kind", unavailable);
+  app.get<{ Params: { kind: string; "*": string } }>("/activities/:kind/*", unavailable);
 }
