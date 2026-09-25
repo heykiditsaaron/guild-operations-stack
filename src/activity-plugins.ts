@@ -26,8 +26,8 @@ export function activityPluginRuntimeState(activityKind: string): ActivityRuntim
 }
 
 const installedActivityPluginModules = [
-  "./modules/raid/plugin.js",
-  "./modules/raffle/plugin.js",
+  "./activities/raid/plugin.js",
+  "./activities/raffle/plugin.js",
 ] as const;
 
 async function loadActivityPlugin(modulePath: string, logger: FastifyBaseLogger): Promise<InstalledActivityPlugin | null> {
