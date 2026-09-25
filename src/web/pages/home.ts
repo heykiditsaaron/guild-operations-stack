@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../auth.js";
 import { installationOperational } from "../../core/installation/guild-binding.js";
-import type { AssetRegistry } from "../assets.js";
+import type { AssetName, AssetRegistry } from "../assets.js";
 import { htmlText, renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
 
@@ -11,7 +11,7 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
 
     const viewer = await viewerForRequest(request.cookies[SESSION_COOKIE_NAME]);
 
-    const stylesheets = ["home.css"] as const;
+    const stylesheets: AssetName[] = ["home.css"];
     const communityActions = viewer.presentationContributions.homeCommunityActions.join("\n");
 
     const html = renderPage(assets, {
