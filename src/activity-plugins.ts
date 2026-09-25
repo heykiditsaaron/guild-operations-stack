@@ -64,13 +64,11 @@ export async function registerInstalledActivityPlugins(
       continue;
     }
 
-    await app.register(async (activityApp) => {
-      activityApp.addHook("preHandler", async (_request, reply) => {
-        const state = await activityRegistrationState(plugin.kind);
-        if (state?.active) return;
-        return reply.code(404).send({ error: "activity_inactive", activity: plugin.kind });
+    const state = await activityRegistrationState(plugin.kind);
+    if (state?.active) {
+      await app.register(async (activityApp) => {
+        await plugin.registerRoutes(activityApp, assets);
       });
-      await plugin.registerRoutes(activityApp, assets);
-    });
+    }
   }
 }
