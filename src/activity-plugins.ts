@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyBaseLogger } from "fastify";
-import { activityRegistrationState, configureActivityActivation, markActivityActivationFailed } from "./core/activity/registry.js";
+import { activityAdministration, activityRegistrationState, configureActivityActivation, markActivityActivationFailed } from "./core/activity/registry.js";
+import { rememberActivityCapabilityDeclarations } from "./core/activity/plugin-administration.js";
 import { rememberActivityPlugin } from "./core/activity/plugin-control.js";
 import { activityPluginEnabled } from "./core/activity/plugin-enablement.js";
 import type { AssetRegistry } from "./web/assets.js";
@@ -54,6 +55,8 @@ export async function registerInstalledActivityPlugins(
       failedActivityPlugins.delete(plugin.kind);
       plugin.register();
       await rememberActivityPlugin({ kind: plugin.kind, label: plugin.label, version: plugin.version });
+      const administration = await activityAdministration(plugin.kind);
+      await rememberActivityCapabilityDeclarations(plugin.kind, administration?.capabilities ?? []);
       configureActivityActivation(plugin.kind, { enabled: () => activityPluginEnabled(plugin.kind) });
     } catch (error) {
       failedActivityPlugins.set(plugin.kind, error instanceof Error ? error : new Error(String(error)));
