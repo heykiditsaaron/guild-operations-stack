@@ -82,11 +82,6 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
           <span class="admin-destination-description">Configure Discord role projection policy.</span>
           <span class="admin-destination-arrow" aria-hidden="true">→</span>
         </a>
-        <a class="admin-destination" href="/admin/plugins/discord/raid">
-          <span class="admin-destination-title">Raid</span>
-          <span class="admin-destination-description">Configure how Raid occurrences are projected into Discord.</span>
-          <span class="admin-destination-arrow" aria-hidden="true">→</span>
-        </a>
       </section>
     </div>`;
 
