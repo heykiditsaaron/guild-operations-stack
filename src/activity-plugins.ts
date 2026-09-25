@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyBaseLogger } from "fastify";
-import { activityRegistrationState, configureActivityActivation } from "./core/activity/registry.js";
+import { activityRegistrationState, configureActivityActivation, markActivityActivationFailed } from "./core/activity/registry.js";
 import { rememberActivityPlugin } from "./core/activity/plugin-control.js";
 import { isPackagedCapabilityKey, packagedCapabilityEnabled } from "./packaged-capability-lifecycle.js";
 import type { AssetRegistry } from "./web/assets.js";
@@ -60,6 +60,7 @@ export async function registerInstalledActivityPlugins(
       }
     } catch (error) {
       failedActivityPlugins.set(plugin.kind, error instanceof Error ? error : new Error(String(error)));
+      markActivityActivationFailed(plugin.kind);
       logger.warn({ err: error, activityKind: plugin.kind }, "Activity plugin failed to activate");
       continue;
     }
