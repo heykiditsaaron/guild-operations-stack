@@ -2,7 +2,6 @@ import { withTransaction } from "../../db.js";
 import { deliverEmission, publishEmission } from "../../emissions/registry.js";
 import { requireGuildCapabilityOrOperator } from "../../core/authority/guild-permissions.js";
 import { RAFFLE_CLAIMS_CAPABILITY, RAFFLE_DRAW_CAPABILITY, RAFFLE_MODIFY_CAPABILITY, RAFFLE_STAGE_CAPABILITY } from "./permissions.js";
-undefined
 import {
   RaffleRuleError,
   approveRaffleClaim as approveRaffleClaimDomain,
