@@ -15,6 +15,14 @@ export type InstalledActivityPlugin = {
 type ActivityPluginModule = { activityPlugin: InstalledActivityPlugin };
 
 const failedActivityPlugins = new Map<string, Error>();
+const availableActivityPlugins = new Set<string>();
+
+export type ActivityRuntimeState = "available" | "failed";
+
+export function activityPluginRuntimeState(activityKind: string): ActivityRuntimeState | null {
+  if (failedActivityPlugins.has(activityKind)) return "failed";
+  return availableActivityPlugins.has(activityKind) ? "available" : null;
+}
 
 const installedActivityPluginModules = [
   "./modules/raid/plugin.js",
@@ -40,8 +48,10 @@ export async function registerInstalledActivityPlugins(
   for (const modulePath of installedActivityPluginModules) {
     const plugin = await loadActivityPlugin(modulePath, logger);
     if (!plugin) continue;
+    availableActivityPlugins.add(plugin.kind);
 
     try {
+      failedActivityPlugins.delete(plugin.kind);
       plugin.register();
       await rememberActivityPlugin({ kind: plugin.kind, label: plugin.label, version: plugin.version });
       const packagedCapabilityKey = plugin.kind;
