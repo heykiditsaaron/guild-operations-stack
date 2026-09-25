@@ -5,8 +5,7 @@ import { controlledCharactersForGuildie } from "../../core/identity/controlled-c
 import { offerActivityParticipation, revokeActivityParticipation } from "../../core/activity/participation.js";
 import { pool, withTransaction } from "../../db.js";
 import { deliverEmission, publishEmission } from "../../emissions/registry.js";
-import {
-  effectiveGuildAuthority, requireGuildCapabilityOrOperator } from "../../core/guild/character-membership.js";
+import { effectiveGuildAuthority, requireGuildCapabilityOrOperator } from "../../core/authority/guild-permissions.js";
 import { RAID_ASSIGN_CAPABILITY, RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILITY } from "./permissions.js";
 
 import { positionForSpec, traitsForSpec, type WowTrait } from "../../wow-traits/registry.js";
