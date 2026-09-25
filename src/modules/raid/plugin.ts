@@ -8,6 +8,7 @@ import { registerRaidOperationPage } from "../../web/pages/events/raid/operation
 
 export const activityPlugin: InstalledActivityPlugin = {
   kind: "raid",
+  label: "Raid",
   register() {
     registerRaidCapabilityDefinitions();
     registerRaidActivityIntegration();
