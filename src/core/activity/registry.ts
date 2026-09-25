@@ -52,17 +52,21 @@ export type ActivityActivationGate = {
   enabled?: () => boolean | Promise<boolean>;
 };
 
+export type ActivityRegistrationStatus = "active" | "unavailable" | "unentitled" | "disabled" | "failed";
+
 export type ActivityRegistrationState = {
   kind: string;
   available: boolean;
-  entitled: boolean;
-  enabled: boolean;
+  entitled: boolean | null;
+  enabled: boolean | null;
   active: boolean;
+  status: ActivityRegistrationStatus;
 };
 
 const activitiesByKind = new Map<string, ActivityRegistration>();
 const activationByKind = new Map<string, ActivityActivationGate>();
 const activitiesByTemporalEmissionCode = new Map<string, ActivityRegistration>();
+const failedActivitiesByKind = new Set<string>();
 
 function requiredText(value: string, field: string): string {
   const normalized = value.trim();
@@ -94,6 +98,10 @@ export function registerActivity(input: ActivityRegistration): void {
   }
 }
 
+export function markActivityActivationFailed(activityKind: string): void {
+  failedActivitiesByKind.add(requiredText(activityKind, "kind"));
+}
+
 export function configureActivityActivation(activityKind: string, gate: ActivityActivationGate): void {
   const kind = requiredText(activityKind, "kind");
   if (!activitiesByKind.has(kind)) throw new Error(`Activity ${kind} must be registered before activation is configured`);
@@ -104,7 +112,11 @@ export async function activityRegistrationState(activityKind: string): Promise<A
   const kind = requiredText(activityKind, "kind");
   if (!activitiesByKind.has(kind)) {
     const known = await knownActivityPlugin(kind);
-    return known ? { kind, available: false, entitled: false, enabled: false, active: false } : null;
+    return known ? { kind, available: false, entitled: null, enabled: null, active: false, status: "unavailable" } : null;
+  }
+
+  if (failedActivitiesByKind.has(kind)) {
+    return { kind, available: true, entitled: null, enabled: null, active: false, status: "failed" };
   }
 
   const gate = activationByKind.get(kind);
@@ -113,7 +125,9 @@ export async function activityRegistrationState(activityKind: string): Promise<A
     gate?.enabled ? gate.enabled() : true,
   ]);
 
-  return { kind, available: true, entitled, enabled, active: entitled && enabled };
+  const active = entitled && enabled;
+  const status: ActivityRegistrationStatus = !entitled ? "unentitled" : !enabled ? "disabled" : "active";
+  return { kind, available: true, entitled, enabled, active, status };
 }
 
 async function activeActivity(activityKind: string): Promise<ActivityRegistration | null> {
