@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
-import { RAID_ASSIGN_CAPABILITY, RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILITY, guildieHasGuildCapabilityOrOperator } from "../../../../modules/raid/permissions.js";
+import { guildieHasGuildCapabilityOrOperator } from "../../../../core/authority/guild-permissions.js";
+import { RAID_ASSIGN_CAPABILITY, RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILITY } from "../../../../modules/raid/permissions.js";
 import { raidEventFacts, raidHasOccurred, raidSignupsAreOpen, raidSignupCutoffUnix, raidOccurrenceDestinations, raidRosterDiagnostics, establishRaidSignup, revokeRaidSignup, type RaidRosterDiagnostics } from "../../../../modules/raid/application.js";
 import { raidListingParticipationSummary } from "../../../../modules/raid/listing-view.js";
 import { raidParticipationCharacters, raidSignupsForGuildie, type RaidParticipationCharacter, type RaidSignupView } from "../../../../modules/raid/participation-view.js";
