@@ -14,6 +14,7 @@ import { registerRaffleRulesPage } from "../../web/pages/events/raffle/rules.js"
 
 export const activityPlugin: InstalledActivityPlugin = {
   kind: "raffle",
+  label: "Raffle",
   register() {
     registerRaffleCapabilityDefinitions();
     registerRaffleActivityIntegration();
