@@ -1,3 +1,4 @@
+import { registerGuildCapabilityDefinitions } from "../../core/authority/guild-capability-policy.js";
 
 export const RAID_PERMISSIONS_CAPABILITY = "raid.permissions";
 export const RAID_MODIFY_CAPABILITY = "raid.modify";
