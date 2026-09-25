@@ -11,16 +11,6 @@ export const THEME_CONFIGURE_CAPABILITY = "theme.configure";
 export const GUILD_PRESENTATION_CONFIGURE_CAPABILITY = "guild.presentation.configure";
 export const OPERATIONS_INSPECT_CAPABILITY = "operations.inspect";
 
-export const RAID_PERMISSIONS_CAPABILITY = "raid.permissions";
-export const RAID_MODIFY_CAPABILITY = "raid.modify";
-export const RAID_STAGE_CAPABILITY = "raid.stage";
-export const RAID_ASSIGN_CAPABILITY = "raid.assign";
-
-export const RAFFLE_PERMISSIONS_CAPABILITY = "raffle.permissions";
-export const RAFFLE_MODIFY_CAPABILITY = "raffle.modify";
-export const RAFFLE_STAGE_CAPABILITY = "raffle.stage";
-export const RAFFLE_CLAIMS_CAPABILITY = "raffle.claims";
-export const RAFFLE_DRAW_CAPABILITY = "raffle.draw";
 
 export type EffectiveGuildAuthority = {
   guildieId: string;
