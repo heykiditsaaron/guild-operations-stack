@@ -5,6 +5,7 @@ import { rememberActivityCapabilityDeclarations } from "./core/activity/plugin-a
 import { rememberActivityPlugin } from "./core/activity/plugin-control.js";
 import { activityPluginEnabled } from "./core/activity/plugin-enablement.js";
 import type { AssetRegistry } from "./web/assets.js";
+import { publishOperationalRecord } from "./operational-inspection.js";
 
 export type InstalledActivityPlugin = {
   kind: string;
@@ -79,8 +80,16 @@ export async function registerInstalledActivityPlugins(
     try {
       plugin = await loadActivityPlugin(kind, modulePath, logger);
     } catch (error) {
-      failedActivityPlugins.set(kind, error instanceof Error ? error : new Error(String(error)));
+      const failure = error instanceof Error ? error : new Error(String(error));
+      failedActivityPlugins.set(kind, failure);
       markActivityActivationFailed(kind);
+      await publishOperationalRecord({
+        source: "activity",
+        operation: "availability",
+        kind: "exception",
+        summary: `Activity plugin ${kind} is physically present but unavailable.`,
+        details: { activityKind: kind, stage: "load", error: failure.message },
+      });
       continue;
     }
 
@@ -94,11 +103,28 @@ export async function registerInstalledActivityPlugins(
       await rememberActivityCapabilityDeclarations(plugin.kind, administration?.capabilities ?? []);
       configureActivityActivation(plugin.kind, { enabled: () => activityPluginEnabled(plugin.kind) });
     } catch (error) {
-      failedActivityPlugins.set(plugin.kind, error instanceof Error ? error : new Error(String(error)));
+      const failure = error instanceof Error ? error : new Error(String(error));
+      failedActivityPlugins.set(plugin.kind, failure);
       markActivityActivationFailed(plugin.kind);
       logger.warn({ err: error, activityKind: plugin.kind }, "Activity plugin failed to activate");
+      await publishOperationalRecord({
+        source: "activity",
+        operation: "availability",
+        kind: "exception",
+        summary: `Activity plugin ${plugin.kind} is physically present but unavailable.`,
+        details: { activityKind: plugin.kind, stage: "registration", error: failure.message },
+      });
       continue;
     }
+
+    await publishOperationalRecord({
+      source: "activity",
+      operation: "availability",
+      kind: "result",
+      result: "success",
+      summary: `Activity plugin ${plugin.kind} is available.`,
+      details: { activityKind: plugin.kind, version: plugin.version ?? null },
+    });
 
     await app.register(async (activityApp) => {
       activityApp.addHook("onRequest", async (_request, reply) => {
