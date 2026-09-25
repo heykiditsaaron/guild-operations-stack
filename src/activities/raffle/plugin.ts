@@ -1,8 +1,8 @@
 import type { InstalledActivityPlugin } from "../../activity-plugins.js";
-import { registerRaffleActivityIntegration } from "../../modules/raffle/activity.js";
-import { registerRaffleGuildActivityOffering } from "../../modules/raffle/offering.js";
-import { registerRaffleApiV1Routes } from "../../modules/raffle/api-v1-routes.js";
-import { registerRaffleRoutes } from "../../modules/raffle/routes.js";
+import { registerRaffleActivityIntegration } from "./activity.js";
+import { registerRaffleGuildActivityOffering } from "./offering.js";
+import { registerRaffleApiV1Routes } from "./api-v1-routes.js";
+import { registerRaffleRoutes } from "./routes.js";
 import { registerRaffleClaimsPage } from "../../web/pages/events/raffle/claims.js";
 import { registerRaffleEntryPage } from "../../web/pages/events/raffle/enter.js";
 import { registerRaffleHistoryPage } from "../../web/pages/events/raffle/history.js";
