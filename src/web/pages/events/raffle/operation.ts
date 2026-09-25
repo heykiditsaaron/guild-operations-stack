@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
-import { authenticatedGuildie,SESSION_COOKIE_NAME } from "../../../../auth.js";
-import { RAFFLE_CLAIMS_CAPABILITY,RAFFLE_DRAW_CAPABILITY,RAFFLE_MODIFY_CAPABILITY,RAFFLE_STAGE_CAPABILITY,guildieHasGuildCapability } from "../../../../core/authority/guild-permissions.js";
+import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../../auth.js";
+import { RAFFLE_CLAIMS_CAPABILITY, guildieHasGuildCapability } from "../../../../auth.js";
+import { RAFFLE_DRAW_CAPABILITY, RAFFLE_MODIFY_CAPABILITY, RAFFLE_STAGE_CAPABILITY } from "../../../../modules/raffle/permissions.js";
 import { guildieAttributionsForGuildies,type GuildieAttribution } from "../../../../core/identity/guildie-attribution.js";
 import { listRaffleClaims,raffleParticipationCutoffUnix,type Raffle,type RaffleClaim } from "../../../../modules/raffle/application.js";
 import { raffleDestinations } from "../../../../modules/raffle/destinations.js";
