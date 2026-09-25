@@ -1,5 +1,3 @@
-import { registerGuildCapabilityDefinitions } from "../../core/authority/guild-capability-policy.js";
-
 export const RAID_PERMISSIONS_CAPABILITY = "raid.permissions";
 export const RAID_MODIFY_CAPABILITY = "raid.modify";
 export const RAID_STAGE_CAPABILITY = "raid.stage";
@@ -12,6 +10,3 @@ export const RAID_CAPABILITY_DEFINITIONS = [
   { key: RAID_ASSIGN_CAPABILITY, namespace: "raid", namespaceLabel: "Raid", label: "Assign raid participation", description: "Assign and unassign participants in a raid roster.", defaultPermittedRanks: [1, 2, 3] },
 ] as const;
 
-export function registerRaidCapabilityDefinitions(): void {
-  registerGuildCapabilityDefinitions(RAID_CAPABILITY_DEFINITIONS);
-}
