@@ -121,7 +121,7 @@ export function configureActivityActivation(activityKind: string, gate: Activity
 
 export async function activityRegistrationStates(): Promise<ActivityRegistrationState[]> {
   const known = await knownActivityPlugins();
-  const kinds = new Set([...known.map((plugin) => plugin.kind), ...activitiesByKind.keys()]);
+  const kinds = new Set([...known.map((plugin) => plugin.kind), ...activitiesByKind.keys(), ...failedActivitiesByKind]);
   const states = await Promise.all([...kinds].map((kind) => activityRegistrationState(kind)));
   return states.filter((state): state is ActivityRegistrationState => state !== null);
 }
