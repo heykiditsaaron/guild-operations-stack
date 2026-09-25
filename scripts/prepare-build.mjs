@@ -8,16 +8,16 @@ const sourceActivities = new URL("../src/activities/", import.meta.url);
 await rm(dist, { recursive: true, force: true });
 
 export async function copyActivityMigrationAssets() {
-  let cartridges;
+  let activityPlugins;
   try {
-    cartridges = await readdir(sourceActivities, { withFileTypes: true });
+    activityPlugins = await readdir(sourceActivities, { withFileTypes: true });
   } catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") return;
     throw error;
   }
 
-  for (const cartridge of cartridges.filter((entry) => entry.isDirectory())) {
-    const sourceMigrations = new URL(`../src/activities/${cartridge.name}/migrations/`, import.meta.url);
+  for (const activityPlugin of activityPlugins.filter((entry) => entry.isDirectory())) {
+    const sourceMigrations = new URL(`../src/activities/${activityPlugin.name}/migrations/`, import.meta.url);
     let migrations;
     try {
       migrations = await readdir(sourceMigrations, { withFileTypes: true });
@@ -27,7 +27,7 @@ export async function copyActivityMigrationAssets() {
     }
 
     for (const migration of migrations.filter((entry) => entry.isFile() && /^\d+_.+\.sql$/.test(entry.name))) {
-      const destination = join(new URL(`../dist/activities/${cartridge.name}/migrations/`, import.meta.url).pathname, migration.name);
+      const destination = join(new URL(`../dist/activities/${activityPlugin.name}/migrations/`, import.meta.url).pathname, migration.name);
       await mkdir(dirname(destination), { recursive: true });
       await cp(new URL(migration.name, sourceMigrations), destination);
     }
