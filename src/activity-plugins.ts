@@ -14,6 +14,8 @@ export type InstalledActivityPlugin = {
 
 type ActivityPluginModule = { activityPlugin: InstalledActivityPlugin };
 
+const failedActivityPlugins = new Map<string, Error>();
+
 const installedActivityPluginModules = [
   "./modules/raid/plugin.js",
   "./modules/raffle/plugin.js",
@@ -47,6 +49,7 @@ export async function registerInstalledActivityPlugins(
         configureActivityActivation(plugin.kind, { enabled: () => packagedCapabilityEnabled(packagedCapabilityKey) });
       }
     } catch (error) {
+      failedActivityPlugins.set(plugin.kind, error instanceof Error ? error : new Error(String(error)));
       logger.warn({ err: error, activityKind: plugin.kind }, "Activity plugin failed to activate");
       continue;
     }
