@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyBaseLogger } from "fastify";
 import { activityRegistrationState, configureActivityActivation, markActivityActivationFailed } from "./core/activity/registry.js";
-import { rememberActivityPlugin } from "./core/activity/plugin-control.js";
+import { activityPluginEnabled, rememberActivityPlugin } from "./core/activity/plugin-control.js";
 import { activityPluginEnabled } from "./core/activity/plugin-enablement.js";
 import type { AssetRegistry } from "./web/assets.js";
 
