@@ -1,6 +1,6 @@
 import { activityParticipationsForGuildie } from "./participation.js";
 import { knownActivityPlugin } from "./plugin-control.js";
-import type { GuildCapabilityDefinition } from "../authority/guild-capability-policy.js";
+import { registerGuildCapabilityDefinitions, type GuildCapabilityDefinition } from "../authority/guild-capability-policy.js";
 
 export type ActivityTemporalRelevance = readonly [number] | readonly [number, number];
 
@@ -96,6 +96,10 @@ export function registerActivity(input: ActivityRegistration): void {
         throw new Error(`Activity temporal emission ${code} is already registered by ${registered.kind}`);
       }
     }
+  }
+
+  if (input.administration?.capabilities?.length) {
+    registerGuildCapabilityDefinitions(input.administration.capabilities);
   }
 
   activitiesByKind.set(kind, input);
