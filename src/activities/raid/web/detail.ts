@@ -19,8 +19,8 @@ import {
   raidBuffLabel,
   specializationIconUrl,
   type RaidBuffTrait,
-} from "../../../../wow-iconography.js";
-import { allWowTraits, specHasTrait, traitsForSpec, type WowTrait } from "../../../../wow-traits/registry.js";
+} from "../../../wow-iconography.js";
+import { allWowTraits, specHasTrait, traitsForSpec, type WowTrait } from "../../../wow-traits/registry.js";
 import type { AssetName, AssetRegistry } from "../../../web/assets.js";
 import { htmlText, renderOccurrenceOperations, renderPage, type SecondaryNavigation } from "../../../web/render.js";
 import { viewerForRequest } from "../../../web/viewer.js";
