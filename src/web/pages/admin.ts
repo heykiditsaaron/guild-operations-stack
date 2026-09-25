@@ -39,6 +39,7 @@ import { administrationAvailabilityForGuildie } from "../administration.js";
 import type { AssetRegistry } from "../assets.js";
 import { renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
+import { publishOperationalRecord } from "../../operational-inspection.js";
 
 function htmlText(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
@@ -187,7 +188,17 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     const state = (await activityRegistrationStates()).find((candidate) => candidate.kind === params.activityKind);
     if (!state) return reply.code(404).send({ error: "unknown_activity" });
     if (!state.available || state.status === "failed") return reply.code(409).send({ error: "activity_declaration_not_authoritative" });
-    await setActivityPluginEnabled(params.activityKind, body.enabled); return reply.send({ activityKind: params.activityKind, enabled: body.enabled });
+    await setActivityPluginEnabled(params.activityKind, body.enabled);
+    await publishOperationalRecord({
+      source: "activity",
+      operation: "enablement",
+      kind: "result",
+      result: "success",
+      actorGuildieId: guildie.guildieId,
+      summary: `Activity plugin ${params.activityKind} was ${body.enabled ? "enabled" : "disabled"}.`,
+      details: { activityKind: params.activityKind, enabled: body.enabled },
+    });
+    return reply.send({ activityKind: params.activityKind, enabled: body.enabled });
   });
 
   app.put("/admin/modules/:moduleKey", async (request, reply) => {
