@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyBaseLogger } from "fastify";
 import { activityRegistrationState, configureActivityActivation, markActivityActivationFailed } from "./core/activity/registry.js";
 import { rememberActivityPlugin } from "./core/activity/plugin-control.js";
-import { isPackagedCapabilityKey, packagedCapabilityEnabled } from "./packaged-capability-lifecycle.js";
+import { activityPluginEnabled } from "./core/activity/plugin-enablement.js";
 import type { AssetRegistry } from "./web/assets.js";
 
 export type InstalledActivityPlugin = {
@@ -54,10 +54,7 @@ export async function registerInstalledActivityPlugins(
       failedActivityPlugins.delete(plugin.kind);
       plugin.register();
       await rememberActivityPlugin({ kind: plugin.kind, label: plugin.label, version: plugin.version });
-      const packagedCapabilityKey = plugin.kind;
-      if (isPackagedCapabilityKey(packagedCapabilityKey)) {
-        configureActivityActivation(plugin.kind, { enabled: () => packagedCapabilityEnabled(packagedCapabilityKey) });
-      }
+      configureActivityActivation(plugin.kind, { enabled: () => activityPluginEnabled(plugin.kind) });
     } catch (error) {
       failedActivityPlugins.set(plugin.kind, error instanceof Error ? error : new Error(String(error)));
       markActivityActivationFailed(plugin.kind);
