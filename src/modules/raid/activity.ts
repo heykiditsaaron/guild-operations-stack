@@ -3,7 +3,6 @@ import {
   type ActivityTemporalProjection,
 } from "../../core/activity/registry.js";
 import { raidEventFactsIncludingCancelled, raidCalendarProjection } from "./application.js";
-import { raidParticipationReferencesForGuildie } from "./participation-view.js";
 
 const RAID_TEMPORAL_EMISSION_CODES = [
   "raid.established",
@@ -33,14 +32,6 @@ export function registerRaidActivityIntegration(): void {
     participation: {
       destination(reference) {
         return `/activities/raid/${encodeURIComponent(reference.activityId)}`;
-      },
-      async forGuildie(guildieId) {
-        const references = await raidParticipationReferencesForGuildie(guildieId);
-        return references.map((reference) => ({
-          activityKind: "raid",
-          activityId: reference.raidId,
-          participationId: reference.signupRowId,
-        }));
       },
     },
     temporal: {
