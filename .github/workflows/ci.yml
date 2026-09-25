@@ -43,3 +43,34 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Prove Activity plugin optionality
+        shell: bash
+        run: |
+          set -euo pipefail
+          restore_activities() {
+            rm -rf src/activities
+            if [ -d "$RUNNER_TEMP/guild-operations-activities" ]; then
+              mv "$RUNNER_TEMP/guild-operations-activities" src/activities
+            fi
+          }
+          trap restore_activities EXIT
+
+          rm -rf "$RUNNER_TEMP/guild-operations-activities"
+          mv src/activities "$RUNNER_TEMP/guild-operations-activities"
+
+          mkdir -p src/activities
+          cp -R "$RUNNER_TEMP/guild-operations-activities/raid" src/activities/
+          npm run typecheck
+          npm run build
+
+          rm -rf src/activities
+          mkdir -p src/activities
+          cp -R "$RUNNER_TEMP/guild-operations-activities/raffle" src/activities/
+          npm run typecheck
+          npm run build
+
+          rm -rf src/activities
+          mkdir -p src/activities
+          npm run typecheck
+          npm run build
