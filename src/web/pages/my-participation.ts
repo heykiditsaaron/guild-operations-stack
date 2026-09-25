@@ -32,7 +32,7 @@ export async function registerMyParticipationPage(app: FastifyInstance, assets: 
             </div>
             <a class="button-primary" href="${htmlText(reference.destination)}">View activity</a>
           </article>`).join("\n")}</div>`
-      : `<section><h2>No participation yet</h2><p>Activities you take part in will appear here.</p><a class="button-primary" href="/events">Find activities</a></section>`;
+      : `<section><h2>No participation yet</h2><p>Activities you take part in will appear here.</p><a class="button-primary" href="/activities">Find activities</a></section>`;
 
     return reply
       .header("Cache-Control", "no-cache")
