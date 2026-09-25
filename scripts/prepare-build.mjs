@@ -7,7 +7,7 @@ const sourceActivities = new URL("../src/activities/", import.meta.url);
 
 await rm(dist, { recursive: true, force: true });
 
-export async function copyActivityMigrationAssets() {
+export async function copyActivityAssets() {
   let activityPlugins;
   try {
     activityPlugins = await readdir(sourceActivities, { withFileTypes: true });
@@ -17,6 +17,13 @@ export async function copyActivityMigrationAssets() {
   }
 
   for (const activityPlugin of activityPlugins.filter((entry) => entry.isDirectory())) {
+    const sourcePublic = new URL(`../src/activities/${activityPlugin.name}/public/`, import.meta.url);
+    try {
+      await cp(sourcePublic, new URL(`../dist/activities/${activityPlugin.name}/public/`, import.meta.url), { recursive: true });
+    } catch (error) {
+      if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT")) throw error;
+    }
+
     const sourceMigrations = new URL(`../src/activities/${activityPlugin.name}/migrations/`, import.meta.url);
     let migrations;
     try {
@@ -34,4 +41,4 @@ export async function copyActivityMigrationAssets() {
   }
 }
 
-await copyActivityMigrationAssets();
+await copyActivityAssets();
