@@ -1,7 +1,7 @@
 import {
   registerActivity,
   type ActivityOccurrenceAttribute,
-  type ActivityTemporalRelevance,
+  type ActivityTemporalCoordinate,
 } from "../../core/activity/registry.js";
 import { getRaffle } from "./application.js";
 import { raffleFacts } from "./queries.js";
@@ -16,7 +16,7 @@ const RAFFLE_TEMPORAL_EMISSION_CODES = [
 
 async function raffleOccurrence(raffleId: string) {
   const facts = await raffleFacts(raffleId);
-  if (!facts || facts.raffle.conclusion === "operator_cancelled") return null;
+  if (!facts) return null;
   const raffle = facts.raffle;
 
   const attributes: ActivityOccurrenceAttribute[] = [
@@ -51,18 +51,18 @@ async function raffleOccurrence(raffleId: string) {
   }
 
   return {
-    occursAt: [raffle.drawingAtUnix] as const,
+    occursAt: raffle.conclusion === "operator_cancelled" ? null : { start: null, end: raffle.drawingAtUnix },
     title: raffle.title ?? "Guild Raffle",
     description: raffle.prizeKind === "gold" ? null : raffle.prizeDescription,
     attributes,
   };
 }
 
-async function raffleTemporalRelevance(raffleId: string): Promise<ActivityTemporalRelevance | null> {
+async function raffleTemporalRelevance(raffleId: string): Promise<ActivityTemporalCoordinate | null> {
   const raffle = await getRaffle(raffleId);
   if (!raffle) throw new Error(`Raffle ${raffleId} was not found while resolving Activity temporal relevance`);
 
-  return raffle.conclusion === "operator_cancelled" ? null : [raffle.drawingAtUnix];
+  return raffle.conclusion === "operator_cancelled" ? null : { start: null, end: raffle.drawingAtUnix };
 }
 
 export function registerRaffleActivityIntegration(): void {
