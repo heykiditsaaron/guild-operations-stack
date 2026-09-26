@@ -7,6 +7,7 @@ import {
   raidEventFacts,
   raidEventFactsIncludingCancelled,
   raidRosterDiagnostics,
+  raidSignupsAreOpen,
 } from "./application.js";
 import { raidListingParticipationSummary } from "./listing-view.js";
 import { RAID_CAPABILITY_DEFINITIONS } from "./permissions.js";
@@ -60,6 +61,9 @@ async function raidOccurrence(raidId: string) {
     title: raid.label,
     description: raid.description,
     attributes,
+    interactions: raidSignupsAreOpen(raid)
+      ? [{ kind: "participate" as const, label: "Sign up" }]
+      : [],
   };
 }
 
@@ -87,6 +91,12 @@ export function registerRaidActivityIntegration(): void {
     participation: {
       destination(reference) {
         return `/activities/raid/${encodeURIComponent(reference.activityId)}`;
+      },
+    },
+    interaction: {
+      destination(kind, activityId) {
+        if (kind === "participate") return `/activities/raid/${encodeURIComponent(activityId)}/participation`;
+        return null;
       },
     },
     temporal: {
