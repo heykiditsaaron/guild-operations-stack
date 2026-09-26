@@ -1,6 +1,6 @@
 import {
   registerActivity,
-  type ActivityTemporalProjection,
+  type ActivityTemporalRelevance,
 } from "../../core/activity/registry.js";
 import { raidEventFactsIncludingCancelled, raidCalendarProjection } from "./application.js";
 import { RAID_CAPABILITY_DEFINITIONS } from "./permissions.js";
@@ -11,15 +11,11 @@ const RAID_TEMPORAL_EMISSION_CODES = [
   "raid.cancelled",
 ] as const;
 
-async function raidTemporalProjection(raidId: string): Promise<ActivityTemporalProjection> {
+async function raidTemporalRelevance(raidId: string): Promise<ActivityTemporalRelevance | null> {
   const raid = await raidEventFactsIncludingCancelled(raidId);
   if (!raid) throw new Error(`Raid ${raidId} was not found while resolving Activity temporal relevance`);
 
-  return {
-    activityKind: "raid",
-    activityId: raid.raidId,
-    occursAt: raid.cancelledAtUnix === null ? raid.occursAt : null,
-  };
+  return raid.cancelledAtUnix === null ? raid.occursAt : null;
 }
 
 export function registerRaidActivityIntegration(): void {
@@ -38,7 +34,7 @@ export function registerRaidActivityIntegration(): void {
     },
     temporal: {
       emissionCodes: RAID_TEMPORAL_EMISSION_CODES,
-      projection: raidTemporalProjection,
+      relevance: raidTemporalRelevance,
       presentation: raidCalendarProjection,
     },
   });
