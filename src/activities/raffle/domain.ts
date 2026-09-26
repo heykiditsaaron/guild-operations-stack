@@ -1,6 +1,6 @@
 import { randomInt } from "node:crypto";
 import type { PoolClient } from "pg";
-import { offerActivityParticipation, revokeActivityParticipation } from "../../core/activity/participation.js";
+import { offerActivityParticipation, revokeActivityParticipationOffer } from "../../core/activity/participation.js";
 import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import { controlledGuildCharactersForGuildie } from "../../core/identity/controlled-characters.js";
 import { pool, withTransaction } from "../../db.js";
@@ -372,7 +372,7 @@ export async function revokeRaffleClaim(claimantGuildieId: string, claimId: stri
       "UPDATE raffle_claims SET resolution_kind='revoked', revoked_by_guildie_id=$2, revoked_at_unix=$3 WHERE claim_id=$1",
       [claimId, claimantGuildieId, revokedAtUnix],
     );
-    await revokeActivityParticipation(client, {
+    await revokeActivityParticipationOffer(client, {
       activityKind: "raffle",
       activityId: String(claim.raffle_id),
       party: { kind: "guildie", reference: claimantGuildieId },
