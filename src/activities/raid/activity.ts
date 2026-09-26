@@ -6,7 +6,6 @@ import {
 import {
   raidEventFacts,
   raidEventFactsIncludingCancelled,
-  raidCalendarProjection,
   raidRosterDiagnostics,
 } from "./application.js";
 import { raidListingParticipationSummary } from "./listing-view.js";
@@ -91,7 +90,6 @@ export function registerRaidActivityIntegration(): void {
     temporal: {
       emissionCodes: RAID_TEMPORAL_EMISSION_CODES,
       relevance: raidTemporalRelevance,
-      presentation: raidCalendarProjection,
     },
   });
 }
