@@ -54,7 +54,14 @@ async function raffleOccurrence(raffleId: string) {
     occursAt: raffle.conclusion === "operator_cancelled" ? null : { start: null, end: raffle.drawingAtUnix },
     title: raffle.title ?? "Guild Raffle",
     description: raffle.prizeKind === "gold" ? null : raffle.prizeDescription,
+    phase: raffle.conclusion === null ? "active" as const : "record" as const,
     attributes,
+    interactions: raffle.conclusion !== null
+      ? []
+      : [
+          ...(facts.participationOpen ? [{ kind: "participate" as const, label: "Enter raffle" }] : []),
+          { kind: "operate" as const, label: "Manage raffle" },
+        ],
     interactions: facts.participationOpen
       ? [{ kind: "participate" as const, label: "Enter raffle" }]
       : [],
@@ -83,6 +90,14 @@ export function registerRaffleActivityIntegration(): void {
     participation: {
       destination(reference) {
         return `/activities/raffle/${encodeURIComponent(reference.activityId)}`;
+      },
+    },
+    interaction: {
+      destination(kind, activityId) {
+        const id = encodeURIComponent(activityId);
+        if (kind === "participate") return `/activities/raffle/enter?raffle=${id}`;
+        if (kind === "operate") return `/activities/raffle/${id}/manage`;
+        return null;
       },
     },
     interaction: {
