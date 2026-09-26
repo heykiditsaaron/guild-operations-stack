@@ -1,4 +1,4 @@
-import { activityParticipationsForGuildie } from "./participation.js";
+import { activityParticipationOffersForGuildie as participationOffersForGuildie } from "./participation.js";
 import { knownActivityPlugin, knownActivityPlugins } from "./plugin-control.js";
 import { knownActivityCapabilityDeclarations } from "./plugin-administration.js";
 import { registerGuildCapabilityDefinitions, type GuildCapabilityDefinition } from "../authority/guild-capability-policy.js";
@@ -61,10 +61,10 @@ export type ActivityTemporalCapability = {
   relevance(activityId: string): Promise<ActivityTemporalCoordinate | null>;
 };
 
-export type ActivityParticipationReference = {
+export type ActivityParticipationOfferReference = {
   activityKind: string;
   activityId: string;
-  participationId: string;
+  participationOfferId: string;
 };
 
 export type ActivityInteractionCapability = {
@@ -250,19 +250,19 @@ export async function activityTemporalProjectionForEmission(
 }
 
 
-export async function activityParticipationForGuildie(
+export async function activityParticipationOffersForGuildie(
   guildieId: string,
-): Promise<Array<ActivityParticipationReference & { destination: string }>> {
-  const relationships = await activityParticipationsForGuildie(requiredText(guildieId, "participation Guildie id"));
+): Promise<Array<ActivityParticipationOfferReference & { destination: string }>> {
+  const relationships = await participationOffersForGuildie(requiredText(guildieId, "participation Guildie id"));
 
   const resolved = await Promise.all(relationships.map(async (relationship) => {
     const activity = await activeActivity(relationship.activityKind);
     if (!activity) return null;
 
-    const reference: ActivityParticipationReference = {
+    const reference: ActivityParticipationOfferReference = {
       activityKind: relationship.activityKind,
       activityId: relationship.activityId,
-      participationId: relationship.participationId,
+      participationOfferId: relationship.participationOfferId,
     };
     return {
       ...reference,
@@ -270,7 +270,7 @@ export async function activityParticipationForGuildie(
     };
   }));
 
-  return resolved.filter((reference): reference is ActivityParticipationReference & { destination: string } => reference !== null);
+  return resolved.filter((reference): reference is ActivityParticipationOfferReference & { destination: string } => reference !== null);
 }
 
 export async function discoverableActivities(): Promise<readonly (ActivityDiscovery & { kind: string })[]> {
