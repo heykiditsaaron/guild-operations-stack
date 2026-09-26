@@ -1,8 +1,10 @@
 import {
   registerActivity,
+  type ActivityOccurrenceAttribute,
   type ActivityTemporalRelevance,
 } from "../../core/activity/registry.js";
 import { getRaffle, raffleCalendarProjection } from "./application.js";
+import { raffleFacts } from "./queries.js";
 import { RAFFLE_CAPABILITY_DEFINITIONS } from "./permissions.js";
 
 const RAFFLE_TEMPORAL_EMISSION_CODES = [
@@ -11,6 +13,50 @@ const RAFFLE_TEMPORAL_EMISSION_CODES = [
   "raffle.concluded",
   "raffle.cancelled",
 ] as const;
+
+async function raffleOccurrence(raffleId: string) {
+  const facts = await raffleFacts(raffleId);
+  if (!facts || facts.raffle.conclusion === "operator_cancelled") return null;
+  const raffle = facts.raffle;
+
+  const attributes: ActivityOccurrenceAttribute[] = [
+    { key: "entry_price", label: "Entry price", provenance: "declared", value: { kind: "quantity", value: raffle.entryPriceGold, unit: "gold" } },
+    { key: "approved_entries", label: "Entries", provenance: "derived", value: { kind: "number", value: facts.metrics.approvedEntryCount } },
+  ];
+
+  if (raffle.prizeKind === "gold" && raffle.winnerPercentage !== null) {
+    attributes.push({
+      key: "prize",
+      label: "Prize",
+      provenance: "declared",
+      value: { kind: "text", value: `${raffle.winnerPercentage}% of pot` },
+    });
+    const currentPrize = BigInt(raffle.entryPriceGold)
+      * BigInt(facts.metrics.approvedEntryCount)
+      * BigInt(raffle.winnerPercentage)
+      / 100n;
+    attributes.push({
+      key: "current_prize",
+      label: "Current prize",
+      provenance: "derived",
+      value: { kind: "quantity", value: currentPrize.toString(), unit: "gold" },
+    });
+  } else if (raffle.prizeDescription) {
+    attributes.push({
+      key: "prize",
+      label: "Prize",
+      provenance: "declared",
+      value: { kind: "text", value: raffle.prizeDescription },
+    });
+  }
+
+  return {
+    occursAt: [raffle.drawingAtUnix] as const,
+    title: raffle.title ?? "Guild Raffle",
+    description: raffle.prizeKind === "gold" ? null : raffle.prizeDescription,
+    attributes,
+  };
+}
 
 async function raffleTemporalRelevance(raffleId: string): Promise<ActivityTemporalRelevance | null> {
   const raffle = await getRaffle(raffleId);
@@ -27,6 +73,9 @@ export function registerRaffleActivityIntegration(): void {
       title: "Raffle",
       tagline: "Take your shot at the pot.",
       destination: "/activities/raffle",
+    },
+    occurrence: {
+      resolve: raffleOccurrence,
     },
     participation: {
       destination(reference) {
