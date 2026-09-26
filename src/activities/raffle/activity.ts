@@ -84,11 +84,6 @@ export function registerRaffleActivityIntegration(): void {
     occurrence: {
       resolve: raffleOccurrence,
     },
-    participation: {
-      destination(reference) {
-        return `/activities/raffle/${encodeURIComponent(reference.activityId)}`;
-      },
-    },
     interaction: {
       destination(kind, activityId) {
         const id = encodeURIComponent(activityId);
