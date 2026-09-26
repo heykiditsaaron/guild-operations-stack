@@ -55,6 +55,9 @@ async function raffleOccurrence(raffleId: string) {
     title: raffle.title ?? "Guild Raffle",
     description: raffle.prizeKind === "gold" ? null : raffle.prizeDescription,
     attributes,
+    interactions: facts.participationOpen
+      ? [{ kind: "participate" as const, label: "Enter raffle" }]
+      : [],
   };
 }
 
@@ -80,6 +83,12 @@ export function registerRaffleActivityIntegration(): void {
     participation: {
       destination(reference) {
         return `/activities/raffle/${encodeURIComponent(reference.activityId)}`;
+      },
+    },
+    interaction: {
+      destination(kind, activityId) {
+        if (kind === "participate") return `/activities/raffle/enter?raffle=${encodeURIComponent(activityId)}`;
+        return null;
       },
     },
     temporal: {
