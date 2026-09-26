@@ -56,7 +56,8 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
         header: `<div><p class="eyebrow">Activities · ${htmlText(label)}</p></div>`,
         body: renderPublicOccurrence({
           title: occurrence.title,
-          state: label,
+          state: occurrence.phase === "active" ? "Active" : "Record",
+          active: occurrence.phase === "active",
           description: occurrence.description ? `<p>${htmlText(occurrence.description)}</p>` : undefined,
           facts,
           actions,
