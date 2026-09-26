@@ -36,20 +36,7 @@ export type ActivityOccurrenceCapability = {
   resolve(activityId: string): Promise<Omit<ActivityOccurrence, "activityKind" | "activityId"> | null>;
 };
 
-export type ActivityPresentation = {
-  title: string;
-  description: string | null;
-  category: string;
-  publicAction: { label: string; href: string };
-  participationAction: { label: string; href: string } | null;
-  operationAction: { label: string; href: string };
-};
-
-export type ActivityTemporalCapability = {
-  emissionCodes: readonly string[];
-  relevance(activityId: string): Promise<ActivityTemporalRelevance | null>;
-  presentation(activityId: string): Promise<ActivityPresentation | null>;
-};
+export type ActivityTemporalCapability = {\n  emissionCodes: readonly string[];\n  relevance(activityId: string): Promise<ActivityTemporalRelevance | null>;\n};
 
 export type ActivityParticipationReference = {
   activityKind: string;
@@ -186,12 +173,6 @@ export async function activityOccurrence(activityKind: string, activityId: strin
   if (!activity?.occurrence) return null;
   const occurrence = await activity.occurrence.resolve(id);
   return occurrence ? { activityKind: kind, activityId: id, ...occurrence } : null;
-}
-
-export async function activityPresentation(activityKind: string, activityId: string): Promise<ActivityPresentation | null> {
-  const activity = await activeActivity(requiredText(activityKind, "kind"));
-  if (!activity?.temporal) return null;
-  return activity.temporal.presentation(requiredText(activityId, "id"));
 }
 
 export function activityTemporalEmissionCodes(): readonly string[] {
