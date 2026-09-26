@@ -339,6 +339,14 @@ CREATE TABLE activity_participation_offers (
   UNIQUE (activity_kind, activity_id, procedure_reference)
 );
 
+CREATE TABLE activity_participations (
+  participation_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  participation_offer_id uuid NOT NULL UNIQUE REFERENCES activity_participation_offers(participation_offer_id) ON DELETE RESTRICT,
+  established_at_unix bigint NOT NULL CHECK (established_at_unix >= 0)
+);
+
+CREATE INDEX activity_participations_established_idx ON activity_participations(established_at_unix DESC);
+
 CREATE TABLE activity_plugin_registrations (
   activity_kind text PRIMARY KEY CHECK (length(btrim(activity_kind)) > 0),
   label text NOT NULL CHECK (length(btrim(label)) > 0),
