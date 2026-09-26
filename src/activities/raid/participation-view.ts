@@ -1,5 +1,4 @@
-import { characterMembership } from "../../core/guild/character-membership.js";
-import { controlledCharactersForGuildie } from "../../core/identity/controlled-characters.js";
+import { controlledCharactersForGuildie, controlledGuildCharactersForGuildie } from "../../core/identity/controlled-characters.js";
 import { pool } from "../../db.js";
 import { effectiveGuildAuthority } from "../../core/authority/guild-permissions.js";
 import { specHasTrait, specsForClass } from "../../wow-traits/registry.js";
@@ -56,22 +55,10 @@ export async function raidParticipationCharacters(
     if (!authority) throw new Error("Applicant is not a current Guildie");
   }
 
-  const controlled = await controlledCharactersForGuildie(guildieId);
-  const eligible = [] as typeof controlled;
-
-  for (const character of controlled) {
-    if (!character.className) continue;
-    if (raid.eligibility === "guild_character_member") {
-      const membership = await characterMembership({
-        guildId: raid.guildId,
-        region: character.region,
-        realmId: character.realmId,
-        characterId: character.characterId,
-      });
-      if (!membership) continue;
-    }
-    eligible.push(character);
-  }
+  const controlled = raid.eligibility === "guild_character_member"
+    ? await controlledGuildCharactersForGuildie(guildieId)
+    : await controlledCharactersForGuildie(guildieId);
+  const eligible = controlled.filter((character) => character.className !== null);
 
   return {
     raid,
