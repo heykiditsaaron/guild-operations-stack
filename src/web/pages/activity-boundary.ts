@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../auth.js";
-import { activityOccurrence, activityRegistrationState, type ActivityOccurrenceAttribute } from "../../core/activity/registry.js";
+import { activityOccurrence, activityOccurrenceRenderActions, activityRegistrationState, type ActivityOccurrenceAttribute } from "../../core/activity/registry.js";
 import { knownActivityPlugin } from "../../core/activity/plugin-control.js";
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage, renderPublicOccurrence } from "../render.js";
@@ -33,7 +33,10 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
     if (!occurrence) return reply.callNotFound();
 
     const viewer = await viewerForRequest(request.cookies[SESSION_COOKIE_NAME]);
-    const fingerprint = await knownActivityPlugin(occurrence.activityKind);
+    const [fingerprint, actions] = await Promise.all([
+      knownActivityPlugin(occurrence.activityKind),
+      activityOccurrenceRenderActions(occurrence),
+    ]);
     const label = fingerprint?.label ?? occurrence.activityKind;
     const time = occurrenceTime(occurrence.occursAt);
     const facts = [
@@ -56,6 +59,7 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
           state: label,
           description: occurrence.description ? `<p>${htmlText(occurrence.description)}</p>` : undefined,
           facts,
+          actions,
         }),
       }));
   });
