@@ -11,10 +11,14 @@ function localTime(unixSeconds: number): string {
   return `<time datetime="${instant}" data-local-time-unix="${unixSeconds}" data-local-time-date-style="full">${instant}</time>`;
 }
 
-function occurrenceTime(occursAt: readonly [number] | readonly [number, number]): string {
-  return occursAt.length === 1
-    ? localTime(occursAt[0])
-    : `${localTime(occursAt[0])}<span aria-hidden="true"> → </span>${localTime(occursAt[1])}`;
+function occurrenceTime(occursAt: { start: number | null; end: number | null } | null): string | null {
+  if (occursAt === null) return null;
+  if (occursAt.start !== null && occursAt.end !== null) {
+    return occursAt.start === occursAt.end
+      ? localTime(occursAt.start)
+      : `${localTime(occursAt.start)}<span aria-hidden="true"> → </span>${localTime(occursAt.end)}`;
+  }
+  return localTime(occursAt.start ?? occursAt.end!);
 }
 
 function attributeValue(attribute: Awaited<ReturnType<typeof activityOccurrence>> extends infer O ? O extends { attributes: readonly (infer A)[] } ? A : never : never): string {
@@ -31,8 +35,9 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
     const viewer = await viewerForRequest(request.cookies[SESSION_COOKIE_NAME]);
     const fingerprint = await knownActivityPlugin(occurrence.activityKind);
     const label = fingerprint?.label ?? occurrence.activityKind;
+    const time = occurrenceTime(occurrence.occursAt);
     const facts = [
-      `<div class="fact"><span class="fact-label">When</span><strong class="fact-value">${occurrenceTime(occurrence.occursAt)}</strong></div>`,
+      ...(time === null ? [] : [`<div class="fact"><span class="fact-label">When</span><strong class="fact-value">${time}</strong></div>`]),
       ...occurrence.attributes.map((attribute) => `<div class="fact" data-activity-attribute="${htmlText(attribute.key)}" data-provenance="${attribute.provenance}"><span class="fact-label">${htmlText(attribute.label)}</span><strong class="fact-value">${attributeValue(attribute)}</strong></div>`),
     ].join("");
 
