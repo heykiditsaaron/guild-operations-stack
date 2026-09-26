@@ -132,29 +132,6 @@ export async function drawRaffle(actorGuildieId: string, raffleId: string): Prom
   return concluded;
 }
 
-export type RaffleCalendarProjection = {
-  title: string;
-  description: string | null;
-  category: "raffle";
-  publicAction: { label: string; href: string };
-  participationAction: { label: string; href: string } | null;
-  operationAction: { label: string; href: string };
-};
-
-export async function raffleCalendarProjection(raffleId: string): Promise<RaffleCalendarProjection | null> {
-  const raffle = await raffleDomain(raffleId);
-  if (!raffle) return null;
-  return {
-    title: raffle.title ?? "Guild Raffle",
-    description: raffle.prizeKind === "gold" ? "Guild gold raffle." : raffle.prizeDescription,
-    category: "raffle",
-    publicAction: { label: "View raffle", href: rafflePublicDestination(raffle.raffleId) },
-    participationAction: raffleParticipationIsOpen(raffle)
-      ? { label: "Enter to win", href: raffleParticipationDestination(raffle.raffleId) }
-      : null,
-    operationAction: { label: "Manage raffle", href: raffleOperationDestination(raffle.raffleId) },
-  };
-}
 
 export async function getRaffle(raffleId: string): Promise<Raffle | null> {
   return raffleDomain(raffleId);
