@@ -105,6 +105,64 @@ export async function offerActivityParticipation(
   return mapParticipationOffer(offer);
 }
 
+
+export type ActivityParticipation = {
+  participationId: string;
+  participationOfferId: string;
+  establishedAtUnix: number;
+};
+
+export async function establishActivityParticipation(
+  client: PoolClient,
+  input: {
+    activityKind: string;
+    activityId: string;
+    party: ActivityParticipationParty;
+    procedureReference: string;
+    establishedAtUnix?: number;
+  },
+): Promise<ActivityParticipation> {
+  const activityKind = requiredText(input.activityKind, "kind");
+  const activityId = requiredText(input.activityId, "activity id");
+  const partyReference = requiredText(input.party.reference, "party reference");
+  const procedureReference = requiredText(input.procedureReference, "procedure reference");
+  const establishedAtUnix = input.establishedAtUnix ?? Math.floor(Date.now() / 1000);
+
+  const offer = await client.query<{ participation_offer_id: string; revoked_at_unix: string | number | null }>(
+    `SELECT participation_offer_id, revoked_at_unix
+       FROM activity_participation_offers
+      WHERE activity_kind=$1
+        AND activity_id=$2
+        AND party_kind=$3
+        AND party_reference=$4
+        AND procedure_reference=$5`,
+    [activityKind, activityId, input.party.kind, partyReference, procedureReference],
+  );
+  if (!offer.rowCount) throw new Error("Activity Participation Offer was not found for party");
+  if (offer.rows[0].revoked_at_unix !== null) {
+    throw new Error("Revoked Activity Participation Offer cannot establish Participation");
+  }
+
+  const result = await client.query<{
+    participation_id: string;
+    participation_offer_id: string;
+    established_at_unix: string | number;
+  }>(
+    `INSERT INTO activity_participations (participation_offer_id, established_at_unix)
+     VALUES ($1,$2)
+     ON CONFLICT (participation_offer_id) DO UPDATE
+       SET participation_offer_id=EXCLUDED.participation_offer_id
+     RETURNING participation_id, participation_offer_id, established_at_unix`,
+    [offer.rows[0].participation_offer_id, establishedAtUnix],
+  );
+
+  return {
+    participationId: result.rows[0].participation_id,
+    participationOfferId: result.rows[0].participation_offer_id,
+    establishedAtUnix: Number(result.rows[0].established_at_unix),
+  };
+}
+
 export async function revokeActivityParticipationOffer(
   client: PoolClient,
   input: {
