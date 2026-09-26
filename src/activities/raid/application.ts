@@ -2,7 +2,7 @@ import type { PoolClient } from "pg";
 import { characterMembership } from "../../core/guild/character-membership.js";
 import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import { controlledCharactersForGuildie } from "../../core/identity/controlled-characters.js";
-import { offerActivityParticipation, revokeActivityParticipation } from "../../core/activity/participation.js";
+import { offerActivityParticipation, revokeActivityParticipationOffer } from "../../core/activity/participation.js";
 import { pool, withTransaction } from "../../db.js";
 import { deliverEmission, publishEmission } from "../../emissions/registry.js";
 import { effectiveGuildAuthority, requireGuildCapabilityOrOperator } from "../../core/authority/guild-permissions.js";
@@ -209,7 +209,7 @@ export async function revokeRaidSignup(input: RevokeRaidSignupInput): Promise<vo
       "UPDATE raid_signup_rows SET withdrawn_at_unix=extract(epoch FROM now())::bigint,updated_at_unix=extract(epoch FROM now())::bigint WHERE raid_id=$1 AND signup_row_id=$2",
       [input.raidId, input.signupRowId],
     );
-    await revokeActivityParticipation(client, {
+    await revokeActivityParticipationOffer(client, {
       activityKind: "raid",
       activityId: input.raidId,
       party: { kind: input.applicantAnchor.kind, reference: input.applicantAnchor.value },
