@@ -2,6 +2,7 @@ import { randomInt } from "node:crypto";
 import type { PoolClient } from "pg";
 import { offerActivityParticipation, revokeActivityParticipation } from "../../core/activity/participation.js";
 import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
+import { controlledGuildCharactersForGuildie } from "../../core/identity/controlled-characters.js";
 import { pool, withTransaction } from "../../db.js";
 
 export const RAFFLE_OPERATIONAL_BUFFER_SECONDS = 60 * 60;
@@ -320,30 +321,31 @@ export async function establishRaffleClaim(claimantGuildieId: string, raffleId: 
     const raffle = mapRaffle(raffleRow);
     if (!raffleParticipationIsOpen(raffle)) throw new RaffleRuleError("participation_closed", "Raffle participation is closed");
 
-    const characterResult = await client.query<{ character_record_id: string; character_id: string; realm_id: string; character_name: string }>(
-      `SELECT c.character_record_id, c.character_id, c.realm_id, grm.character_name
-         FROM characters c
-         JOIN guild_roster_memberships grm
-           ON grm.region=c.region AND grm.realm_id=c.realm_id AND grm.character_id=c.character_id AND grm.currently_present=true
-        WHERE c.guildie_id=$1 AND c.currently_controlled=true AND grm.guild_id=$2 AND c.realm_id=$3 AND c.character_id=$4`,
-      [claimantGuildieId, raffle.guildId, realmId, characterId],
-    );
-    if (!characterResult.rowCount) {
+    const character = (await controlledGuildCharactersForGuildie(claimantGuildieId))
+      .find((candidate) => candidate.realmId === realmId && candidate.characterId === characterId);
+    if (!character) {
       throw new RaffleRuleError("character_not_eligible", "Claim character must be a currently controlled character on the current guild roster", 403);
     }
 
-    const character = characterResult.rows[0];
+    const characterRecord = await client.query<{ character_record_id: string }>(
+      `SELECT character_record_id
+         FROM characters
+        WHERE guildie_id=$1 AND currently_controlled=true AND realm_id=$2 AND character_id=$3`,
+      [claimantGuildieId, realmId, characterId],
+    );
+    if (!characterRecord.rowCount) throw new RaffleRuleError("character_not_eligible", "Claim character identity is unavailable", 403);
+    const characterRecordId = characterRecord.rows[0].character_record_id;
     const promisedGoldValue = BigInt(String(raffleRow.entry_price_gold)) * BigInt(requestedEntryCount);
     const insert = await client.query(
       `INSERT INTO raffle_claims (raffle_id, claimant_guildie_id, character_record_id, requested_entry_count, promised_gold_value, created_at_unix)
        VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [raffleId, claimantGuildieId, character.character_record_id, requestedEntryCount, promisedGoldValue.toString(), unixNow()],
+      [raffleId, claimantGuildieId, characterRecordId, requestedEntryCount, promisedGoldValue.toString(), unixNow()],
     );
     const claim = mapClaim({
       ...insert.rows[0] as Record<string, unknown>,
       character_id: character.character_id,
       realm_id: character.realm_id,
-      character_name: character.character_name,
+      character_name: character.name,
     });
 
     await offerActivityParticipation(client, {
