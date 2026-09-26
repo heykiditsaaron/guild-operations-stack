@@ -343,8 +343,8 @@ export async function establishRaffleClaim(claimantGuildieId: string, raffleId: 
     );
     const claim = mapClaim({
       ...insert.rows[0] as Record<string, unknown>,
-      character_id: character.character_id,
-      realm_id: character.realm_id,
+      character_id: character.characterId,
+      realm_id: character.realmId,
       character_name: character.name,
     });
 
