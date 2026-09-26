@@ -36,7 +36,10 @@ export type ActivityOccurrenceCapability = {
   resolve(activityId: string): Promise<Omit<ActivityOccurrence, "activityKind" | "activityId"> | null>;
 };
 
-export type ActivityTemporalCapability = {\n  emissionCodes: readonly string[];\n  relevance(activityId: string): Promise<ActivityTemporalRelevance | null>;\n};
+export type ActivityTemporalCapability = {
+  emissionCodes: readonly string[];
+  relevance(activityId: string): Promise<ActivityTemporalRelevance | null>;
+};
 
 export type ActivityParticipationReference = {
   activityKind: string;
