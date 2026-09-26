@@ -102,7 +102,7 @@ export async function offerActivityParticipation(
   if (offer.revoked_at_unix !== null) {
     throw new Error("Revoked Activity Participation Offer cannot be offered again through the same procedure reference");
   }
-  return mapParticipationOffer(participation);
+  return mapParticipationOffer(offer);
 }
 
 export async function revokeActivityParticipationOffer(
@@ -134,7 +134,7 @@ export async function revokeActivityParticipationOffer(
       revokedAtUnix,
     ],
   );
-  if (!result.rowCount) throw new Error("Active Activity Participation Offer Offer was not found for party");
+  if (!result.rowCount) throw new Error("Active Activity Participation Offer was not found for party");
 }
 
 export async function activityParticipationOffersForGuildie(guildieId: string): Promise<ActivityParticipationOffer[]> {
