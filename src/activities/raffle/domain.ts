@@ -1,6 +1,6 @@
 import { randomInt } from "node:crypto";
 import type { PoolClient } from "pg";
-import { offerActivityParticipation, revokeActivityParticipationOffer } from "../../core/activity/participation.js";
+import { establishActivityParticipation, offerActivityParticipation, revokeActivityParticipationOffer } from "../../core/activity/participation.js";
 import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import { controlledGuildCharactersForGuildie } from "../../core/identity/controlled-characters.js";
 import { pool, withTransaction } from "../../db.js";
@@ -387,7 +387,15 @@ export async function approveRaffleClaim(actorGuildieId:string, claimId:string):
     const claim=await lockedClaim(client,claimId);
     if(claim.raffle_conclusion!==null) throw new RaffleRuleError("raffle_concluded","Claims can only be adjudicated before the Raffle concludes");
     if(claim.resolution_kind!==null) throw new RaffleRuleError("claim_already_resolved","Only an unresolved claim can be approved");
-    await client.query("UPDATE raffle_claims SET resolution_kind='approved', approved_by_guildie_id=$2, approved_at_unix=$3 WHERE claim_id=$1",[claimId,actorGuildieId,unixNow()]);
+    const approvedAtUnix=unixNow();
+    await client.query("UPDATE raffle_claims SET resolution_kind='approved', approved_by_guildie_id=$2, approved_at_unix=$3 WHERE claim_id=$1",[claimId,actorGuildieId,approvedAtUnix]);
+    await establishActivityParticipation(client,{
+      activityKind:"raffle",
+      activityId:String(claim.raffle_id),
+      party:{kind:"guildie",reference:String(claim.claimant_guildie_id)},
+      procedureReference:claimId,
+      establishedAtUnix:approvedAtUnix,
+    });
   });
 }
 
