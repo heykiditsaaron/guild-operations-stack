@@ -3,7 +3,7 @@ import {
   type ActivityOccurrenceAttribute,
   type ActivityTemporalRelevance,
 } from "../../core/activity/registry.js";
-import { getRaffle, raffleCalendarProjection } from "./application.js";
+import { getRaffle } from "./application.js";
 import { raffleFacts } from "./queries.js";
 import { RAFFLE_CAPABILITY_DEFINITIONS } from "./permissions.js";
 
@@ -85,7 +85,6 @@ export function registerRaffleActivityIntegration(): void {
     temporal: {
       emissionCodes: RAFFLE_TEMPORAL_EMISSION_CODES,
       relevance: raffleTemporalRelevance,
-      presentation: raffleCalendarProjection,
     },
   });
 }
