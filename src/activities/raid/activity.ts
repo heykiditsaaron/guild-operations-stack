@@ -93,11 +93,6 @@ export function registerRaidActivityIntegration(): void {
     occurrence: {
       resolve: raidOccurrence,
     },
-    participation: {
-      destination(reference) {
-        return `/activities/raid/${encodeURIComponent(reference.activityId)}`;
-      },
-    },
     interaction: {
       destination(kind, activityId) {
         const id = encodeURIComponent(activityId);
