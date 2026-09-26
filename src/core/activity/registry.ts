@@ -22,7 +22,7 @@ export type ActivityPresentation = {
 
 export type ActivityTemporalCapability = {
   emissionCodes: readonly string[];
-  projection(activityId: string): Promise<ActivityTemporalProjection>;
+  relevance(activityId: string): Promise<ActivityTemporalRelevance | null>;
   presentation(activityId: string): Promise<ActivityPresentation | null>;
 };
 
@@ -172,18 +172,12 @@ export async function activityTemporalProjectionForEmission(
   const activity = await activeActivity(registered.kind);
   if (!activity?.temporal) return null;
 
-  const projection = await activity.temporal.projection(activityId);
-  if (projection.activityKind !== activity.kind) {
-    throw new Error(
-      `Activity temporal projection kind ${projection.activityKind} does not match registered kind ${activity.kind}`,
-    );
-  }
-  if (projection.activityId !== activityId) {
-    throw new Error(
-      `Activity temporal projection id ${projection.activityId} does not match emission subject ${activityId}`,
-    );
-  }
-  return projection;
+  const normalizedActivityId = requiredText(activityId, "id");
+  return {
+    activityKind: activity.kind,
+    activityId: normalizedActivityId,
+    occursAt: await activity.temporal.relevance(normalizedActivityId),
+  };
 }
 
 
