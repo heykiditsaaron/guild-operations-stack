@@ -327,8 +327,8 @@ CREATE TABLE installation_web_configuration (
   established_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE activity_participations (
-  participation_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+CREATE TABLE activity_participation_offers (
+  participation_offer_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   activity_kind text NOT NULL CHECK (length(btrim(activity_kind)) > 0),
   activity_id text NOT NULL CHECK (length(btrim(activity_id)) > 0),
   party_kind text NOT NULL CHECK (party_kind IN ('guildie', 'external')),
@@ -372,4 +372,4 @@ CREATE INDEX guild_event_calendar_listings_discoverable_occurs_idx ON guild_even
 CREATE UNIQUE INDEX guild_event_calendar_listings_source_subject_key ON guild_event_calendar_listings(source_kind, source_subject);
 CREATE INDEX emission_publications_published_at_idx ON emission_publications(published_at_unix, publication_id);
 CREATE INDEX emission_consumer_receipts_pending_idx ON emission_consumer_receipts(publication_id, consumer_id) WHERE acknowledged_at_unix IS NULL;
-CREATE INDEX activity_participations_party_idx ON activity_participations(party_kind, party_reference, offered_at_unix DESC);
+CREATE INDEX activity_participation_offers_party_idx ON activity_participation_offers(party_kind, party_reference, offered_at_unix DESC);
