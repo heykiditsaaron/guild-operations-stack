@@ -1,7 +1,7 @@
 import {
   registerActivity,
   type ActivityOccurrenceAttribute,
-  type ActivityTemporalRelevance,
+  type ActivityTemporalCoordinate,
 } from "../../core/activity/registry.js";
 import {
   raidEventFacts,
@@ -56,18 +56,20 @@ async function raidOccurrence(raidId: string) {
   ];
 
   return {
-    occursAt: raid.occursAt,
+    occursAt: { start: raid.occursAt[0], end: raid.occursAt.length === 2 ? raid.occursAt[1] : null },
     title: raid.label,
     description: raid.description,
     attributes,
   };
 }
 
-async function raidTemporalRelevance(raidId: string): Promise<ActivityTemporalRelevance | null> {
+async function raidTemporalRelevance(raidId: string): Promise<ActivityTemporalCoordinate | null> {
   const raid = await raidEventFactsIncludingCancelled(raidId);
   if (!raid) throw new Error(`Raid ${raidId} was not found while resolving Activity temporal relevance`);
 
-  return raid.cancelledAtUnix === null ? raid.occursAt : null;
+  return raid.cancelledAtUnix === null
+    ? { start: raid.occursAt[0], end: raid.occursAt.length === 2 ? raid.occursAt[1] : null }
+    : null;
 }
 
 export function registerRaidActivityIntegration(): void {
