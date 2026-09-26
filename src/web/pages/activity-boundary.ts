@@ -24,7 +24,7 @@ function attributeValue(attribute: Awaited<ReturnType<typeof activityOccurrence>
 }
 
 export async function registerActivityBoundaryRoutes(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
-  app.get<{ Params: { kind: string; activityId: string } }>("/activity-occurrences/:kind/:activityId", async (request, reply) => {
+  app.get<{ Params: { kind: string; activityId: string } }>("/activities/:kind/:activityId", async (request, reply) => {
     const occurrence = await activityOccurrence(request.params.kind, request.params.activityId);
     if (!occurrence) return reply.callNotFound();
 
