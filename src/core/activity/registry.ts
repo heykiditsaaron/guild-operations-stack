@@ -41,6 +41,7 @@ export type ActivityOccurrence = {
   occursAt: ActivityTemporalCoordinate | null;
   title: string;
   description: string | null;
+  phase: "active" | "record";
   attributes: readonly ActivityOccurrenceAttribute[];
   interactions?: readonly ActivityInteractionRequest[];
 };
