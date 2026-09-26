@@ -11,6 +11,31 @@ export type ActivityTemporalProjection = {
   occursAt: ActivityTemporalRelevance | null;
 };
 
+export type ActivityAttributeValue =
+  | { kind: "text"; value: string }
+  | { kind: "number"; value: number }
+  | { kind: "quantity"; value: string; unit: string };
+
+export type ActivityOccurrenceAttribute = {
+  key: string;
+  label: string;
+  provenance: "declared" | "derived";
+  value: ActivityAttributeValue;
+};
+
+export type ActivityOccurrence = {
+  activityKind: string;
+  activityId: string;
+  occursAt: ActivityTemporalRelevance;
+  title: string;
+  description: string | null;
+  attributes: readonly ActivityOccurrenceAttribute[];
+};
+
+export type ActivityOccurrenceCapability = {
+  resolve(activityId: string): Promise<Omit<ActivityOccurrence, "activityKind" | "activityId"> | null>;
+};
+
 export type ActivityPresentation = {
   title: string;
   description: string | null;
@@ -50,6 +75,7 @@ export type ActivityRegistration = {
   kind: string;
   discovery?: ActivityDiscovery;
   administration?: ActivityAdministration;
+  occurrence?: ActivityOccurrenceCapability;
   temporal?: ActivityTemporalCapability;
   participation?: ActivityParticipationCapability;
 };
@@ -151,6 +177,15 @@ export async function activityRegistrationState(activityKind: string): Promise<A
 async function activeActivity(activityKind: string): Promise<ActivityRegistration | null> {
   const state = await activityRegistrationState(activityKind);
   return state?.active ? activitiesByKind.get(state.kind) ?? null : null;
+}
+
+export async function activityOccurrence(activityKind: string, activityId: string): Promise<ActivityOccurrence | null> {
+  const kind = requiredText(activityKind, "kind");
+  const id = requiredText(activityId, "id");
+  const activity = await activeActivity(kind);
+  if (!activity?.occurrence) return null;
+  const occurrence = await activity.occurrence.resolve(id);
+  return occurrence ? { activityKind: kind, activityId: id, ...occurrence } : null;
 }
 
 export async function activityPresentation(activityKind: string, activityId: string): Promise<ActivityPresentation | null> {
