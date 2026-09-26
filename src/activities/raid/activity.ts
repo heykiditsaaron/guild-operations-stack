@@ -4,9 +4,9 @@ import {
   type ActivityTemporalCoordinate,
 } from "../../core/activity/registry.js";
 import {
-  raidEventFacts,
   raidEventFactsIncludingCancelled,
   raidRosterDiagnostics,
+  raidSignupsAreOpen,
   raidSignupsAreOpen,
 } from "./application.js";
 import { raidListingParticipationSummary } from "./listing-view.js";
@@ -30,7 +30,7 @@ function eligibilityLabel(value: RaidEligibility): string {
 }
 
 async function raidOccurrence(raidId: string) {
-  const raid = await raidEventFacts(raidId);
+  const raid = await raidEventFactsIncludingCancelled(raidId);
   if (!raid) return null;
 
   const [participation, roster] = await Promise.all([
@@ -57,10 +57,19 @@ async function raidOccurrence(raidId: string) {
   ];
 
   return {
-    occursAt: { start: raid.occursAt[0], end: raid.occursAt.length === 2 ? raid.occursAt[1] : null },
+    occursAt: raid.cancelledAtUnix === null
+      ? { start: raid.occursAt[0], end: raid.occursAt.length === 2 ? raid.occursAt[1] : null }
+      : null,
     title: raid.label,
     description: raid.description,
+    phase: raid.cancelledAtUnix === null ? "active" as const : "record" as const,
     attributes,
+    interactions: raid.cancelledAtUnix !== null
+      ? []
+      : [
+          ...(raidSignupsAreOpen(raid) ? [{ kind: "participate" as const, label: "Sign up" }] : []),
+          { kind: "operate" as const, label: "Manage raid" },
+        ],
     interactions: raidSignupsAreOpen(raid)
       ? [{ kind: "participate" as const, label: "Sign up" }]
       : [],
@@ -91,6 +100,14 @@ export function registerRaidActivityIntegration(): void {
     participation: {
       destination(reference) {
         return `/activities/raid/${encodeURIComponent(reference.activityId)}`;
+      },
+    },
+    interaction: {
+      destination(kind, activityId) {
+        const id = encodeURIComponent(activityId);
+        if (kind === "participate") return `/activities/raid/${id}/participation`;
+        if (kind === "operate") return `/activities/raid/${id}/manage`;
+        return null;
       },
     },
     interaction: {
