@@ -5,8 +5,8 @@ export type ActivityParticipationParty =
   | { kind: "guildie"; reference: string }
   | { kind: "external"; reference: string };
 
-export type ActivityParticipation = {
-  participationId: string;
+export type ActivityParticipationOffer = {
+  participationOfferId: string;
   activityKind: string;
   activityId: string;
   party: ActivityParticipationParty;
@@ -25,12 +25,12 @@ export type OfferActivityParticipationInput = {
 
 function requiredText(value: string, field: string): string {
   const normalized = value.trim();
-  if (!normalized) throw new Error(`Activity Participation ${field} is required`);
+  if (!normalized) throw new Error(`Activity Participation Offer ${field} is required`);
   return normalized;
 }
 
-function mapParticipation(row: {
-  participation_id: string;
+function mapParticipationOffer(row: {
+  participation_offer_id: string;
   activity_kind: string;
   activity_id: string;
   party_kind: "guildie" | "external";
@@ -38,9 +38,9 @@ function mapParticipation(row: {
   procedure_reference: string;
   offered_at_unix: string | number;
   revoked_at_unix: string | number | null;
-}): ActivityParticipation {
+}): ActivityParticipationOffer {
   return {
-    participationId: row.participation_id,
+    participationOfferId: row.participation_offer_id,
     activityKind: row.activity_kind,
     activityId: row.activity_id,
     party: { kind: row.party_kind, reference: row.party_reference },
@@ -53,7 +53,7 @@ function mapParticipation(row: {
 export async function offerActivityParticipation(
   client: PoolClient,
   input: OfferActivityParticipationInput,
-): Promise<ActivityParticipation> {
+): Promise<ActivityParticipationOffer> {
   const activityKind = requiredText(input.activityKind, "kind");
   const activityId = requiredText(input.activityId, "activity id");
   const partyReference = requiredText(input.party.reference, "party reference");
@@ -61,7 +61,7 @@ export async function offerActivityParticipation(
   const offeredAtUnix = input.offeredAtUnix ?? Math.floor(Date.now() / 1000);
 
   const inserted = await client.query<{
-    participation_id: string;
+    participation_offer_id: string;
     activity_kind: string;
     activity_id: string;
     party_kind: "guildie" | "external";
@@ -70,7 +70,7 @@ export async function offerActivityParticipation(
     offered_at_unix: string | number;
     revoked_at_unix: string | number | null;
   }>(
-    `INSERT INTO activity_participations (
+    `INSERT INTO activity_participation_offers (
        activity_kind, activity_id, party_kind, party_reference, procedure_reference, offered_at_unix
      ) VALUES ($1,$2,$3,$4,$5,$6)
      ON CONFLICT (activity_kind, activity_id, procedure_reference) DO NOTHING
@@ -78,10 +78,10 @@ export async function offerActivityParticipation(
     [activityKind, activityId, input.party.kind, partyReference, procedureReference, offeredAtUnix],
   );
 
-  if (inserted.rowCount) return mapParticipation(inserted.rows[0]);
+  if (inserted.rowCount) return mapParticipationOffer(inserted.rows[0]);
 
   const existing = await client.query<{
-    participation_id: string;
+    participation_offer_id: string;
     activity_kind: string;
     activity_id: string;
     party_kind: "guildie" | "external";
@@ -90,22 +90,22 @@ export async function offerActivityParticipation(
     offered_at_unix: string | number;
     revoked_at_unix: string | number | null;
   }>(
-    `SELECT * FROM activity_participations
+    `SELECT * FROM activity_participation_offers
       WHERE activity_kind=$1 AND activity_id=$2 AND procedure_reference=$3`,
     [activityKind, activityId, procedureReference],
   );
-  const participation = existing.rows[0];
-  if (!participation) throw new Error("Activity Participation could not be reloaded");
-  if (participation.party_kind !== input.party.kind || participation.party_reference !== partyReference) {
-    throw new Error("Activity Participation procedure reference belongs to a different party");
+  const offer = existing.rows[0];
+  if (!offer) throw new Error("Activity Participation Offer could not be reloaded");
+  if (offer.party_kind !== input.party.kind || offer.party_reference !== partyReference) {
+    throw new Error("Activity Participation Offer procedure reference belongs to a different party");
   }
-  if (participation.revoked_at_unix !== null) {
-    throw new Error("Revoked Activity Participation cannot be offered again through the same procedure reference");
+  if (offer.revoked_at_unix !== null) {
+    throw new Error("Revoked Activity Participation Offer cannot be offered again through the same procedure reference");
   }
-  return mapParticipation(participation);
+  return mapParticipationOffer(participation);
 }
 
-export async function revokeActivityParticipation(
+export async function revokeActivityParticipationOffer(
   client: PoolClient,
   input: {
     activityKind: string;
@@ -117,7 +117,7 @@ export async function revokeActivityParticipation(
 ): Promise<void> {
   const revokedAtUnix = input.revokedAtUnix ?? Math.floor(Date.now() / 1000);
   const result = await client.query(
-    `UPDATE activity_participations
+    `UPDATE activity_participation_offers
         SET revoked_at_unix=$6
       WHERE activity_kind=$1
         AND activity_id=$2
@@ -134,12 +134,12 @@ export async function revokeActivityParticipation(
       revokedAtUnix,
     ],
   );
-  if (!result.rowCount) throw new Error("Active Activity Participation was not found for party");
+  if (!result.rowCount) throw new Error("Active Activity Participation Offer Offer was not found for party");
 }
 
-export async function activityParticipationsForGuildie(guildieId: string): Promise<ActivityParticipation[]> {
+export async function activityParticipationOffersForGuildie(guildieId: string): Promise<ActivityParticipationOffer[]> {
   const result = await pool.query<{
-    participation_id: string;
+    participation_offer_id: string;
     activity_kind: string;
     activity_id: string;
     party_kind: "guildie";
@@ -149,10 +149,10 @@ export async function activityParticipationsForGuildie(guildieId: string): Promi
     revoked_at_unix: string | number | null;
   }>(
     `SELECT *
-       FROM activity_participations
+       FROM activity_participation_offers
       WHERE party_kind='guildie' AND party_reference=$1
-      ORDER BY offered_at_unix DESC, participation_id DESC`,
+      ORDER BY offered_at_unix DESC, participation_offer_id DESC`,
     [requiredText(guildieId, "Guildie id")],
   );
-  return result.rows.map(mapParticipation);
+  return result.rows.map(mapParticipationOffer);
 }
