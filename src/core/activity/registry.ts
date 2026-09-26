@@ -67,10 +67,6 @@ export type ActivityParticipationReference = {
   participationId: string;
 };
 
-export type ActivityParticipationCapability = {
-  destination(reference: ActivityParticipationReference): string;
-};
-
 export type ActivityInteractionCapability = {
   destination(kind: ActivityInteractionKind, activityId: string): string | null;
 };
@@ -91,7 +87,6 @@ export type ActivityRegistration = {
   administration?: ActivityAdministration;
   occurrence?: ActivityOccurrenceCapability;
   temporal?: ActivityTemporalCapability;
-  participation?: ActivityParticipationCapability;
   interaction?: ActivityInteractionCapability;
 };
 
@@ -262,14 +257,17 @@ export async function activityParticipationForGuildie(
 
   const resolved = await Promise.all(relationships.map(async (relationship) => {
     const activity = await activeActivity(relationship.activityKind);
-    if (!activity?.participation) return null;
+    if (!activity) return null;
 
     const reference: ActivityParticipationReference = {
       activityKind: relationship.activityKind,
       activityId: relationship.activityId,
       participationId: relationship.participationId,
     };
-    return { ...reference, destination: activity.participation.destination(reference) };
+    return {
+      ...reference,
+      destination: `/activities/${encodeURIComponent(reference.activityKind)}/${encodeURIComponent(reference.activityId)}`,
+    };
   }));
 
   return resolved.filter((reference): reference is ActivityParticipationReference & { destination: string } => reference !== null);
