@@ -7,7 +7,6 @@ import { registerRaffleEntryPage } from "./web/enter.js";
 import { registerRaffleHistoryPage } from "./web/history.js";
 import { registerRafflePage } from "./web/index.js";
 import { registerRaffleOperationPage } from "./web/operation.js";
-import { registerRaffleRecordPage } from "./web/record.js";
 import { registerRaffleRulesPage } from "./web/rules.js";
 
 export const activityPlugin: InstalledActivityPlugin = {
@@ -16,7 +15,7 @@ export const activityPlugin: InstalledActivityPlugin = {
   async registerRoutes(app, assets) {
     await registerRafflePage(app, assets); await registerRaffleEntryPage(app, assets);
     await registerRaffleClaimsPage(app, assets); await registerRaffleHistoryPage(app, assets);
-    await registerRaffleRulesPage(app, assets); await registerRaffleRecordPage(app, assets);
+    await registerRaffleRulesPage(app, assets);
     await registerRaffleOperationPage(app, assets); await registerRaffleRoutes(app); await registerRaffleApiV1Routes(app);
   },
 };
