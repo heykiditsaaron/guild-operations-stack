@@ -1,6 +1,6 @@
 import {
   registerActivity,
-  type ActivityTemporalProjection,
+  type ActivityTemporalRelevance,
 } from "../../core/activity/registry.js";
 import { getRaffle, raffleCalendarProjection } from "./application.js";
 import { RAFFLE_CAPABILITY_DEFINITIONS } from "./permissions.js";
@@ -12,15 +12,11 @@ const RAFFLE_TEMPORAL_EMISSION_CODES = [
   "raffle.cancelled",
 ] as const;
 
-async function raffleTemporalProjection(raffleId: string): Promise<ActivityTemporalProjection> {
+async function raffleTemporalRelevance(raffleId: string): Promise<ActivityTemporalRelevance | null> {
   const raffle = await getRaffle(raffleId);
   if (!raffle) throw new Error(`Raffle ${raffleId} was not found while resolving Activity temporal relevance`);
 
-  return {
-    activityKind: "raffle",
-    activityId: raffle.raffleId,
-    occursAt: raffle.conclusion === "operator_cancelled" ? null : [raffle.drawingAtUnix],
-  };
+  return raffle.conclusion === "operator_cancelled" ? null : [raffle.drawingAtUnix];
 }
 
 export function registerRaffleActivityIntegration(): void {
@@ -39,7 +35,7 @@ export function registerRaffleActivityIntegration(): void {
     },
     temporal: {
       emissionCodes: RAFFLE_TEMPORAL_EMISSION_CODES,
-      projection: raffleTemporalProjection,
+      relevance: raffleTemporalRelevance,
       presentation: raffleCalendarProjection,
     },
   });
