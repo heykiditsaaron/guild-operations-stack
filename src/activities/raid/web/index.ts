@@ -10,7 +10,7 @@ import type { RaidDifficulty, RaidEligibility, RaidRequirement, RaidRole } from 
 import { specializationIconUrl } from "../../../wow-iconography.js";
 import { allWowClassTraitDefinitions, specsForClass } from "../../../wow-traits/registry.js";
 import type { AssetRegistry } from "../../../web/assets.js";
-import { htmlText, renderOccurrenceParticipation, renderPublicOccurrence, renderPage } from "../../../web/render.js";
+import { htmlText, renderOccurrenceParticipation, renderPage } from "../../../web/render.js";
 import { viewerForRequest } from "../../../web/viewer.js";
 
 type RaidParams = { raidId: string };
