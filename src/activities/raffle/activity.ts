@@ -62,9 +62,6 @@ async function raffleOccurrence(raffleId: string) {
           ...(facts.participationOpen ? [{ kind: "participate" as const, label: "Enter raffle" }] : []),
           { kind: "operate" as const, label: "Manage raffle" },
         ],
-    interactions: facts.participationOpen
-      ? [{ kind: "participate" as const, label: "Enter raffle" }]
-      : [],
   };
 }
 
@@ -97,12 +94,6 @@ export function registerRaffleActivityIntegration(): void {
         const id = encodeURIComponent(activityId);
         if (kind === "participate") return `/activities/raffle/enter?raffle=${id}`;
         if (kind === "operate") return `/activities/raffle/${id}/manage`;
-        return null;
-      },
-    },
-    interaction: {
-      destination(kind, activityId) {
-        if (kind === "participate") return `/activities/raffle/enter?raffle=${encodeURIComponent(activityId)}`;
         return null;
       },
     },
