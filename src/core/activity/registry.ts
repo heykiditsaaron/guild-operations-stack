@@ -28,6 +28,13 @@ export type ActivityOccurrenceAttribute = {
   value: ActivityAttributeValue;
 };
 
+export type ActivityInteractionKind = "participate" | "operate";
+
+export type ActivityInteractionRequest = {
+  kind: ActivityInteractionKind;
+  label: string;
+};
+
 export type ActivityOccurrence = {
   activityKind: string;
   activityId: string;
@@ -35,6 +42,13 @@ export type ActivityOccurrence = {
   title: string;
   description: string | null;
   attributes: readonly ActivityOccurrenceAttribute[];
+  interactions?: readonly ActivityInteractionRequest[];
+};
+
+export type ActivityRenderAction = {
+  label: string;
+  href: string;
+  kind: "primary" | "secondary";
 };
 
 export type ActivityOccurrenceCapability = {
@@ -56,6 +70,10 @@ export type ActivityParticipationCapability = {
   destination(reference: ActivityParticipationReference): string;
 };
 
+export type ActivityInteractionCapability = {
+  destination(kind: ActivityInteractionKind, activityId: string): string | null;
+};
+
 export type ActivityDiscovery = {
   title: string;
   tagline: string;
@@ -73,6 +91,7 @@ export type ActivityRegistration = {
   occurrence?: ActivityOccurrenceCapability;
   temporal?: ActivityTemporalCapability;
   participation?: ActivityParticipationCapability;
+  interaction?: ActivityInteractionCapability;
 };
 
 export type ActivityActivationGate = {
@@ -181,6 +200,23 @@ export async function activityOccurrence(activityKind: string, activityId: strin
   if (!activity?.occurrence) return null;
   const occurrence = await activity.occurrence.resolve(id);
   return occurrence ? { activityKind: kind, activityId: id, ...occurrence } : null;
+}
+
+export async function activityOccurrenceRenderActions(
+  occurrence: ActivityOccurrence,
+): Promise<readonly ActivityRenderAction[]> {
+  const activity = await activeActivity(occurrence.activityKind);
+  if (!activity?.interaction) return [];
+
+  return (occurrence.interactions ?? []).flatMap((request) => {
+    const href = activity.interaction?.destination(request.kind, occurrence.activityId);
+    if (!href) return [];
+    return [{
+      label: requiredText(request.label, "interaction label"),
+      href,
+      kind: request.kind === "participate" ? "primary" as const : "secondary" as const,
+    }];
+  });
 }
 
 export function activityTemporalEmissionCodes(): readonly string[] {
