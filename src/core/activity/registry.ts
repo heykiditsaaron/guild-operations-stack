@@ -3,12 +3,17 @@ import { knownActivityPlugin, knownActivityPlugins } from "./plugin-control.js";
 import { knownActivityCapabilityDeclarations } from "./plugin-administration.js";
 import { registerGuildCapabilityDefinitions, type GuildCapabilityDefinition } from "../authority/guild-capability-policy.js";
 
-export type ActivityTemporalRelevance = readonly [number] | readonly [number, number];
+export type ActivityTemporalCoordinate = {
+  start: number | null;
+  end: number | null;
+};
+
+export type ActivityCalendarCoordinate = readonly [number] | readonly [number, number];
 
 export type ActivityTemporalProjection = {
   activityKind: string;
   activityId: string;
-  occursAt: ActivityTemporalRelevance | null;
+  occursAt: ActivityCalendarCoordinate | null;
 };
 
 export type ActivityAttributeValue =
@@ -26,7 +31,7 @@ export type ActivityOccurrenceAttribute = {
 export type ActivityOccurrence = {
   activityKind: string;
   activityId: string;
-  occursAt: ActivityTemporalRelevance;
+  occursAt: ActivityTemporalCoordinate | null;
   title: string;
   description: string | null;
   attributes: readonly ActivityOccurrenceAttribute[];
@@ -38,7 +43,7 @@ export type ActivityOccurrenceCapability = {
 
 export type ActivityTemporalCapability = {
   emissionCodes: readonly string[];
-  relevance(activityId: string): Promise<ActivityTemporalRelevance | null>;
+  relevance(activityId: string): Promise<ActivityTemporalCoordinate | null>;
 };
 
 export type ActivityParticipationReference = {
@@ -182,6 +187,19 @@ export function activityTemporalEmissionCodes(): readonly string[] {
   return [...activitiesByTemporalEmissionCode.keys()];
 }
 
+function calendarCoordinate(coordinate: ActivityTemporalCoordinate | null): ActivityCalendarCoordinate | null {
+  if (coordinate === null) return null;
+  const { start, end } = coordinate;
+  if (start === null && end === null) {
+    throw new Error("Activity temporal coordinate must have a start, an end, or both");
+  }
+  if (start !== null && end !== null) {
+    if (end < start) throw new Error("Activity temporal coordinate end must not precede start");
+    return start === end ? [start] : [start, end];
+  }
+  return [start ?? end!];
+}
+
 export async function activityTemporalProjectionForEmission(
   code: string,
   activityId: string,
@@ -195,7 +213,7 @@ export async function activityTemporalProjectionForEmission(
   return {
     activityKind: activity.kind,
     activityId: normalizedActivityId,
-    occursAt: await activity.temporal.relevance(normalizedActivityId),
+    occursAt: calendarCoordinate(await activity.temporal.relevance(normalizedActivityId)),
   };
 }
 
