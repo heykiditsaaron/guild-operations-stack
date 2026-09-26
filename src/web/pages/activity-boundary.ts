@@ -1,12 +1,60 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../auth.js";
-import { activityRegistrationState } from "../../core/activity/registry.js";
+import { activityOccurrence, activityRegistrationState } from "../../core/activity/registry.js";
 import { knownActivityPlugin } from "../../core/activity/plugin-control.js";
 import type { AssetRegistry } from "../assets.js";
-import { htmlText, renderPage } from "../render.js";
+import { htmlText, renderPage, renderPublicOccurrence } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
 
+function localTime(unixSeconds: number): string {
+  const instant = new Date(unixSeconds * 1000).toISOString();
+  return `<time datetime="${instant}" data-local-time-unix="${unixSeconds}" data-local-time-date-style="full">${instant}</time>`;
+}
+
+function occurrenceTime(occursAt: readonly [number] | readonly [number, number]): string {
+  return occursAt.length === 1
+    ? localTime(occursAt[0])
+    : `${localTime(occursAt[0])}<span aria-hidden="true"> → </span>${localTime(occursAt[1])}`;
+}
+
+function attributeValue(attribute: Awaited<ReturnType<typeof activityOccurrence>> extends infer O ? O extends { attributes: readonly (infer A)[] } ? A : never : never): string {
+  const value = (attribute as any).value;
+  if (value.kind === "quantity") return `${htmlText(value.value)} ${htmlText(value.unit)}`;
+  return htmlText(String(value.value));
+}
+
 export async function registerActivityBoundaryRoutes(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
+  app.get<{ Params: { kind: string; activityId: string } }>("/activity-occurrences/:kind/:activityId", async (request, reply) => {
+    const occurrence = await activityOccurrence(request.params.kind, request.params.activityId);
+    if (!occurrence) return reply.callNotFound();
+
+    const viewer = await viewerForRequest(request.cookies[SESSION_COOKIE_NAME]);
+    const fingerprint = await knownActivityPlugin(occurrence.activityKind);
+    const label = fingerprint?.label ?? occurrence.activityKind;
+    const facts = [
+      `<div class="fact"><span class="fact-label">When</span><strong class="fact-value">${occurrenceTime(occurrence.occursAt)}</strong></div>`,
+      ...occurrence.attributes.map((attribute) => `<div class="fact" data-activity-attribute="${htmlText(attribute.key)}" data-provenance="${attribute.provenance}"><span class="fact-label">${htmlText(attribute.label)}</span><strong class="fact-value">${attributeValue(attribute)}</strong></div>`),
+    ].join("");
+
+    return reply
+      .header("Cache-Control", "no-cache")
+      .type("text/html; charset=utf-8")
+      .send(renderPage(assets, {
+        pathname: request.url,
+        title: `${occurrence.title} · ${label} · ${viewer.guildPresentation.guildName} Guild Operations`,
+        description: occurrence.description ?? `${label} activity occurrence.`,
+        viewer,
+        secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Activities", href: "/activities" }, { label }] },
+        header: `<div><p class="eyebrow">Activities · ${htmlText(label)}</p></div>`,
+        body: renderPublicOccurrence({
+          title: occurrence.title,
+          state: label,
+          description: occurrence.description ? `<p>${htmlText(occurrence.description)}</p>` : undefined,
+          facts,
+        }),
+      }));
+  });
+
   const unavailable = async (request: any, reply: any) => {
     const kind = request.params.kind;
     const state = await activityRegistrationState(kind);
