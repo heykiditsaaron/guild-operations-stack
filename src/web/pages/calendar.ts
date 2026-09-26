@@ -3,27 +3,25 @@ import { guildState } from "../../core/guild/guild-state.js";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
 import { calendarViewForGuildie, isCalendarViewMode, setCalendarViewForGuildie, type CalendarViewMode } from "../../core/calendar/preference.js";
 import { discoverableGuildCalendarPoints, type GuildCalendarOccursAt, type GuildCalendarPoint } from "../../core/calendar/registry.js";
-import { activityPresentation, type ActivityPresentation } from "../../core/activity/registry.js";
+import { activityOccurrence, type ActivityOccurrence } from "../../core/activity/registry.js";
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
 
-type CalendarProjection = ActivityPresentation;
-
 type CalendarOccurrence = {
   point: GuildCalendarPoint;
-  projection: CalendarProjection;
+  occurrence: ActivityOccurrence;
   occursAt: GuildCalendarOccursAt;
 };
 
-async function projectionForPoint(point: GuildCalendarPoint): Promise<CalendarProjection | null> {
-  return activityPresentation(point.sourceKind, point.sourceSubject);
+async function occurrenceForPoint(point: GuildCalendarPoint): Promise<ActivityOccurrence | null> {
+  return activityOccurrence(point.sourceKind, point.sourceSubject);
 }
 
 async function calendarOccurrences(points: readonly GuildCalendarPoint[]): Promise<CalendarOccurrence[]> {
   const resolved = await Promise.all(points.map(async (point) => {
-    const projection = await projectionForPoint(point);
-    return projection ? { point, projection, occursAt: point.occursAt } : null;
+    const occurrence = await occurrenceForPoint(point);
+    return occurrence ? { point, occurrence, occursAt: occurrence.occursAt } : null;
   }));
   return resolved.filter((item): item is CalendarOccurrence => item !== null);
 }
@@ -57,34 +55,36 @@ function isHappeningNow(occurrence: GuildCalendarOccursAt, nowUnix: number): boo
   return start <= nowUnix && nowUnix <= end;
 }
 
-function renderEventItem(item: CalendarOccurrence, canOperate: boolean): string {
-  const { projection, occursAt } = item;
-  const title = htmlText(projection.title);
-  const category = htmlText(humanize(projection.category));
-  const publicHref = htmlText(projection.publicAction.href);
-  const publicLabel = htmlText(projection.publicAction.label);
-  const description = projection.description
-    ? `<p class="events-item-description">${htmlText(projection.description)}</p>`
+function renderAttributeValue(attribute: ActivityOccurrence["attributes"][number]): string {
+  if (attribute.value.kind === "quantity") {
+    return `${htmlText(attribute.value.value)} ${htmlText(attribute.value.unit)}`;
+  }
+  return htmlText(String(attribute.value.value));
+}
+
+function renderEventItem(item: CalendarOccurrence, _canOperate: boolean): string {
+  const { occurrence, occursAt } = item;
+  const title = htmlText(occurrence.title);
+  const category = htmlText(humanize(occurrence.activityKind));
+  const description = occurrence.description
+    ? `<p class="events-item-description">${htmlText(occurrence.description)}</p>`
     : "";
-  const participationAction = projection.participationAction
-    ? `<a class="button button-primary events-item-secondary-action" href="${htmlText(projection.participationAction.href)}">${htmlText(projection.participationAction.label)}</a>`
-    : "";
-  const operationAction = canOperate
-    ? `<a class="button button-secondary events-item-secondary-action" href="${htmlText(projection.operationAction.href)}">Manage</a>`
+  const attributes = occurrence.attributes.slice(0, 3);
+  const facts = attributes.length
+    ? `<div class="facts">${attributes.map((attribute) => `<div class="fact"><span class="fact-label">${htmlText(attribute.label)}</span><strong class="fact-value">${renderAttributeValue(attribute)}</strong></div>`).join("")}</div>`
     : "";
 
   return `
-    <article class="events-item" data-calendar-occurrence data-start-unix="${occursAt[0]}" data-end-unix="${occursAt.length === 2 ? occursAt[1] : occursAt[0]}">
-      <a class="events-item-main events-item-link" href="${publicHref}" aria-label="${publicLabel}: ${title}">
+    <article class="events-item" data-calendar-occurrence data-activity-kind="${htmlText(occurrence.activityKind)}" data-activity-id="${htmlText(occurrence.activityId)}" data-start-unix="${occursAt[0]}" data-end-unix="${occursAt.length === 2 ? occursAt[1] : occursAt[0]}">
+      <div class="events-item-main">
         <div class="events-item-copy">
           <p class="events-item-category">${category}</p>
           <h3>${title}</h3>
           ${description}
           <div class="events-item-time">${eventTime(occursAt)}</div>
+          ${facts}
         </div>
-        <span class="events-item-action">${publicLabel} <span aria-hidden="true">→</span></span>
-      </a>
-      ${participationAction || operationAction ? `<nav class="events-item-actions" aria-label="${title} actions">${participationAction}${operationAction}</nav>` : ""}
+      </div>
     </article>`;
 }
 
