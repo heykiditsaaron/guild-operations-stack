@@ -21,7 +21,7 @@ async function occurrenceForPoint(point: GuildCalendarPoint): Promise<ActivityOc
 async function calendarOccurrences(points: readonly GuildCalendarPoint[]): Promise<CalendarOccurrence[]> {
   const resolved = await Promise.all(points.map(async (point) => {
     const occurrence = await occurrenceForPoint(point);
-    return occurrence ? { point, occurrence, occursAt: occurrence.occursAt } : null;
+    return occurrence ? { point, occurrence, occursAt: point.occursAt } : null;
   }));
   return resolved.filter((item): item is CalendarOccurrence => item !== null);
 }
