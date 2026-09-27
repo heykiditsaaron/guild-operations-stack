@@ -6,7 +6,6 @@ import { RAID_ASSIGN_CAPABILITY, RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILITY }
 import {
   setRaidAssignment,
   raidEventFacts,
-  raidHasOccurred,
   raidCommitmentAdjudications,
   adjudicateRaidCommitment,
   concludeRaid,
@@ -167,7 +166,7 @@ async function renderRaidOrganizer(request: FastifyRequest<{ Params: RaidParams 
 
   const raid = await raidEventFacts(request.params.raidId);
   if (!raid) return reply.code(404).send({ error: "Raid not found" });
-  const historical = raidHasOccurred(raid);
+  const historical = raid.concludedAtUnix !== null;
   const destinations = raidOccurrenceDestinations(raid.raidId);
   const publicDestination = destinations.find((value) => value.kind === "public");
   const operateDestination = destinations.find((value) => value.kind === "operate");
@@ -191,17 +190,17 @@ async function renderRaidOrganizer(request: FastifyRequest<{ Params: RaidParams 
   }))).join("");
   const assignmentWorkspace = mutableAssignments
     ? `<section class="raid-workspace"><p class="raid-board-status" data-raid-action-status role="status" aria-live="polite"></p>${diagnosticsBody}<div class="raid-organizer-grid"><section class="raid-pool-panel" data-raid-pool-panel data-open="false" id="raid-applicant-pool-panel"><div class="raid-pool-panel-header"><h2>Available</h2><span>${available.length}</span><button type="button" class="raid-pool-close" data-raid-pool-close aria-label="Close available participants">×</button></div><div class="raid-signup-pool" data-raid-pool-drop>${pool}</div></section><div class="raid-assignment-board"><h2>Raid group</h2><div class="raid-role-lanes">${lanes}</div></div></div><button type="button" class="raid-pool-toggle" data-raid-pool-toggle data-raid-pool-drop aria-expanded="false" aria-controls="raid-applicant-pool-panel"><span>Available</span><span>${available.length}</span></button></section>`
-    : `<section class="raid-workspace">${historical ? `<p class="raid-board-status">This raid has occurred. Its final assignment is preserved as history.</p>` : ""}${diagnosticsBody}<div class="raid-assignment-board"><h2>Raid group</h2><div class="raid-role-lanes">${lanes}</div></div></section>`;
+    : `<section class="raid-workspace">${historical ? `<p class="raid-board-status">This raid is concluded. Its final assignment is preserved as history.</p>` : ""}${diagnosticsBody}<div class="raid-assignment-board"><h2>Raid group</h2><div class="raid-role-lanes">${lanes}</div></div></section>`;
 
   const basePath = operateDestination.href;
   const adjudicationBySignup=new Map(adjudications.map(value=>[value.signupRowId,value.fulfilled]));
   const commitments=rows.filter(row=>row.withdrawnAtUnix===null&&row.deniedAtUnix===null);
-  const closeout=historical&&raid.concludedAtUnix===null&&canStage?`<section class="raid-workspace"><h2>Close out raid</h2><p>Declare whether each commitment obligation was fulfilled, then conclude the raid.</p><div class="raid-signup-pool">${commitments.map(row=>{const value=adjudicationBySignup.get(row.signupRowId);return `<article class="raid-participant-card"><div class="raid-participant-card-copy"><strong>${htmlText(row.characterName??row.className)}</strong><span>${htmlText(row.className)}</span></div><div><button type="button" class="button-secondary" data-raid-adjudicate="${htmlText(row.signupRowId)}" data-fulfilled="true"${value===true?" disabled":""}>Fulfilled</button> <button type="button" class="button-secondary" data-raid-adjudicate="${htmlText(row.signupRowId)}" data-fulfilled="false"${value===false?" disabled":""}>Not fulfilled</button></div></article>`;}).join("")}</div><p class="raid-board-status" data-raid-closeout-status role="status" aria-live="polite"></p><button type="button" class="button-primary" data-raid-conclude${commitments.some(row=>!adjudicationBySignup.has(row.signupRowId))?" disabled":""}>Conclude raid</button></section>`:"";
+  const closeout=!historical&&canStage?`<section class="raid-workspace"><h2>Close out raid</h2><p>Declare whether each commitment obligation was fulfilled, then conclude the raid.</p><div class="raid-signup-pool">${commitments.map(row=>{const value=adjudicationBySignup.get(row.signupRowId);return `<article class="raid-participant-card"><div class="raid-participant-card-copy"><strong>${htmlText(row.characterName??row.className)}</strong><span>${htmlText(row.className)}</span></div><div><button type="button" class="button-secondary" data-raid-adjudicate="${htmlText(row.signupRowId)}" data-fulfilled="true"${value===true?" disabled":""}>Fulfilled</button> <button type="button" class="button-secondary" data-raid-adjudicate="${htmlText(row.signupRowId)}" data-fulfilled="false"${value===false?" disabled":""}>Not fulfilled</button></div></article>`;}).join("")}</div><p class="raid-board-status" data-raid-closeout-status role="status" aria-live="polite"></p><button type="button" class="button-primary" data-raid-conclude${commitments.some(row=>!adjudicationBySignup.has(row.signupRowId))?" disabled":""}>Conclude raid</button></section>`:"";
   const workspace = `${assignmentWorkspace}${closeout}<section class="raid-scoreboard" aria-labelledby="raid-scoreboard-heading"><h2 id="raid-scoreboard-heading">Raid diagnostics</h2>${shelves}</section>${mutableAssignments ? `<dialog class="raid-spec-dialog" data-raid-spec-dialog><form method="dialog"><h2>Choose specialization</h2><p data-raid-spec-dialog-copy></p><div data-raid-spec-options></div><button type="button" class="button-secondary" data-raid-spec-cancel>Cancel</button></form></dialog>` : ""}`;
   const lifecycleActions = canStage && !historical ? `<button type="button" class="button-destructive" data-raid-cancel>Cancel raid</button>` : "";
   const body = renderOccurrenceOperations({ title: raid.label, context: `<time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${htmlText(difficultyLabel(raid.difficulty))}${historical ? " · Historical" : ""}`, publicAction: publicDestination ? { label: publicDestination.label, href: publicDestination.href } : undefined, modes: [{ label: "Assign", href: basePath, current: true }, ...(canModify || canStage ? [{ label: "Edit", href: `${basePath}/definition` }] : [])], lifecycleActions, workspace });
   const scripts: AssetName[] = ["admin.js", "raid-admin.js", ...(lifecycleActions ? ["raid-definition.js" as AssetName] : [])];
-  if (mutableAssignments || (historical && raid.concludedAtUnix===null && canStage)) scripts.push("raid-organizer.js");
+  if (mutableAssignments || (!historical && canStage)) scripts.push("raid-organizer.js");
   const html = renderPage(assets, { pathname: request.url, title: `${raid.label} · Raid Operations · ${viewer.guildPresentation.guildName} Guild Operations`, description: raid.description ?? "Raid operations.", viewer, stylesheets: ["admin.css", "raid-admin.css", "raid-iconography.css", "raid-organizer.css"], scripts, secondaryNavigation: navigation, header: "", body });
   return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
 }
