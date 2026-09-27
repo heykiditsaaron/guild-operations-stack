@@ -1,6 +1,6 @@
 # Raffle Endpoints
 
-This document is the canonical HTTP endpoint reference for the Guild Operations Raffle module.
+This document is the canonical HTTP endpoint reference for the Guild Operations Raffle Activity plugin.
 
 Raffle owns its domain truth and application operations. Browser/application routes and the promoted REST adapter consume that contract; neither route hierarchy defines the other. Machine resources live under `/api/v1`. Human presentation remains under `/events/raffle`.
 
@@ -32,11 +32,12 @@ A Raffle is the concrete activity. There is no parent Raffle/round distinction a
 Relevant truth is represented independently:
 
 - the Raffle is established when its durable record exists;
-- participation has never opened, is currently open, is operator-paused, or is temporally closed;
+- participation Offer intake has never opened, is currently accepting new Offers, or is operator-paused;
 - `conclusion` is `null` while operational, then `drawn`, `operator_cancelled`, or `no_participation`;
-- operator pause is reversible before the cutoff and preserves attribution;
-- temporal participation closure is derived at one hour before `drawing_at_unix` and cannot be reopened;
-- drawing cannot occur before `drawing_at_unix`.
+- operator pause is a reversible, attributed gate on new Offer intake and may be resumed before the cutoff;
+- the current one-hour cutoff is an organizer-declared Raffle condition: after it is reached, new Offers are inadmissible even though time itself performs no Raffle transition;
+- the cutoff protects the adjudication interval from actual or perceived preferential manipulation and is intended to become configurable Raffle procedure;
+- drawing is likewise an actor-requested operation that cannot succeed before `drawing_at_unix`.
 
 ## Versioned REST API
 
