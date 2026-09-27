@@ -85,8 +85,8 @@ export function registerRaidActivityIntegration(): void {
       },
     },
     participation: {
-      async project(procedureReference) {
-        const signup = await raidSignup("", procedureReference).catch(() => null);
+      async project(activityId, procedureReference) {
+        const signup = await raidSignup(activityId, procedureReference);
         if (!signup) return null;
         return {
           title: signup.characterName ?? signup.className,
