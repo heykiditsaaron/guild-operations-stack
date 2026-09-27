@@ -45,14 +45,14 @@ A newly established Raffle has not yet opened participation. Its terms remain mu
 
 An authorized operator may open participation before the one-hour pre-drawing freeze. Once participation has opened, terms are locked so established claims retain the terms under which they were made.
 
-Participation is open only while all of these are true:
+Raffle is accepting new Participation Offers only while all of these are true:
 
 - the Raffle is unconcluded;
 - participation has been opened;
 - operator admission is not currently paused;
 - the one-hour pre-drawing freeze has not begun.
 
-Operator pause and temporal closure are deliberately different. A pause is an attributed, reversible admission gate: the operator may resume participation before the cutoff. The current one-hour temporal cutoff is a Raffle-owned condition declared as part of the organizer's terms. Time does not perform a procedural transition when the cutoff is crossed; subsequent admission operations simply no longer satisfy the already-declared terms. No operator action may admit new claims after that cutoff.
+Operator pause and the temporal cutoff are deliberately different. A pause is an attributed, reversible gate on new Offer intake: operators may use it as a reconciliation or investigation window while preserving existing claims and continuing permitted adjudication, then resume intake before the cutoff. The current one-hour temporal cutoff is a Raffle-owned condition declared as part of the organizer's terms. Time does not perform a procedural transition when the cutoff is crossed; subsequent admission operations simply no longer satisfy the already-declared terms. No operator action may admit new claims after that cutoff.
 
 The cutoff exists as an integrity boundary around adjudication. It protects participants and operators from actual or perceived preferential manipulation near the drawing. The cutoff interval should become configurable Raffle procedure in the future rather than a Core or Activity concept.
 
