@@ -111,3 +111,44 @@ for (const button of document.querySelectorAll("[data-raid-unassign]")) {
     }
   });
 }
+
+
+for (const button of document.querySelectorAll("[data-raid-adjudicate]")) {
+  button.addEventListener("click", async () => {
+    const signupRowId = button.dataset.raidAdjudicate;
+    const fulfilled = button.dataset.fulfilled === "true";
+    if (!signupRowId) return;
+    button.disabled = true;
+    try {
+      const response = await fetch(`${window.location.pathname}/adjudicate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ signupRowId, fulfilled }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error ?? "Commitment could not be adjudicated");
+      window.location.reload();
+    } catch (error) {
+      button.disabled = false;
+      const status = document.querySelector("[data-raid-closeout-status]");
+      if (status instanceof HTMLElement) status.textContent = error instanceof Error ? error.message : "Commitment could not be adjudicated.";
+    }
+  });
+}
+
+const concludeButton = document.querySelector("[data-raid-conclude]");
+if (concludeButton instanceof HTMLButtonElement) {
+  concludeButton.addEventListener("click", async () => {
+    concludeButton.disabled = true;
+    try {
+      const response = await fetch(`${window.location.pathname}/conclude`, { method: "POST" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error ?? "Raid could not be concluded");
+      window.location.reload();
+    } catch (error) {
+      concludeButton.disabled = false;
+      const status = document.querySelector("[data-raid-closeout-status]");
+      if (status instanceof HTMLElement) status.textContent = error instanceof Error ? error.message : "Raid could not be concluded.";
+    }
+  });
+}
