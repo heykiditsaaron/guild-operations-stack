@@ -1,3 +1,4 @@
+import { guildieHasGuildCapabilityOrOperator } from "../../core/authority/guild-permissions.js";
 import {
   registerActivity,
   type ActivityOccurrenceAttribute,
@@ -7,7 +8,7 @@ import {
   raidRosterDiagnostics,
 } from "./application.js";
 import { raidListingParticipationSummary } from "./listing-view.js";
-import { RAID_CAPABILITY_DEFINITIONS } from "./permissions.js";
+import { RAID_ASSIGN_CAPABILITY, RAID_CAPABILITY_DEFINITIONS, RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILITY } from "./permissions.js";
 import type { RaidDifficulty, RaidEligibility } from "./domain.js";
 
 function difficultyLabel(value: RaidDifficulty): string {
@@ -77,6 +78,16 @@ export function registerRaidActivityIntegration(): void {
       resolve: raidOccurrence,
     },
     interaction: {
+      async availableTo(kind, _activityId, guildieId) {
+        if (kind !== "operate") return true;
+        if (!guildieId) return false;
+        const permitted = await Promise.all([
+          RAID_MODIFY_CAPABILITY,
+          RAID_STAGE_CAPABILITY,
+          RAID_ASSIGN_CAPABILITY,
+        ].map((capability) => guildieHasGuildCapabilityOrOperator(guildieId, capability)));
+        return permitted.some(Boolean);
+      },
       destination(kind, activityId) {
         const id = encodeURIComponent(activityId);
         if (kind === "participate") return `/activities/raid/${id}/participation`;
