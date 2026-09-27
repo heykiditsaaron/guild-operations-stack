@@ -27,13 +27,13 @@ export async function packagedCapabilityStates(
   guildId?: string,
 ): Promise<PackagedCapabilityState[]> {
   const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
-  const result = await pool.query<{ capability_key: string; enabled: boolean }>(
-    `SELECT capability_key, enabled
-       FROM guild_packaged_capability_enablement
+  const result = await pool.query<{ module_key: string; enabled: boolean }>(
+    `SELECT module_key, enabled
+       FROM guild_module_enablement
       WHERE guild_id = $1`,
     [resolvedGuildId],
   );
-  const stored = new Map(result.rows.map((row) => [row.capability_key, row.enabled]));
+  const stored = new Map(result.rows.map((row) => [row.module_key, row.enabled]));
 
   return PACKAGED_CAPABILITIES.map((capability) => ({
     key: capability.key,
@@ -54,9 +54,9 @@ export async function packagedCapabilityEnabled(
 
   const result = await pool.query<{ enabled: boolean }>(
     `SELECT enabled
-       FROM guild_packaged_capability_enablement
+       FROM guild_module_enablement
       WHERE guild_id = $1
-        AND capability_key = $2`,
+        AND module_key = $2`,
     [resolvedGuildId, capabilityKey],
   );
   return result.rows[0]?.enabled ?? capability.defaultEnabled;
@@ -73,9 +73,9 @@ export async function setPackagedCapabilityEnabled(
   const nowUnix = Math.floor(Date.now() / 1000);
 
   await pool.query(
-    `INSERT INTO guild_packaged_capability_enablement (guild_id, capability_key, enabled, updated_at_unix)
+    `INSERT INTO guild_module_enablement (guild_id, module_key, enabled, updated_at_unix)
      VALUES ($1,$2,$3,$4)
-     ON CONFLICT (guild_id, capability_key) DO UPDATE SET
+     ON CONFLICT (guild_id, module_key) DO UPDATE SET
        enabled = EXCLUDED.enabled,
        updated_at_unix = EXCLUDED.updated_at_unix`,
     [resolvedGuildId, capabilityKey, enabled, nowUnix],
