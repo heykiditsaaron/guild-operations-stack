@@ -68,6 +68,7 @@ export type ActivityParticipationOfferReference = {
 
 export type ActivityInteractionCapability = {
   destination(kind: ActivityInteractionKind, activityId: string): string | null;
+  availableTo?(kind: ActivityInteractionKind, activityId: string, guildieId: string | null): boolean | Promise<boolean>;
 };
 
 export type ActivityDiscovery = {
@@ -182,19 +183,27 @@ export async function activityOccurrence(activityKind: string, activityId: strin
 
 export async function activityOccurrenceRenderActions(
   occurrence: ActivityOccurrence,
+  guildieId: string | null = null,
 ): Promise<readonly ActivityRenderAction[]> {
   const activity = await activeActivity(occurrence.activityKind);
   if (!activity?.interaction) return [];
 
-  return (occurrence.interactions ?? []).flatMap((request) => {
+  const actions = await Promise.all((occurrence.interactions ?? []).map(async (request) => {
+    const available = activity.interaction?.availableTo
+      ? await activity.interaction.availableTo(request.kind, occurrence.activityId, guildieId)
+      : true;
+    if (!available) return null;
+
     const href = activity.interaction?.destination(request.kind, occurrence.activityId);
-    if (!href) return [];
-    return [{
+    if (!href) return null;
+    return {
       label: requiredText(request.label, "interaction label"),
       href,
       kind: request.kind === "participate" ? "primary" as const : "secondary" as const,
-    }];
-  });
+    };
+  }));
+
+  return actions.filter((action): action is ActivityRenderAction => action !== null);
 }
 
 function calendarCoordinate(coordinate: ActivityTemporalCoordinate | null): ActivityCalendarCoordinate | null {
