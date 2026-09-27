@@ -93,8 +93,7 @@ export async function establishRaid(actorGuildieId:string,input:EstablishRaidInp
     await recordRaidAction(client,raidId,"created",actorGuildieId);
     const facts=await raidEventFacts(raidId,client); if(!facts)throw new Error("Created Raid could not be reloaded");
     const publication=await publishEmission(client,{ code:"raid.established", subject:facts.raidId });
-    const temporalRelevanceChanged = current.occursAt[0] !== facts.occursAt[0] || current.occursAt[1] !== facts.occursAt[1];
-    const activityDeclaration=temporalRelevanceChanged?await publishActivityDeclaration(client,{kind:"temporal-relevance-changed",activityKind:"raid",activityId:facts.raidId}):null;
+    const activityDeclaration=await publishActivityDeclaration(client,{kind:"temporal-relevance-changed",activityKind:"raid",activityId:facts.raidId});
     return { raid:facts, publication, activityDeclaration };
   });
   await deliverEmission(persisted.publication);
