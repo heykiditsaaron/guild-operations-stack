@@ -55,9 +55,9 @@ async function raidOccurrence(raidId: string) {
       : null,
     title: raid.label,
     description: raid.description,
-    phase: raid.cancelledAtUnix === null ? "active" as const : "record" as const,
+    phase: raid.cancelledAtUnix === null && raid.concludedAtUnix === null ? "active" as const : "record" as const,
     attributes,
-    interactions: raid.cancelledAtUnix !== null
+    interactions: raid.cancelledAtUnix !== null || raid.concludedAtUnix !== null
       ? []
       : [
           ...(raidSignupsAreOpen(raid) ? [{ kind: "participate" as const, label: "Sign up" }] : []),
