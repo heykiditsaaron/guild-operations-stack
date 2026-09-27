@@ -10,6 +10,7 @@ import {
 import { raidListingParticipationSummary } from "./listing-view.js";
 import { RAID_ASSIGN_CAPABILITY, RAID_CAPABILITY_DEFINITIONS, RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILITY } from "./permissions.js";
 import type { RaidDifficulty, RaidEligibility } from "./domain.js";
+import { raidsForOperation } from "./operation-view.js";
 
 function difficultyLabel(value: RaidDifficulty): string {
   return value[0].toUpperCase() + value.slice(1);
@@ -76,6 +77,11 @@ export function registerRaidActivityIntegration(): void {
     },
     occurrence: {
       resolve: raidOccurrence,
+      async list() {
+        return (await raidsForOperation())
+          .filter((raid) => raid.concludedAtUnix === null)
+          .map((raid) => raid.raidId);
+      },
     },
     interaction: {
       async availableTo(kind, _activityId, guildieId) {
