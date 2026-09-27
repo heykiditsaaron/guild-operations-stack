@@ -1,135 +1,135 @@
-# Guild Activity
+# Activity
 
-A **Guild Activity** is a guild-owned, lifecycle-bound temporal occurrence. Raid and Raffle are the first concrete Guild Activity modules.
+An **Activity** is a first-class Guild Operations occurrence whose concrete procedure is owned by an **Activity plugin**.
 
-This doctrine defines the semantic family. It does not define a generic implementation, persistence model, lifecycle engine, registry, or superclass. Every Guild Activity module also follows [Module Conformity](module-conformity.md).
+Activity belongs to Core. It gives concrete plugin procedure a stable systemic identity and translates Activity-relevant truth into the rest of Guild Operations without making Core authoritative for that procedure.
 
-## Activity and event
+The detailed plugin boundary is defined by [Activity Plugin Contract](activity-plugin-contract.md).
 
-Internally, **activity** names the authoritative lifecycle-bound subject. **Event** names a meaningful system occurrence concerning authoritative state.
+## Occurrence and procedure
 
-Human-facing adapters may present Guild Activities as **Events** where that is the natural member vocabulary. Public presentation language does not redefine the internal domain concept.
+An Activity occurrence exists because an authorized actor successfully completes the establishment procedure defined by its Activity plugin.
 
-A Guild Activity is something the guild actually enacts. Its temporal coordinates are constitutive: without a concrete location or extent in time, there is no activated Guild Activity, only a recipe, definition, offering, template, configuration, or other description from which an activity may be established.
+Activity does not infer establishment from surrounding facts, a temporal coordinate, or the existence of plugin working state. The plugin owns what must be defined, aligned, supplied, or otherwise satisfied for establishment to succeed. Core owns the authority and systemic primitives the procedure consumes; Activity gives the successful declaration systemic meaning.
 
-The concrete domain owns the authoritative representation of that temporal meaning. One activity may use an occurrence instant or range; another may use a drawing time, deadline, or another domain-specific temporal fact.
+The same boundary applies while an occurrence evolves. Plugin-owned procedure may contain arbitrary working concepts and operations. Only the results that have Activity-wide significance cross into Activity as declarations or projections.
+
+> **Core machinery owns capability. Activity owns translation. Activity plugin procedure owns meaning.**
 
 ## Lifecycle
 
-Guild Activity lifecycle vocabulary is deliberately small:
+Activity lifecycle vocabulary is deliberately small:
 
 ```text
 nothing
-   │
-   │ establish
+   │ established
    ▼
- active
-   │
-   │ domain-defined conclusion
+ACTIVE
+   │ plugin-owned evolving procedure
+   │ concluded
    ▼
-concluded
+RECORD
 ```
 
-**Establishment is an operation and system event, not a lifecycle state.** It brings a previously nonexistent Guild Activity into the active state.
+**Established** and **Concluded** are transitions produced by successful plugin procedure. **Active** and **Record** describe what the occurrence is.
 
-**Active** means the activity's activation continues.
+**Active** means the occurrence remains procedurally evolvable. It does not mean the Activity is happening now, Participation is open, or the Activity appears on Calendar.
 
-**Concluded** means that activation has ended.
+**Record** is the same occurrence identity after terminal conclusion. Conclusion is not inferred merely because time passed or another observable circumstance became true. The plugin owns the terminal procedure and the meaning by which it succeeds; Activity owns the systemic consequence that the occurrence is thereafter a Record.
 
-Conclusion is semantic rather than a required persisted transition. A domain may derive conclusion from time, preserve explicit conclusion facts, or use another legitimate domain rule. Cancellation, completion, drawing, expiration, or other terminal meanings are domain-defined ways an activity may conclude; they are not additional universal lifecycle states.
+Cancellation, completion, drawing, expiration, closeout, or another terminal operation may be concrete plugin language. Those terms do not become universal Activity lifecycle states merely because a plugin uses them.
 
-The domain owns whether and how a concluded activity survives as durable history. Conclusion therefore does not imply retention, and withdrawal or destructive cancellation does not create a second universal lifecycle.
+## Temporal relevance
 
-## Optional participation
+Temporal relevance is independent of lifecycle.
 
-Participation exists only in relation to a Guild Activity. A Guild Activity is not required to expose participation, but anything Guild Operations describes as participation belongs to a concrete Guild Activity.
+An Activity may project a temporal coordinate when its procedure says that coordinate is systemically relevant. Activity translates that projection for Calendar; Calendar plots the reference at the supplied coordinate.
 
-When an active Guild Activity exposes participation, its current participation availability may be described as:
+Calendar presence does not establish an Activity, and withdrawing Calendar projection does not conclude or destroy one. Time passing does not independently advance plugin procedure.
 
-- **open** — eligible participants may currently establish new participation intent;
-- **closed** — new participation intent may not currently be established.
+> **Procedure interprets. Activity translates. Calendar plots.**
 
-Open and closed are participation adjectives of an active Activity, not lifecycle states. Closed participation does not conclude the Activity and may be reversible when the domain permits it. Once the Activity concludes, current participation availability no longer applies.
+## Participation
 
-### Intent and authority
+Participation is an optional systemic Activity observation:
 
-Eligible participants are authoritative for declaring their own willful intent to participate. Declaring intent does not by itself prove that participation occurred or, where the domain distinguishes them, that an organizer established the participant's procedural place in the Activity.
+> a party participated in an Activity occurrence.
 
-Organizer authority is distinct from participant authority. A domain may allow organizers to accept or disallow declared intent, establish expected participation, modify an established arrangement, or withdraw it. Similar consequences across Activities do not imply a generic approval workflow.
+Participation itself is not the plugin procedure that establishes whether participation occurred.
 
-Where the domain permits, a participant may revoke their own durable declaration. Revocation preserves the historical fact that the declaration existed while ending its ongoing procedural effect. The domain owns when revocation remains legitimate.
+A plugin may use commitments, assignments, claims, conditions, fulfillment, adjudication, discovered facts, or entirely different procedure before it has authority to establish the Participation observation. Those concepts remain plugin-owned unless they independently earn systemic meaning.
 
-Application operations should describe their semantic effect rather than their persistence verb. **Establish** means authoritative truth begins to exist; **modify** changes existing truth while retaining continuity; **revoke** is a participant retracting their own declaration where permitted; **withdraw** ends concrete authoritative truth. Domains retain more specific language where their actual mechanics differ.
+A maximally expressed participation-related procedure may resemble:
 
-### Participation evidence
+```text
+Terms → Offer → Conditions → Fulfillment → Adjudication → Participation
+```
 
-Software preserves only the strongest participation fact it can legitimately establish.
+That is a possible route to the Participation observation, not six mandatory Activity states, persisted objects, or transitions. An explicit Offer is optional. Participation does not require conscious enrollment or negotiation.
 
-Intent is not proof of occurrence. Organizer establishment of expected participation is not proof of actual attendance. A domain may mechanically possess stronger evidence where its procedure actually creates it.
+Where an Offer exists, it is a procedural artifact and may become provenance for a resulting Participation observation. Likewise, other procedural references may explain why the plugin had authority to establish the observation without becoming part of Participation's systemic meaning.
 
-Each Activity domain owns what participation evidence remains historically significant and how it survives conclusion. Different retention behavior is legitimate when the underlying human procedure has different consequences.
+Terms, eligibility, Conditions, fulfillment, and adjudication retain their distinct procedural meanings. Fulfillment describes reality satisfying relevant Conditions; adjudication is the plugin-owned judgment that the fulfillment counts. Participation records the resulting systemic observation.
 
-### Participation protection
+## Shared language and authority
 
-A domain owns temporal and operational rules protecting its participation ceremony. Ordinary modification must not invalidate authoritative procedural truth already established under an Activity's terms or manufacture participation that could not legitimately occur under those terms.
+Activity plugins are authored in Guild Operations language.
 
-Shared policy should become Guild Activity doctrine only when the semantic rule is genuinely universal to Guild Activity participation. Similar current rules in multiple concrete domains remain domain policy until that stronger claim is earned.
+They may understand and compose Core-owned concepts such as Guildie, Character, guild Character classification, Role, Spec, rank, authority, time, quantity, and presentation capabilities. The plugin does not need to reconstruct how Core resolves those systemic concepts.
 
-## Attribution
+For example, a Raid procedure may require a guild Character. Core owns what qualifies as a guild Character and resolves that classification; Raid owns why that classification matters to Raid procedure.
 
-Meaningful authoritative Activity mutations should preserve sufficient nearby attribution to recover, where meaningful:
+> **The provider owns what a primitive means and how it is satisfied. The requester owns why its procedure requires it.**
 
-- the subject whose truth changed;
-- the actor who made the declaration or decision;
-- the authority under which that actor acted;
-- the resulting authoritative truth;
-- when it happened; and
-- the reason, when reason is part of the ceremony.
+Shared vocabulary therefore does not imply shared motivation or shared authority.
 
-Subject and actor remain distinct even when the same person commonly occupies both roles. This does not require a universal audit framework; attribution stays with the domain truth or history that gives it meaning.
+## Declarations and projections
+
+Activity plugins communicate across the Activity boundary in two complementary ways.
+
+**Declarations** report that successful plugin procedure produced a result with systemic Activity significance. Activity does not inspect plugin state and independently decide that the result should have occurred.
+
+**Projections** answer what the occurrence looks like systemically now. They let Activity and Core consumers resolve current Activity-relevant truth without learning the plugin's private domain model or replaying its procedure.
+
+This keeps systemic consumers insulated from concrete plugins. Calendar does not need to know Raid or Raffle. My Participation does not need to understand commitments or claims.
+
+## Rendering and interactions
+
+Core owns Guild Operations rendering and presentation machinery.
+
+An Activity plugin owns what its procedure currently requires or permits. It may expose Activity-relevant interactions and destinations for its own procedural surfaces. Activity translates those meanings into Core representation; the plugin does not render Guild Operations itself.
+
+A plugin may own the destination that fulfills its procedural interaction without owning how Guild Operations presents that interaction.
 
 ## Domain ownership
 
-Guild Activity governance standardizes semantic meaning, not implementation. Each concrete domain owns:
+An Activity plugin owns:
 
-- establishment and modification procedure;
-- authoritative temporal facts and their representation;
-- the rules determining whether the Activity is active or concluded;
-- any participation procedure, authority, availability, protection, and evidence;
-- conclusion kinds and consequences;
-- persistence and historical evidence;
-- application operations and authority.
+- concrete establishment, evolution, adjudication, and conclusion procedure;
+- procedural persistence and history;
+- plugin-specific meanings such as Raid assignments or Raffle claims;
+- the criteria by which its procedural operations succeed;
+- which successful procedural acts have systemic Activity significance.
 
-Do not introduce a generic Guild Activity table, superclass, lifecycle engine, registry, shared status column, participation framework, approval workflow, or mandatory application interface merely to encode this vocabulary.
+Activity owns:
 
-## Semantic events and emissions
+- stable Activity kind and occurrence identity;
+- Active and Record lifecycle meaning;
+- Activity plugin registration, availability, activation, and administration boundaries;
+- systemic Participation meaning and observations;
+- translation of temporal relevance, authority declarations, discovery, interactions, and other Activity-relevant truth into Core capabilities;
+- insulation between Activity plugins and systemic consumers.
 
-A Guild Activity domain owns which meaningful system events are significant enough to publish as semantic emissions. Authoritative state change and communicative significance are separate concerns.
+Core owns the systemic vocabulary and machinery it provides, including identity, authority, Calendar, rendering, administration, and shared infrastructure.
 
-This doctrine does not require establishment, modification, conclusion, cancellation, participation changes, or any other occurrence to be emitted. A domain may also contain authoritative working state whose intermediate mutations are truthful without each mutation constituting a meaningful announcement.
+The contract standardizes the **boundary of procedure**, not the expression of procedure.
 
-When a domain publishes an event, it follows the application-wide semantic emission contract defined by [Architecture](architecture.md). A domain may, for example, publish establishment as `raid.established` or `raffle.established`. Standardizing emission syntax and transport does not standardize emission obligation.
+## Reference procedures
 
-Guild Activity emissions may be produced directly by meaningful authoritative operations or by domain-defined temporal thresholds. For example, a Raid may eventually define a meaningful pre-occurrence threshold without making Calendar, scheduling machinery, or another consumer authoritative for that Raid meaning.
+Raid and Raffle are paired pressure tests of Activity.
 
-Consumers independently decide which published events matter to them. A consumer reacting to an Activity's emissions does not acquire lifecycle authority over the Activity, and a consumer cannot require the domain to publish an event merely because that event would be useful to it. After receipt, each consumer owns its own consequential work; transport does not encode Calendar, Discord, Push, audience, or other consumer-specific behavior.
+Raid may express signup commitments, assignment, commitment adjudication, and organizer conclusion. Raffle may express claims, claim adjudication, and drawing. Their different procedures are not exceptions to Activity; they are the reason Activity does not standardize procedure.
 
-Where a concrete human ceremony contains an explicit communication boundary, the owning domain should preserve that boundary rather than infer communication from every mutation. Such boundaries remain domain-specific until repeated pressure earns something broader.
+Both can nevertheless produce the same systemic meanings where those meanings are genuinely shared: stable Activity occurrences, temporal relevance, Core-rendered representation, authority declarations, and Participation observations.
 
-## Consumers and projections
-
-Guild Activities may be queried or projected by shared infrastructure and presentation machinery. Those consumers are not Guild Activities merely because they operate on Activity truth.
-
-Calendar is the current example. Calendar is presentation/projection machinery over temporal truth. It may consume selected Activity emissions and retain its own temporal points, but it does not represent, establish, operate, or own a Guild Activity.
-
-Likewise, the public `/events` surface is a human-facing projection and discovery surface. **Event** is the public term for Guild Activities there; it is not an internal superclass.
-
-## Reference domains
-
-Raid and Raffle are paired pressure tests of this doctrine. They share the Guild Activity semantic family while retaining different domain mechanics.
-
-Raid derives natural conclusion from occurrence time and may destructively cancel a pre-occurrence Activity. Raffle persists explicit conclusion facts and preserves cancellation because consequential participation evidence may require later reconciliation.
-
-Their current participation timing, mutability, assignment, adjudication, communication, and retention rules belong to those concrete domains unless a genuinely universal Guild Activity semantic is established.
-
-Those differences are evidence of domain ownership, not exceptions to Guild Activity governance.
+Common machinery is earned from those shared systemic meanings, not from superficial similarity between the procedures.
