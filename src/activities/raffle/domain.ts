@@ -389,11 +389,17 @@ export async function approveRaffleClaim(actorGuildieId:string, claimId:string):
     if(claim.resolution_kind!==null) throw new RaffleRuleError("claim_already_resolved","Only an unresolved claim can be approved");
     const approvedAtUnix=unixNow();
     await client.query("UPDATE raffle_claims SET resolution_kind='approved', approved_by_guildie_id=$2, approved_at_unix=$3 WHERE claim_id=$1",[claimId,actorGuildieId,approvedAtUnix]);
+    const offer=await client.query<{participation_offer_id:string}>(
+      "SELECT participation_offer_id FROM activity_participation_offers WHERE activity_kind='raffle' AND activity_id=$1 AND procedure_reference=$2",
+      [String(claim.raffle_id),claimId],
+    );
+    if(!offer.rowCount) throw new Error("Raffle claim Participation Offer was not found");
     await establishActivityParticipation(client,{
       activityKind:"raffle",
       activityId:String(claim.raffle_id),
       party:{kind:"guildie",reference:String(claim.claimant_guildie_id)},
       procedureReference:claimId,
+      participationOfferId:offer.rows[0].participation_offer_id,
       establishedAtUnix:approvedAtUnix,
     });
   });
