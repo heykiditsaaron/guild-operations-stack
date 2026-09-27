@@ -1,4 +1,4 @@
-import { activityParticipationOffersForGuildie as participationOffersForGuildie } from "./participation.js";
+import { activityParticipationOffersForGuildie as participationOffersForGuildie, activityParticipationsForGuildie as participationsForGuildie } from "./participation.js";
 import { knownActivityPlugin, knownActivityPlugins } from "./plugin-control.js";
 import { knownActivityCapabilityDeclarations } from "./plugin-administration.js";
 import { registerGuildCapabilityDefinitions, type GuildCapabilityDefinition } from "../authority/guild-capability-policy.js";
@@ -271,6 +271,27 @@ export async function activityParticipationOffersForGuildie(
   }));
 
   return resolved.filter((reference): reference is ActivityParticipationOfferReference & { destination: string } => reference !== null);
+}
+
+
+export async function activityParticipationsForGuildie(
+  guildieId: string,
+): Promise<Array<{ participationId: string; activityKind: string; activityId: string; establishedAtUnix: number; destination: string }>> {
+  const relationships = await participationsForGuildie(requiredText(guildieId, "Participation Guildie id"));
+
+  const resolved = await Promise.all(relationships.map(async (relationship) => {
+    const activity = await activeActivity(relationship.activityKind);
+    if (!activity) return null;
+    return {
+      participationId: relationship.participationId,
+      activityKind: relationship.activityKind,
+      activityId: relationship.activityId,
+      establishedAtUnix: relationship.establishedAtUnix,
+      destination: `/activities/${encodeURIComponent(relationship.activityKind)}/${encodeURIComponent(relationship.activityId)}`,
+    };
+  }));
+
+  return resolved.filter((reference): reference is NonNullable<typeof reference> => reference !== null);
 }
 
 export async function discoverableActivities(): Promise<readonly (ActivityDiscovery & { kind: string })[]> {
