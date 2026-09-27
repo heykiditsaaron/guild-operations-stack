@@ -12,12 +12,6 @@ import { raidListingParticipationSummary } from "./listing-view.js";
 import { RAID_CAPABILITY_DEFINITIONS } from "./permissions.js";
 import type { RaidDifficulty, RaidEligibility } from "./domain.js";
 
-const RAID_TEMPORAL_EMISSION_CODES = [
-  "raid.established",
-  "raid.modified",
-  "raid.cancelled",
-] as const;
-
 function difficultyLabel(value: RaidDifficulty): string {
   return value[0].toUpperCase() + value.slice(1);
 }
@@ -102,7 +96,6 @@ export function registerRaidActivityIntegration(): void {
       },
     },
     temporal: {
-      emissionCodes: RAID_TEMPORAL_EMISSION_CODES,
       relevance: raidTemporalRelevance,
     },
   });
