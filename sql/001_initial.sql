@@ -341,11 +341,18 @@ CREATE TABLE activity_participation_offers (
 
 CREATE TABLE activity_participations (
   participation_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  participation_offer_id uuid NOT NULL UNIQUE REFERENCES activity_participation_offers(participation_offer_id) ON DELETE RESTRICT,
-  established_at_unix bigint NOT NULL CHECK (established_at_unix >= 0)
+  activity_kind text NOT NULL CHECK (length(btrim(activity_kind)) > 0),
+  activity_id text NOT NULL CHECK (length(btrim(activity_id)) > 0),
+  party_kind text NOT NULL CHECK (party_kind IN ('guildie', 'external')),
+  party_reference text NOT NULL CHECK (length(btrim(party_reference)) > 0),
+  procedure_reference text NOT NULL CHECK (length(btrim(procedure_reference)) > 0),
+  participation_offer_id uuid UNIQUE REFERENCES activity_participation_offers(participation_offer_id) ON DELETE RESTRICT,
+  established_at_unix bigint NOT NULL CHECK (established_at_unix >= 0),
+  UNIQUE (activity_kind, activity_id, procedure_reference)
 );
 
 CREATE INDEX activity_participations_established_idx ON activity_participations(established_at_unix DESC);
+CREATE INDEX activity_participations_party_idx ON activity_participations(party_kind, party_reference, established_at_unix DESC);
 
 CREATE TABLE activity_plugin_registrations (
   activity_kind text PRIMARY KEY CHECK (length(btrim(activity_kind)) > 0),
