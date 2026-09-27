@@ -83,7 +83,7 @@ Fulfillment and adjudication are distinct. Reality may satisfy a commitment befo
 
 Adjudication remains Raid-owned procedure. A fulfilled adjudication does not by itself establish systemic Participation; conclusion completes the Raid procedure.
 
-Conclusion requires every active, non-denied commitment to have been adjudicated. For commitments adjudicated fulfilled, successful conclusion establishes Activity-owned Participation observations using the corresponding Participation Offers as provenance.
+Conclusion requires every active, non-denied commitment to have been adjudicated. For commitments adjudicated fulfilled, successful conclusion establishes Activity-owned Participation observations using the corresponding Participation Offers as provenance. For commitments adjudicated not fulfilled, conclusion closes the outstanding Offer without establishing Participation. Activity owns only that the Offer is no longer outstanding; Raid owns why its procedure resolved it without Participation.
 
 ```text
 Raid signup
@@ -107,7 +107,7 @@ Participation means that Activity recognizes the party as having participated in
 
 Cancellation is a terminal Raid declaration distinct from conclusion. It ends active Raid procedure and makes the occurrence a Record while preserving Raid-owned facts needed for history and reconciliation.
 
-Cancellation removes the Raid's temporal relevance from Calendar projection. It does not erase the Raid identity or rewrite its prior procedure.
+Cancellation closes unresolved Participation Offers and removes the Raid's temporal relevance from Calendar projection. Activity does not interpret the Raid-specific reason those Offers ended. Cancellation does not erase the Raid identity or rewrite its prior procedure.
 
 ## Temporal projection
 
