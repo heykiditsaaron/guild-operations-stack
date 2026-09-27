@@ -82,7 +82,7 @@ Activity-significant declaration
 lifecycle or procedural consequence
 ```
 
-Where procedure intentionally depends on time, the same authority boundary still applies. A plugin may define a cutoff or other temporal condition, and authorized machinery may observe that the condition has been satisfied, but the resulting procedural change occurs through a legitimate declaration rather than through the passage of time itself. The declaring actor may be a person or authorized automated machinery when the plugin procedure grants it that role.
+Where procedure intentionally depends on time, the same authority boundary still applies. A plugin may define a cutoff or other temporal condition and evaluate that fact when an actor requests an operation. The passage of time may therefore make a later operation inadmissible under already-declared terms without itself changing persisted procedure. If satisfying a temporal condition is intended to create new durable procedural truth, that change still requires legitimate procedure and declaration; the declaring actor may be a person or authorized automated machinery when the plugin grants it that role.
 
 > **Coordinates are facts. Declarations cause transitions.**
 
