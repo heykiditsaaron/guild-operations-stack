@@ -13,6 +13,7 @@ export type ActivityParticipationOffer = {
   procedureReference: string;
   offeredAtUnix: number;
   revokedAtUnix: number | null;
+  closedAtUnix: number | null;
 };
 
 export type OfferActivityParticipationInput = {
@@ -38,6 +39,7 @@ function mapParticipationOffer(row: {
   procedure_reference: string;
   offered_at_unix: string | number;
   revoked_at_unix: string | number | null;
+  closed_at_unix: string | number | null;
 }): ActivityParticipationOffer {
   return {
     participationOfferId: row.participation_offer_id,
@@ -47,6 +49,7 @@ function mapParticipationOffer(row: {
     procedureReference: row.procedure_reference,
     offeredAtUnix: Number(row.offered_at_unix),
     revokedAtUnix: row.revoked_at_unix === null ? null : Number(row.revoked_at_unix),
+    closedAtUnix: row.closed_at_unix === null ? null : Number(row.closed_at_unix),
   };
 }
 
@@ -81,8 +84,8 @@ export async function offerActivityParticipation(
   if (offer.party_kind !== input.party.kind || offer.party_reference !== partyReference) {
     throw new Error("Activity Participation Offer procedure reference belongs to a different party");
   }
-  if (offer.revoked_at_unix !== null) {
-    throw new Error("Revoked Activity Participation Offer cannot be offered again through the same procedure reference");
+  if (offer.revoked_at_unix !== null || offer.closed_at_unix !== null) {
+    throw new Error("Settled Activity Participation Offer cannot be offered again through the same procedure reference");
   }
   return mapParticipationOffer(offer);
 }
@@ -137,8 +140,8 @@ export async function establishActivityParticipation(
   let participationOfferId = input.participationOfferId ?? null;
 
   if (participationOfferId !== null) {
-    const offer = await client.query<{ revoked_at_unix: string | number | null }>(
-      `SELECT revoked_at_unix
+    const offer = await client.query<{ revoked_at_unix: string | number | null; closed_at_unix: string | number | null }>(
+      `SELECT revoked_at_unix, closed_at_unix
          FROM activity_participation_offers
         WHERE participation_offer_id=$1
           AND activity_kind=$2
@@ -148,8 +151,8 @@ export async function establishActivityParticipation(
       [participationOfferId, activityKind, activityId, input.party.kind, partyReference],
     );
     if (!offer.rowCount) throw new Error("Activity Participation Offer was not found for party");
-    if (offer.rows[0].revoked_at_unix !== null) {
-      throw new Error("Revoked Activity Participation Offer cannot establish Participation");
+    if (offer.rows[0].revoked_at_unix !== null || offer.rows[0].closed_at_unix !== null) {
+      throw new Error("Settled Activity Participation Offer cannot establish Participation");
     }
   }
 
@@ -187,6 +190,7 @@ export async function revokeActivityParticipationOffer(
         AND offer.party_reference=$4
         AND offer.procedure_reference=$5
         AND offer.revoked_at_unix IS NULL
+        AND offer.closed_at_unix IS NULL
         AND NOT EXISTS (
           SELECT 1 FROM activity_participations participation
            WHERE participation.participation_offer_id=offer.participation_offer_id
@@ -203,6 +207,38 @@ export async function revokeActivityParticipationOffer(
   if (!result.rowCount) throw new Error("Outstanding Activity Participation Offer was not found for party");
 }
 
+export async function closeActivityParticipationOffer(
+  client: PoolClient,
+  input: {
+    activityKind: string;
+    activityId: string;
+    procedureReference: string;
+    closedAtUnix?: number;
+  },
+): Promise<void> {
+  const closedAtUnix = input.closedAtUnix ?? Math.floor(Date.now() / 1000);
+  const result = await client.query(
+    `UPDATE activity_participation_offers offer
+        SET closed_at_unix=$4
+      WHERE offer.activity_kind=$1
+        AND offer.activity_id=$2
+        AND offer.procedure_reference=$3
+        AND offer.revoked_at_unix IS NULL
+        AND offer.closed_at_unix IS NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM activity_participations participation
+           WHERE participation.participation_offer_id=offer.participation_offer_id
+        )`,
+    [
+      requiredText(input.activityKind, "Offer kind"),
+      requiredText(input.activityId, "Offer activity id"),
+      requiredText(input.procedureReference, "Offer procedure reference"),
+      closedAtUnix,
+    ],
+  );
+  if (!result.rowCount) throw new Error("Outstanding Activity Participation Offer was not found");
+}
+
 export async function activityParticipationOffersForGuildie(guildieId: string): Promise<ActivityParticipationOffer[]> {
   const result = await pool.query<any>(
     `SELECT offer.*
@@ -210,6 +246,7 @@ export async function activityParticipationOffersForGuildie(guildieId: string): 
       WHERE offer.party_kind='guildie'
         AND offer.party_reference=$1
         AND offer.revoked_at_unix IS NULL
+        AND offer.closed_at_unix IS NULL
         AND NOT EXISTS (
           SELECT 1 FROM activity_participations participation
            WHERE participation.participation_offer_id=offer.participation_offer_id
