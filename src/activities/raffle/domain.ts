@@ -1,6 +1,6 @@
 import { randomInt } from "node:crypto";
 import type { PoolClient } from "pg";
-import { establishActivityParticipation, offerActivityParticipation, revokeActivityParticipationOffer } from "../../core/activity/participation.js";
+import { closeActivityParticipationOffer, establishActivityParticipation, offerActivityParticipation, revokeActivityParticipationOffer } from "../../core/activity/participation.js";
 import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import { controlledGuildCharactersForGuildie } from "../../core/identity/controlled-characters.js";
 import { pool, withTransaction } from "../../db.js";
@@ -412,7 +412,14 @@ export async function denyRaffleClaim(actorGuildieId:string, claimId:string, rea
     const claim=await lockedClaim(client,claimId);
     if(claim.raffle_conclusion!==null) throw new RaffleRuleError("raffle_concluded","Claims can only be adjudicated before the Raffle concludes");
     if(claim.resolution_kind!==null) throw new RaffleRuleError("claim_already_resolved","Only an unresolved claim can be denied");
-    await client.query("UPDATE raffle_claims SET resolution_kind='denied', denied_by_guildie_id=$2, denied_at_unix=$3, denial_reason=$4 WHERE claim_id=$1",[claimId,actorGuildieId,unixNow(),reason]);
+    const deniedAtUnix=unixNow();
+    await client.query("UPDATE raffle_claims SET resolution_kind='denied', denied_by_guildie_id=$2, denied_at_unix=$3, denial_reason=$4 WHERE claim_id=$1",[claimId,actorGuildieId,deniedAtUnix,reason]);
+    await closeActivityParticipationOffer(client,{
+      activityKind:"raffle",
+      activityId:String(claim.raffle_id),
+      procedureReference:claimId,
+      closedAtUnix:deniedAtUnix,
+    });
   });
 }
 
