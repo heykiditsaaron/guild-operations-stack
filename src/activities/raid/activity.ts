@@ -11,6 +11,7 @@ import { raidListingParticipationSummary } from "./listing-view.js";
 import { RAID_ASSIGN_CAPABILITY, RAID_CAPABILITY_DEFINITIONS, RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILITY } from "./permissions.js";
 import type { RaidDifficulty, RaidEligibility } from "./domain.js";
 import { raidsForOperation } from "./operation-view.js";
+import { raidSignup } from "./participation-view.js";
 
 function difficultyLabel(value: RaidDifficulty): string {
   return value[0].toUpperCase() + value.slice(1);
@@ -81,6 +82,22 @@ export function registerRaidActivityIntegration(): void {
         return (await raidsForOperation())
           .filter((raid) => raid.concludedAtUnix === null)
           .map((raid) => raid.raidId);
+      },
+    },
+    participation: {
+      async project(procedureReference) {
+        const signup = await raidSignup("", procedureReference).catch(() => null);
+        if (!signup) return null;
+        return {
+          title: signup.characterName ?? signup.className,
+          attributes: [
+            { key: "class", label: "Class", provenance: "declared", value: { kind: "text", value: signup.className } },
+            { key: "willing_specs", label: "Willing to play", provenance: "declared", value: { kind: "text", value: signup.willingSpecs.join(", ") } },
+            ...(signup.assignmentId === null ? [] : [
+              { key: "assignment", label: "Assigned", provenance: "derived" as const, value: { kind: "text" as const, value: [signup.selectedSpec, signup.selectedRole].filter(Boolean).join(" · ") } },
+            ]),
+          ],
+        };
       },
     },
     interaction: {
