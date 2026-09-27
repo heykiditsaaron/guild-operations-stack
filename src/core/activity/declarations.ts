@@ -19,14 +19,9 @@ export async function publishActivityDeclaration(
   const activityKind = requiredText(declaration.activityKind, "activity kind");
   const activityId = requiredText(declaration.activityId, "activity id");
 
-  if (declaration.kind === "temporal-relevance-changed") {
-    return publishEmission(client, {
-      code: ACTIVITY_TEMPORAL_RELEVANCE_CHANGED,
-      parent: activityKind,
-      subject: activityId,
-    });
-  }
-
-  const exhaustive: never = declaration;
-  throw new Error(`Unsupported Activity declaration ${String(exhaustive)}`);
+  return publishEmission(client, {
+    code: ACTIVITY_TEMPORAL_RELEVANCE_CHANGED,
+    parent: activityKind,
+    subject: activityId,
+  });
 }
