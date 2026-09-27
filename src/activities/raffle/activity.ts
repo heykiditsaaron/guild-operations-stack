@@ -1,9 +1,10 @@
+import { guildieHasGuildCapabilityOrOperator } from "../../core/authority/guild-permissions.js";
 import {
   registerActivity,
   type ActivityOccurrenceAttribute,
 } from "../../core/activity/registry.js";
 import { raffleFacts } from "./queries.js";
-import { RAFFLE_CAPABILITY_DEFINITIONS } from "./permissions.js";
+import { RAFFLE_CAPABILITY_DEFINITIONS, RAFFLE_CLAIMS_CAPABILITY, RAFFLE_DRAW_CAPABILITY, RAFFLE_MODIFY_CAPABILITY, RAFFLE_STAGE_CAPABILITY } from "./permissions.js";
 
 async function raffleOccurrence(raffleId: string) {
   const facts = await raffleFacts(raffleId);
@@ -69,6 +70,17 @@ export function registerRaffleActivityIntegration(): void {
       resolve: raffleOccurrence,
     },
     interaction: {
+      async availableTo(kind, _activityId, guildieId) {
+        if (kind !== "operate") return true;
+        if (!guildieId) return false;
+        const permitted = await Promise.all([
+          RAFFLE_MODIFY_CAPABILITY,
+          RAFFLE_STAGE_CAPABILITY,
+          RAFFLE_CLAIMS_CAPABILITY,
+          RAFFLE_DRAW_CAPABILITY,
+        ].map((capability) => guildieHasGuildCapabilityOrOperator(guildieId, capability)));
+        return permitted.some(Boolean);
+      },
       destination(kind, activityId) {
         const id = encodeURIComponent(activityId);
         if (kind === "participate") return `/activities/raffle/enter?raffle=${id}`;
