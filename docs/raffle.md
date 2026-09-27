@@ -1,6 +1,6 @@
 # Raffle
 
-Raffle is a concrete Guild Activity module for operating the guild raffle. A Raffle is the activity itself; there is no separate Round object or generic lifecycle object beneath it.
+Raffle is a concrete Activity plugin for operating the guild raffle. A Raffle is the activity itself; there is no separate Round object or generic lifecycle object beneath it.
 
 Raffle follows Guild Activity semantics while remaining deliberately domain-specific. It does not derive its procedure from a generic participation, lifecycle, notification, or audit framework.
 
@@ -52,9 +52,11 @@ Participation is open only while all of these are true:
 - operator admission is not currently paused;
 - the one-hour pre-drawing freeze has not begun.
 
-Operator pause and temporal closure are deliberately different. A pause is an attributed, reversible admission gate: the operator may resume participation before the cutoff. The one-hour temporal cutoff is derived from time, has no actor, and is irreversible. No operator action may admit new claims after that cutoff.
+Operator pause and temporal closure are deliberately different. A pause is an attributed, reversible admission gate: the operator may resume participation before the cutoff. The current one-hour temporal cutoff is a Raffle-owned condition declared as part of the organizer's terms. Time does not perform a procedural transition when the cutoff is crossed; subsequent admission operations simply no longer satisfy the already-declared terms. No operator action may admit new claims after that cutoff.
 
-The declared drawing time is the earliest legitimate draw time. A draw may happen later but never earlier.
+The cutoff exists as an integrity boundary around adjudication. It protects participants and operators from actual or perceived preferential manipulation near the drawing. The cutoff interval should become configurable Raffle procedure in the future rather than a Core or Activity concept.
+
+The declared drawing time is likewise a Raffle-owned procedural condition: it is the earliest legitimate draw time. Crossing that coordinate does not draw or advance the Raffle. An authorized draw declaration may succeed at or after the proclaimed time, but never before it. A draw may happen later but never earlier.
 
 Conclusion is recorded separately:
 
@@ -169,7 +171,7 @@ Raffle publishes an operational exception only when it deliberately identifies a
 
 Raid and Raffle are useful paired pressure tests of Guild Activity semantics, not instances of one generic lifecycle implementation.
 
-Both distinguish participant intent from organizer-established participation and both use the one-hour pre-occurrence participation freeze. Their mechanics remain domain-specific.
+Both distinguish participant intent from organizer-established participation, but their temporal procedure is not thereby shared. Raffle currently declares a pre-drawing admission cutoff as an integrity safeguard around its adjudication and drawing procedure. Raid does not acquire that rule merely because it also has a temporal coordinate.
 
 Raffle approval establishes immutable drawing weight that the machine can later consume. Raid assignment establishes planned attendance, not actual attendance. Raffle cancellation preserves evidence because financial follow-up may remain; Raid cancellation may withdraw the preparatory activity and its dependent signup/assignment state.
 
