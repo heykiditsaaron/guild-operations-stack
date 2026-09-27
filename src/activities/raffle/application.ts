@@ -1,5 +1,6 @@
 import { withTransaction } from "../../db.js";
 import { deliverEmission, publishEmission } from "../../emissions/registry.js";
+import { publishActivityDeclaration } from "../../core/activity/declarations.js";
 import { requireGuildCapabilityOrOperator } from "../../core/authority/guild-permissions.js";
 import { RAFFLE_CLAIMS_CAPABILITY, RAFFLE_DRAW_CAPABILITY, RAFFLE_MODIFY_CAPABILITY, RAFFLE_STAGE_CAPABILITY } from "./permissions.js";
 import {
@@ -44,9 +45,11 @@ export async function establishRaffle(actorGuildieId: string, terms: RaffleTerms
   const persisted = await withTransaction(async (client) => {
     const raffle = await establishRaffleDomain(actorGuildieId, terms, client);
     const publication = await publishEmission(client, { code: "raffle.established", subject: raffle.raffleId });
-    return { raffle, publication };
+    const activityDeclaration = await publishActivityDeclaration(client, { kind: "temporal-relevance-changed", activityKind: "raffle", activityId: raffle.raffleId });
+    return { raffle, publication, activityDeclaration };
   });
   await deliverEmission(persisted.publication);
+  await deliverEmission(persisted.activityDeclaration);
   return persisted.raffle;
 }
 
@@ -55,9 +58,11 @@ export async function modifyRaffle(actorGuildieId: string, raffleId: string, ter
   const persisted = await withTransaction(async (client) => {
     const raffle = await modifyRaffleDomain(actorGuildieId, raffleId, terms, client);
     const publication = await publishEmission(client, { code: "raffle.modified", subject: raffle.raffleId });
-    return { raffle, publication };
+    const activityDeclaration = await publishActivityDeclaration(client, { kind: "temporal-relevance-changed", activityKind: "raffle", activityId: raffle.raffleId });
+    return { raffle, publication, activityDeclaration };
   });
   await deliverEmission(persisted.publication);
+  await deliverEmission(persisted.activityDeclaration);
   return persisted.raffle;
 }
 
@@ -81,9 +86,11 @@ export async function cancelRaffle(actorGuildieId: string, raffleId: string): Pr
   const persisted = await withTransaction(async (client) => {
     const raffle = await cancelRaffleDomain(actorGuildieId, raffleId, client);
     const publication = await publishEmission(client, { code: "raffle.cancelled", subject: raffle.raffleId });
-    return { raffle, publication };
+    const activityDeclaration = await publishActivityDeclaration(client, { kind: "temporal-relevance-changed", activityKind: "raffle", activityId: raffle.raffleId });
+    return { raffle, publication, activityDeclaration };
   });
   await deliverEmission(persisted.publication);
+  await deliverEmission(persisted.activityDeclaration);
   return persisted.raffle;
 }
 
@@ -116,7 +123,8 @@ export async function drawRaffle(actorGuildieId: string, raffleId: string): Prom
   const persisted = await withTransaction(async (client) => {
     const raffle = await drawRaffleDomain(actorGuildieId, raffleId, client);
     const publication = await publishEmission(client, { code: "raffle.concluded", subject: raffle.raffleId });
-    return { raffle, publication };
+    const activityDeclaration = await publishActivityDeclaration(client, { kind: "temporal-relevance-changed", activityKind: "raffle", activityId: raffle.raffleId });
+    return { raffle, publication, activityDeclaration };
   });
   const concluded = persisted.raffle;
   if (concluded.conclusion === "drawn" && !concluded.winningClaimId) {
@@ -129,6 +137,7 @@ export async function drawRaffle(actorGuildieId: string, raffleId: string): Prom
     });
   }
   await deliverEmission(persisted.publication);
+  await deliverEmission(persisted.activityDeclaration);
   return concluded;
 }
 
