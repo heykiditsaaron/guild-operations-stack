@@ -33,7 +33,7 @@ for (const path of await sourceFiles(root)) {
   if (projectPath === applicationPath) continue;
 
   const source = await readFile(path, "utf8");
-  const imports = source.matchAll(/import\s*\{([\s\S]*?)\}\s*from\s*["']([^"']*modules\/raffle\/domain\.js|\.\/domain\.js)["'];?/g);
+  const imports = source.matchAll(/import\s*\{([\s\S]*?)\}\s*from\s*["']([^"']*activities\/raffle\/domain\.js|\.\/domain\.js)["'];?/g);
   for (const match of imports) {
     const imported = match[1]
       .split(",")
