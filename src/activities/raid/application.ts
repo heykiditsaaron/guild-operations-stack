@@ -5,6 +5,7 @@ import { controlledCharactersForGuildie } from "../../core/identity/controlled-c
 import { offerActivityParticipation, revokeActivityParticipationOffer } from "../../core/activity/participation.js";
 import { pool, withTransaction } from "../../db.js";
 import { deliverEmission, publishEmission } from "../../emissions/registry.js";
+import { publishActivityDeclaration } from "../../core/activity/declarations.js";
 import { effectiveGuildAuthority, requireGuildCapabilityOrOperator } from "../../core/authority/guild-permissions.js";
 import { RAID_ASSIGN_CAPABILITY, RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILITY } from "./permissions.js";
 
@@ -124,8 +125,9 @@ export async function modifyRaid(actorGuildieId:string,raidId:string,input:Modif
 
 export async function cancelRaid(actorGuildieId:string,raidId:string):Promise<void>{
   await requireGuildCapabilityOrOperator(actorGuildieId,RAID_STAGE_CAPABILITY);
-  const publication=await withTransaction(async client=>{const current=await raidEventFacts(raidId,client);if(!current)throw new Error("Raid not found");requireUpcomingRaid(current);await client.query("UPDATE raid_events SET cancelled_at_unix=extract(epoch FROM now())::bigint,cancelled_by_guildie_id=$2,updated_at_unix=extract(epoch FROM now())::bigint WHERE raid_id=$1",[raidId,actorGuildieId]);return publishEmission(client,{ code:"raid.cancelled", subject:raidId });});
-  await deliverEmission(publication);
+  const persisted=await withTransaction(async client=>{const current=await raidEventFacts(raidId,client);if(!current)throw new Error("Raid not found");requireUpcomingRaid(current);await client.query("UPDATE raid_events SET cancelled_at_unix=extract(epoch FROM now())::bigint,cancelled_by_guildie_id=$2,updated_at_unix=extract(epoch FROM now())::bigint WHERE raid_id=$1",[raidId,actorGuildieId]);const publication=await publishEmission(client,{ code:"raid.cancelled", subject:raidId });const activityDeclaration=await publishActivityDeclaration(client,{kind:"temporal-relevance-changed",activityKind:"raid",activityId:raidId});return{publication,activityDeclaration};});
+  await deliverEmission(persisted.publication);
+  await deliverEmission(persisted.activityDeclaration);
 }
 
 async function assertApplicantEligible(raid:RaidEventFacts,guildieId:string|null):Promise<void>{if(raid.eligibility==="anyone")return;if(!guildieId)throw new Error("Raid eligibility requires a Guildie");if(!await effectiveGuildAuthority(guildieId,raid.guildId))throw new Error("Applicant is not a current Guildie");}
