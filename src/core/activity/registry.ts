@@ -57,7 +57,6 @@ export type ActivityOccurrenceCapability = {
 };
 
 export type ActivityTemporalCapability = {
-  emissionCodes: readonly string[];
   relevance(activityId: string): Promise<ActivityTemporalCoordinate | null>;
 };
 
@@ -108,7 +107,6 @@ export type ActivityRegistrationState = {
 
 const activitiesByKind = new Map<string, ActivityRegistration>();
 const activationByKind = new Map<string, ActivityActivationGate>();
-const activitiesByTemporalEmissionCode = new Map<string, ActivityRegistration>();
 const failedActivitiesByKind = new Set<string>();
 
 function requiredText(value: string, field: string): string {
@@ -122,27 +120,12 @@ export function registerActivity(input: ActivityRegistration): void {
   const existing = activitiesByKind.get(kind);
   if (existing && existing !== input) throw new Error(`Activity ${kind} is already registered`);
 
-  if (input.temporal) {
-    if (!input.temporal.emissionCodes.length) {
-      throw new Error(`Activity ${kind} temporal capability must declare emission codes`);
-    }
-    for (const codeInput of input.temporal.emissionCodes) {
-      const code = requiredText(codeInput, "temporal emission code");
-      const registered = activitiesByTemporalEmissionCode.get(code);
-      if (registered && registered !== input) {
-        throw new Error(`Activity temporal emission ${code} is already registered by ${registered.kind}`);
-      }
-    }
-  }
 
   if (input.administration?.capabilities?.length) {
     registerGuildCapabilityDefinitions(input.administration.capabilities);
   }
 
   activitiesByKind.set(kind, input);
-  for (const codeInput of input.temporal?.emissionCodes ?? []) {
-    activitiesByTemporalEmissionCode.set(codeInput.trim(), input);
-  }
 }
 
 export function markActivityActivationFailed(activityKind: string): void {
@@ -215,10 +198,6 @@ export async function activityOccurrenceRenderActions(
   });
 }
 
-export function activityTemporalEmissionCodes(): readonly string[] {
-  return [...activitiesByTemporalEmissionCode.keys()];
-}
-
 function calendarCoordinate(coordinate: ActivityTemporalCoordinate | null): ActivityCalendarCoordinate | null {
   if (coordinate === null) return null;
   const { start, end } = coordinate;
@@ -232,18 +211,17 @@ function calendarCoordinate(coordinate: ActivityTemporalCoordinate | null): Acti
   return [start ?? end!];
 }
 
-export async function activityTemporalProjectionForEmission(
-  code: string,
+export async function activityTemporalProjection(
+  activityKind: string,
   activityId: string,
 ): Promise<ActivityTemporalProjection | null> {
-  const registered = activitiesByTemporalEmissionCode.get(code);
-  if (!registered?.temporal) return null;
-  const activity = await activeActivity(registered.kind);
+  const kind = requiredText(activityKind, "kind");
+  const activity = await activeActivity(kind);
   if (!activity?.temporal) return null;
 
   const normalizedActivityId = requiredText(activityId, "id");
   return {
-    activityKind: activity.kind,
+    activityKind: kind,
     activityId: normalizedActivityId,
     occursAt: calendarCoordinate(await activity.temporal.relevance(normalizedActivityId)),
   };
