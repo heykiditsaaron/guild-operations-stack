@@ -2,6 +2,7 @@ import { activityParticipationOffersForGuildie as participationOffersForGuildie,
 import { knownActivityPlugin, knownActivityPlugins } from "./plugin-control.js";
 import { knownActivityCapabilityDeclarations } from "./plugin-administration.js";
 import { registerGuildCapabilityDefinitions, type GuildCapabilityDefinition } from "../authority/guild-capability-policy.js";
+import { guildieHasGuildCapabilityOrOperator } from "../authority/guild-permissions.js";
 
 export type ActivityTemporalCoordinate = {
   start: number | null;
@@ -33,6 +34,7 @@ export type ActivityInteractionKind = "participate" | "operate";
 export type ActivityInteractionRequest = {
   kind: ActivityInteractionKind;
   label: string;
+  requiresAnyCapability?: readonly string[];
 };
 
 export type ActivityOccurrence = {
@@ -183,19 +185,30 @@ export async function activityOccurrence(activityKind: string, activityId: strin
 
 export async function activityOccurrenceRenderActions(
   occurrence: ActivityOccurrence,
+  guildieId: string | null = null,
 ): Promise<readonly ActivityRenderAction[]> {
   const activity = await activeActivity(occurrence.activityKind);
   if (!activity?.interaction) return [];
 
-  return (occurrence.interactions ?? []).flatMap((request) => {
+  const actions = await Promise.all((occurrence.interactions ?? []).map(async (request) => {
+    if (request.requiresAnyCapability?.length) {
+      if (!guildieId) return null;
+      const permitted = await Promise.all(
+        request.requiresAnyCapability.map((capability) => guildieHasGuildCapabilityOrOperator(guildieId, capability)),
+      );
+      if (!permitted.some(Boolean)) return null;
+    }
+
     const href = activity.interaction?.destination(request.kind, occurrence.activityId);
-    if (!href) return [];
-    return [{
+    if (!href) return null;
+    return {
       label: requiredText(request.label, "interaction label"),
       href,
       kind: request.kind === "participate" ? "primary" as const : "secondary" as const,
-    }];
-  });
+    };
+  }));
+
+  return actions.filter((action): action is ActivityRenderAction => action !== null);
 }
 
 function calendarCoordinate(coordinate: ActivityTemporalCoordinate | null): ActivityCalendarCoordinate | null {
