@@ -83,6 +83,20 @@ For example, a Raid procedure may require a guild Character. Core owns what qual
 
 Shared vocabulary therefore does not imply shared motivation or shared authority.
 
+## Systemic language
+
+Activity does not create a private vocabulary merely to isolate plugins from Core.
+
+Activity plugins are Guild Operations plugins and may compose procedure directly from the systemic language Core legitimately owns: Actor, Guildie, Character, guild Character classification, Role, Spec, rank, authority, temporal coordinates, quantities, and other established primitives.
+
+The architectural boundary is authority, not ignorance. Several layers may understand the same word while remaining authoritative for different things.
+
+Core defines and resolves its systemic primitives. Activity translates Activity-relevant uses of them. A plugin owns the procedural significance of composing them.
+
+> **Core can understand every word in the sentence without being authoritative over what the sentence means.**
+
+A new Activity-specific abstraction should therefore not be introduced merely to hide an existing Core primitive from plugins. Shared language is collaborative machinery: plugin authors should need to learn Guild Operations language, not reconstruct Guild Operations implementation.
+
 ## Declarations and projections
 
 Activity plugins communicate across the Activity boundary in two complementary ways.
