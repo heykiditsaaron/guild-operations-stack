@@ -2,7 +2,7 @@ import type { InstalledActivityPlugin } from "../../activity-plugins.js";
 import { registerRaidActivityIntegration } from "./activity.js";
 import { registerRaidOperationDetailPage } from "./web/detail.js";
 import { registerRaidDefinitionPage } from "./web/definition.js";
-import { registerRaidPage } from "./web/index.js";
+import { registerRaidParticipationRoutes } from "./web/index.js";
 import { registerRaidOperationPage } from "./web/operation.js";
 
 export const activityPlugin: InstalledActivityPlugin = {
@@ -12,6 +12,6 @@ export const activityPlugin: InstalledActivityPlugin = {
     await registerRaidOperationPage(app, assets);
     await registerRaidOperationDetailPage(app, assets);
     await registerRaidDefinitionPage(app, assets);
-    await registerRaidPage(app, assets);
+    await registerRaidParticipationRoutes(app, assets);
   },
 };
