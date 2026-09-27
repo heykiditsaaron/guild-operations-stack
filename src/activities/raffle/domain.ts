@@ -1,6 +1,6 @@
 import { randomInt } from "node:crypto";
 import type { PoolClient } from "pg";
-import { closeActivityParticipationOffer, establishActivityParticipation, offerActivityParticipation, revokeActivityParticipationOffer } from "../../core/activity/participation.js";
+import { closeActivityParticipationOffer, closeOutstandingActivityParticipationOffers, establishActivityParticipation, offerActivityParticipation, revokeActivityParticipationOffer } from "../../core/activity/participation.js";
 import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import { controlledGuildCharactersForGuildie } from "../../core/identity/controlled-characters.js";
 import { pool, withTransaction } from "../../db.js";
@@ -303,9 +303,15 @@ export async function cancelRaffle(actorGuildieId: string, raffleId: string, cli
   return withOptionalTransaction(client, async (transactionClient) => {
     const raffle = await lockedRaffle(transactionClient, raffleId);
     if (raffle.conclusion !== null) throw new RaffleRuleError("raffle_already_concluded", "A concluded Raffle cannot be cancelled");
+    const concludedAtUnix=unixNow();
+    await closeOutstandingActivityParticipationOffers(transactionClient,{
+      activityKind:"raffle",
+      activityId:raffleId,
+      closedAtUnix:concludedAtUnix,
+    });
     const result = await transactionClient.query(
       "UPDATE raffles SET conclusion='operator_cancelled', concluded_by_guildie_id=$2, concluded_at_unix=$3 WHERE raffle_id=$1 RETURNING *",
-      [raffleId, actorGuildieId, unixNow()],
+      [raffleId, actorGuildieId, concludedAtUnix],
     );
     return mapRaffle(result.rows[0] as Record<string, unknown>);
   });
