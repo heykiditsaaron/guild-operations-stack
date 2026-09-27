@@ -141,6 +141,28 @@ Activity owns the resulting systemic Participation observation so consumers can 
 
 > **Procedure establishes why the observation is legitimate. Activity owns what the Participation observation means systemically.**
 
+## Capability requests and representation
+
+Activity plugins may require Core-owned capabilities as part of their procedure without acquiring ownership of those capabilities.
+
+A plugin states what its procedure requires, permits, or has produced in Guild Operations language. Activity translates that Activity-relevant meaning into the appropriate Core capability. Core remains authoritative for how that capability works and, where applicable, how it is represented.
+
+```text
+plugin procedure
+    ↓ requirement / declaration / projection
+Activity
+    ↓ translation
+Core capability
+```
+
+This applies to identity classification, authority, administration, temporal projection, navigation, interactions, rendering, and other systemic capabilities as they are earned.
+
+A capability request is not an instruction for Core to reproduce plugin procedure. Core may fulfill the request without becoming authoritative for why the procedure made it.
+
+> **Procedure may request a Core capability without acquiring ownership of that capability.**
+
+> **Core may fulfill a procedural request without acquiring authority over the procedure that caused it.**
+
 ## Core capabilities and systemic consumers
 
 Activity translates plugin declarations and projections into Core-owned capabilities and representations.
