@@ -3,7 +3,7 @@ import {
   registerActivity,
   type ActivityOccurrenceAttribute,
 } from "../../core/activity/registry.js";
-import { raffleFacts } from "./queries.js";
+import { raffleFacts, raffleFactsForOperation } from "./queries.js";
 import { RAFFLE_CAPABILITY_DEFINITIONS, RAFFLE_CLAIMS_CAPABILITY, RAFFLE_DRAW_CAPABILITY, RAFFLE_MODIFY_CAPABILITY, RAFFLE_STAGE_CAPABILITY } from "./permissions.js";
 
 async function raffleOccurrence(raffleId: string) {
@@ -68,6 +68,9 @@ export function registerRaffleActivityIntegration(): void {
     },
     occurrence: {
       resolve: raffleOccurrence,
+      async list() {
+        return (await raffleFactsForOperation()).map((facts) => facts.raffle.raffleId);
+      },
     },
     interaction: {
       async availableTo(kind, _activityId, guildieId) {
