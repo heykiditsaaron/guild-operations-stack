@@ -1,54 +1,17 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../auth.js";
-import { packagedCapabilityEnabled } from "../../packaged-capability-lifecycle.js";
 import { installationOperational } from "../../core/installation/guild-binding.js";
-import { openRaffleFacts } from "../../modules/raffle/queries.js";
-import { assetUrl, type AssetName, type AssetRegistry } from "../assets.js";
+import type { AssetName, AssetRegistry } from "../assets.js";
 import { htmlText, renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
-
-function openRafflePromotion(assets: AssetRegistry): string {
-  return `
-    <a class="home-raffle-promo" href="/events/raffle" aria-labelledby="home-raffle-promo-title">
-      <img class="home-raffle-promo-art" src="${assetUrl(assets, "images/raffle/gold-sack.png")}" alt="" aria-hidden="true">
-      <div class="home-raffle-promo-main">
-        <p class="home-raffle-promo-kicker">Guild raffle open</p>
-        <h2 class="home-raffle-promo-title" id="home-raffle-promo-title">Take your shot at the pot.</h2>
-      </div>
-      <span class="home-raffle-promo-cta">
-        <span>View the raffle</span>
-        <span class="home-raffle-promo-cta-arrow" aria-hidden="true">→</span>
-      </span>
-    </a>`;
-}
-
-function participationPromotions(assets: AssetRegistry, raffleOpen: boolean): string {
-  if (!raffleOpen) return "";
-  return `
-    <section class="home-section" aria-labelledby="home-happening-title">
-      <div class="home-section-heading">
-        <p class="home-section-kicker">Happening now</p>
-        <h2 id="home-happening-title">Something to jump into</h2>
-      </div>
-      <div class="home-promotions">
-        ${openRafflePromotion(assets)}
-      </div>
-    </section>`;
-}
 
 export async function registerHomePage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/", async (request, reply) => {
     if (!(await installationOperational())) return reply.redirect("/setup");
 
-    const [viewer, raffleEnabled] = await Promise.all([
-      viewerForRequest(request.cookies[SESSION_COOKIE_NAME]),
-      packagedCapabilityEnabled("raffle"),
-    ]);
-    const openRaffles = raffleEnabled ? await openRaffleFacts() : [];
-    const raffleOpen = openRaffles.length > 0;
+    const viewer = await viewerForRequest(request.cookies[SESSION_COOKIE_NAME]);
 
     const stylesheets: AssetName[] = ["home.css"];
-    if (raffleOpen) stylesheets.push("home-raffle.css");
     const communityActions = viewer.presentationContributions.homeCommunityActions.join("\n");
 
     const html = renderPage(assets, {
@@ -66,8 +29,6 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
         </div>`,
       body: `
         <div class="home-community">
-          ${participationPromotions(assets, raffleOpen)}
-
           <section class="home-culture" aria-labelledby="home-culture-title">
             <div class="home-culture-statement">
               <p class="home-section-kicker">Around here</p>

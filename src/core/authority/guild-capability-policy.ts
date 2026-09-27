@@ -68,6 +68,12 @@ async function canAdministerCapabilityDefinition(guildieId: string, definition: 
   return guildieHasGuildCapability(guildieId, `${definition.namespace}.permissions`, guildId);
 }
 
+export async function canAdministerGuildCapability(guildieId: string, capability: GuildCapability, guildId?: string): Promise<boolean> {
+  const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
+  const definition = definitions.get(capability);
+  return definition ? canAdministerCapabilityDefinition(guildieId, definition, resolvedGuildId) : false;
+}
+
 export async function canAdministerGuildPermissions(guildieId: string, guildId?: string): Promise<boolean> {
   const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
   if (await hasGlobalPermissionAdministration(guildieId, resolvedGuildId)) return true;
@@ -122,6 +128,18 @@ export async function guildCapabilityPolicies(guildId?: string): Promise<GuildCa
     ranks: ranksResult.rows.map((rank) => ({ rankIndex: rank.rank_index, displayName: rank.display_name ?? `Rank ${rank.rank_index}`, active: rank.active })),
     capabilities: capabilityDefinitions.map(({ defaultPermittedRanks: _defaults, ...definition }) => ({ ...definition, permittedRanks: configured.get(definition.key) ?? [] })),
   };
+}
+
+export async function guildCapabilityPoliciesForDefinitions(definitionsInput: readonly GuildCapabilityDefinition[], guildId?: string): Promise<GuildCapabilityPolicySet> {
+  const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
+  await ensureGuildCapabilityPolicies(resolvedGuildId);
+  const keys = definitionsInput.map((definition) => definition.key);
+  const [ranksResult, policiesResult] = await Promise.all([
+    pool.query<{ rank_index:number; display_name:string|null; active:boolean }>(`SELECT rank_index, display_name, active FROM guild_rank_definitions WHERE guild_id=$1 ORDER BY rank_index`, [resolvedGuildId]),
+    keys.length ? pool.query<{ capability:string; permitted_ranks:number[] }>(`SELECT capability, permitted_ranks FROM guild_capability_policy_configuration WHERE guild_id=$1 AND capability=ANY($2::text[])`, [resolvedGuildId, keys]) : Promise.resolve({ rows: [] }),
+  ]);
+  const configured = new Map(policiesResult.rows.map((row) => [row.capability, configurableRanks(row.permitted_ranks)]));
+  return { ranks: ranksResult.rows.map((rank) => ({ rankIndex:rank.rank_index, displayName:rank.display_name ?? `Rank ${rank.rank_index}`, active:rank.active })), capabilities: definitionsInput.map(({defaultPermittedRanks:_defaults,...definition}) => ({...definition, permittedRanks:configured.get(definition.key) ?? []})) };
 }
 
 export async function guildCapabilityPoliciesForActor(guildieId: string, guildId?: string): Promise<GuildCapabilityPolicySet> {

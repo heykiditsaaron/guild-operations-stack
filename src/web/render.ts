@@ -107,6 +107,7 @@ function renderMeControl(viewer: WebViewer, pathname: string): string {
     <summary class="me-control"><span data-me-label>${escapeHtml(label)}</span><span class="account-visual${viewer.mainCharacter?.avatarUrl ? " account-visual-portrait" : " account-visual-generic"}" data-me-visual>${portrait}</span></summary>
     <div class="menu-panel menu-panel-right me-menu-panel">
       <section class="me-menu-section me-character-section">${renderCurrentCharacter(viewer)}</section>
+      <section class="me-menu-section me-participation-section"><a href="/me/participation"><span>My Participation</span><span aria-hidden="true">→</span></a></section>
       ${moduleSections}
       <section class="me-menu-section me-session-section"><button type="button" class="session-sign-out-action" data-logout>Sign out</button></section>
     </div>
@@ -176,10 +177,11 @@ function renderActionBar(viewer: WebViewer, pathname: string): string {
   }
 
   const homeActive = pathname === "/" ? ' aria-current="page"' : "";
-  const eventsActive = pathname === "/events" || pathname.startsWith("/events/") ? ' aria-current="page"' : "";
+  const calendarActive = pathname === "/calendar" ? ' aria-current="page"' : "";
+  const activitiesActive = pathname === "/activities" || pathname.startsWith("/activities/") ? ' aria-current="page"' : "";
   return `<nav class="action-bar" aria-label="Primary navigation"><div class="action-bar-inner">
-    <details class="mobile-nav menu-surface"><summary class="icon-control" aria-label="Open navigation"><span></span><span></span><span></span></summary><div class="menu-panel menu-panel-left mobile-nav-panel"><a href="/"${homeActive}>Home</a><a href="/events"${eventsActive}>Events</a></div></details>
-    <div class="desktop-nav"><a href="/"${homeActive}>Home</a><a href="/events"${eventsActive}>Events</a></div><div class="action-bar-spacer"></div>${renderMeControl(viewer, pathname)}
+    <details class="mobile-nav menu-surface"><summary class="icon-control" aria-label="Open navigation"><span></span><span></span><span></span></summary><div class="menu-panel menu-panel-left mobile-nav-panel"><a href="/"${homeActive}>Home</a><a href="/calendar"${calendarActive}>Calendar</a><a href="/activities"${activitiesActive}>Activities</a></div></details>
+    <div class="desktop-nav"><a href="/"${homeActive}>Home</a><a href="/calendar"${calendarActive}>Calendar</a><a href="/activities"${activitiesActive}>Activities</a></div><div class="action-bar-spacer"></div>${renderMeControl(viewer, pathname)}
   </div></nav>`;
 }
 
@@ -265,7 +267,7 @@ export type OccurrenceParticipationFrame = {
 };
 
 export function renderOccurrenceParticipation(input: OccurrenceParticipationFrame): string {
-  return `<section class="occurrence-participation-frame"><header class="occurrence-participation-header"><p class="eyebrow">Events · ${escapeHtml(input.activity)}</p><h1>Participation</h1><p class="occurrence-participation-title">${escapeHtml(input.title)}</p>${input.context ? `<div class="occurrence-participation-context">${input.context}</div>` : ""}</header>${input.existingParticipation ? `<div class="occurrence-participation-existing">${input.existingParticipation}</div>` : ""}<div class="occurrence-participation-intake">${input.intake}</div></section>`;
+  return `<section class="occurrence-participation-frame"><header class="occurrence-participation-header"><p class="eyebrow">Activities · ${escapeHtml(input.activity)}</p><h1>Participation</h1><p class="occurrence-participation-title">${escapeHtml(input.title)}</p>${input.context ? `<div class="occurrence-participation-context">${input.context}</div>` : ""}</header>${input.existingParticipation ? `<div class="occurrence-participation-existing">${input.existingParticipation}</div>` : ""}<div class="occurrence-participation-intake">${input.intake}</div></section>`;
 }
 
 export type OccurrenceOperationsMode = { label: string; href: string; current?: boolean };

@@ -8,21 +8,23 @@ The doctrine hierarchy is intentionally small:
 
 - [`architecture.md`](architecture.md) — product purpose, architectural center, authority ownership, application boundaries, persistence law, interface model, and feature-pressure rules.
 - [`member-objects.md`](member-objects.md) — Guildie, Character, Blizzard authority, current organizational participation, effective rank, selected main, Discord association, session, capability, and Subject meanings.
-- [`module-conformity.md`](module-conformity.md) — application-wide invariants every concrete module must respect.
-- [`guild-activity.md`](guild-activity.md) — specialized doctrine for lifecycle-bound temporal Guild Activities, including optional participation.
+- [`guild-activity.md`](guild-activity.md) — Core Activity meaning: occurrence lifecycle, temporal relevance, Participation, shared language, and ownership.
+- [`activity-plugin-contract.md`](activity-plugin-contract.md) — Activity plugin boundary: procedure, declarations, projections, lifecycle meaning, Participation ceremony, and Core responsibilities.
+- [`module-conformity.md`](module-conformity.md) — legacy Module doctrine retained for deferred cleanup of remaining Module-era capabilities; it does not govern Activity plugins.
 
 The relationship is:
 
 ```text
 Architecture
 ├── Member Objects
-└── Module Conformity
-    └── Guild Activity
-        └── optional Participation
+└── Activity
+    └── Activity Plugin Contract
 ```
 
-This is a governance hierarchy, not an implementation inheritance model.
+This is a governance relationship, not an implementation inheritance model.
 
-A rule belongs in Architecture when it is true of Guild Operations as a whole; in Member Objects when it defines member or organizational authority meaning; in Module Conformity when every module must respect it; and in Guild Activity when it is true specifically because a domain establishes Guild Activities. Rules belonging only to Raid, Raffle, Discord, Calendar, or another concrete domain remain with that domain rather than becoming global doctrine.
+A rule belongs in Architecture when it is true of Guild Operations as a whole; in Member Objects when it defines member or organizational authority meaning; in Activity when it is true because something is a systemic Activity concept; and in the Activity Plugin Contract when it governs the seam between concrete procedure and Activity/Core. Rules belonging only to Raid, Raffle, Calendar, Discord, or another concrete domain remain with that owner rather than becoming global doctrine.
+
+`module-conformity.md` remains only as legacy doctrine for Module-era capabilities that have not yet received their own cleanup. Activity plugins do not inherit from or conform to the Module category.
 
 Doctrine should remain useful if the current routes, functions, tables, schedulers, renderers, or source layout are replaced.

@@ -1,5 +1,5 @@
 import cookie from "@fastify/cookie";
-import Fastify, { type FastifyInstance } from "fastify";
+import Fastify from "fastify";
 import { registerApiV1Routes } from "./api-v1-routes.js";
 import { config } from "./config.js";
 import { pool } from "./db.js";
@@ -13,33 +13,80 @@ import { registerInstallationRoutes } from "./core/installation/routes.js";
 import { registerApplicationEmissionConsumers } from "./emissions/consumers.js";
 import { startEmissionRecovery } from "./emissions/recovery.js";
 import { startGuildRefreshScheduler } from "./guild-refresh-scheduler.js";
-import { packagedCapabilityEnabled, type PackagedCapabilityKey } from "./packaged-capability-lifecycle.js";
 import { registerDiscordPlugin, registerDiscordPluginAdministration } from "./plugins/discord/plugin.js";
 import { discordEncryptedSecretsExist } from "./plugins/discord/plugin-configuration.js";
-import { registerRaffleApiV1Routes } from "./modules/raffle/api-v1-routes.js";
-import { registerRaffleGuildActivityOffering } from "./modules/raffle/offering.js";
-import { registerRaffleCapabilityDefinitions } from "./modules/raffle/permissions.js";
-import { registerRaffleRoutes } from "./modules/raffle/routes.js";
-import { registerRaidCapabilityDefinitions } from "./modules/raid/permissions.js";
+import { registerInstalledActivityPlugins } from "./activity-plugins.js";
 import { loadAssetRegistry, registerAssetRoutes } from "./web/assets.js";
 import { registerAdminPage } from "./web/pages/admin.js";
 import { registerOperationsAdminPage } from "./web/pages/operations.js";
-import { registerEventsPage } from "./web/pages/events/index.js";
-import { registerRaidOperationPage } from "./web/pages/events/raid/operation.js";
-import { registerRaidOperationDetailPage } from "./web/pages/events/raid/detail.js";
-import { registerRaidDefinitionPage } from "./web/pages/events/raid/definition.js";
-import { registerRaidPage } from "./web/pages/events/raid/index.js";
-import { registerRaffleOperationPage } from "./web/pages/events/raffle/operation.js";
-import { registerRaffleClaimsPage } from "./web/pages/events/raffle/claims.js";
-import { registerRaffleEntryPage } from "./web/pages/events/raffle/enter.js";
-import { registerRaffleHistoryPage } from "./web/pages/events/raffle/history.js";
-import { registerRafflePage } from "./web/pages/events/raffle/index.js";
-import { registerRaffleRecordPage } from "./web/pages/events/raffle/record.js";
-import { registerRaffleRulesPage } from "./web/pages/events/raffle/rules.js";
+import { registerCalendarPage } from "./web/pages/calendar.js";
+import { registerActivitiesPage } from "./web/pages/activities.js";
+import { registerActivityBoundaryRoutes } from "./web/pages/activity-boundary.js";
 import { registerHomePage } from "./web/pages/home.js";
+import { registerMyParticipationPage } from "./web/pages/my-participation.js";
 import { registerSiteInformationPages } from "./web/pages/site-information.js";
 import { registerSetupPage } from "./web/pages/setup.js";
+
 installationSecretKey({ encryptedDataExists: (await discordEncryptedSecretsExist()) || (await installationBlizzardEncryptedSecretExists()) });
-const app=Fastify({logger:true,disableRequestLogging:true});await app.register(cookie);registerGlobalGuildCapabilityDefinitions();registerRaidCapabilityDefinitions();registerRaffleCapabilityDefinitions();registerDiscordPluginAdministration();registerApplicationEmissionConsumers();registerGuildCapabilityPolicyObserver();registerRaffleGuildActivityOffering();app.get("/health",async()=>{await pool.query("SELECT 1");return{status:"ok"};});
-async function registerEnabledPackagedCapability(parent:FastifyInstance,capabilityKey:PackagedCapabilityKey,register:(capabilityApp:FastifyInstance)=>Promise<void>):Promise<void>{await parent.register(async(capabilityApp)=>{capabilityApp.addHook("preHandler",async(_request,reply)=>{if(await packagedCapabilityEnabled(capabilityKey))return;return reply.code(404).send({error:"packaged_capability_disabled",capability:capabilityKey});});await register(capabilityApp);});}
-const webAssets=await loadAssetRegistry();await registerAssetRoutes(app,webAssets);await registerHomePage(app,webAssets);await registerSiteInformationPages(app,webAssets);await registerEventsPage(app,webAssets);await registerAdminPage(app,webAssets);await registerOperationsAdminPage(app,webAssets);await registerDiscordPlugin(app,webAssets);await registerEnabledPackagedCapability(app,"raid",async(raidApp)=>{await registerRaidOperationPage(raidApp,webAssets);await registerRaidOperationDetailPage(raidApp,webAssets);await registerRaidDefinitionPage(raidApp,webAssets);await registerRaidPage(raidApp,webAssets);});await registerEnabledPackagedCapability(app,"raffle",async(raffleApp)=>{await registerRafflePage(raffleApp,webAssets);await registerRaffleEntryPage(raffleApp,webAssets);await registerRaffleClaimsPage(raffleApp,webAssets);await registerRaffleHistoryPage(raffleApp,webAssets);await registerRaffleRulesPage(raffleApp,webAssets);await registerRaffleRecordPage(raffleApp,webAssets);await registerRaffleOperationPage(raffleApp,webAssets);await registerRaffleRoutes(raffleApp);await registerRaffleApiV1Routes(raffleApp);});await registerAuthRoutes(app);let stopGuildRefreshScheduler:(()=>void)|null=null;let stopEmissionRecovery:(()=>void)|null=null;const startOperationalBackgroundWork=():void=>{if(stopEmissionRecovery||stopGuildRefreshScheduler)return;stopEmissionRecovery=startEmissionRecovery(app.log);stopGuildRefreshScheduler=startGuildRefreshScheduler(app.log);};await registerSetupPage(app,webAssets);await registerInstallationRoutes(app,{onOperational:startOperationalBackgroundWork});await registerGuildRoutes(app);await registerApiV1Routes(app);const shutdown=async():Promise<void>=>{stopEmissionRecovery?.();stopGuildRefreshScheduler?.();await app.close();await pool.end();};process.on("SIGINT",()=>void shutdown());process.on("SIGTERM",()=>void shutdown());await app.listen({host:"0.0.0.0",port:config.port});if(await installationOperational()){startOperationalBackgroundWork();}else{app.log.info("Installation is not operational; background guild work is paused");}
+
+const app = Fastify({ logger: true, disableRequestLogging: true });
+await app.register(cookie);
+
+registerGlobalGuildCapabilityDefinitions();
+registerDiscordPluginAdministration();
+
+const webAssets = await loadAssetRegistry();
+await registerInstalledActivityPlugins(app, webAssets, app.log);
+
+registerApplicationEmissionConsumers();
+registerGuildCapabilityPolicyObserver();
+
+app.get("/health", async () => {
+  await pool.query("SELECT 1");
+  return { status: "ok" };
+});
+
+await registerAssetRoutes(app, webAssets);
+await registerHomePage(app, webAssets);
+await registerMyParticipationPage(app, webAssets);
+await registerSiteInformationPages(app, webAssets);
+await registerCalendarPage(app, webAssets);
+await registerActivitiesPage(app, webAssets);
+await registerActivityBoundaryRoutes(app, webAssets);
+app.get("/events", async (_request, reply) => reply.redirect("/activities"));
+app.get<{ Params: { "*": string } }>("/events/*", async (request, reply) => reply.redirect(`/activities/${request.params["*"]}`));
+await registerAdminPage(app, webAssets);
+await registerOperationsAdminPage(app, webAssets);
+await registerDiscordPlugin(app, webAssets);
+await registerAuthRoutes(app);
+
+let stopGuildRefreshScheduler: (() => void) | null = null;
+let stopEmissionRecovery: (() => void) | null = null;
+const startOperationalBackgroundWork = (): void => {
+  if (stopEmissionRecovery || stopGuildRefreshScheduler) return;
+  stopEmissionRecovery = startEmissionRecovery(app.log);
+  stopGuildRefreshScheduler = startGuildRefreshScheduler(app.log);
+};
+
+await registerSetupPage(app, webAssets);
+await registerInstallationRoutes(app, { onOperational: startOperationalBackgroundWork });
+await registerGuildRoutes(app);
+await registerApiV1Routes(app);
+
+const shutdown = async (): Promise<void> => {
+  stopEmissionRecovery?.();
+  stopGuildRefreshScheduler?.();
+  await app.close();
+  await pool.end();
+};
+
+process.on("SIGINT", () => void shutdown());
+process.on("SIGTERM", () => void shutdown());
+
+await app.listen({ host: "0.0.0.0", port: config.port });
+
+if (await installationOperational()) {
+  startOperationalBackgroundWork();
+} else {
+  app.log.info("Installation is not operational; background guild work is paused");
+}

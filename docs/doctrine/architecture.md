@@ -32,7 +32,7 @@ Guild Operations should automate procedure, enforcement, recording, resolution, 
 
 Global machinery is the canonical application substrate for state and relationships that belong to Guild Operations as a whole.
 
-Authoritative persistence and external observations are translated into named application contracts before consumers interpret them. Internal and external consumers depend on the same application meanings. Web presentation, Discord integrations, schedulers, administrative tooling, modules, and REST interfaces may express or invoke those contracts differently, but they must not independently reconstruct alternate versions of the same truth.
+Authoritative persistence and external observations are translated into named application contracts before consumers interpret them. Internal and external consumers depend on the same application meanings. Web presentation, external integrations, schedulers, administrative tooling, Activity plugins, and REST interfaces may express or invoke those contracts differently, but they must not independently reconstruct alternate versions of the same truth.
 
 The dependency direction is:
 
@@ -56,7 +56,7 @@ Do not introduce a generic application framework, universal object model, or spe
 
 Persistence ownership follows semantic ownership.
 
-A fact is not globally owned merely because it is stored in the same database, referenced by many consumers, or projected through shared infrastructure. Guild Operations globally owns durable application facts whose meaning belongs to the application as a whole. A concrete module owns durable facts created by its own procedure. Shared infrastructure may own storage and enforcement of its own contract while a producer remains authoritative for the truth contributed through it.
+A fact is not globally owned merely because it is stored in the same database, referenced by many consumers, or projected through shared infrastructure. Guild Operations globally owns durable application facts whose meaning belongs to the application as a whole. A concrete Activity plugin or other owning procedure owns durable facts created by its own procedure. Shared infrastructure may own storage and enforcement of its own contract while a producer remains authoritative for the truth contributed through it.
 
 Persisting an external observation does not transfer authority from the system that established it. Blizzard observations may be retained by Guild Operations while Blizzard remains authoritative for the underlying Blizzard-owned facts.
 
@@ -135,39 +135,47 @@ A temporal range uses two Unix values; an instant uses one. The owning contract 
 
 Legacy timestamp columns predating this rule are conformity debt. They do not weaken the rule for new persistence and should not trigger unrelated wholesale migrations.
 
-## Core, Modules, and Plugins
+## Core, Activity, and extensions
 
-Guild Operations distinguishes product ownership from distribution.
+Guild Operations distinguishes systemic ownership from concrete procedure and from distribution.
 
-**Core** owns shared truths and machinery required for Guild Operations to function coherently. Current Core concerns include member and guild identity, authority and permissioning, Calendar and scheduling, presentation policy, administration and operations, and the shared application infrastructure required to support them.
+**Core** owns the shared truths, language, capabilities, and machinery required for Guild Operations to remain coherent. Current Core concerns include member and guild identity, authority and permissioning, Activity, Calendar, presentation, administration and operations, and the shared application infrastructure that supports them. Core remains coherent when no Activity plugins are installed.
 
-**Modules** own native, concrete guild participation capabilities. A Module establishes a guild-owned domain in which members can participate or which authorized members can operate. Raid and Raffle are current Modules.
+**Activity** is a first-class Core primitive and the translation boundary for concrete guild procedures that produce Activity occurrences. Activity owns systemic Activity identity and lifecycle meaning, Participation as a systemic observation, plugin registration and activation, and translation into Core capabilities such as Calendar, authority, administration, discovery, navigation, and rendering. Activity does not own or reproduce concrete procedure.
 
-**Plugins** integrate an external system with Guild Operations. A Plugin may resolve external identity toward Core identity, consume or project Guild Operations truth, or provide an external capability to a Module or Core surface. Discord is the current Plugin. A Plugin does not become authoritative for Guild Operations truth merely because it can observe, express, or mutate state in its external system.
+**Activity plugins** own concrete Activity procedure. Raid and Raffle are current Activity plugins. They are authored in Guild Operations language and may depend strongly on Core vocabulary and machinery while remaining authoritative for what their own procedure means. Successful procedure may produce declarations with systemic Activity significance; Activity translates those declarations and current projections without learning enough procedure to reproduce the plugin's decisions.
 
-These categories answer **what owns the capability**. They do not answer how the capability is distributed. Required, bundled, optional, and entitled are separate distribution concerns. Core is not synonymous with free, Module with bundled, or Plugin with premium.
+The dependency direction is:
 
-Application composition and adapters are structural roles rather than product categories. Composition assembles the executable application. Web, REST, Discord-facing, CLI, and similar adapters express or invoke established application meaning without acquiring ownership merely because they are entrypoints.
+```text
+Activity plugin procedure
+        ↓ declarations / projections
+      Activity
+        ↓
+ Core capabilities / systemic consumers
+```
 
-Physical code ownership should make these boundaries legible where doing so improves the repository. Do not force composition, adapters, or genuinely shared infrastructure into Core merely because they are not Modules or Plugins.
+Shared vocabulary does not imply shared authority. Core may know what a Guildie, Character, Role, Spec, rank, temporal coordinate, or capability means while an Activity plugin decides why that concept matters to its procedure. The provider owns what a primitive means and how it is resolved; the requester owns why its procedure requires it.
 
-A Module may consume a capability supplied by a Plugin without either category absorbing the other. For example, Raid may use Discord projection supplied by the Discord Plugin while Raid remains authoritative for Raid truth and Discord remains authoritative only for its integration behavior and external effects.
+External integrations and other packaged capabilities are separate concerns. Their architecture should be established from their own concrete pressure rather than forcing Activity plugins and external-system integrations into one extension model. Distribution properties such as required, bundled, optional, or entitled likewise do not determine semantic ownership.
 
-Do not introduce a generic Plugin runtime, extension framework, loader, registry, or superclass merely because Plugins are now a named category. Build concrete integrations and let repeated pressure earn shared machinery.
+Application composition and adapters are structural roles rather than ownership categories. Web, REST, external integrations, CLI, and similar adapters express or invoke established application meaning without acquiring ownership merely because they are entrypoints.
 
-## Modules and concrete pressure
+Do not introduce a universal plugin superclass, extension framework, lifecycle engine, or generic procedure model merely because multiple packaged capabilities exist. Activity has earned its own explicit plugin seam through concrete Raid and Raffle pressure. Other extension seams should be earned independently.
 
-Concrete guild capabilities are the product pressure that should drive architecture.
+## Activity and concrete pressure
 
-A module owns a concrete capability and its procedure. Shared machinery may project, organize, authorize, inspect, or otherwise support module-owned truth without silently becoming the owner of that truth.
+Concrete Activity procedures are product pressure that should drive Activity architecture.
 
-Shared abstractions should be introduced only after multiple real features demonstrate the need.
+An Activity plugin owns its procedure and procedural persistence. Activity may project, organize, authorize, inspect, render, or otherwise systemize Activity-relevant truth without silently becoming authoritative for the procedure that produced it.
 
-> Build the guild activity. Let the common machinery reveal itself under pressure.
+Systemic truth is not inferred from circumstances merely because Core can observe those circumstances. Plugin procedure determines when an authorized procedural act has succeeded and which successful acts have systemic Activity significance.
 
-Application-wide module invariants live in [`module-conformity.md`](module-conformity.md). Guild Activity is one specialized semantic family governed by [`guild-activity.md`](guild-activity.md).
+> Procedure produces declarations. Activity translates declarations into systemic consequences.
 
-Calendar and activity-discovery Offerings are current examples of earned shared participation and presentation infrastructure. Calendar is Core, not a Guild Activity Module. It owns temporal organization and may eventually own simple scheduled occurrences that require no richer participation domain. Modules remain authoritative for their own lifecycle, participation, and domain meaning when they project temporal relevance into Calendar. Their current operational contracts live under [`../infrastructure/`](../infrastructure/).
+Shared abstractions should be introduced only after multiple real procedures demonstrate the need. Raid and Raffle are paired pressure tests: their different procedure is evidence for preserving plugin authority, while the meanings they genuinely share have earned Activity ownership.
+
+The current Activity boundary is governed by [Activity Plugin Contract](activity-plugin-contract.md). Calendar is Core and remains a consumer of Activity temporal projection rather than a consumer of Raid or Raffle. Participation is an optional systemic Activity observation rather than a generic plugin procedure or lifecycle.
 
 ## Interface model
 

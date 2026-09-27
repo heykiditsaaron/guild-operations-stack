@@ -1,2 +1,0 @@
--- Raid permission defaults are initialized once by 023_raid_permission_administration.sql.
--- This migration intentionally remains as a replay-safe historical step.
