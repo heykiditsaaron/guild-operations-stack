@@ -8,7 +8,7 @@ import {
   raidRosterDiagnostics,
 } from "./application.js";
 import { raidListingParticipationSummary } from "./listing-view.js";
-import { RAID_CAPABILITY_DEFINITIONS } from "./permissions.js";
+import { RAID_ASSIGN_CAPABILITY, RAID_CAPABILITY_DEFINITIONS, RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILITY } from "./permissions.js";
 import type { RaidDifficulty, RaidEligibility } from "./domain.js";
 
 function difficultyLabel(value: RaidDifficulty): string {
@@ -60,7 +60,7 @@ async function raidOccurrence(raidId: string) {
       ? []
       : [
           { kind: "participate" as const, label: "Sign up" },
-          { kind: "operate" as const, label: "Manage raid" },
+          { kind: "operate" as const, label: "Manage raid", requiresAnyCapability: [RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILITY, RAID_ASSIGN_CAPABILITY] },
         ],
   };
 }
