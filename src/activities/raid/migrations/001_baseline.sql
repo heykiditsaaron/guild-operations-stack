@@ -13,8 +13,12 @@ CREATE TABLE raid_events (
   updated_at_unix bigint NOT NULL DEFAULT (extract(epoch FROM now())::bigint),
   cancelled_at_unix bigint,
   cancelled_by_guildie_id uuid REFERENCES guildies(guildie_id) ON DELETE RESTRICT,
+  concluded_at_unix bigint,
+  concluded_by_guildie_id uuid REFERENCES guildies(guildie_id) ON DELETE RESTRICT,
   CHECK (occurs_end_unix IS NULL OR occurs_end_unix >= occurs_start_unix),
-  CHECK ((cancelled_at_unix IS NULL) = (cancelled_by_guildie_id IS NULL))
+  CHECK ((cancelled_at_unix IS NULL) = (cancelled_by_guildie_id IS NULL)),
+  CHECK ((concluded_at_unix IS NULL) = (concluded_by_guildie_id IS NULL)),
+  CHECK (cancelled_at_unix IS NULL OR concluded_at_unix IS NULL)
 );
 
 CREATE TABLE raid_applicants (
@@ -63,6 +67,15 @@ CREATE TABLE raid_assignments (
   UNIQUE (raid_id, signup_row_id),
   FOREIGN KEY (raid_id, applicant_id, signup_row_id)
     REFERENCES raid_signup_rows(raid_id, applicant_id, signup_row_id) ON DELETE CASCADE
+);
+
+CREATE TABLE raid_commitment_adjudications (
+  raid_id uuid NOT NULL REFERENCES raid_events(raid_id) ON DELETE CASCADE,
+  signup_row_id uuid NOT NULL REFERENCES raid_signup_rows(signup_row_id) ON DELETE CASCADE,
+  fulfilled boolean NOT NULL,
+  adjudicated_by_guildie_id uuid NOT NULL REFERENCES guildies(guildie_id) ON DELETE RESTRICT,
+  adjudicated_at_unix bigint NOT NULL DEFAULT (extract(epoch FROM now())::bigint),
+  PRIMARY KEY (raid_id, signup_row_id)
 );
 
 CREATE TABLE raid_requirements (
