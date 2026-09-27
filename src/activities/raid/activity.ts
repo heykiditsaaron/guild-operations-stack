@@ -6,7 +6,6 @@ import {
 import {
   raidEventFactsIncludingCancelled,
   raidRosterDiagnostics,
-  raidSignupsAreOpen,
 } from "./application.js";
 import { raidListingParticipationSummary } from "./listing-view.js";
 import { RAID_CAPABILITY_DEFINITIONS } from "./permissions.js";
@@ -60,7 +59,7 @@ async function raidOccurrence(raidId: string) {
     interactions: raid.cancelledAtUnix !== null || raid.concludedAtUnix !== null
       ? []
       : [
-          ...(raidSignupsAreOpen(raid) ? [{ kind: "participate" as const, label: "Sign up" }] : []),
+          { kind: "participate" as const, label: "Sign up" },
           { kind: "operate" as const, label: "Manage raid" },
         ],
   };
