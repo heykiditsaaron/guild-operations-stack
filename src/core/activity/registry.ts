@@ -272,7 +272,7 @@ export async function activityParticipationProjection(
 
 export async function activityParticipationOffersForGuildie(
   guildieId: string,
-): Promise<Array<ActivityParticipationOfferReference & { destination: string }>> {
+): Promise<Array<ActivityParticipationOfferReference & { procedureReference: string; destination: string }>> {
   const relationships = await participationOffersForGuildie(requiredText(guildieId, "participation Guildie id"));
 
   const resolved = await Promise.all(relationships.map(async (relationship) => {
@@ -286,17 +286,18 @@ export async function activityParticipationOffersForGuildie(
     };
     return {
       ...reference,
+      procedureReference: relationship.procedureReference,
       destination: `/activities/${encodeURIComponent(reference.activityKind)}/${encodeURIComponent(reference.activityId)}`,
     };
   }));
 
-  return resolved.filter((reference): reference is ActivityParticipationOfferReference & { destination: string } => reference !== null);
+  return resolved.filter((reference): reference is ActivityParticipationOfferReference & { procedureReference: string; destination: string } => reference !== null);
 }
 
 
 export async function activityParticipationsForGuildie(
   guildieId: string,
-): Promise<Array<{ participationId: string; activityKind: string; activityId: string; establishedAtUnix: number; destination: string }>> {
+): Promise<Array<{ participationId: string; activityKind: string; activityId: string; procedureReference: string; establishedAtUnix: number; destination: string }>> {
   const relationships = await participationsForGuildie(requiredText(guildieId, "Participation Guildie id"));
 
   const resolved = await Promise.all(relationships.map(async (relationship) => {
@@ -306,6 +307,7 @@ export async function activityParticipationsForGuildie(
       participationId: relationship.participationId,
       activityKind: relationship.activityKind,
       activityId: relationship.activityId,
+      procedureReference: relationship.procedureReference,
       establishedAtUnix: relationship.establishedAtUnix,
       destination: `/activities/${encodeURIComponent(relationship.activityKind)}/${encodeURIComponent(relationship.activityId)}`,
     };
