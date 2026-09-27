@@ -99,9 +99,11 @@ export async function establishRaid(actorGuildieId:string,input:EstablishRaidInp
     await recordRaidAction(client,raidId,"created",actorGuildieId);
     const facts=await raidEventFacts(raidId,client); if(!facts)throw new Error("Created Raid could not be reloaded");
     const publication=await publishEmission(client,{ code:"raid.established", subject:facts.raidId });
-    return { raid:facts, publication };
+    const activityDeclaration=await publishActivityDeclaration(client,{kind:"temporal-relevance-changed",activityKind:"raid",activityId:facts.raidId});
+    return { raid:facts, publication, activityDeclaration };
   });
   await deliverEmission(persisted.publication);
+  await deliverEmission(persisted.activityDeclaration);
   return persisted.raid;
 }
 
@@ -117,9 +119,11 @@ export async function modifyRaid(actorGuildieId:string,raidId:string,input:Modif
     await recordRaidAction(client,raidId,"modified",actorGuildieId);
     const facts=await raidEventFacts(raidId,client); if(!facts)throw new Error("Raid not found");
     const publication=await publishEmission(client,{ code:"raid.modified", subject:facts.raidId });
-    return { raid:facts, publication };
+    const activityDeclaration=await publishActivityDeclaration(client,{kind:"temporal-relevance-changed",activityKind:"raid",activityId:facts.raidId});
+    return { raid:facts, publication, activityDeclaration };
   });
   await deliverEmission(persisted.publication);
+  await deliverEmission(persisted.activityDeclaration);
   return persisted.raid;
 }
 
