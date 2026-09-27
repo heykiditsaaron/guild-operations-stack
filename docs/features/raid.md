@@ -1,126 +1,181 @@
 # Raid
 
-Raid is one of Guild Operations' first concrete Guild Activity modules. Together with Raffle, it pressure-tests the shared Guild Activity semantics while retaining domain ownership of its authority, lifecycle mechanics, participation, operation, and presentation.
+Raid is an Activity plugin. It owns Raid-specific procedure while using Activity and Core machinery for systemic identity, lifecycle translation, Participation, authority, temporal projection, and shared presentation.
 
-## Activity identity
+The governing boundary is:
 
-Each persisted Raid is one concrete Guild Activity with its own temporal occurrence, listing, participation, and operational surfaces.
+> **Core machinery owns capability. Activity owns translation. Activity plugin procedure owns meaning.**
 
-Raid owns its activity facts. Other surfaces may project those facts and may present the Raid publicly as an Event, but they do not own Raid lifecycle or participation state.
+## Activity identity and lifecycle
+
+Each persisted Raid is one Activity occurrence. Establishment creates an Active Raid. Conclusion or cancellation terminates its active procedure and projects it as a Record.
+
+Raid lifecycle is declaration-driven:
+
+```text
+successful Raid establishment
+        ↓
+      ACTIVE
+        │
+        ├─ definition and occurrence coordinates
+        ├─ participation commitments
+        ├─ assignment
+        ├─ commitment adjudication
+        │
+        ├─ conclusion ──────────┐
+        └─ cancellation ────────┤
+                               ↓
+                             RECORD
+```
+
+The Raid occurrence time is a temporal reference coordinate. It can orient the Raid, order it, and project it into Calendar, but crossing that coordinate does not change Raid lifecycle or procedure.
+
+Raid therefore does not infer history, freeze signups, prohibit assignment, or authorize closeout from the wall clock. While a Raid is Active, Raid procedure remains authoritative. Conclusion and cancellation are explicit operator actions authorized by Raid capability.
+
+If Raid later earns a time-derived cutoff, that cutoff must be expressed through Raid procedure and a legitimate declaration. The passage of time itself is not procedural authority.
 
 ## Definition
 
-Creation establishes:
+Establishment defines:
 
 - name;
 - optional description;
-- occurrence;
+- occurrence coordinate;
 - difficulty;
 - participation eligibility; and
 - optional informational readiness requirements.
 
-Eligibility is required at creation. The web authoring surface defaults the selection to `Anyone`, but the application contract does not infer eligibility when it is omitted.
-
-Eligibility is immutable after creation. It remains visible as a Raid fact on the public listing and in Edit, but Edit cannot change it.
-
-Before occurrence, an authorized operator may modify the name, description, occurrence, difficulty, and readiness requirements. A Raid defines an operational buffer immediately before occurrence. Establishment must leave the full operational buffer available. Modification may extend that buffer but may never artificially shrink it: before the buffer begins, an operator cannot move the Raid into it; once time has naturally entered the buffer, occurrence may only be postponed far enough to restore the full buffer. Cancellation is exempt because it abandons the Raid rather than modifying its occurrence. Raid names are limited to 80 characters and descriptions to 1,400 characters.
+Eligibility is required at establishment and is immutable afterwards. While the Raid remains Active, an authorized operator may modify its mutable definition, including its occurrence coordinate.
 
 Readiness requirements communicate expectations to participants. Guild Operations does not mechanically enforce them.
 
-## Lifecycle
-
-Raid lifecycle is occurrence-driven:
-
-```text
-Raid created
-│
-├── accepting participation commitments before the operational buffer
-│   ├── definition may be modified by authorized operators
-│   ├── signup commitments may be established or revoked
-│   └── assignments may establish roster participation
-│
-├── operational buffer begins
-│   ├── signup admission is frozen
-│   ├── assignments may continue
-│   └── occurrence may only be postponed far enough to restore the full buffer, or the Raid may be cancelled
-│
-├── occursAt arrives
-│
-└── historical Raid
-    ├── definition preserved
-    ├── signup commitments preserved
-    └── assignments preserved
-```
-
-There is no persisted open/closed signup stage. Signup admission is derived from the Raid occurrence and its operational buffer: signups may be established or revoked before the buffer begins and are frozen during the buffer.
-
-At or after `occursAt`, history is derived from time rather than written as a lifecycle transition. No scheduler or background transition is required. Historical Raids are read-only.
-
-Before occurrence, cancellation is terminal Raid state. Cancelling preserves the Raid definition and its dependent participation facts so authority-bearing integrations can reconcile against the cancelled occurrence. Cancelled Raids are excluded from ordinary participation and discovery surfaces; cancellation does not turn those surfaces into an archive. External projections may retain and revise an already-published artifact to communicate the terminal cancellation state.
-
-Raid operations do not directly own or mutate shared Calendar/event-publication state. Raid owns Raid truth; shared discovery surfaces must project that truth through their own integration boundary rather than becoming a transactional side effect of Raid establishment, modification, or cancellation.
-
-The Raid Operations page therefore separates upcoming operational work from surviving historical Raids. Historical presentation is intentionally minimal until a concrete Raid feature earns richer history such as outcomes, logs, attendance, or analytics.
+Changing the occurrence coordinate produces changed temporal relevance for Activity consumers such as Calendar. Changing non-temporal Raid definition does not.
 
 ## Participation commitment
 
-A Raid signup is a participation commitment: the applicant's declaration that they intend to participate and what they are willing to bring if selected.
+A Raid signup is Raid procedure expressing a participant's commitment: the applicant declares that they intend to participate and what they are willing to bring if selected.
 
-An applicant supplies an identity plus either a controlled eligible character or, when the Raid permits anyone, a declared class, and the specializations they are willing to play.
+The signup produces an Activity Participation Offer as systemic provenance. The Offer is not itself Participation.
+
+An applicant supplies an identity plus either a controlled eligible character or, when the Raid permits anyone, a declared class, and the specializations they are willing to play. Raid uses Core-owned identity classifications to determine whether required Guildie or Guild Character facts hold; Raid owns why those classifications matter to its procedure.
 
 The applicant does not declare a Raid role directly. Raid derives willing roles from the class and specialization trait index. An assignment can only use a role supported by a specialization the applicant offered.
 
-An applicant may have multiple active signup commitments. The public listing's signup count is the number of distinct applicants with at least one active commitment, not the number of signup rows.
+An applicant may have multiple active signup commitments. The public listing's signup count is the number of distinct applicants with at least one active, non-denied commitment.
 
-Before the operational buffer begins, an applicant owns revocation of their own commitment. If that commitment has been assigned, revocation removes the assignment transactionally rather than silently transferring it to another signup.
+While the Raid remains Active, a participant may revoke their own outstanding commitment when Raid procedure permits it. Revocation also removes an assignment attached to that commitment.
 
-A signup is evidence of intent, not evidence that the applicant attended the Raid. Guild Operations must not reinterpret signup or assignment as observed attendance merely because those facts are available before occurrence.
+A signup is evidence of intent. It is not evidence of Participation.
 
-## Assignment and established participation
+## Assignment
 
-Assignment is operator-owned Raid work. An operator accepts and organizes an active signup commitment into the intended Raid roster by selecting a specialization and compatible Raid role from what the applicant offered.
+Assignment is operator-owned Raid procedure. An operator organizes an active, non-denied signup commitment into the intended Raid roster by selecting a specialization and compatible Raid role from what the applicant offered.
 
-Assignment therefore establishes the Raid's planned participation configuration. It does not mechanically cause the human activity to occur and does not prove later attendance. Actual Raid participation is only observable after the fact if a future Raid capability establishes legitimate attendance evidence.
+Assignment is planned Raid configuration. It does not establish systemic Participation and does not prove that the commitment was fulfilled.
 
-The Raid listing summarizes only the current assigned composition: Tanks, Healers, and Damage. It does not expose assignment mutation controls, capacity targets, roster diagnostics, or participant identities.
+Assignment remains mutable while the Raid is Active. Its authority comes from Raid procedure and the Raid assignment capability, not from whether the occurrence coordinate is before or after the current time.
+
+## Commitment adjudication and Participation
+
+Raid operators adjudicate whether each surviving Raid commitment obligation was fulfilled.
+
+Fulfillment and adjudication are distinct. Reality may satisfy a commitment before an authorized Raid operator declares that it counts.
+
+Adjudication remains Raid-owned procedure. A fulfilled adjudication does not by itself establish systemic Participation; conclusion completes the Raid procedure.
+
+Conclusion requires every active, non-denied commitment to have been adjudicated. For commitments adjudicated fulfilled, successful conclusion establishes Activity-owned Participation observations using the corresponding Participation Offers as provenance.
+
+```text
+Raid signup
+    ↓
+Participation Offer
+    ↓
+Raid commitment / assignment procedure
+    ↓
+fulfillment in reality
+    ↓
+Raid adjudication
+    ↓
+Raid conclusion
+    ↓
+Activity Participation observation
+```
+
+Participation means that Activity recognizes the party as having participated in the Raid. Raid remains authoritative for why that observation was legitimate.
+
+## Cancellation
+
+Cancellation is a terminal Raid declaration distinct from conclusion. It ends active Raid procedure and makes the occurrence a Record while preserving Raid-owned facts needed for history and reconciliation.
+
+Cancellation removes the Raid's temporal relevance from Calendar projection. It does not erase the Raid identity or rewrite its prior procedure.
+
+## Temporal projection
+
+Raid exposes its occurrence coordinate through Activity temporal relevance while the Raid is not cancelled.
+
+Calendar consumes that projection without learning Raid procedure. Conclusion does not remove the coordinate: a concluded Raid may remain represented at its historical Calendar coordinate. Cancellation withdraws temporal relevance because the cancelled occurrence should no longer occupy that projection.
+
+Temporal projection is representation, not lifecycle authority.
+
+## Authority
+
+Raid uses explicit capabilities registered through Core authority machinery:
+
+- `raid.modify` — establish Raids and change mutable Raid definition;
+- `raid.assign` — organize Raid commitments into assignments;
+- `raid.stage` — adjudicate commitments, conclude Raids, and cancel Raids;
+- `raid.permissions` — delegate Raid operational capabilities.
+
+The capability keys are stable authority identifiers. Raid owns why its procedure requires each capability; Core owns how guild authority is resolved.
 
 ## Surfaces and destinations
 
-Each Raid declares navigable destinations for its concrete surfaces:
+Each Raid exposes Activity destinations for its concrete surfaces:
 
-- `public` — the public Raid listing;
-- `participate` — Raid signup commitments; and
-- `operate` — Raid management.
+- `public` — the public Raid occurrence;
+- `participate` — Raid commitment procedure;
+- `operate` — Raid operations.
 
-Destinations describe where a surface exists. Their presence does not grant authority to use it; authorization remains enforced by the relevant application operation and surface.
+Destinations identify available surfaces. They do not grant authority.
 
-The public listing is the canonical public expression of one Raid activity. It presents the Raid's occurrence and definition, eligibility, readiness requirements, signup summary, current assigned composition when present, and appropriate destinations/actions.
-
-Management has two human-facing modes:
-
-- **Assign** for commitment handling and roster assignment work;
-- **Edit** for the mutable Raid definition and destructive cancellation when authorized.
-
-Historical Raid surfaces preserve the established facts, signup commitments, and assignments but do not permit mutation.
-
-## Presentation
-
-Designation labels are defaults rather than immutable copy. A projection may use clearer local wording while preserving the same underlying meaning and value. For example, an eligibility fact may be presented as `Who can apply`, and the participate destination may be rendered as `Sign Up`.
-
-Raid descriptions remain plain persisted text. The listing supports paragraph breaks plus the small presentation vocabulary `**bold**` and `*italics*`; this is not a general Markdown or rich-content contract.
+Active Raid surfaces permit the operations authorized by Raid procedure and the viewer's capabilities. Concluded Raids are Records and are presented as historical facts rather than mutable procedure.
 
 ## Application boundary
 
-Raid behavior belongs to Raid application operations. HTTP routes and web surfaces adapt representations into those operations rather than reimplementing lifecycle or authority rules.
+Raid application operations own consequential Raid behavior. HTTP routes and web surfaces adapt user interaction into those operations rather than independently deciding lifecycle or authority.
 
-Current consequential operations include establishment, modification, cancellation, signup commitment establishment and revocation, assignment, and unassignment. Read models support the public listing, participation surface, assignment operation, and Raid Operations overview. Active-signup collections intentionally omit revoked commitments, while an individual signup query preserves the distinction between a revoked historical commitment and a signup that never existed.
+Consequential operations include:
 
-## Relationship to other Guild Activities
+- establishment and definition modification;
+- cancellation;
+- signup commitment establishment and participant revocation;
+- assignment, reassignment, and unassignment;
+- signup denial;
+- commitment adjudication; and
+- conclusion.
 
-Raid and Raffle are paired reference implementations for Guild Activity modules that expose participation. Both currently demonstrate a participant-authored commitment followed by operator-owned establishment, but the meaning and procedure remain module-owned: Raid operators organize a commitment into an intended roster, while Raffle operators verify a promised payment and establish drawing weight.
+Raid persistence owns the procedural facts supporting those operations. Activity owns the systemic consequences produced through the Activity contract.
 
-Their execution then diverges. Raid is a human activity Guild Operations cannot mechanically enforce; Raffle can mechanically consume established drawing weight during its draw. Neither commitment nor Raid assignment should be promoted into evidence of actual attendance without an authority-bearing observation that establishes it.
+## Relationship to Activity
 
-Other participating Guild Activities need not contain the same stages. A future domain may make a submission both the participation commitment and the participation itself, with later adjudication determining success rather than whether participation occurred.
+Raid is a concrete pressure test of the Activity plugin contract, not a generic Activity lifecycle specification.
 
-These examples establish useful vocabulary, not a shared participation workflow. Participation windows, cancellation semantics, history, eligibility, assignment, adjudication, execution, and evidence remain module behaviors unless repeated concrete modules prove a narrower shared abstraction is warranted.
+Raid-specific concepts such as signup commitments, roster assignment, readiness requirements, commitment adjudication, and Raid conclusion remain Raid procedure. Other Activity plugins need not reproduce them.
+
+The systemic boundary is narrower:
+
+```text
+Raid procedure
+    ↓
+Activity-significant declarations and projections
+    ↓
+Activity translation
+    ↓
+Core capabilities and systemic consumers
+```
+
+Calendar does not need to understand Raid. My Participation does not need to understand Raid signup or assignment. Raid does not need to own either consumer.
+
+Raid demonstrates the general rule without generalizing its procedure:
+
+> **Procedure produces declarations. Activity translates declarations into systemic consequences.**
