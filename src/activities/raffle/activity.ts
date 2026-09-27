@@ -5,7 +5,7 @@ import {
 } from "../../core/activity/registry.js";
 import { getRaffle } from "./application.js";
 import { raffleFacts } from "./queries.js";
-import { RAFFLE_CAPABILITY_DEFINITIONS } from "./permissions.js";
+import { RAFFLE_CAPABILITY_DEFINITIONS, RAFFLE_CLAIMS_CAPABILITY, RAFFLE_DRAW_CAPABILITY, RAFFLE_MODIFY_CAPABILITY, RAFFLE_STAGE_CAPABILITY } from "./permissions.js";
 
 async function raffleOccurrence(raffleId: string) {
   const facts = await raffleFacts(raffleId);
@@ -53,7 +53,7 @@ async function raffleOccurrence(raffleId: string) {
       ? []
       : [
           ...(facts.participationOpen ? [{ kind: "participate" as const, label: "Enter raffle" }] : []),
-          { kind: "operate" as const, label: "Manage raffle" },
+          { kind: "operate" as const, label: "Manage raffle", requiresAnyCapability: [RAFFLE_MODIFY_CAPABILITY, RAFFLE_STAGE_CAPABILITY, RAFFLE_CLAIMS_CAPABILITY, RAFFLE_DRAW_CAPABILITY] },
         ],
   };
 }
