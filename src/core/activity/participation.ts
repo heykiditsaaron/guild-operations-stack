@@ -239,6 +239,26 @@ export async function closeActivityParticipationOffer(
   if (!result.rowCount) throw new Error("Outstanding Activity Participation Offer was not found");
 }
 
+export async function closeOutstandingActivityParticipationOffers(
+  client: PoolClient,
+  input: { activityKind: string; activityId: string; closedAtUnix?: number },
+): Promise<number> {
+  const closedAtUnix = input.closedAtUnix ?? Math.floor(Date.now() / 1000);
+  const result = await client.query(
+    `UPDATE activity_participation_offers offer
+        SET closed_at_unix=$3
+      WHERE offer.activity_kind=$1
+        AND offer.activity_id=$2
+        AND offer.revoked_at_unix IS NULL
+        AND offer.closed_at_unix IS NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM activity_participations participation
+           WHERE participation.participation_offer_id=offer.participation_offer_id
+        )`,
+    [requiredText(input.activityKind, "Offer kind"), requiredText(input.activityId, "Offer activity id"), closedAtUnix],
+  );
+  return result.rowCount ?? 0;
+}
 export async function activityParticipationOffersForGuildie(guildieId: string): Promise<ActivityParticipationOffer[]> {
   const result = await pool.query<any>(
     `SELECT offer.*
