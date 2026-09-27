@@ -9,7 +9,8 @@ The doctrine hierarchy is intentionally small:
 - [`architecture.md`](architecture.md) — product purpose, architectural center, authority ownership, application boundaries, persistence law, interface model, and feature-pressure rules.
 - [`member-objects.md`](member-objects.md) — Guildie, Character, Blizzard authority, current organizational participation, effective rank, selected main, Discord association, session, capability, and Subject meanings.
 - [`module-conformity.md`](module-conformity.md) — application-wide invariants every concrete module must respect.
-- [`guild-activity.md`](guild-activity.md) — specialized doctrine for lifecycle-bound temporal Guild Activities, including optional participation.
+- [`guild-activity.md`](guild-activity.md) — legacy Guild Activity doctrine retained while Activity productization is reconciled.
+- [`activity-plugin-contract.md`](activity-plugin-contract.md) — current Activity plugin boundary: procedure, declarations, projections, lifecycle meaning, Participation ceremony, and Core responsibilities.
 
 The relationship is:
 
@@ -17,7 +18,8 @@ The relationship is:
 Architecture
 ├── Member Objects
 └── Module Conformity
-    └── Guild Activity
+    └── Activity
+        ├── Activity Plugin Contract
         └── optional Participation
 ```
 
