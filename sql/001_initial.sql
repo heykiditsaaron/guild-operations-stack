@@ -246,14 +246,6 @@ CREATE TABLE guild_activity_plugin_enablement (
   PRIMARY KEY (guild_id, activity_kind)
 );
 
-CREATE TABLE guild_packaged_capability_enablement (
-  guild_id text NOT NULL REFERENCES guilds(guild_id) ON DELETE CASCADE,
-  capability_key text NOT NULL,
-  enabled boolean NOT NULL,
-  updated_at_unix bigint NOT NULL DEFAULT (extract(epoch FROM now())::bigint),
-  PRIMARY KEY (guild_id, capability_key)
-);
-
 CREATE TABLE guild_capability_policy_configuration (
   guild_id text NOT NULL REFERENCES guilds(guild_id) ON DELETE CASCADE,
   capability text NOT NULL,
