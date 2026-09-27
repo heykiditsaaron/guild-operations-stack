@@ -65,6 +65,7 @@ export type ActivityParticipationOfferReference = {
   activityKind: string;
   activityId: string;
   participationOfferId: string;
+  procedureReference: string;
 };
 
 export type ActivityParticipationProjection = {
@@ -283,6 +284,7 @@ export async function activityParticipationOffersForGuildie(
       activityKind: relationship.activityKind,
       activityId: relationship.activityId,
       participationOfferId: relationship.participationOfferId,
+      procedureReference: relationship.procedureReference,
     };
     return {
       ...reference,
