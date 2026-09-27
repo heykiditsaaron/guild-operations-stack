@@ -1,11 +1,9 @@
 import {
   registerActivity,
   type ActivityOccurrenceAttribute,
-  type ActivityTemporalCoordinate,
 } from "../../core/activity/registry.js";
-import { getRaffle } from "./application.js";
 import { raffleFacts } from "./queries.js";
-import { RAFFLE_CAPABILITY_DEFINITIONS, RAFFLE_CLAIMS_CAPABILITY, RAFFLE_DRAW_CAPABILITY, RAFFLE_MODIFY_CAPABILITY, RAFFLE_STAGE_CAPABILITY } from "./permissions.js";
+import { RAFFLE_CAPABILITY_DEFINITIONS } from "./permissions.js";
 
 async function raffleOccurrence(raffleId: string) {
   const facts = await raffleFacts(raffleId);
@@ -53,16 +51,9 @@ async function raffleOccurrence(raffleId: string) {
       ? []
       : [
           ...(facts.participationOpen ? [{ kind: "participate" as const, label: "Enter raffle" }] : []),
-          { kind: "operate" as const, label: "Manage raffle", requiresAnyCapability: [RAFFLE_MODIFY_CAPABILITY, RAFFLE_STAGE_CAPABILITY, RAFFLE_CLAIMS_CAPABILITY, RAFFLE_DRAW_CAPABILITY] },
+          { kind: "operate" as const, label: "Manage raffle" },
         ],
   };
-}
-
-async function raffleTemporalRelevance(raffleId: string): Promise<ActivityTemporalCoordinate | null> {
-  const raffle = await getRaffle(raffleId);
-  if (!raffle) throw new Error(`Raffle ${raffleId} was not found while resolving Activity temporal relevance`);
-
-  return raffle.conclusion === "operator_cancelled" ? null : { start: null, end: raffle.drawingAtUnix };
 }
 
 export function registerRaffleActivityIntegration(): void {
@@ -84,9 +75,6 @@ export function registerRaffleActivityIntegration(): void {
         if (kind === "operate") return `/activities/raffle/${id}/manage`;
         return null;
       },
-    },
-    temporal: {
-      relevance: raffleTemporalRelevance,
     },
   });
 }
