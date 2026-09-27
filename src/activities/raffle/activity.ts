@@ -7,13 +7,6 @@ import { getRaffle } from "./application.js";
 import { raffleFacts } from "./queries.js";
 import { RAFFLE_CAPABILITY_DEFINITIONS } from "./permissions.js";
 
-const RAFFLE_TEMPORAL_EMISSION_CODES = [
-  "raffle.established",
-  "raffle.modified",
-  "raffle.concluded",
-  "raffle.cancelled",
-] as const;
-
 async function raffleOccurrence(raffleId: string) {
   const facts = await raffleFacts(raffleId);
   if (!facts) return null;
@@ -93,7 +86,6 @@ export function registerRaffleActivityIntegration(): void {
       },
     },
     temporal: {
-      emissionCodes: RAFFLE_TEMPORAL_EMISSION_CODES,
       relevance: raffleTemporalRelevance,
     },
   });
