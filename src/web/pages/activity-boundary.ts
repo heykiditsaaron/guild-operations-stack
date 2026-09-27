@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { SESSION_COOKIE_NAME } from "../../auth.js";
+import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
 import { activityOccurrence, activityOccurrenceRenderActions, activityRegistrationState, type ActivityOccurrenceAttribute } from "../../core/activity/registry.js";
 import { knownActivityPlugin } from "../../core/activity/plugin-control.js";
 import type { AssetRegistry } from "../assets.js";
@@ -32,10 +32,14 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
     const occurrence = await activityOccurrence(request.params.kind, request.params.activityId);
     if (!occurrence) return reply.callNotFound();
 
-    const viewer = await viewerForRequest(request.cookies[SESSION_COOKIE_NAME]);
+    const sessionToken = request.cookies[SESSION_COOKIE_NAME];
+    const [viewer, guildie] = await Promise.all([
+      viewerForRequest(sessionToken),
+      authenticatedGuildie(sessionToken),
+    ]);
     const [fingerprint, actions] = await Promise.all([
       knownActivityPlugin(occurrence.activityKind),
-      activityOccurrenceRenderActions(occurrence),
+      activityOccurrenceRenderActions(occurrence, guildie?.guildieId ?? null),
     ]);
     const label = fingerprint?.label ?? occurrence.activityKind;
     const time = occurrenceTime(occurrence.occursAt);
