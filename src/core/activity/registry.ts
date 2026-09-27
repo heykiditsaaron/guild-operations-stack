@@ -73,7 +73,7 @@ export type ActivityParticipationProjection = {
 };
 
 export type ActivityParticipationCapability = {
-  project(procedureReference: string): Promise<ActivityParticipationProjection | null>;
+  project(activityId: string, procedureReference: string): Promise<ActivityParticipationProjection | null>;
 };
 
 export type ActivityInteractionCapability = {
@@ -259,11 +259,15 @@ export async function activityTemporalProjection(
 
 export async function activityParticipationProjection(
   activityKind: string,
+  activityId: string,
   procedureReference: string,
 ): Promise<ActivityParticipationProjection | null> {
   const activity = await activeActivity(requiredText(activityKind, "kind"));
   if (!activity?.participation) return null;
-  return activity.participation.project(requiredText(procedureReference, "Participation procedure reference"));
+  return activity.participation.project(
+    requiredText(activityId, "Participation activity id"),
+    requiredText(procedureReference, "Participation procedure reference"),
+  );
 }
 
 export async function activityParticipationOffersForGuildie(
