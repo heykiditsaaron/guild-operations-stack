@@ -7,6 +7,9 @@ import {
   setRaidAssignment,
   raidEventFacts,
   raidHasOccurred,
+  raidCommitmentAdjudications,
+  adjudicateRaidCommitment,
+  concludeRaid,
   raidOccurrenceDestinations,
   raidRosterDiagnostics,
   withdrawRaidAssignment,
@@ -28,6 +31,7 @@ import { viewerForRequest } from "../../../web/viewer.js";
 type RaidParams = { raidId: string };
 type AssignBody = { signupRowId?: unknown; selectedSpec?: unknown; selectedRole?: unknown };
 type UnassignBody = { signupRowId?: unknown };
+type AdjudicateBody = { signupRowId?: unknown; fulfilled?: unknown };
 type RaidSignupView = Awaited<ReturnType<typeof raidSignups>>[number];
 
 const RAID_ROLES: readonly RaidRole[] = ["tank", "healer", "damage"];
@@ -169,7 +173,7 @@ async function renderRaidOrganizer(request: FastifyRequest<{ Params: RaidParams 
   const operateDestination = destinations.find((value) => value.kind === "operate");
   if (!operateDestination) throw new Error("Raid operate destination is not configured");
 
-  const [rows, diagnostics] = await Promise.all([raidSignups(raid.raidId), raidRosterDiagnostics(raid.raidId)]);
+  const [rows, diagnostics, adjudications] = await Promise.all([raidSignups(raid.raidId), raidRosterDiagnostics(raid.raidId), raidCommitmentAdjudications(raid.raidId)]);
   const assigned = rows.filter((row) => row.assignmentId !== null);
   const available = rows.filter((row) => row.assignmentId === null && row.deniedAtUnix === null && !rows.some((candidate) => candidate.applicantId === row.applicantId && candidate.assignmentId !== null));
   const navigation: SecondaryNavigation = { kind: "breadcrumb", items: [{ label: "Activities", href: "/activities" }, { label: "Raid operations", href: "/activities/raid/manage" }, { label: raid.label }] };
@@ -190,11 +194,14 @@ async function renderRaidOrganizer(request: FastifyRequest<{ Params: RaidParams 
     : `<section class="raid-workspace">${historical ? `<p class="raid-board-status">This raid has occurred. Its final assignment is preserved as history.</p>` : ""}${diagnosticsBody}<div class="raid-assignment-board"><h2>Raid group</h2><div class="raid-role-lanes">${lanes}</div></div></section>`;
 
   const basePath = operateDestination.href;
-  const workspace = `${assignmentWorkspace}<section class="raid-scoreboard" aria-labelledby="raid-scoreboard-heading"><h2 id="raid-scoreboard-heading">Raid diagnostics</h2>${shelves}</section>${mutableAssignments ? `<dialog class="raid-spec-dialog" data-raid-spec-dialog><form method="dialog"><h2>Choose specialization</h2><p data-raid-spec-dialog-copy></p><div data-raid-spec-options></div><button type="button" class="button-secondary" data-raid-spec-cancel>Cancel</button></form></dialog>` : ""}`;
+  const adjudicationBySignup=new Map(adjudications.map(value=>[value.signupRowId,value.fulfilled]));
+  const commitments=rows.filter(row=>row.withdrawnAtUnix===null&&row.deniedAtUnix===null);
+  const closeout=historical&&raid.concludedAtUnix===null&&canStage?`<section class="raid-workspace"><h2>Close out raid</h2><p>Declare whether each commitment obligation was fulfilled, then conclude the raid.</p><div class="raid-signup-pool">${commitments.map(row=>{const value=adjudicationBySignup.get(row.signupRowId);return `<article class="raid-participant-card"><div class="raid-participant-card-copy"><strong>${htmlText(row.characterName??row.className)}</strong><span>${htmlText(row.className)}</span></div><div><button type="button" class="button-secondary" data-raid-adjudicate="${htmlText(row.signupRowId)}" data-fulfilled="true"${value===true?" disabled":""}>Fulfilled</button> <button type="button" class="button-secondary" data-raid-adjudicate="${htmlText(row.signupRowId)}" data-fulfilled="false"${value===false?" disabled":""}>Not fulfilled</button></div></article>`;}).join("")}</div><p class="raid-board-status" data-raid-closeout-status role="status" aria-live="polite"></p><button type="button" class="button-primary" data-raid-conclude${commitments.some(row=>!adjudicationBySignup.has(row.signupRowId))?" disabled":""}>Conclude raid</button></section>`:"";
+  const workspace = `${assignmentWorkspace}${closeout}<section class="raid-scoreboard" aria-labelledby="raid-scoreboard-heading"><h2 id="raid-scoreboard-heading">Raid diagnostics</h2>${shelves}</section>${mutableAssignments ? `<dialog class="raid-spec-dialog" data-raid-spec-dialog><form method="dialog"><h2>Choose specialization</h2><p data-raid-spec-dialog-copy></p><div data-raid-spec-options></div><button type="button" class="button-secondary" data-raid-spec-cancel>Cancel</button></form></dialog>` : ""}`;
   const lifecycleActions = canStage && !historical ? `<button type="button" class="button-destructive" data-raid-cancel>Cancel raid</button>` : "";
   const body = renderOccurrenceOperations({ title: raid.label, context: `<time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${htmlText(difficultyLabel(raid.difficulty))}${historical ? " · Historical" : ""}`, publicAction: publicDestination ? { label: publicDestination.label, href: publicDestination.href } : undefined, modes: [{ label: "Assign", href: basePath, current: true }, ...(canModify || canStage ? [{ label: "Edit", href: `${basePath}/definition` }] : [])], lifecycleActions, workspace });
   const scripts: AssetName[] = ["admin.js", "raid-admin.js", ...(lifecycleActions ? ["raid-definition.js" as AssetName] : [])];
-  if (mutableAssignments) scripts.push("raid-organizer.js");
+  if (mutableAssignments || (historical && raid.concludedAtUnix===null && canStage)) scripts.push("raid-organizer.js");
   const html = renderPage(assets, { pathname: request.url, title: `${raid.label} · Raid Operations · ${viewer.guildPresentation.guildName} Guild Operations`, description: raid.description ?? "Raid operations.", viewer, stylesheets: ["admin.css", "raid-admin.css", "raid-iconography.css", "raid-organizer.css"], scripts, secondaryNavigation: navigation, header: "", body });
   return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
 }
@@ -224,8 +231,20 @@ async function unassignParticipant(request: FastifyRequest<{ Params: RaidParams;
   }
 }
 
+async function adjudicateCommitment(request:FastifyRequest<{Params:RaidParams;Body:AdjudicateBody}>,reply:FastifyReply){
+  const guildie=await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);if(!guildie)return reply.code(401).send({error:"Authentication required"});
+  if(typeof request.body?.signupRowId!=="string"||typeof request.body?.fulfilled!=="boolean")return reply.code(400).send({error:"Commitment adjudication is incomplete"});
+  try{await adjudicateRaidCommitment(guildie.guildieId,request.params.raidId,request.body.signupRowId,request.body.fulfilled);return{ok:true};}catch(error){return reply.code(raidActionStatusCode(error)).send({error:error instanceof Error?error.message:"Commitment could not be adjudicated"});}
+}
+async function concludeRaidOperation(request:FastifyRequest<{Params:RaidParams}>,reply:FastifyReply){
+  const guildie=await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);if(!guildie)return reply.code(401).send({error:"Authentication required"});
+  try{await concludeRaid(guildie.guildieId,request.params.raidId);return{ok:true};}catch(error){return reply.code(raidActionStatusCode(error)).send({error:error instanceof Error?error.message:"Raid could not be concluded"});}
+}
+
 export async function registerRaidOperationDetailPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get<{ Params: RaidParams }>("/activities/raid/:raidId/manage", async (request, reply) => renderRaidOrganizer(request, reply, assets));
   app.post<{ Params: RaidParams; Body: AssignBody }>("/activities/raid/:raidId/manage/assign", assignParticipant);
   app.post<{ Params: RaidParams; Body: UnassignBody }>("/activities/raid/:raidId/manage/unassign", unassignParticipant);
+  app.post<{ Params: RaidParams; Body: AdjudicateBody }>("/activities/raid/:raidId/manage/adjudicate", adjudicateCommitment);
+  app.post<{ Params: RaidParams }>("/activities/raid/:raidId/manage/conclude", concludeRaidOperation);
 }
