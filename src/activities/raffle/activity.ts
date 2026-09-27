@@ -3,7 +3,7 @@ import {
   registerActivity,
   type ActivityOccurrenceAttribute,
 } from "../../core/activity/registry.js";
-import { raffleFacts, raffleFactsForOperation } from "./queries.js";
+import { getRaffleClaim, raffleFacts, raffleFactsForOperation } from "./queries.js";
 import { RAFFLE_CAPABILITY_DEFINITIONS, RAFFLE_CLAIMS_CAPABILITY, RAFFLE_DRAW_CAPABILITY, RAFFLE_MODIFY_CAPABILITY, RAFFLE_STAGE_CAPABILITY } from "./permissions.js";
 
 async function raffleOccurrence(raffleId: string) {
@@ -70,6 +70,20 @@ export function registerRaffleActivityIntegration(): void {
       resolve: raffleOccurrence,
       async list() {
         return (await raffleFactsForOperation()).map((facts) => facts.raffle.raffleId);
+      },
+    },
+    participation: {
+      async project(activityId, procedureReference) {
+        const claim = await getRaffleClaim(procedureReference);
+        if (!claim || claim.raffleId !== activityId) return null;
+        return {
+          title: claim.character.name,
+          attributes: [
+            { key: "entries", label: "Entries requested", provenance: "declared", value: { kind: "number", value: claim.requestedEntryCount } },
+            { key: "gold", label: "Gold promised", provenance: "declared", value: { kind: "quantity", value: claim.promisedGoldValue, unit: "gold" } },
+            { key: "claim_state", label: "Claim", provenance: "derived", value: { kind: "text", value: claim.resolutionKind ?? "Pending" } },
+          ],
+        };
       },
     },
     interaction: {
