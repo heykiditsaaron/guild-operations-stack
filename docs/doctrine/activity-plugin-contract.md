@@ -112,9 +112,9 @@ For example, a plugin may declare that its procedure requires a guild Character 
 
 ## Participation
 
-Participation is an optional Activity capability. An Activity need not expose Participation.
+Participation is an optional systemic Activity observation: a party participated in an Activity occurrence. An Activity need not produce Participation observations.
 
-For a Participation Activity, the maximally expressed ceremony is:
+Participation is not itself procedure. A plugin owns whatever procedure gives it authority to establish that observation. One maximally expressed participation-related procedure is:
 
 ```text
 Terms → Offer → Conditions → Fulfillment → Adjudication → Participation
@@ -127,9 +127,9 @@ This is semantic structure, not six mandatory persisted states, objects, interac
 - **Conditions** define what must be true for the relevant participation to be considered fulfilled.
 - **Fulfillment** is the reality that may satisfy those Conditions.
 - **Adjudication** is successful procedure declaring whether the relevant fulfillment counts.
-- **Participation** is the resulting systemic fact recognized by Activity.
+- **Participation** is the resulting systemic observation recognized by Activity.
 
-An Activity plugin owns the procedural expression of this ceremony. Stages may be explicit, richly negotiated, mechanically evaluated, human-evaluated, inherent, or absent as separately expressed artifacts when the procedure does not require them.
+An Activity plugin owns this procedure and its expression. These stages are not an Activity-owned lifecycle or required ceremony. They may be explicit, richly negotiated, mechanically evaluated, human-evaluated, inherent, or absent as separately expressed artifacts when the procedure does not require them.
 
 Participation does not require conscious enrollment or negotiation. A procedure may discover fulfillment and adjudicate Participation for an actor who made no explicit Offer, such as an achievement- or activity-scoring procedure. An explicit Offer is therefore an optional ceremonial artifact, not a universal prerequisite for Participation.
 
@@ -137,9 +137,9 @@ Where an explicit Offer exists, the participant remains authoritative for that O
 
 Fulfillment and adjudication remain distinct. Reality may satisfy Conditions before an authorized operator or other procedurally authorized evaluator declares that it counts. Core machinery may provide authoritative observations used by the procedure, but those observations do not autonomously advance plugin procedure.
 
-Activity owns the resulting systemic Participation fact so consumers can use it without understanding Raid signup, Raffle claims, achievement scoring, or another plugin's procedure.
+Activity owns the resulting systemic Participation observation so consumers can use it without understanding Raid signup, Raffle claims, achievement scoring, or another plugin's procedure. Procedural references or Offers may be retained as provenance without becoming the meaning of Participation.
 
-> **Activity owns the ceremonial structure. Activity plugins own the procedural expression of that structure.**
+> **Procedure establishes why the observation is legitimate. Activity owns what the Participation observation means systemically.**
 
 ## Core capabilities and systemic consumers
 
