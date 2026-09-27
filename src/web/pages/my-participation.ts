@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME, authenticatedGuildie } from "../../auth.js";
-import { activityOccurrence, activityParticipationOffersForGuildie, activityParticipationsForGuildie } from "../../core/activity/registry.js";
+import { activityOccurrence, activityParticipationOffersForGuildie, activityParticipationProjection, activityParticipationsForGuildie } from "../../core/activity/registry.js";
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
@@ -11,6 +11,16 @@ function humanize(value: string): string {
     .filter(Boolean)
     .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
     .join(" ");
+}
+
+function projectionFacts(projection: Awaited<ReturnType<typeof activityParticipationProjection>>): string {
+  if (!projection) return "";
+  return `<div class="facts">${projection.attributes.map((attribute) => {
+    const value = attribute.value.kind === "quantity"
+      ? `${attribute.value.value} ${attribute.value.unit}`
+      : String(attribute.value.value);
+    return `<div class="fact"><span class="fact-label">${htmlText(attribute.label)}</span><strong class="fact-value">${htmlText(value)}</strong></div>`;
+  }).join("")}</div>`;
 }
 
 export async function registerMyParticipationPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
@@ -28,24 +38,34 @@ export async function registerMyParticipationPage(app: FastifyInstance, assets: 
     ]);
     const cards = await Promise.all([
       ...participations.map(async (reference) => {
-        const occurrence = await activityOccurrence(reference.activityKind, reference.activityId);
+        const [occurrence, projection] = await Promise.all([
+          activityOccurrence(reference.activityKind, reference.activityId),
+          activityParticipationProjection(reference.activityKind, reference.activityId, reference.procedureReference),
+        ]);
         return `
           <article class="activity-card">
             <div class="activity-card-header">
               <p class="eyebrow">${htmlText(humanize(reference.activityKind))} · Participation</p>
               <h2 class="activity-card-title">${htmlText(occurrence?.title ?? "Activity")}</h2>
+              ${projection ? `<p>${htmlText(projection.title)}</p>` : ""}
             </div>
+            ${projectionFacts(projection)}
             <a class="button-primary" href="${htmlText(reference.destination)}">View activity</a>
           </article>`;
       }),
       ...participationOffers.map(async (reference) => {
-        const occurrence = await activityOccurrence(reference.activityKind, reference.activityId);
+        const [occurrence, projection] = await Promise.all([
+          activityOccurrence(reference.activityKind, reference.activityId),
+          activityParticipationProjection(reference.activityKind, reference.activityId, reference.procedureReference),
+        ]);
         return `
           <article class="activity-card">
             <div class="activity-card-header">
               <p class="eyebrow">${htmlText(humanize(reference.activityKind))} · Participation offer</p>
               <h2 class="activity-card-title">${htmlText(occurrence?.title ?? "Activity")}</h2>
+              ${projection ? `<p>${htmlText(projection.title)}</p>` : ""}
             </div>
+            ${projectionFacts(projection)}
             <a class="button-primary" href="${htmlText(reference.destination)}">View activity</a>
           </article>`;
       }),
