@@ -3,7 +3,7 @@ import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../auth.js";
 import { GuildCapabilityDeniedError, guildieHasGuildCapabilityOrOperator } from "../../../core/authority/guild-permissions.js";
 import { RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILITY } from "../permissions.js";
 
-import { cancelRaid, modifyRaid, raidEventFacts, raidHasOccurred, raidOccurrenceDestinations } from "../application.js";
+import { cancelRaid, modifyRaid, raidEventFacts, raidOccurrenceDestinations } from "../application.js";
 import { RAID_DESCRIPTION_MAX_LENGTH, RAID_LABEL_MAX_LENGTH, type RaidDifficulty, type RaidEligibility, type RaidRequirement } from "../domain.js";
 import type { AssetRegistry } from "../../../web/assets.js";
 import { htmlText, renderOccurrenceOperations, renderPage } from "../../../web/render.js";
@@ -65,7 +65,7 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
     const basePath = operateDestination.href;
     const min = raid.requirements.find((requirement) => requirement.label === "Minimum item level")?.value ?? "";
     const enchants = raid.requirements.find((requirement) => requirement.label === "Enchants & gems")?.value ?? "";
-    const historical = raidHasOccurred(raid);
+    const historical = raid.concludedAtUnix !== null;
 
     const edit = canModify && !historical
       ? `<form class="raid-admin-form" data-raid-definition-form>
@@ -77,7 +77,7 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
           <fieldset><legend>Readiness requirements</legend><p>These expectations are presented to participants and are not mechanically checked.</p><label><span>Minimum item level <small>(optional)</small></span><input name="minimumItemLevel" type="number" min="1" step="1" value="${htmlText(min)}"></label><label><span>Enchants &amp; gems</span><select name="enchantsAndGems"><option value=""${selected(enchants, "")}>No stated requirement</option><option value="Required"${selected(enchants, "Required")}>Required</option><option value="Preferred"${selected(enchants, "Preferred")}>Preferred</option><option value="Not required"${selected(enchants, "Not required")}>Not required</option></select></label></fieldset>
           <button type="submit" class="button-primary">Save changes</button>
         </form>`
-      : `<section class="raid-admin-form"><p>${historical ? "This raid has occurred. Its definition is preserved as history." : "You can inspect this raid, but you cannot edit it."}</p><dl class="raid-admin-card-facts"><dt>Name</dt><dd>${htmlText(raid.label)}</dd><dt>Difficulty</dt><dd>${htmlText(difficultyLabel(raid.difficulty))}</dd><dt>Who can apply</dt><dd>${htmlText(eligibilityLabel(raid.eligibility))}</dd></dl></section>`;
+      : `<section class="raid-admin-form"><p>${historical ? "This raid is concluded. Its definition is preserved as history." : "You can inspect this raid, but you cannot edit it."}</p><dl class="raid-admin-card-facts"><dt>Name</dt><dd>${htmlText(raid.label)}</dd><dt>Difficulty</dt><dd>${htmlText(difficultyLabel(raid.difficulty))}</dd><dt>Who can apply</dt><dd>${htmlText(eligibilityLabel(raid.eligibility))}</dd></dl></section>`;
 
     const lifecycleActions = canStage && !historical
       ? `<button type="button" class="button-destructive" data-raid-cancel>Cancel raid</button>`
