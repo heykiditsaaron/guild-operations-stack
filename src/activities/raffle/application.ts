@@ -55,14 +55,18 @@ export async function establishRaffle(actorGuildieId: string, terms: RaffleTerms
 
 export async function modifyRaffle(actorGuildieId: string, raffleId: string, terms: RaffleTerms): Promise<Raffle> {
   await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_MODIFY_CAPABILITY);
+  const before = await getRaffle(raffleId);
+  if (!before) throw new Error(`Raffle ${raffleId} was not found`);
   const persisted = await withTransaction(async (client) => {
     const raffle = await modifyRaffleDomain(actorGuildieId, raffleId, terms, client);
     const publication = await publishEmission(client, { code: "raffle.modified", subject: raffle.raffleId });
-    const activityDeclaration = await publishActivityDeclaration(client, { kind: "temporal-relevance-changed", activityKind: "raffle", activityId: raffle.raffleId });
+    const activityDeclaration = raffle.drawingAtUnix !== before.drawingAtUnix
+      ? await publishActivityDeclaration(client, { kind: "temporal-relevance-changed", activityKind: "raffle", activityId: raffle.raffleId })
+      : null;
     return { raffle, publication, activityDeclaration };
   });
   await deliverEmission(persisted.publication);
-  await deliverEmission(persisted.activityDeclaration);
+  if (persisted.activityDeclaration) await deliverEmission(persisted.activityDeclaration);
   return persisted.raffle;
 }
 
@@ -123,8 +127,7 @@ export async function drawRaffle(actorGuildieId: string, raffleId: string): Prom
   const persisted = await withTransaction(async (client) => {
     const raffle = await drawRaffleDomain(actorGuildieId, raffleId, client);
     const publication = await publishEmission(client, { code: "raffle.concluded", subject: raffle.raffleId });
-    const activityDeclaration = await publishActivityDeclaration(client, { kind: "temporal-relevance-changed", activityKind: "raffle", activityId: raffle.raffleId });
-    return { raffle, publication, activityDeclaration };
+    return { raffle, publication };
   });
   const concluded = persisted.raffle;
   if (concluded.conclusion === "drawn" && !concluded.winningClaimId) {
@@ -137,7 +140,6 @@ export async function drawRaffle(actorGuildieId: string, raffleId: string): Prom
     });
   }
   await deliverEmission(persisted.publication);
-  await deliverEmission(persisted.activityDeclaration);
   return concluded;
 }
 
