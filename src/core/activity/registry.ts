@@ -67,6 +67,15 @@ export type ActivityParticipationOfferReference = {
   participationOfferId: string;
 };
 
+export type ActivityParticipationProjection = {
+  title: string;
+  attributes: readonly ActivityOccurrenceAttribute[];
+};
+
+export type ActivityParticipationCapability = {
+  project(procedureReference: string): Promise<ActivityParticipationProjection | null>;
+};
+
 export type ActivityInteractionCapability = {
   destination(kind: ActivityInteractionKind, activityId: string): string | null;
   availableTo?(kind: ActivityInteractionKind, activityId: string, guildieId: string | null): boolean | Promise<boolean>;
@@ -88,6 +97,7 @@ export type ActivityRegistration = {
   administration?: ActivityAdministration;
   occurrence?: ActivityOccurrenceCapability;
   interaction?: ActivityInteractionCapability;
+  participation?: ActivityParticipationCapability;
 };
 
 export type ActivityActivationGate = {
@@ -246,6 +256,15 @@ export async function activityTemporalProjection(
   };
 }
 
+
+export async function activityParticipationProjection(
+  activityKind: string,
+  procedureReference: string,
+): Promise<ActivityParticipationProjection | null> {
+  const activity = await activeActivity(requiredText(activityKind, "kind"));
+  if (!activity?.participation) return null;
+  return activity.participation.project(requiredText(procedureReference, "Participation procedure reference"));
+}
 
 export async function activityParticipationOffersForGuildie(
   guildieId: string,
