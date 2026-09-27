@@ -54,6 +54,7 @@ export type ActivityRenderAction = {
 
 export type ActivityOccurrenceCapability = {
   resolve(activityId: string): Promise<Omit<ActivityOccurrence, "activityKind" | "activityId"> | null>;
+  list?(): Promise<readonly string[]>;
 };
 
 export type ActivityTemporalCapability = {
@@ -179,6 +180,16 @@ export async function activityOccurrence(activityKind: string, activityId: strin
   if (!activity?.occurrence) return null;
   const occurrence = await activity.occurrence.resolve(id);
   return occurrence ? { activityKind: kind, activityId: id, ...occurrence } : null;
+}
+
+export async function activityOccurrences(activityKind: string): Promise<readonly ActivityOccurrence[]> {
+  const kind = requiredText(activityKind, "kind");
+  const activity = await activeActivity(kind);
+  if (!activity?.occurrence?.list) return [];
+
+  const ids = await activity.occurrence.list();
+  const occurrences = await Promise.all(ids.map((activityId) => activityOccurrence(kind, activityId)));
+  return occurrences.filter((occurrence): occurrence is ActivityOccurrence => occurrence !== null);
 }
 
 export async function activityOccurrenceRenderActions(
