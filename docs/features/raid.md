@@ -75,11 +75,13 @@ Assignment is planned Raid configuration. It does not establish systemic Partici
 
 Assignment remains mutable while the Raid is Active. Its authority comes from Raid procedure and the Raid assignment capability, not from whether the occurrence coordinate is before or after the current time.
 
-## Commitment adjudication and Participation
+## External occurrence, commitment adjudication, and Participation
 
-Raid operators adjudicate whether each surviving Raid commitment obligation was fulfilled.
+Raid is primarily preparatory procedure inside Guild Operations. Signup commitments and assignment organize a synchronized Raid whose meaningful participation occurs externally in World of Warcraft. Guild Operations does not observe that participation as it happens.
 
-Fulfillment and adjudication are distinct. Reality may satisfy a commitment before an authorized Raid operator declares that it counts.
+After the external occurrence, Raid operators reconcile what happened by adjudicating whether each surviving Raid commitment obligation was fulfilled. This closeout is retrospective evaluation of the external participation segment, not progressive in-system participation procedure.
+
+Fulfillment and adjudication are distinct. The external Raid may satisfy a commitment before an authorized Raid operator records that observation. Adjudications remain revisable while the Raid is Active; conclusion is the point at which the completed reconciliation is committed.
 
 Adjudication remains Raid-owned procedure. A fulfilled adjudication does not by itself establish systemic Participation; conclusion completes the Raid procedure.
 
@@ -90,11 +92,11 @@ Raid signup
     ↓
 Participation Offer
     ↓
-Raid commitment / assignment procedure
+Raid preparation / assignment
     ↓
-fulfillment in reality
+external synchronized Raid in World of Warcraft
     ↓
-Raid adjudication
+operator reconciliation / adjudication
     ↓
 Raid conclusion
     ↓
@@ -105,9 +107,11 @@ Participation means that Activity recognizes the party as having participated in
 
 ## Cancellation
 
-Cancellation is a terminal Raid declaration distinct from conclusion. It ends active Raid procedure and makes the occurrence a Record while preserving Raid-owned facts needed for history and reconciliation.
+Cancellation is a terminal Raid declaration distinct from conclusion. It ends active Raid procedure and makes the occurrence a systemic Record while preserving Raid-owned facts.
 
 Cancellation closes unresolved Participation Offers and removes the Raid's temporal relevance from Calendar projection. Activity does not interpret the Raid-specific reason those Offers ended. Cancellation does not erase the Raid identity or rewrite its prior procedure.
+
+A cancelled Raid is not ordinarily projected back to users as Raid history. Unlike conclusion, cancellation means the externally synchronized participation the Raid was preparing did not produce a meaningful Raid occurrence for Guild Operations to reconcile. The persisted Record exists for systemic truth; Raid procedure does not require a user-facing historical artifact merely because Activity retains that truth.
 
 ## Temporal projection
 
