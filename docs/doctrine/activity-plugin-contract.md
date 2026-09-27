@@ -63,6 +63,31 @@ Record is the same Activity identity after conclusion, not a copied occurrence o
 
 The plugin owns the criteria and concrete meaning of establishment and conclusion. Activity owns the systemic meaning of the resulting declarations.
 
+### Lifecycle is declaration-driven
+
+Activity lifecycle transitions are consequences of legitimate procedural declarations. They are not inferred from clocks, schedules, projections, or surrounding circumstances.
+
+Temporal values such as an occurrence time are **reference coordinates**. They may orient an Activity, order it, display it, or support projection into a Core capability such as Calendar. Crossing a temporal coordinate does not itself establish, advance, conclude, or otherwise change Activity lifecycle or plugin procedure.
+
+```text
+temporal coordinate
+    ├─ orientation
+    ├─ ordering
+    └─ projection
+
+legitimate plugin procedure
+    ↓
+Activity-significant declaration
+    ↓
+lifecycle or procedural consequence
+```
+
+Where procedure intentionally depends on time, the same authority boundary still applies. A plugin may define a cutoff or other temporal condition, and authorized machinery may observe that the condition has been satisfied, but the resulting procedural change occurs through a legitimate declaration rather than through the passage of time itself. The declaring actor may be a person or authorized automated machinery when the plugin procedure grants it that role.
+
+> **Coordinates are facts. Declarations cause transitions.**
+
+This distinction keeps temporal projection separate from procedural authority. Calendar may project where an Activity sits in time without becoming authoritative for what the Activity is allowed to do, and Core must not manufacture lifecycle from an Activity's temporal coordinates.
+
 ## Declarations and projections
 
 The Activity contract has complementary write and read directions.
