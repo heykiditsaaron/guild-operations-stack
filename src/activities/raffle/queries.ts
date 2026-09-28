@@ -99,24 +99,35 @@ export async function raffleClaimMetrics(raffleId: string): Promise<RaffleClaimM
 }
 async function raffleWinnerFacts(raffle: Raffle): Promise<RaffleWinnerFacts | null> {
   if (!raffle.winningClaimId) return null;
-  const result=await pool.query<{
-    claim_id:string; character_id:string; character_name:string; realm_id:string;
-    realm_name:string|null; realm_slug:string|null; avatar_url:string|null;
-  }>(
-    `SELECT rc.claim_id,c.character_id,COALESCE(grm.character_name,c.name) AS character_name,c.realm_id,
-       COALESCE(grm.realm_name,c.realm_name) AS realm_name,COALESCE(grm.realm_slug,c.realm_slug) AS realm_slug,profile.avatar_url
-       FROM raffle_claims rc
-       JOIN characters c ON c.character_record_id=rc.character_record_id
-       LEFT JOIN guild_roster_memberships grm ON grm.guild_id=$2 AND grm.region=c.region AND grm.realm_id=c.realm_id AND grm.character_id=c.character_id
-       LEFT JOIN wow_character_profiles profile ON profile.region=c.region AND profile.realm_id=c.realm_id AND profile.character_id=c.character_id
-       WHERE rc.claim_id=$1`,
-    [raffle.winningClaimId,raffle.guildId],
-  );
-  const row=result.rows[0];
-  if(!row) return null;
-  return {claimId:String(row.claim_id),character:{characterId:String(row.character_id),name:String(row.character_name),realmId:String(row.realm_id),realmName:nullableString(row.realm_name),realmSlug:nullableString(row.realm_slug)},avatarUrl:nullableString(row.avatar_url)};
+  const client=await pool.connect();
+  try {
+    const offers=await activityParticipationOffersForActivity(client,{
+      activityKind:"raffle",
+      activityId:raffle.raffleId,
+      procedureReferences:[raffle.winningClaimId],
+    });
+    const offer=offers[0];
+    const characterComponent=offer?.components.find((component)=>component.kind==="character")?.value;
+    if(!offer||Array.isArray(characterComponent)) return null;
+    const characterValue=characterComponent as ActivitySharedValue|undefined;
+    if(characterValue?.type!=="guild_character") return null;
+    const offeredCharacter=characterValue.value;
+    const recognizedCharacter=await characterByRecordId(offeredCharacter.characterRecordId);
+    return {
+      claimId:raffle.winningClaimId,
+      character:{
+        characterId:offeredCharacter.characterId,
+        name:recognizedCharacter?.name??offeredCharacter.name,
+        realmId:offeredCharacter.realmId,
+        realmName:recognizedCharacter?.realmName??null,
+        realmSlug:recognizedCharacter?.realmSlug??null,
+      },
+      avatarUrl:recognizedCharacter?.avatarUrl??null,
+    };
+  } finally {
+    client.release();
+  }
 }
-
 export async function raffleFacts(raffleId:string):Promise<RaffleFacts|null>{
   const raffle=await getRaffle(raffleId);
   if(!raffle) return null;
