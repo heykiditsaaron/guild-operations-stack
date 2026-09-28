@@ -3,7 +3,12 @@ import { pool } from "../../db.js";
 import { controlledGuildCharactersForGuildie } from "../identity/controlled-characters.js";
 import type { ActivitySharedValue } from "./registry.js";
 
-export type ActivityParticipationActor =\n  | { kind: "guildie"; reference: string }\n  | { kind: "external"; reference: string };\n\n/** @deprecated Use ActivityParticipationActor. */\nexport type ActivityParticipationParty = ActivityParticipationActor;
+export type ActivityParticipationActor =
+  | { kind: "guildie"; reference: string }
+  | { kind: "external"; reference: string };
+
+/** @deprecated Use ActivityParticipationActor. */
+export type ActivityParticipationParty = ActivityParticipationActor;
 
 export type ActivityParticipationComponent = {
   kind: string;
@@ -42,7 +47,9 @@ export type ActivityParticipationComponentRequest =
     }
   | { kind: string; type: "guild_character" };
 
-export type ActivityParticipationOfferContract = {\n  components: readonly ActivityParticipationComponentRequest[];\n};
+export type ActivityParticipationOfferContract = {
+  components: readonly ActivityParticipationComponentRequest[];
+};
 
 export class ActivityParticipationOfferError extends Error {
   readonly code: string;
