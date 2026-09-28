@@ -56,10 +56,11 @@ function isHappeningNow(occurrence: GuildCalendarOccursAt, nowUnix: number): boo
 }
 
 function renderAttributeValue(attribute: ActivityOccurrence["attributes"][number]): string {
-  if (attribute.value.kind === "quantity") {
-    return `${htmlText(attribute.value.value)} ${htmlText(attribute.value.unit)}`;
-  }
-  return htmlText(String(attribute.value.value));
+  const values = Array.isArray(attribute.value) ? attribute.value : [attribute.value];
+  return values.map((typed) => {
+    const rendered = htmlText(String(typed.value));
+    return "unit" in typed && typed.unit ? `${rendered} ${htmlText(typed.unit)}` : rendered;
+  }).join(", ");
 }
 
 function renderEventItem(item: CalendarOccurrence, _canOperate: boolean): string {
