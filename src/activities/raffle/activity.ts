@@ -12,33 +12,33 @@ async function raffleOccurrence(raffleId: string) {
   const raffle = facts.raffle;
 
   const attributes: ActivityOccurrenceAttribute[] = [
-    { key: "entry_price", label: "Entry price", provenance: "declared", value: { kind: "quantity", value: raffle.entryPriceGold, unit: "gold" } },
-    { key: "approved_entries", label: "Entries", provenance: "derived", value: { kind: "number", value: facts.metrics.approvedEntryCount } },
+    { kind: "entry_price", label: "Entry price", provenance: "declared", value: { type: "bigint", value: raffle.entryPriceGold, unit: "gold" } },
+    { kind: "approved_entries", label: "Entries", provenance: "derived", value: { type: "integer", value: facts.metrics.approvedEntryCount } },
   ];
 
   if (raffle.prizeKind === "gold" && raffle.winnerPercentage !== null) {
     attributes.push({
-      key: "prize",
+      kind: "prize",
       label: "Prize",
       provenance: "declared",
-      value: { kind: "text", value: `${raffle.winnerPercentage}% of pot` },
+      value: { type: "string", value: `${raffle.winnerPercentage}% of pot` },
     });
     const currentPrize = BigInt(raffle.entryPriceGold)
       * BigInt(facts.metrics.approvedEntryCount)
       * BigInt(raffle.winnerPercentage)
       / 100n;
     attributes.push({
-      key: "current_prize",
+      kind: "current_prize",
       label: "Current prize",
       provenance: "derived",
-      value: { kind: "quantity", value: currentPrize.toString(), unit: "gold" },
+      value: { type: "bigint", value: currentPrize.toString(), unit: "gold" },
     });
   } else if (raffle.prizeDescription) {
     attributes.push({
       key: "prize",
       label: "Prize",
       provenance: "declared",
-      value: { kind: "text", value: raffle.prizeDescription },
+      value: { type: "string", value: raffle.prizeDescription },
     });
   }
 
@@ -79,9 +79,9 @@ export function registerRaffleActivityIntegration(): void {
         return {
           title: claim.character.name,
           attributes: [
-            { key: "entries", label: "Entries requested", provenance: "declared", value: { kind: "number", value: claim.requestedEntryCount } },
-            { key: "gold", label: "Gold promised", provenance: "declared", value: { kind: "quantity", value: claim.promisedGoldValue, unit: "gold" } },
-            { key: "claim_state", label: "Claim", provenance: "derived", value: { kind: "text", value: claim.resolutionKind ?? "Pending" } },
+            { kind: "claim", label: "Entries requested", provenance: "declared", value: { type: "integer", value: claim.requestedEntryCount } },
+            { kind: "promised_gold", label: "Gold promised", provenance: "declared", value: { type: "bigint", value: claim.promisedGoldValue, unit: "gold" } },
+            { kind: "claim_state", label: "Claim", provenance: "derived", value: { type: "string", value: claim.resolutionKind ?? "Pending" } },
           ],
         };
       },
