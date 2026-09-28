@@ -7,7 +7,6 @@ export type ActivityParticipationActor =
   | { kind: "guildie"; reference: string }
   | { kind: "external"; reference: string };
 
-/** @deprecated Use ActivityParticipationActor. */
 export type ActivityParticipationParty = ActivityParticipationActor;
 
 export type ActivityParticipationComponent = {
@@ -30,7 +29,7 @@ export type ActivityParticipationOffer = {
 export type OfferActivityParticipationInput = {
   activityKind: string;
   activityId: string;
-  party: ActivityParticipationParty;
+  actor: ActivityParticipationActor;
   components?: readonly ActivityParticipationComponent[];
   procedureReference: string;
   offeredAtUnix?: number;
@@ -100,7 +99,7 @@ export async function offerActivityParticipation(
 ): Promise<ActivityParticipationOffer> {
   const activityKind = requiredText(input.activityKind, "Offer kind");
   const activityId = requiredText(input.activityId, "Offer activity id");
-  const partyReference = requiredText(input.party.reference, "Offer party reference");
+  const actorReference = requiredText(input.actor.reference, "Offer actor reference");
   const procedureReference = requiredText(input.procedureReference, "Offer procedure reference");
   const offeredAtUnix = input.offeredAtUnix ?? Math.floor(Date.now() / 1000);
   const components = input.components ?? [];
@@ -111,7 +110,7 @@ export async function offerActivityParticipation(
      ) VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7)
      ON CONFLICT (activity_kind, activity_id, procedure_reference) DO NOTHING
      RETURNING *`,
-    [activityKind, activityId, input.party.kind, partyReference, JSON.stringify(components), procedureReference, offeredAtUnix],
+    [activityKind, activityId, input.actor.kind, actorReference, JSON.stringify(components), procedureReference, offeredAtUnix],
   );
 
   if (inserted.rowCount) return mapParticipationOffer(inserted.rows[0]);
@@ -123,8 +122,8 @@ export async function offerActivityParticipation(
   );
   const offer = existing.rows[0];
   if (!offer) throw new Error("Activity Participation Offer could not be reloaded");
-  if (offer.party_kind !== input.party.kind || offer.party_reference !== partyReference) {
-    throw new Error("Activity Participation Offer procedure reference belongs to a different party");
+  if (offer.party_kind !== input.actor.kind || offer.party_reference !== actorReference) {
+    throw new Error("Activity Participation Offer procedure reference belongs to a different actor");
   }
   if (JSON.stringify(offer.components ?? []) !== JSON.stringify(components)) {
     throw new Error("Activity Participation Offer procedure reference belongs to different components");
@@ -164,13 +163,13 @@ function requireIntegerComponent(
 }
 
 async function constructParticipationComponent(
-  party: ActivityParticipationParty,
+  actor: ActivityParticipationActor,
   request: ActivityParticipationComponentRequest,
   raw: unknown,
 ): Promise<ActivityParticipationComponent> {
   if (request.type === "integer") return requireIntegerComponent(request, raw);
 
-  if (party.kind !== "guildie") {
+  if (actor.kind !== "guildie") {
     throw new ActivityParticipationOfferError("guild_character_requires_guildie", "A guild Character must be offered by a Guildie");
   }
   if (typeof raw !== "object" || raw === null) {
@@ -181,7 +180,7 @@ async function constructParticipationComponent(
     throw new ActivityParticipationOfferError("invalid_guild_character", `${request.kind} must identify a guild Character`);
   }
 
-  const character = (await controlledGuildCharactersForGuildie(party.reference))
+  const character = (await controlledGuildCharactersForGuildie(actor.reference))
     .find((item) => item.realmId === candidate.realmId && item.characterId === candidate.characterId);
   if (!character) {
     throw new ActivityParticipationOfferError(
@@ -211,7 +210,7 @@ export async function constructActivityParticipationOffer(
   input: {
     activityKind: string;
     activityId: string;
-    party: ActivityParticipationParty;
+    actor: ActivityParticipationActor;
     contract: ActivityParticipationOfferContract;
     components: Readonly<Record<string, unknown>>;
     procedureReference: string;
@@ -233,13 +232,13 @@ export async function constructActivityParticipationOffer(
     if (!Object.prototype.hasOwnProperty.call(input.components, request.kind)) {
       throw new ActivityParticipationOfferError("missing_component", `Participation Offer requires component ${request.kind}`);
     }
-    return constructParticipationComponent(input.party, request, input.components[request.kind]);
+    return constructParticipationComponent(input.actor, request, input.components[request.kind]);
   }));
 
   return offerActivityParticipation(client, {
     activityKind: input.activityKind,
     activityId: input.activityId,
-    party: input.party,
+    actor: input.actor,
     components,
     procedureReference: input.procedureReference,
     offeredAtUnix: input.offeredAtUnix,
@@ -331,7 +330,7 @@ export async function revokeActivityParticipationOffer(
   input: {
     activityKind: string;
     activityId: string;
-    party: ActivityParticipationParty;
+    actor: ActivityParticipationActor;
     procedureReference: string;
     revokedAtUnix?: number;
   },
@@ -354,13 +353,13 @@ export async function revokeActivityParticipationOffer(
     [
       requiredText(input.activityKind, "Offer kind"),
       requiredText(input.activityId, "Offer activity id"),
-      input.party.kind,
-      requiredText(input.party.reference, "Offer party reference"),
+      input.actor.kind,
+      requiredText(input.actor.reference, "Offer actor reference"),
       requiredText(input.procedureReference, "Offer procedure reference"),
       revokedAtUnix,
     ],
   );
-  if (!result.rowCount) throw new Error("Outstanding Activity Participation Offer was not found for party");
+  if (!result.rowCount) throw new Error("Outstanding Activity Participation Offer was not found for actor");
 }
 
 export async function closeActivityParticipationOffer(
