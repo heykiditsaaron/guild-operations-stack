@@ -158,17 +158,19 @@ export async function getRaffleClaim(claimId:string):Promise<RaffleClaimFacts|nu
     if(characterValue?.type!=="guild_character"||claimValue?.type!=="integer") return null;
     const offeredCharacter=characterValue.value;
     const recognizedCharacter=await characterByRecordId(offeredCharacter.characterRecordId);
-    const character=recognizedCharacter ?? offeredCharacter;
+    const characterName=recognizedCharacter?.name ?? offeredCharacter.name;
+    const realmName=recognizedCharacter?.realmName ?? null;
+    const realmSlug=recognizedCharacter?.realmSlug ?? null;
     const claim:RaffleClaim={
       claimId:String(row.claim_id),raffleId:String(row.raffle_id),claimantGuildieId:offer.actor.reference,
       characterRecordId:offeredCharacter.characterRecordId,characterId:offeredCharacter.characterId,realmId:offeredCharacter.realmId,
-      characterName:character.name,requestedEntryCount:claimValue.value,promisedGoldValue:String(row.promised_gold_value),
+      characterName,requestedEntryCount:claimValue.value,promisedGoldValue:String(row.promised_gold_value),
       createdAtUnix:Number(row.created_at_unix),resolutionKind:row.resolution_kind,approvedByGuildieId:nullableString(row.approved_by_guildie_id),
       approvedAtUnix:row.approved_at_unix===null?null:Number(row.approved_at_unix),deniedByGuildieId:nullableString(row.denied_by_guildie_id),
       deniedAtUnix:row.denied_at_unix===null?null:Number(row.denied_at_unix),denialReason:nullableString(row.denial_reason),
       revokedByGuildieId:nullableString(row.revoked_by_guildie_id),revokedAtUnix:row.revoked_at_unix===null?null:Number(row.revoked_at_unix),
     };
-    return {...claim,character:{characterId:offeredCharacter.characterId,name:character.name,realmId:offeredCharacter.realmId,realmName:character.realmName ?? null,realmSlug:character.realmSlug ?? null},resolutionAtUnix:resolutionAtUnix(claim),resolutionActorGuildieId:resolutionActorGuildieId(claim)};
+    return {...claim,character:{characterId:offeredCharacter.characterId,name:characterName,realmId:offeredCharacter.realmId,realmName,realmSlug},resolutionAtUnix:resolutionAtUnix(claim),resolutionActorGuildieId:resolutionActorGuildieId(claim)};
   } finally {
     client.release();
   }
