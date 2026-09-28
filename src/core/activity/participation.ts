@@ -198,6 +198,7 @@ async function constructParticipationComponent(
         region: character.region,
         realmId: character.realmId,
         characterId: character.characterId,
+        name: character.name,
       },
     },
   };
