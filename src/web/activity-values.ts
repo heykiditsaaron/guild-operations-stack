@@ -2,7 +2,9 @@ import type { ActivitySharedValue } from "../core/activity/registry.js";
 import { htmlText } from "./render.js";
 
 function renderActivitySharedValue(value: ActivitySharedValue): string {
-  const rendered = htmlText(String(value.value));
+  const rendered = value.type === "wow_spec"
+    ? htmlText(`${value.value.specName} ${value.value.className}`)
+    : htmlText(String(value.value));
   return "unit" in value && value.unit
     ? `${rendered} ${htmlText(value.unit)}`
     : rendered;
