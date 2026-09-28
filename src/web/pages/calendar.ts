@@ -6,6 +6,7 @@ import { discoverableGuildCalendarPoints, type GuildCalendarOccursAt, type Guild
 import { activityOccurrence, type ActivityOccurrence } from "../../core/activity/registry.js";
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage } from "../render.js";
+import { renderActivitySharedValues } from "../activity-values.js";
 import { viewerForRequest } from "../viewer.js";
 
 type CalendarOccurrence = {
@@ -55,14 +56,6 @@ function isHappeningNow(occurrence: GuildCalendarOccursAt, nowUnix: number): boo
   return start <= nowUnix && nowUnix <= end;
 }
 
-function renderAttributeValue(attribute: ActivityOccurrence["attributes"][number]): string {
-  const values = Array.isArray(attribute.value) ? attribute.value : [attribute.value];
-  return values.map((typed) => {
-    const rendered = htmlText(String(typed.value));
-    return "unit" in typed && typed.unit ? `${rendered} ${htmlText(typed.unit)}` : rendered;
-  }).join(", ");
-}
-
 function renderEventItem(item: CalendarOccurrence, _canOperate: boolean): string {
   const { occurrence, occursAt } = item;
   const title = htmlText(occurrence.title);
@@ -72,7 +65,7 @@ function renderEventItem(item: CalendarOccurrence, _canOperate: boolean): string
     : "";
   const attributes = occurrence.attributes.slice(0, 3);
   const facts = attributes.length
-    ? `<div class="facts">${attributes.map((attribute) => `<div class="fact"><span class="fact-label">${htmlText(attribute.label)}</span><strong class="fact-value">${renderAttributeValue(attribute)}</strong></div>`).join("")}</div>`
+    ? `<div class="facts">${attributes.map((attribute) => `<div class="fact"><span class="fact-label">${htmlText(attribute.label)}</span><strong class="fact-value">${renderActivitySharedValues(attribute.value)}</strong></div>`).join("")}</div>`
     : "";
 
   return `
