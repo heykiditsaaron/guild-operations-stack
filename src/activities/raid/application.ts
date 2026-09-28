@@ -174,7 +174,7 @@ export async function establishRaidSignup(input: EstablishRaidSignupInput): Prom
     await offerActivityParticipation(client, {
       activityKind: "raid",
       activityId: input.raidId,
-      party: { kind: input.applicantAnchor.kind, reference: input.applicantAnchor.value },
+      actor: { kind: input.applicantAnchor.kind, reference: input.applicantAnchor.value },
       procedureReference: signupRowId,
     });
 
@@ -212,7 +212,7 @@ export async function revokeRaidSignup(input: RevokeRaidSignupInput): Promise<vo
     await revokeActivityParticipationOffer(client, {
       activityKind: "raid",
       activityId: input.raidId,
-      party: { kind: input.applicantAnchor.kind, reference: input.applicantAnchor.value },
+      actor: { kind: input.applicantAnchor.kind, reference: input.applicantAnchor.value },
       procedureReference: input.signupRowId,
     });
     return publishEmission(client, { code: "raid.signup.revoked", subject: input.raidId });
