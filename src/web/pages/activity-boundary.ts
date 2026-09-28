@@ -4,6 +4,7 @@ import { activityOccurrence, activityOccurrenceRenderActions, activityOccurrence
 import { knownActivityPlugin } from "../../core/activity/plugin-control.js";
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage, renderPublicOccurrence } from "../render.js";
+import { renderActivitySharedValues } from "../activity-values.js";
 import { viewerForRequest } from "../viewer.js";
 
 function localTime(unixSeconds: number): string {
@@ -19,17 +20,6 @@ function occurrenceTime(occursAt: { start: number | null; end: number | null } |
       : `${localTime(occursAt.start)}<span aria-hidden="true"> → </span>${localTime(occursAt.end)}`;
   }
   return localTime(occursAt.start ?? occursAt.end!);
-}
-
-function sharedValue(value: Awaited<ReturnType<typeof activityOccurrence>> extends infer O ? O extends { attributes: readonly { value: infer V }[] } ? V extends readonly (infer S)[] ? S : V : never : never): string {
-  const typed = value as { type: string; value: string | number; unit?: string };
-  const rendered = htmlText(String(typed.value));
-  return typed.unit ? `${rendered} ${htmlText(typed.unit)}` : rendered;
-}
-
-function attributeValue(attribute: Awaited<ReturnType<typeof activityOccurrence>> extends infer O ? O extends { attributes: readonly (infer A)[] } ? A : never : never): string {
-  const value = (attribute as any).value;
-  return Array.isArray(value) ? value.map(sharedValue).join(", ") : sharedValue(value);
 }
 
 export async function registerActivityBoundaryRoutes(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
@@ -50,7 +40,7 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
     const time = occurrenceTime(occurrence.occursAt);
     const facts = [
       ...(time === null ? [] : [`<div class="fact"><span class="fact-label">When</span><strong class="fact-value">${time}</strong></div>`]),
-      ...occurrence.attributes.map((attribute) => `<div class="fact" data-activity-attribute="${htmlText(attribute.kind)}" data-provenance="${attribute.provenance}"><span class="fact-label">${htmlText(attribute.label)}</span><strong class="fact-value">${attributeValue(attribute)}</strong></div>`),
+      ...occurrence.attributes.map((attribute) => `<div class="fact" data-activity-attribute="${htmlText(attribute.kind)}" data-provenance="${attribute.provenance}"><span class="fact-label">${htmlText(attribute.label)}</span><strong class="fact-value">${renderActivitySharedValues(attribute.value)}</strong></div>`),
     ].join("");
 
     return reply
@@ -91,7 +81,7 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
       const time = occurrenceTime(occurrence.occursAt);
       const facts = [
         ...(time === null ? [] : [`<div class="fact"><span class="fact-label">When</span><strong class="fact-value">${time}</strong></div>`]),
-        ...occurrence.attributes.map((attribute) => `<div class="fact" data-activity-attribute="${htmlText(attribute.kind)}" data-provenance="${attribute.provenance}"><span class="fact-label">${htmlText(attribute.label)}</span><strong class="fact-value">${attributeValue(attribute)}</strong></div>`),
+        ...occurrence.attributes.map((attribute) => `<div class="fact" data-activity-attribute="${htmlText(attribute.kind)}" data-provenance="${attribute.provenance}"><span class="fact-label">${htmlText(attribute.label)}</span><strong class="fact-value">${renderActivitySharedValues(attribute.value)}</strong></div>`),
       ].join("");
       const actionLinks = actions.map((action) => `<a class="button-${action.kind}" href="${htmlText(action.href)}">${htmlText(action.label)}</a>`).join("");
       return `<article class="activity-card"><div class="activity-card-header"><h2 class="activity-card-title"><a href="/activities/${encodeURIComponent(occurrence.activityKind)}/${encodeURIComponent(occurrence.activityId)}">${htmlText(occurrence.title)}</a></h2><p class="status${occurrence.phase === "active" ? " status-active" : ""}">${occurrence.phase === "active" ? "Active" : "Record"}</p>${occurrence.description ? `<p>${htmlText(occurrence.description)}</p>` : ""}</div><div class="facts">${facts}</div>${actionLinks ? `<nav class="activity-card-actions" aria-label="${htmlText(occurrence.title)} actions">${actionLinks}</nav>` : ""}</article>`;
