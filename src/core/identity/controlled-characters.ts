@@ -3,6 +3,7 @@ import { pool } from "../../db.js";
 import { requireOperationalInstallationGuildBinding } from "../installation/guild-binding.js";
 
 export type ControlledCharacter = {
+  characterRecordId: string;
   guildieId: string;
   region: Region;
   realmId: string;
@@ -18,6 +19,7 @@ export type ControlledCharacter = {
 
 export async function controlledCharactersForGuildie(guildieId: string): Promise<ControlledCharacter[]> {
   const result = await pool.query<{
+    character_record_id: string;
     guildie_id: string;
     region: Region;
     realm_id: string;
@@ -31,6 +33,7 @@ export async function controlledCharactersForGuildie(guildieId: string): Promise
     avatar_url: string | null;
   }>(
     `SELECT
+       c.character_record_id,
        c.guildie_id,
        c.region,
        c.realm_id,
@@ -54,6 +57,7 @@ export async function controlledCharactersForGuildie(guildieId: string): Promise
   );
 
   return result.rows.map((row) => ({
+    characterRecordId: row.character_record_id,
     guildieId: row.guildie_id,
     region: row.region,
     realmId: row.realm_id,
@@ -72,6 +76,7 @@ export async function controlledCharactersForGuildie(guildieId: string): Promise
 export async function controlledGuildCharactersForGuildie(guildieId: string): Promise<ControlledCharacter[]> {
   const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
   const result = await pool.query<{
+    character_record_id: string;
     guildie_id: string;
     region: Region;
     realm_id: string;
@@ -85,6 +90,7 @@ export async function controlledGuildCharactersForGuildie(guildieId: string): Pr
     avatar_url: string | null;
   }>(
     `SELECT
+       c.character_record_id,
        c.guildie_id,
        c.region,
        c.realm_id,
@@ -114,6 +120,7 @@ export async function controlledGuildCharactersForGuildie(guildieId: string): Pr
   );
 
   return result.rows.map((row) => ({
+    characterRecordId: row.character_record_id,
     guildieId: row.guildie_id,
     region: row.region,
     realmId: row.realm_id,
