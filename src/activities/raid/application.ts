@@ -1,7 +1,8 @@
+import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import { controlledCharactersForGuildie, controlledGuildCharactersForGuildie } from "../../core/identity/controlled-characters.js";
-import { closeActivityParticipationOffer, closeOutstandingActivityParticipationOffers, establishActivityParticipation, offerActivityParticipation, revokeActivityParticipationOffer } from "../../core/activity/participation.js";
+import { closeActivityParticipationOffer, closeOutstandingActivityParticipationOffers, constructActivityParticipationOffer, establishActivityParticipation, revokeActivityParticipationOffer, type ActivityParticipationOfferContract } from "../../core/activity/participation.js";
 import { pool, withTransaction } from "../../db.js";
 import { deliverEmission, publishEmission } from "../../emissions/registry.js";
 import { publishActivityDeclaration } from "../../core/activity/declarations.js";
@@ -128,19 +129,51 @@ export async function cancelRaid(actorGuildieId:string,raidId:string):Promise<vo
   await deliverEmission(persisted.activityDeclaration);
 }
 
-async function assertApplicantEligible(raid:RaidEventFacts,guildieId:string|null):Promise<void>{if(raid.eligibility==="anyone")return;if(!guildieId)throw new Error("Raid eligibility requires a Guildie");if(!await effectiveGuildAuthority(guildieId,raid.guildId))throw new Error("Applicant is not a current Guildie");}
-async function participationClass(raid:RaidEventFacts,guildieId:string|null,input:EstablishRaidSignupInput):Promise<{className:string;character:{region:string;realmId:string;characterId:string}|null}>{if("declaredClass" in input.participationKey){if(raid.eligibility!=="anyone")throw new Error("Declared-class rows are only valid for anyone eligibility");const className=input.participationKey.declaredClass.trim();if(!className)throw new Error("Declared class is required");return{className,character:null};}if(!guildieId)throw new Error("Character rows require a resolved Guildie");const coordinate=input.participationKey.character;const characters=raid.eligibility==="guild_character_member"?await controlledGuildCharactersForGuildie(guildieId):await controlledCharactersForGuildie(guildieId);const character=characters.find(c=>c.region===coordinate.region&&c.realmId===coordinate.realmId&&c.characterId===coordinate.characterId);if(!character)throw new Error(raid.eligibility==="guild_character_member"?"Character is not a current Guild Character controlled by the applicant":"Character is not currently controlled by the applicant");if(!character.className)throw new Error("Character class facts are not available");return{className:character.className,character:{region:character.region,realmId:character.realmId,characterId:character.characterId}};}
+function raidSignupOfferContract(raid: RaidEventFacts, actor: RaidApplicantAnchor): ActivityParticipationOfferContract {
+  const identityPool = actor.kind === "external"
+    ? "declared"
+    : raid.eligibility === "guild_character_member"
+      ? "controlled_guild_character"
+      : "controlled_character";
+  return {
+    ...(raid.eligibility === "anyone" ? {} : { actorConstraint: { kind: "guildie" as const, currentGuildieIn: raid.guildId } }),
+    components: [{ kind: "specs", type: "wow_spec", multiple: true, identityPool }],
+  };
+}
+
 export async function establishRaidSignup(input: EstablishRaidSignupInput): Promise<string> {
   const raid = await raidEventFacts(input.raidId);
   if (!raid) throw new Error("Raid not found");
   requireActiveRaid(raid);
-  const gid = await resolveApplicantGuildie(input.applicantAnchor);
-  await assertApplicantEligible(raid, gid);
-  const participation = await participationClass(raid, gid, input);
-  const specs = normalizedStrings(input.willingSpecs);
-  const roles = rolesForParticipationSpecs(participation.className, specs);
+  if (input.applicantAnchor.kind === "external" && raid.eligibility !== "anyone") {
+    throw new Error("External applicants are only valid for anyone eligibility");
+  }
 
   const persisted = await withTransaction(async (client) => {
+    const signupRowId = randomUUID();
+    const rawSpecs = "declaredClass" in input.participationKey
+      ? { className: input.participationKey.declaredClass, specs: input.willingSpecs }
+      : { character: input.participationKey.character, specs: input.willingSpecs };
+    const offer = await constructActivityParticipationOffer(client, {
+      activityKind: "raid",
+      activityId: input.raidId,
+      actor: { kind: input.applicantAnchor.kind, reference: input.applicantAnchor.value },
+      contract: raidSignupOfferContract(raid, input.applicantAnchor),
+      components: { specs: rawSpecs },
+      procedureReference: signupRowId,
+    });
+    const specComponent = offer.components.find((component) => component.kind === "specs");
+    if (!Array.isArray(specComponent?.value) || !specComponent.value.length || specComponent.value.some((value) => value.type !== "wow_spec")) {
+      throw new Error("Constructed Raid Participation Offer does not satisfy its declared contract");
+    }
+    const specs = specComponent.value.map((value) => {
+      if (value.type !== "wow_spec") throw new Error("Constructed Raid Participation Offer contains an invalid specialization");
+      return value.value.specName;
+    });
+    const className = specComponent.value[0].type === "wow_spec" ? specComponent.value[0].value.className : "";
+    const roles = rolesForParticipationSpecs(className, specs);
+    const gid = input.applicantAnchor.kind === "guildie" ? input.applicantAnchor.value : null;
+
     const applicant = await client.query<{ applicant_id: string }>(
       `INSERT INTO raid_applicants (raid_id,anchor_kind,anchor_value,resolved_guildie_id)
        VALUES ($1,$2,$3,$4)
@@ -150,36 +183,29 @@ export async function establishRaidSignup(input: EstablishRaidSignupInput): Prom
       [input.raidId, input.applicantAnchor.kind, input.applicantAnchor.value, gid],
     );
     const applicantId = applicant.rows[0].applicant_id;
-    const signup = participation.character
+    const participation = "declaredClass" in input.participationKey ? null : input.participationKey.character;
+    const signup = participation
       ? await client.query<{ signup_row_id: string }>(
-          `INSERT INTO raid_signup_rows (raid_id,applicant_id,character_region,character_realm_id,character_id,declared_class,willing_specs,willing_roles)
-           VALUES ($1,$2,$3,$4,$5,NULL,$6,$7)
+          `INSERT INTO raid_signup_rows (signup_row_id,raid_id,applicant_id,character_region,character_realm_id,character_id,declared_class,willing_specs,willing_roles)
+           VALUES ($1,$2,$3,$4,$5,$6,NULL,$7,$8)
            ON CONFLICT (raid_id,applicant_id,character_region,character_realm_id,character_id)
              WHERE withdrawn_at_unix IS NULL AND character_id IS NOT NULL
            DO UPDATE SET willing_specs=EXCLUDED.willing_specs,willing_roles=EXCLUDED.willing_roles,updated_at_unix=extract(epoch FROM now())::bigint
            RETURNING signup_row_id`,
-          [input.raidId, applicantId, participation.character.region, participation.character.realmId, participation.character.characterId, specs, roles],
+          [signupRowId, input.raidId, applicantId, participation.region, participation.realmId, participation.characterId, specs, roles],
         )
       : await client.query<{ signup_row_id: string }>(
-          `INSERT INTO raid_signup_rows (raid_id,applicant_id,character_region,character_realm_id,character_id,declared_class,willing_specs,willing_roles)
-           VALUES ($1,$2,NULL,NULL,NULL,$3,$4,$5)
+          `INSERT INTO raid_signup_rows (signup_row_id,raid_id,applicant_id,character_region,character_realm_id,character_id,declared_class,willing_specs,willing_roles)
+           VALUES ($1,$2,$3,NULL,NULL,NULL,$4,$5,$6)
            ON CONFLICT (raid_id,applicant_id,declared_class)
              WHERE withdrawn_at_unix IS NULL AND declared_class IS NOT NULL
            DO UPDATE SET willing_specs=EXCLUDED.willing_specs,willing_roles=EXCLUDED.willing_roles,updated_at_unix=extract(epoch FROM now())::bigint
            RETURNING signup_row_id`,
-          [input.raidId, applicantId, participation.className, specs, roles],
+          [signupRowId, input.raidId, applicantId, className, specs, roles],
         );
-    const signupRowId = signup.rows[0].signup_row_id;
-
-    await offerActivityParticipation(client, {
-      activityKind: "raid",
-      activityId: input.raidId,
-      actor: { kind: input.applicantAnchor.kind, reference: input.applicantAnchor.value },
-      procedureReference: signupRowId,
-    });
 
     const publication = await publishEmission(client, { code: "raid.signup.established", subject: input.raidId });
-    return { signupRowId, publication };
+    return { signupRowId: signup.rows[0].signup_row_id, publication };
   });
   await deliverEmission(persisted.publication);
   return persisted.signupRowId;
