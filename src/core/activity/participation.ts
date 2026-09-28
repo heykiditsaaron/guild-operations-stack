@@ -520,6 +520,26 @@ export async function activityParticipationOfferByProcedureReference(
   return result.rows[0] ? mapParticipationOffer(result.rows[0]) : null;
 }
 
+export async function activityParticipationOffersForActivity(
+  client: PoolClient,
+  input: { activityKind: string; activityId: string; procedureReferences?: readonly string[] },
+): Promise<ActivityParticipationOffer[]> {
+  const activityKind = requiredText(input.activityKind, "Offer kind");
+  const activityId = requiredText(input.activityId, "Offer activity id");
+  const procedureReferences = input.procedureReferences?.map((reference) => requiredText(reference, "Offer procedure reference"));
+  if (procedureReferences && procedureReferences.length === 0) return [];
+  const result = await client.query<any>(
+    `SELECT *
+       FROM activity_participation_offers
+      WHERE activity_kind=$1
+        AND activity_id=$2
+        ${procedureReferences ? "AND procedure_reference = ANY($3::text[])" : ""}
+      ORDER BY offered_at_unix ASC, participation_offer_id ASC`,
+    procedureReferences ? [activityKind, activityId, procedureReferences] : [activityKind, activityId],
+  );
+  return result.rows.map(mapParticipationOffer);
+}
+
 export async function activityParticipationOffersForGuildie(guildieId: string): Promise<ActivityParticipationOffer[]> {
   const result = await pool.query<any>(
     `SELECT offer.*
