@@ -324,7 +324,6 @@ export async function cancelRaffle(actorGuildieId: string, raffleId: string, cli
 }
 
 const raffleClaimOfferContract: ActivityParticipationOfferContract = {
-  actor: { type: "guildie" },
   components: [
     { kind: "character", type: "guild_character" },
     { kind: "claim", type: "integer", greaterThan: 0 },
