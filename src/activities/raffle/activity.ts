@@ -35,7 +35,7 @@ async function raffleOccurrence(raffleId: string) {
     });
   } else if (raffle.prizeDescription) {
     attributes.push({
-      key: "prize",
+      kind: "prize",
       label: "Prize",
       provenance: "declared",
       value: { type: "string", value: raffle.prizeDescription },
