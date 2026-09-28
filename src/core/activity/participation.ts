@@ -1,6 +1,8 @@
 import type { PoolClient } from "pg";
 import { pool } from "../../db.js";
-import { controlledGuildCharactersForGuildie } from "../identity/controlled-characters.js";
+import { controlledCharactersForGuildie, controlledGuildCharactersForGuildie } from "../identity/controlled-characters.js";
+import { effectiveGuildAuthority } from "../authority/guild-permissions.js";
+import { specsForClass } from "../../wow-traits/registry.js";
 import type { ActivitySharedValue } from "./registry.js";
 
 export type ActivityParticipationActor =
@@ -11,7 +13,7 @@ export type ActivityParticipationParty = ActivityParticipationActor;
 
 export type ActivityParticipationComponent = {
   kind: string;
-  value: ActivitySharedValue;
+  value: ActivitySharedValue | readonly ActivitySharedValue[];
 };
 
 export type ActivityParticipationOffer = {
@@ -44,9 +46,21 @@ export type ActivityParticipationComponentRequest =
       lessThan?: number;
       lessThanOrEqual?: number;
     }
-  | { kind: string; type: "guild_character" };
+  | { kind: string; type: "guild_character" }
+  | {
+      kind: string;
+      type: "wow_spec";
+      multiple: true;
+      identityPool: "controlled_character" | "controlled_guild_character" | "declared";
+    };
+
+export type ActivityParticipationActorConstraint =
+  | { kind: "guildie"; currentGuildieIn: string };
+
+
 
 export type ActivityParticipationOfferContract = {
+  actorConstraint?: ActivityParticipationActorConstraint;
   components: readonly ActivityParticipationComponentRequest[];
 };
 
@@ -162,12 +176,77 @@ function requireIntegerComponent(
   return { kind: componentKind(request.kind), value: { type: "integer", value } };
 }
 
+function normalizedTexts(values: unknown, field: string): string[] {
+  if (!Array.isArray(values)) throw new ActivityParticipationOfferError("invalid_wow_spec", `${field} must be an array`);
+  const normalized = [...new Set(values.map((value) => typeof value === "string" ? value.trim() : "").filter(Boolean))];
+  if (!normalized.length) throw new ActivityParticipationOfferError("invalid_wow_spec", `${field} requires at least one specialization`);
+  return normalized;
+}
+
+async function requireWowSpecComponents(
+  actor: ActivityParticipationActor,
+  request: Extract<ActivityParticipationComponentRequest, { type: "wow_spec" }>,
+  raw: unknown,
+): Promise<ActivityParticipationComponent> {
+  if (typeof raw !== "object" || raw === null) {
+    throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.kind} must identify specialization choices`);
+  }
+  const candidate = raw as {
+    specs?: unknown;
+    character?: { region?: unknown; realmId?: unknown; characterId?: unknown };
+    className?: unknown;
+  };
+  const specs = normalizedTexts(candidate.specs, request.kind);
+  let className: string;
+
+  if (request.identityPool === "declared") {
+    if (typeof candidate.className !== "string" || !candidate.className.trim()) {
+      throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.kind} requires a class`);
+    }
+    className = candidate.className.trim();
+  } else {
+    if (actor.kind !== "guildie") {
+      throw new ActivityParticipationOfferError("wow_spec_requires_guildie", `${request.kind} must resolve through a Guildie`);
+    }
+    const coordinate = candidate.character;
+    if (!coordinate || typeof coordinate.region !== "string" || typeof coordinate.realmId !== "string" || typeof coordinate.characterId !== "string") {
+      throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.kind} must identify a controlled Character`);
+    }
+    const characters = request.identityPool === "controlled_guild_character"
+      ? await controlledGuildCharactersForGuildie(actor.reference)
+      : await controlledCharactersForGuildie(actor.reference);
+    const character = characters.find((item) =>
+      item.region === coordinate.region && item.realmId === coordinate.realmId && item.characterId === coordinate.characterId
+    );
+    if (!character) {
+      throw new ActivityParticipationOfferError(
+        "wow_spec_identity_unavailable",
+        request.identityPool === "controlled_guild_character"
+          ? `${request.kind} must resolve through a currently controlled Character on the current guild roster`
+          : `${request.kind} must resolve through a currently controlled Character`,
+        403,
+      );
+    }
+    if (!character.className) throw new ActivityParticipationOfferError("wow_spec_class_unavailable", "Character class facts are not available");
+    className = character.className;
+  }
+
+  const canonicalSpecs = specsForClass(className);
+  const values = specs.map((specName) => {
+    const canonical = canonicalSpecs.find((item) => item.toLocaleLowerCase("en-US") === specName.toLocaleLowerCase("en-US"));
+    if (!canonical) throw new ActivityParticipationOfferError("invalid_wow_spec", `Unknown class/specialization combination: ${className} / ${specName}`);
+    return { type: "wow_spec" as const, value: { className, specName: canonical } };
+  });
+  return { kind: componentKind(request.kind), value: values };
+}
+
 async function constructParticipationComponent(
   actor: ActivityParticipationActor,
   request: ActivityParticipationComponentRequest,
   raw: unknown,
 ): Promise<ActivityParticipationComponent> {
   if (request.type === "integer") return requireIntegerComponent(request, raw);
+  if (request.type === "wow_spec") return requireWowSpecComponents(actor, request, raw);
 
   if (actor.kind !== "guildie") {
     throw new ActivityParticipationOfferError("guild_character_requires_guildie", "A guild Character must be offered by a Guildie");
@@ -217,6 +296,16 @@ export async function constructActivityParticipationOffer(
     offeredAtUnix?: number;
   },
 ): Promise<ActivityParticipationOffer> {
+  const actorConstraint = input.contract.actorConstraint;
+  if (actorConstraint) {
+    if (input.actor.kind !== actorConstraint.kind) {
+      throw new ActivityParticipationOfferError("actor_ineligible", "Participation Offer actor does not satisfy the procedure", 403);
+    }
+    if (actorConstraint.kind === "guildie" && !await effectiveGuildAuthority(input.actor.reference, actorConstraint.currentGuildieIn)) {
+      throw new ActivityParticipationOfferError("actor_ineligible", "Participation Offer actor is not a current Guildie", 403);
+    }
+  }
+
   const requests = input.contract.components;
   const kinds = requests.map((request) => componentKind(request.kind));
   if (new Set(kinds).size !== kinds.length) {
