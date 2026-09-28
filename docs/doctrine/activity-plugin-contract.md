@@ -24,6 +24,86 @@ Concrete pressure earns framework capability. Reuse and multiple consumers are s
 
 The framework standardizes authority and interoperability where Guild Operations requires them; it does not standardize away the procedural character that makes Activity plugins distinct.
 
+
+### Language, ceremony, and bidirectional composition
+
+The objective of the Activity framework is to establish the **language, ceremony, and procedure** through which Core and Activity plugins can discuss and accomplish the shape of an Activity.
+
+This boundary is deliberately bidirectional. Activity plugins and Core are not opaque parties exchanging generic data. Both are parts of Guild Operations. They may understand Guild Operations concepts, understand what those concepts mean, and understand which domain has authority to establish, classify, resolve, or operate them.
+
+The framework therefore does more than carry plugin output toward Core. It also lets plugin procedure ask Guild Operations for systemically understood values and capabilities.
+
+A procedural component composes two dimensions:
+
+- a **procedural kind**, whose meaning belongs to the plugin procedure; and
+- a **shared type**, whose meaning is understood in Guild Operations language and whose authoritative construction, classification, or translation belongs to the appropriate systemic domain.
+
+Conceptually:
+
+```text
+procedural kind        shared type
+      │                    │
+      └──── component ─────┘
+                │
+        ┌───────┴───────┐
+        │               │
+ plugin procedure   systemic capability
+```
+
+For example, a Raid procedure may require a value whose procedural meaning is willingness and whose shared type is `wow_spec`. Raid owns what willingness means to Raid. Guild Operations understands what a WoW specialization is and may have multiple legitimate ways to obtain, resolve, validate, or represent one.
+
+This composition works in both directions.
+
+When plugin procedure **requires** a typed value, the shared type is the question Core is being asked and the resolved value of that same type is the answer. The plugin need not prescribe how Core obtains it.
+
+```text
+plugin: willingness(? wow_spec)
+                    ↓
+Core obtains / resolves / constructs
+                    ↓
+plugin: willingness(! wow_spec(...))
+```
+
+When plugin procedure **provides** a typed value for systemic use, Core may use its understanding of that same type to represent or otherwise apply it without learning the plugin's procedural meaning.
+
+```text
+plugin: requirement(! wow_role(healer))
+                    ↓
+Core understands wow_role
+                    ↓
+Core chooses systemic representation
+```
+
+The procedural kind preserves why the value matters to the plugin. The shared type preserves what the value is to Guild Operations. Neither dimension transfers authority over the other.
+
+> **Shared types describe what values are. Plugin-owned kinds describe what those values mean to a procedure.**
+
+> **Components compose procedural meaning and systemic capability across the same boundary.**
+
+The shared type contract describes semantic need, not acquisition or presentation mechanics. A request for `wow_spec` does not inherently request a selector, resolver callback, form control, Discord interaction, or any other producer-specific mechanism. Core may satisfy the same semantic request through different legitimate mechanisms while returning the same systemically understood type.
+
+Likewise, a plugin projecting a `wow_spec`, `guildie`, or other shared type does not prescribe HTML, CSS, layout, or client behavior. Core may use the value through the capabilities for which Guild Operations has earned understanding.
+
+This bidirectionality is a defining property of the Activity framework. A one-way framework in which plugins merely emit generic data for a host to interpret would discard the fact that both sides speak Guild Operations language and understand its authority boundaries. Conversely, allowing plugins to prescribe Core's acquisition or representation machinery would transfer systemic authority in the other direction.
+
+The framework instead provides a shared semantic meeting point:
+
+```text
+                    Guild Operations language
+
+plugin procedure  ←──── shared concepts ────→  Core capability
+      │                                           │
+owns procedural meaning                 owns systemic authority
+      │                                           │
+      └──────────── Activity framework ───────────┘
+```
+
+This is intentionally **the Guild Operations Activity framework**, not an attempt to discover a universal Activity or plugin model. Its language may contain Guild Operations-native concepts and translated World of Warcraft concepts because those are real meanings the product understands.
+
+Examples of Guild Operations-native shared concepts include Guildie and guild Character. Examples of World of Warcraft concepts translated into Guild Operations language include `wow_class`, `wow_spec`, and `wow_role`. Ordinary value types such as string, boolean, and integer quantities may participate alongside them. Their presence in shared language does not imply identical ownership; the framework preserves where each meaning originates and who may authoritatively establish it.
+
+New vocabulary and ceremony are earned by concrete Guild Operations requirements. The framework should not acquire generic schema machinery merely to accommodate hypothetical plugin concepts. When a real Activity procedure cannot faithfully compose its meaning from the language and capabilities Guild Operations already understands, that pressure is evidence for considering an extension to **this** framework.
+
 ## Procedure, declaration, consequence
 
 An Activity plugin owns the procedure through which its occurrences are established, evolve, admit or discover participation, and conclude.
