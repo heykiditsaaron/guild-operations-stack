@@ -3,6 +3,7 @@ import { SESSION_COOKIE_NAME, authenticatedGuildie } from "../../auth.js";
 import { activityOccurrence, activityParticipationOffersForGuildie, activityParticipationProjection, activityParticipationsForGuildie } from "../../core/activity/registry.js";
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage } from "../render.js";
+import { renderActivitySharedValues } from "../activity-values.js";
 import { viewerForRequest } from "../viewer.js";
 
 function humanize(value: string): string {
@@ -16,12 +17,8 @@ function humanize(value: string): string {
 function projectionFacts(projection: Awaited<ReturnType<typeof activityParticipationProjection>>): string {
   if (!projection) return "";
   return `<div class="facts">${projection.attributes.map((attribute) => {
-    const values = Array.isArray(attribute.value) ? attribute.value : [attribute.value];
-    const value = values.map((typed) => {
-      const rendered = String(typed.value);
-      return "unit" in typed && typed.unit ? `${rendered} ${typed.unit}` : rendered;
-    }).join(", ");
-    return `<div class="fact"><span class="fact-label">${htmlText(attribute.label)}</span><strong class="fact-value">${htmlText(value)}</strong></div>`;
+    const value = renderActivitySharedValues(attribute.value);
+    return `<div class="fact"><span class="fact-label">${htmlText(attribute.label)}</span><strong class="fact-value">${value}</strong></div>`;
   }).join("")}</div>`;
 }
 
