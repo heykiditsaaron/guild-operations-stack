@@ -378,16 +378,11 @@ export async function establishRaffleClaim(claimantGuildieId: string, raffleId: 
       ],
     );
 
-    const characterName = (await client.query<{ name: string }>(
-      "SELECT name FROM characters WHERE character_record_id=$1",
-      [character.characterRecordId],
-    )).rows[0]?.name ?? character.characterId;
-
     return mapClaim({
       ...insert.rows[0] as Record<string, unknown>,
       character_id: character.characterId,
       realm_id: character.realmId,
-      character_name: characterName,
+      character_name: character.name,
     });
   });
 }
