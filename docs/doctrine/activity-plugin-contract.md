@@ -8,6 +8,22 @@ The governing boundary is:
 
 > **Core machinery owns capability. Activity owns translation. Activity plugin procedure owns meaning.**
 
+## The Activity framework
+
+Activity is a Guild Operations framework, not a single abstraction or a general-purpose plugin framework. Its purpose is to let concrete Activity plugins express and operate their procedure as first-class Guild Operations activities while keeping semantic authority explicit.
+
+The framework may provide different mechanisms for different kinds of communication across the Core/plugin boundary. Those mechanisms may include ordinary typed application APIs, Core-owned resources, shared semantic vocabulary, declarations, projections, capability requests, interactions, semantic presentation shapes, or purpose-built seams earned by a concrete procedure. They do not need artificial uniformity merely because they cross the same boundary.
+
+Use the mechanism that fits the meaning being communicated. An ordinary resource or operation does not become more correct by being disguised as Activity-specific machinery. Likewise, a plugin-specific procedural concept does not need to be generalized before Guild Operations may support its legitimate expression.
+
+> **Use shared machinery where meaning is shared. Permit bespoke expression where meaning is bespoke. Keep authority explicit in both cases.**
+
+The framework is intentionally specific to Guild Operations and its Activity plugins. It may therefore understand Guild Operations and World of Warcraft concepts deeply where doing so serves the product. It does not need to satisfy the abstractions of an imagined general plugin ecosystem.
+
+Concrete pressure earns framework capability. Reuse and multiple consumers are strong evidence for generalization, but uniqueness is not evidence against support. A capability required by one real Activity plugin may belong in the framework when Guild Operations is the appropriate authority to provide it. Conversely, a capability should not be generalized merely because another hypothetical plugin might someday use it.
+
+The framework standardizes authority and interoperability where Guild Operations requires them; it does not standardize away the procedural character that makes Activity plugins distinct.
+
 ## Procedure, declaration, consequence
 
 An Activity plugin owns the procedure through which its occurrences are established, evolve, admit or discover participation, and conclude.
@@ -202,6 +218,12 @@ Examples include:
 - Core-rendered interactions and occurrence presentation.
 
 The plugin does not render Guild Operations. It declares what its procedure requires or permits and projects Activity-relevant truth. Activity translates those meanings into Core capabilities; Core owns their representation.
+
+Core rendering authority does not require plugins to flatten unique procedure into generic presentation. An Activity plugin may communicate the semantic shape it expects represented without prescribing HTML, CSS, client behavior, or another concrete rendering implementation. A Raid assignment workspace, for example, may legitimately require a richer procedural shape than an ordinary collection of records even though Core remains responsible for how that shape is rendered.
+
+Core ownership of rendering therefore creates a corresponding framework responsibility: Activity must provide enough expressive machinery for concrete plugin procedure to be represented faithfully without transferring rendering authority to the plugin.
+
+> **A plugin may own the semantic shape of its procedure without owning its rendering.**
 
 A systemic consumer must not require knowledge of a concrete Activity plugin. Calendar should not need to understand Raid or Raffle. My Participation should not need to know which plugin procedure established Participation.
 
