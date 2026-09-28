@@ -300,9 +300,14 @@ export async function concludeRaid(actorGuildieId:string,raidId:string):Promise<
   await requireGuildCapabilityOrOperator(actorGuildieId,RAID_STAGE_CAPABILITY);
   const persisted=await withTransaction(async client=>{
     const raid=await raidEventFacts(raidId,client);if(!raid)throw new Error("Raid not found");requireActiveRaid(raid);
-    const commitments=await client.query<any>(`SELECT rr.signup_row_id,ra.anchor_kind,ra.anchor_value,apo.participation_offer_id,rca.fulfilled FROM raid_signup_rows rr JOIN raid_applicants ra ON ra.applicant_id=rr.applicant_id LEFT JOIN raid_signup_denials rsd ON rsd.raid_id=rr.raid_id AND rsd.signup_row_id=rr.signup_row_id LEFT JOIN raid_commitment_adjudications rca ON rca.raid_id=rr.raid_id AND rca.signup_row_id=rr.signup_row_id LEFT JOIN activity_participation_offers apo ON apo.activity_kind='raid' AND apo.activity_id=rr.raid_id AND apo.procedure_reference=rr.signup_row_id WHERE rr.raid_id=$1 AND rr.withdrawn_at_unix IS NULL AND rsd.signup_row_id IS NULL FOR UPDATE OF rr`,[raidId]);
+    const commitments=await client.query<any>(`SELECT rr.signup_row_id,rca.fulfilled FROM raid_signup_rows rr LEFT JOIN raid_signup_denials rsd ON rsd.raid_id=rr.raid_id AND rsd.signup_row_id=rr.signup_row_id LEFT JOIN raid_commitment_adjudications rca ON rca.raid_id=rr.raid_id AND rca.signup_row_id=rr.signup_row_id WHERE rr.raid_id=$1 AND rr.withdrawn_at_unix IS NULL AND rsd.signup_row_id IS NULL FOR UPDATE OF rr`,[raidId]);
     const unresolved=commitments.rows.filter((row:any)=>row.fulfilled===null);if(unresolved.length)throw new Error("Every active Raid commitment must be adjudicated before conclusion");
-    for(const row of commitments.rows){if(row.fulfilled){await establishActivityParticipation(client,{activityKind:"raid",activityId:raidId,party:{kind:row.anchor_kind,reference:row.anchor_value},procedureReference:row.signup_row_id,participationOfferId:row.participation_offer_id});}else{await closeActivityParticipationOffer(client,{activityKind:"raid",activityId:raidId,procedureReference:row.signup_row_id});}}
+    for(const row of commitments.rows){
+      const offer=await activityParticipationOfferByProcedureReference(client,{activityKind:"raid",activityId:raidId,procedureReference:row.signup_row_id});
+      if(!offer)throw new Error("Raid commitment Participation Offer not found");
+      if(row.fulfilled){await establishActivityParticipation(client,{activityKind:"raid",activityId:raidId,party:offer.actor,procedureReference:row.signup_row_id,participationOfferId:offer.participationOfferId});}
+      else{await closeActivityParticipationOffer(client,{activityKind:"raid",activityId:raidId,procedureReference:row.signup_row_id});}
+    }
     await client.query(`UPDATE raid_events SET concluded_at_unix=extract(epoch FROM now())::bigint,concluded_by_guildie_id=$2,updated_at_unix=extract(epoch FROM now())::bigint WHERE raid_id=$1`,[raidId,actorGuildieId]);
     return publishEmission(client,{code:"raid.concluded",subject:raidId});
   });
