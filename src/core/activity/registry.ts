@@ -23,7 +23,7 @@ export type ActivitySharedValue =
   | { type: "guildie"; value: string }
   | { type: "guild_character"; value: { characterRecordId: string; region: string; realmId: string; characterId: string; name: string } }
   | { type: "wow_class"; value: string }
-  | { type: "wow_spec"; value: string }
+  | { type: "wow_spec"; value: { className: string; specName: string } }
   | { type: "wow_role"; value: "tank" | "healer" | "damage" };
 
 export type ActivityOccurrenceAttribute = {
