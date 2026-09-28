@@ -503,6 +503,23 @@ export async function closeOutstandingActivityParticipationOffers(
   );
   return result.rowCount ?? 0;
 }
+export async function activityParticipationOfferByProcedureReference(
+  client: PoolClient,
+  input: { activityKind: string; activityId: string; procedureReference: string },
+): Promise<ActivityParticipationOffer | null> {
+  const result = await client.query<any>(
+    `SELECT *
+       FROM activity_participation_offers
+      WHERE activity_kind=$1 AND activity_id=$2 AND procedure_reference=$3`,
+    [
+      requiredText(input.activityKind, "Offer kind"),
+      requiredText(input.activityId, "Offer activity id"),
+      requiredText(input.procedureReference, "Offer procedure reference"),
+    ],
+  );
+  return result.rows[0] ? mapParticipationOffer(result.rows[0]) : null;
+}
+
 export async function activityParticipationOffersForGuildie(guildieId: string): Promise<ActivityParticipationOffer[]> {
   const result = await pool.query<any>(
     `SELECT offer.*
