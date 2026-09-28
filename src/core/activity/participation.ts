@@ -3,9 +3,7 @@ import { pool } from "../../db.js";
 import { controlledGuildCharactersForGuildie } from "../identity/controlled-characters.js";
 import type { ActivitySharedValue } from "./registry.js";
 
-export type ActivityParticipationParty =
-  | { kind: "guildie"; reference: string }
-  | { kind: "external"; reference: string };
+export type ActivityParticipationActor =\n  | { kind: "guildie"; reference: string }\n  | { kind: "external"; reference: string };\n\n/** @deprecated Use ActivityParticipationActor. */\nexport type ActivityParticipationParty = ActivityParticipationActor;
 
 export type ActivityParticipationComponent = {
   kind: string;
@@ -16,7 +14,7 @@ export type ActivityParticipationOffer = {
   participationOfferId: string;
   activityKind: string;
   activityId: string;
-  party: ActivityParticipationParty;
+  actor: ActivityParticipationActor;
   components: readonly ActivityParticipationComponent[];
   procedureReference: string;
   offeredAtUnix: number;
@@ -44,10 +42,7 @@ export type ActivityParticipationComponentRequest =
     }
   | { kind: string; type: "guild_character" };
 
-export type ActivityParticipationOfferContract = {
-  actor: { type: "guildie" };
-  components: readonly ActivityParticipationComponentRequest[];
-};
+export type ActivityParticipationOfferContract = {\n  components: readonly ActivityParticipationComponentRequest[];\n};
 
 export class ActivityParticipationOfferError extends Error {
   readonly code: string;
@@ -83,7 +78,7 @@ function mapParticipationOffer(row: {
     participationOfferId: row.participation_offer_id,
     activityKind: row.activity_kind,
     activityId: row.activity_id,
-    party: { kind: row.party_kind, reference: row.party_reference },
+    actor: { kind: row.party_kind, reference: row.party_reference },
     components: Array.isArray(row.components) ? row.components as ActivityParticipationComponent[] : [],
     procedureReference: row.procedure_reference,
     offeredAtUnix: Number(row.offered_at_unix),
@@ -216,10 +211,6 @@ export async function constructActivityParticipationOffer(
     offeredAtUnix?: number;
   },
 ): Promise<ActivityParticipationOffer> {
-  if (input.contract.actor.type !== "guildie" || input.party.kind !== "guildie") {
-    throw new ActivityParticipationOfferError("invalid_actor", "Participation Offer requires a Guildie actor", 403);
-  }
-
   const requests = input.contract.components;
   const kinds = requests.map((request) => componentKind(request.kind));
   if (new Set(kinds).size !== kinds.length) {
