@@ -33,21 +33,21 @@ async function raidOccurrence(raidId: string) {
   ]);
 
   const attributes: ActivityOccurrenceAttribute[] = [
-    { key: "difficulty", label: "Difficulty", provenance: "declared", value: { kind: "text", value: difficultyLabel(raid.difficulty) } },
-    { key: "eligibility", label: "Who can apply", provenance: "declared", value: { kind: "text", value: eligibilityLabel(raid.eligibility) } },
+    { kind: "difficulty", label: "Difficulty", provenance: "declared", value: { type: "string", value: difficultyLabel(raid.difficulty) } },
+    { kind: "eligibility", label: "Who can apply", provenance: "declared", value: { type: "string", value: eligibilityLabel(raid.eligibility) } },
     ...raid.requirements.map((requirement) => ({
-      key: "requirement",
+      kind: "requirement",
       label: requirement.label,
       provenance: "declared" as const,
-      value: { kind: "text" as const, value: requirement.value },
+      value: { type: "string" as const, value: requirement.value },
     })),
-    { key: "signed_up", label: "Signed up", provenance: "derived", value: { kind: "number", value: participation.signedUp } },
-    { key: "assigned", label: "Assigned", provenance: "derived", value: { kind: "number", value: roster.assigned } },
-    { key: "tanks", label: "Tanks", provenance: "derived", value: { kind: "number", value: roster.tanks } },
-    { key: "healers", label: "Healers", provenance: "derived", value: { kind: "number", value: roster.healers } },
-    { key: "damage", label: "Damage", provenance: "derived", value: { kind: "number", value: roster.damage } },
-    { key: "melee", label: "Melee", provenance: "derived", value: { kind: "number", value: roster.melee } },
-    { key: "ranged", label: "Ranged", provenance: "derived", value: { kind: "number", value: roster.ranged } },
+    { kind: "signed_up", label: "Signed up", provenance: "derived", value: { type: "integer", value: participation.signedUp } },
+    { kind: "assigned", label: "Assigned", provenance: "derived", value: { type: "integer", value: roster.assigned } },
+    { kind: "tanks", label: "Tanks", provenance: "derived", value: { type: "integer", value: roster.tanks } },
+    { kind: "healers", label: "Healers", provenance: "derived", value: { type: "integer", value: roster.healers } },
+    { kind: "damage", label: "Damage", provenance: "derived", value: { type: "integer", value: roster.damage } },
+    { kind: "melee", label: "Melee", provenance: "derived", value: { type: "integer", value: roster.melee } },
+    { kind: "ranged", label: "Ranged", provenance: "derived", value: { type: "integer", value: roster.ranged } },
   ];
 
   return {
@@ -91,10 +91,11 @@ export function registerRaidActivityIntegration(): void {
         return {
           title: signup.characterName ?? signup.className,
           attributes: [
-            { key: "class", label: "Class", provenance: "declared", value: { kind: "text", value: signup.className } },
-            { key: "willing_specs", label: "Willing to play", provenance: "declared", value: { kind: "text", value: signup.willingSpecs.join(", ") } },
+            { kind: "class", label: "Class", provenance: "declared", value: { type: "wow_class", value: signup.className } },
+            { kind: "willingness", label: "Willing to play", provenance: "declared", value: signup.willingSpecs.map((spec) => ({ type: "wow_spec" as const, value: spec })) },
             ...(signup.assignmentId === null ? [] : [
-              { key: "assignment", label: "Assigned", provenance: "derived" as const, value: { kind: "text" as const, value: [signup.selectedSpec, signup.selectedRole].filter(Boolean).join(" · ") } },
+              ...(signup.selectedSpec ? [{ kind: "assigned_spec", label: "Assigned spec", provenance: "derived" as const, value: { type: "wow_spec" as const, value: signup.selectedSpec } }] : []),
+              ...(signup.selectedRole ? [{ kind: "assigned_role", label: "Assigned role", provenance: "derived" as const, value: { type: "wow_role" as const, value: signup.selectedRole } }] : []),
             ]),
           ],
         };
