@@ -353,12 +353,19 @@ export async function establishRaffleClaim(claimantGuildieId: string, raffleId: 
 
     const characterComponent = offer.components.find((component) => component.kind === "character");
     const claimComponent = offer.components.find((component) => component.kind === "claim");
-    if (characterComponent?.value.type !== "guild_character" || claimComponent?.value.type !== "integer") {
+    const characterValue = characterComponent?.value;
+    const claimValue = claimComponent?.value;
+    if (
+      Array.isArray(characterValue)
+      || Array.isArray(claimValue)
+      || characterValue?.type !== "guild_character"
+      || claimValue?.type !== "integer"
+    ) {
       throw new Error("Constructed Raffle Participation Offer does not satisfy its declared contract");
     }
 
-    const character = characterComponent.value.value;
-    const entryCount = claimComponent.value.value;
+    const character = characterValue.value;
+    const entryCount = claimValue.value;
     const promisedGoldValue = BigInt(String(raffleRow.entry_price_gold)) * BigInt(entryCount);
     const insert = await client.query(
       `INSERT INTO raffle_claims (
