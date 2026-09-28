@@ -219,16 +219,27 @@ export async function revokeRaidSignup(input: RevokeRaidSignupInput): Promise<vo
     const row = await client.query<{ signup_row_id: string }>(
       `SELECT rr.signup_row_id
          FROM raid_signup_rows rr
-         JOIN raid_applicants ra ON ra.applicant_id=rr.applicant_id
         WHERE rr.raid_id=$1
           AND rr.signup_row_id=$2
-          AND ra.anchor_kind=$3
-          AND ra.anchor_value=$4
           AND rr.withdrawn_at_unix IS NULL
         FOR UPDATE OF rr`,
-      [input.raidId, input.signupRowId, input.applicantAnchor.kind, input.applicantAnchor.value],
+      [input.raidId, input.signupRowId],
     );
     if (!row.rowCount) throw new Error("Active Raid signup not found for applicant");
+    const offer = await activityParticipationOfferByProcedureReference(client, {
+      activityKind: "raid",
+      activityId: input.raidId,
+      procedureReference: input.signupRowId,
+    });
+    if (
+      !offer
+      || offer.revokedAtUnix !== null
+      || offer.closedAtUnix !== null
+      || offer.actor.kind !== input.applicantAnchor.kind
+      || offer.actor.reference !== input.applicantAnchor.value
+    ) {
+      throw new Error("Active Raid signup not found for applicant");
+    }
 
     await client.query("DELETE FROM raid_assignments WHERE raid_id=$1 AND signup_row_id=$2", [input.raidId, input.signupRowId]);
     await client.query(
