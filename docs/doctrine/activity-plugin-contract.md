@@ -145,7 +145,28 @@ A plugin may understand and compose concepts such as Guildie, Character, guild C
 
 The provider of a systemic primitive owns what that primitive means and how it is resolved. The plugin owns why its procedure requires it.
 
-For example, a plugin may declare that its procedure requires a guild Character without reimplementing the identity and roster machinery that determines whether a Character qualifies. Core resolves the classification; the plugin decides whether that classification matters.
+This shared language is not an opaque interchange vocabulary. Core and Activity plugins may understand the same systemic concepts. Authority determines who may establish or classify a fact, not who may understand or use it.
+
+Core owns the authoritative construction and classification of the systemic concepts it provides. An Activity plugin may request those concepts, receive them in their systemic form, understand their meaning, and compose them into plugin-owned procedure without learning or reproducing the Core machinery that established them.
+
+Conceptually, the framework relationship is:
+
+```text
+plugin
+  "Give my procedure these things."
+        ↓
+Core
+  "I know what those things are,
+   and I have authority to construct them."
+        ↓
+plugin
+  "I know what they mean,
+   and I know what my procedure does with them."
+```
+
+For example, a plugin may declare that its procedure requires a guild Character without reimplementing the identity and roster machinery that determines whether a Character qualifies. Core resolves the classification and provides the systemic concept; the plugin understands that concept and decides what requiring it means to its procedure.
+
+> **The framework shares language without sharing authority.**
 
 > **Shared vocabulary does not imply shared motivation.**
 
