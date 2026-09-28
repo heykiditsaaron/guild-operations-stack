@@ -16,16 +16,19 @@ export type ActivityTemporalProjection = {
   occursAt: ActivityCalendarCoordinate | null;
 };
 
-export type ActivityAttributeValue =
-  | { kind: "text"; value: string }
-  | { kind: "number"; value: number }
-  | { kind: "quantity"; value: string; unit: string };
+export type ActivitySharedValue =
+  | { type: "string"; value: string }
+  | { type: "integer"; value: number }
+  | { type: "bigint"; value: string; unit?: string }
+  | { type: "wow_class"; value: string }
+  | { type: "wow_spec"; value: string }
+  | { type: "wow_role"; value: "tank" | "healer" | "damage" };
 
 export type ActivityOccurrenceAttribute = {
-  key: string;
+  kind: string;
   label: string;
   provenance: "declared" | "derived";
-  value: ActivityAttributeValue;
+  value: ActivitySharedValue | readonly ActivitySharedValue[];
 };
 
 export type ActivityInteractionKind = "participate" | "operate";
