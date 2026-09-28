@@ -173,7 +173,7 @@ Systemic truth is not inferred from circumstances merely because Core can observ
 
 > Procedure produces declarations. Activity translates declarations into systemic consequences.
 
-Shared abstractions should be introduced only after multiple real procedures demonstrate the need. Raid and Raffle are paired pressure tests: their different procedure is evidence for preserving plugin authority, while the meanings they genuinely share have earned Activity ownership.
+Shared abstractions are earned by concrete product pressure, not hypothetical extensibility. Multiple real consumers are strong evidence that a meaning should be generalized, but they are not a prerequisite for framework support: one concrete Activity plugin may earn a Core or Activity capability when supporting its legitimate expression belongs within Guild Operations' authority. Raid and Raffle remain paired pressure tests: their different procedure is evidence for preserving plugin authority, while the meanings they genuinely share have earned Activity ownership.
 
 The current Activity boundary is governed by [Activity Plugin Contract](activity-plugin-contract.md). Calendar is Core and remains a consumer of Activity temporal projection rather than a consumer of Raid or Raffle. Participation is an optional systemic Activity observation rather than a generic plugin procedure or lifecycle.
 
