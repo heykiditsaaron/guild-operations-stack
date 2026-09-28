@@ -2,6 +2,7 @@ import type { ActivitySharedValue } from "../../core/activity/registry.js";
 import { randomInt, randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import {
+  activityParticipationOfferByProcedureReference,
   closeActivityParticipationOffer,
   closeOutstandingActivityParticipationOffers,
   constructActivityParticipationOffer,
@@ -397,7 +398,14 @@ export async function establishRaffleClaim(claimantGuildieId: string, raffleId: 
 export async function revokeRaffleClaim(claimantGuildieId: string, claimId: string): Promise<void> {
   await withTransaction(async (client) => {
     const claim = await lockedClaim(client, claimId);
-    if (claim.claimant_guildie_id !== claimantGuildieId) throw new RaffleRuleError("claim_not_owned", "A member may only revoke their own Raffle claim", 403);
+    const offer = await activityParticipationOfferByProcedureReference(client, {
+      activityKind: "raffle",
+      activityId: String(claim.raffle_id),
+      procedureReference: claimId,
+    });
+    if (!offer || offer.actor.kind !== "guildie" || offer.actor.reference !== claimantGuildieId) {
+      throw new RaffleRuleError("claim_not_owned", "A member may only revoke their own Raffle claim", 403);
+    }
     if (claim.raffle_conclusion !== null) throw new RaffleRuleError("raffle_concluded", "Claims cannot be revoked after the Raffle concludes");
     if (claim.resolution_kind !== null) throw new RaffleRuleError("claim_already_resolved", "Only an unresolved claim can be revoked");
 
@@ -423,17 +431,18 @@ export async function approveRaffleClaim(actorGuildieId:string, claimId:string):
     if(claim.resolution_kind!==null) throw new RaffleRuleError("claim_already_resolved","Only an unresolved claim can be approved");
     const approvedAtUnix=unixNow();
     await client.query("UPDATE raffle_claims SET resolution_kind='approved', approved_by_guildie_id=$2, approved_at_unix=$3 WHERE claim_id=$1",[claimId,actorGuildieId,approvedAtUnix]);
-    const offer=await client.query<{participation_offer_id:string}>(
-      "SELECT participation_offer_id FROM activity_participation_offers WHERE activity_kind='raffle' AND activity_id=$1 AND procedure_reference=$2",
-      [String(claim.raffle_id),claimId],
-    );
-    if(!offer.rowCount) throw new Error("Raffle claim Participation Offer was not found");
+    const offer=await activityParticipationOfferByProcedureReference(client,{
+      activityKind:"raffle",
+      activityId:String(claim.raffle_id),
+      procedureReference:claimId,
+    });
+    if(!offer) throw new Error("Raffle claim Participation Offer was not found");
     await establishActivityParticipation(client,{
       activityKind:"raffle",
       activityId:String(claim.raffle_id),
-      party:{kind:"guildie",reference:String(claim.claimant_guildie_id)},
+      party:offer.actor,
       procedureReference:claimId,
-      participationOfferId:offer.rows[0].participation_offer_id,
+      participationOfferId:offer.participationOfferId,
       establishedAtUnix:approvedAtUnix,
     });
   });
