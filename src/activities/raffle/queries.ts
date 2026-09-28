@@ -126,36 +126,50 @@ export async function raffleFacts(raffleId:string):Promise<RaffleFacts|null>{
 export async function getRaffleClaim(claimId:string):Promise<RaffleClaimFacts|null>{
   const guildId=(await requireOperationalInstallationGuildBinding()).guildId;
   const result=await pool.query<{
-    claim_id:string;raffle_id:string;claimant_guildie_id:string;character_record_id:string;character_id:string;character_name:string;
-    realm_id:string;realm_name:string|null;realm_slug:string|null;requested_entry_count:number;promised_gold_value:string;created_at_unix:string;
+    claim_id:string;raffle_id:string;promised_gold_value:string;created_at_unix:string;
     resolution_kind:RaffleClaimResolution;approved_by_guildie_id:string|null;approved_at_unix:string|null;denied_by_guildie_id:string|null;
     denied_at_unix:string|null;denial_reason:string|null;revoked_by_guildie_id:string|null;revoked_at_unix:string|null;
   }>(
-    `SELECT rc.claim_id,rc.raffle_id,rc.claimant_guildie_id,rc.character_record_id,c.character_id,
-       COALESCE(grm.character_name,c.name) AS character_name,c.realm_id,COALESCE(grm.realm_name,c.realm_name) AS realm_name,
-       COALESCE(grm.realm_slug,c.realm_slug) AS realm_slug,rc.requested_entry_count,rc.promised_gold_value,rc.created_at_unix,
+    `SELECT rc.claim_id,rc.raffle_id,rc.promised_gold_value,rc.created_at_unix,
        rc.resolution_kind,rc.approved_by_guildie_id,rc.approved_at_unix,rc.denied_by_guildie_id,rc.denied_at_unix,
        rc.denial_reason,rc.revoked_by_guildie_id,rc.revoked_at_unix
        FROM raffle_claims rc JOIN raffles r ON r.raffle_id=rc.raffle_id AND r.guild_id=$2
-       JOIN characters c ON c.character_record_id=rc.character_record_id
-       LEFT JOIN guild_roster_memberships grm ON grm.guild_id=r.guild_id AND grm.region=c.region AND grm.realm_id=c.realm_id AND grm.character_id=c.character_id
        WHERE rc.claim_id=$1`,
     [claimId,guildId],
   );
   const row=result.rows[0];
   if(!row) return null;
-  const claim:RaffleClaim={
-    claimId:String(row.claim_id),raffleId:String(row.raffle_id),claimantGuildieId:String(row.claimant_guildie_id),
-    characterRecordId:String(row.character_record_id),characterId:String(row.character_id),realmId:String(row.realm_id),
-    characterName:String(row.character_name),requestedEntryCount:Number(row.requested_entry_count),promisedGoldValue:String(row.promised_gold_value),
-    createdAtUnix:Number(row.created_at_unix),resolutionKind:row.resolution_kind,approvedByGuildieId:nullableString(row.approved_by_guildie_id),
-    approvedAtUnix:row.approved_at_unix===null?null:Number(row.approved_at_unix),deniedByGuildieId:nullableString(row.denied_by_guildie_id),
-    deniedAtUnix:row.denied_at_unix===null?null:Number(row.denied_at_unix),denialReason:nullableString(row.denial_reason),
-    revokedByGuildieId:nullableString(row.revoked_by_guildie_id),revokedAtUnix:row.revoked_at_unix===null?null:Number(row.revoked_at_unix),
-  };
-  return {...claim,character:{characterId:claim.characterId,name:claim.characterName,realmId:claim.realmId,realmName:nullableString(row.realm_name),realmSlug:nullableString(row.realm_slug)},resolutionAtUnix:resolutionAtUnix(claim),resolutionActorGuildieId:resolutionActorGuildieId(claim)};
-}
 
+  const client=await pool.connect();
+  try {
+    const offers=await activityParticipationOffersForActivity(client,{
+      activityKind:"raffle",
+      activityId:String(row.raffle_id),
+      procedureReferences:[claimId],
+    });
+    const offer=offers[0];
+    if(!offer || offer.actor.kind!=="guildie") return null;
+    const characterComponent=offer.components.find((component)=>component.kind==="character")?.value;
+    const claimComponent=offer.components.find((component)=>component.kind==="claim")?.value;
+    if(Array.isArray(characterComponent)||Array.isArray(claimComponent)) return null;
+    const characterValue=characterComponent as ActivitySharedValue|undefined;
+    const claimValue=claimComponent as ActivitySharedValue|undefined;
+    if(characterValue?.type!=="guild_character"||claimValue?.type!=="integer") return null;
+    const character=characterValue.value;
+    const claim:RaffleClaim={
+      claimId:String(row.claim_id),raffleId:String(row.raffle_id),claimantGuildieId:offer.actor.reference,
+      characterRecordId:character.characterRecordId,characterId:character.characterId,realmId:character.realmId,
+      characterName:character.name,requestedEntryCount:claimValue.value,promisedGoldValue:String(row.promised_gold_value),
+      createdAtUnix:Number(row.created_at_unix),resolutionKind:row.resolution_kind,approvedByGuildieId:nullableString(row.approved_by_guildie_id),
+      approvedAtUnix:row.approved_at_unix===null?null:Number(row.approved_at_unix),deniedByGuildieId:nullableString(row.denied_by_guildie_id),
+      deniedAtUnix:row.denied_at_unix===null?null:Number(row.denied_at_unix),denialReason:nullableString(row.denial_reason),
+      revokedByGuildieId:nullableString(row.revoked_by_guildie_id),revokedAtUnix:row.revoked_at_unix===null?null:Number(row.revoked_at_unix),
+    };
+    return {...claim,character:{characterId:character.characterId,name:character.name,realmId:character.realmId,realmName:null,realmSlug:null},resolutionAtUnix:resolutionAtUnix(claim),resolutionActorGuildieId:resolutionActorGuildieId(claim)};
+  } finally {
+    client.release();
+  }
+}
 async function claimFactsForIds(ids:string[]):Promise<RaffleClaimFacts[]>{
   const claims=await Promise.all(ids.map(getRaffleClaim));
   return claims.filter((claim):claim is RaffleClaimFacts=>claim!==null);
