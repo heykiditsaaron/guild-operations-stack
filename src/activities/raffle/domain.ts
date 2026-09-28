@@ -341,7 +341,7 @@ export async function establishRaffleClaim(claimantGuildieId: string, raffleId: 
     const offer = await constructActivityParticipationOffer(client, {
       activityKind: "raffle",
       activityId: raffleId,
-      party: { kind: "guildie", reference: claimantGuildieId },
+      actor: { kind: "guildie", reference: claimantGuildieId },
       contract: raffleClaimOfferContract,
       components: {
         character: { realmId, characterId },
@@ -401,7 +401,7 @@ export async function revokeRaffleClaim(claimantGuildieId: string, claimId: stri
     await revokeActivityParticipationOffer(client, {
       activityKind: "raffle",
       activityId: String(claim.raffle_id),
-      party: { kind: "guildie", reference: claimantGuildieId },
+      actor: { kind: "guildie", reference: claimantGuildieId },
       procedureReference: claimId,
       revokedAtUnix,
     });
