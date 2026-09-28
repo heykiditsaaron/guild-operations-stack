@@ -16,9 +16,11 @@ function humanize(value: string): string {
 function projectionFacts(projection: Awaited<ReturnType<typeof activityParticipationProjection>>): string {
   if (!projection) return "";
   return `<div class="facts">${projection.attributes.map((attribute) => {
-    const value = attribute.value.kind === "quantity"
-      ? `${attribute.value.value} ${attribute.value.unit}`
-      : String(attribute.value.value);
+    const values = Array.isArray(attribute.value) ? attribute.value : [attribute.value];
+    const value = values.map((typed) => {
+      const rendered = String(typed.value);
+      return "unit" in typed && typed.unit ? `${rendered} ${typed.unit}` : rendered;
+    }).join(", ");
     return `<div class="fact"><span class="fact-label">${htmlText(attribute.label)}</span><strong class="fact-value">${htmlText(value)}</strong></div>`;
   }).join("")}</div>`;
 }
