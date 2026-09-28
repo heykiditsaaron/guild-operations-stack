@@ -477,10 +477,25 @@ export async function drawRaffle(actorGuildieId:string, raffleId:string, client:
     const pending=await transactionClient.query<{count:string}>("SELECT count(*)::text AS count FROM raffle_claims WHERE raffle_id=$1 AND resolution_kind IS NULL",[raffleId]);
     if(Number(pending.rows[0].count)>0) throw new RaffleRuleError("unresolved_claims","All claims must be approved, denied, or revoked before the Raffle can be drawn");
 
-    const approved=await transactionClient.query<{claim_id:string;requested_entry_count:number}>(
-      "SELECT claim_id, requested_entry_count FROM raffle_claims WHERE raffle_id=$1 AND resolution_kind='approved' ORDER BY created_at_unix ASC, claim_id ASC",[raffleId]);
+    const approved=await transactionClient.query<{claim_id:string}>(
+      "SELECT claim_id FROM raffle_claims WHERE raffle_id=$1 AND resolution_kind='approved' ORDER BY created_at_unix ASC, claim_id ASC",[raffleId]);
     const population:string[]=[];
-    for(const claim of approved.rows) for(let index=0;index<claim.requested_entry_count;index+=1) population.push(claim.claim_id);
+    for(const claim of approved.rows) {
+      const offer=await activityParticipationOfferByProcedureReference(transactionClient,{
+        activityKind:"raffle",
+        activityId:raffleId,
+        procedureReference:claim.claim_id,
+      });
+      if(!offer) throw new Error("Approved Raffle claim Participation Offer was not found");
+      const claimComponent=offer.components.find((component)=>component.kind==="claim");
+      const claimValue=claimComponent?.value;
+      if(Array.isArray(claimValue)) throw new Error("Raffle claim Participation Offer does not satisfy its declared contract");
+      const singularClaimValue=claimValue as ActivitySharedValue|undefined;
+      if(!singularClaimValue || singularClaimValue.type!=="integer") {
+        throw new Error("Raffle claim Participation Offer does not satisfy its declared contract");
+      }
+      for(let index=0;index<singularClaimValue.value;index+=1) population.push(claim.claim_id);
+    }
 
     if(population.length===0){
       const result=await transactionClient.query(
