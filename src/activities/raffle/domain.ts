@@ -1,3 +1,4 @@
+import type { ActivitySharedValue } from "../../core/activity/registry.js";
 import { randomInt, randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import {
@@ -355,17 +356,17 @@ export async function establishRaffleClaim(claimantGuildieId: string, raffleId: 
     const claimComponent = offer.components.find((component) => component.kind === "claim");
     const characterValue = characterComponent?.value;
     const claimValue = claimComponent?.value;
-    if (
-      Array.isArray(characterValue)
-      || Array.isArray(claimValue)
-      || characterValue?.type !== "guild_character"
-      || claimValue?.type !== "integer"
-    ) {
+    if (!characterValue || !claimValue || Array.isArray(characterValue) || Array.isArray(claimValue)) {
+      throw new Error("Constructed Raffle Participation Offer does not satisfy its declared contract");
+    }
+    const singularCharacterValue = characterValue as ActivitySharedValue;
+    const singularClaimValue = claimValue as ActivitySharedValue;
+    if (singularCharacterValue.type !== "guild_character" || singularClaimValue.type !== "integer") {
       throw new Error("Constructed Raffle Participation Offer does not satisfy its declared contract");
     }
 
-    const character = characterValue.value;
-    const entryCount = claimValue.value;
+    const character = singularCharacterValue.value;
+    const entryCount = singularClaimValue.value;
     const promisedGoldValue = BigInt(String(raffleRow.entry_price_gold)) * BigInt(entryCount);
     const insert = await client.query(
       `INSERT INTO raffle_claims (
