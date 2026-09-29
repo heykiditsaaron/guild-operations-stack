@@ -3,6 +3,7 @@ import { activityParticipationOffersForGuildie as participationOffersForGuildie,
 import { knownActivityPlugin, knownActivityPlugins } from "./plugin-control.js";
 import { knownActivityCapabilityDeclarations } from "./plugin-administration.js";
 import { registerGuildCapabilityDefinitions, type GuildCapabilityDefinition } from "../authority/guild-capability-policy.js";
+import type { ActivityWorkspace, ActivityWorkspaceCapability } from "./presentation.js";
 
 export type ActivityTemporalCoordinate = {
   start: number | null;
@@ -106,6 +107,7 @@ export type ActivityRegistration = {
   occurrence?: ActivityOccurrenceCapability;
   interaction?: ActivityInteractionCapability;
   participation?: ActivityParticipationCapability;
+  workspace?: ActivityWorkspaceCapability;
 };
 
 export type ActivityActivationGate = {
@@ -275,6 +277,15 @@ export async function activityTemporalProjection(
   };
 }
 
+
+export async function activityWorkspace(
+  activityKind: string,
+  activityId: string,
+): Promise<ActivityWorkspace | null> {
+  const activity = await activeActivity(requiredText(activityKind, "kind"));
+  if (!activity?.workspace) return null;
+  return activity.workspace.project(requiredText(activityId, "Workspace activity id"));
+}
 
 export async function activityParticipationProjection(
   activityKind: string,
