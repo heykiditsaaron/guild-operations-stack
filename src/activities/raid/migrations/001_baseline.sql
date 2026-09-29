@@ -27,6 +27,7 @@ CREATE TABLE raid_signup_rows (
   created_at_unix bigint NOT NULL DEFAULT (extract(epoch FROM now())::bigint),
   updated_at_unix bigint NOT NULL DEFAULT (extract(epoch FROM now())::bigint),
   withdrawn_at_unix bigint,
+  UNIQUE (raid_id, signup_row_id)
 );
 
 CREATE TABLE raid_assignments (
@@ -38,7 +39,8 @@ CREATE TABLE raid_assignments (
   selected_role text NOT NULL CHECK (selected_role IN ('tank', 'healer', 'damage')),
   assigned_by_guildie_id uuid NOT NULL REFERENCES guildies(guildie_id) ON DELETE RESTRICT,
   assigned_at_unix bigint NOT NULL DEFAULT (extract(epoch FROM now())::bigint),
-  UNIQUE (raid_id, signup_row_id)
+  UNIQUE (raid_id, signup_row_id),
+  FOREIGN KEY (raid_id, signup_row_id) REFERENCES raid_signup_rows(raid_id, signup_row_id) ON DELETE CASCADE
 );
 
 CREATE TABLE raid_commitment_adjudications (
