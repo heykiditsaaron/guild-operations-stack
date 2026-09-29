@@ -4,7 +4,7 @@ import { activityOccurrence, activityOccurrenceRenderActions, activityOccurrence
 import { knownActivityPlugin } from "../../core/activity/plugin-control.js";
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage, renderPublicOccurrence } from "../render.js";
-import { renderActivitySharedValues } from "../activity-values.js";
+import { renderActivityOccurrenceSharedValues } from "../activity-values.js";
 import { viewerForRequest } from "../viewer.js";
 
 function localTime(unixSeconds: number): string {
@@ -38,9 +38,12 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
     ]);
     const label = fingerprint?.label ?? occurrence.activityKind;
     const time = occurrenceTime(occurrence.occursAt);
+    const renderedAttributes = await Promise.all(occurrence.attributes.map(async (attribute) =>
+      `<div class="fact" data-activity-attribute="${htmlText(attribute.kind)}" data-provenance="${attribute.provenance}"><span class="fact-label">${htmlText(attribute.label)}</span><strong class="fact-value">${await renderActivityOccurrenceSharedValues(occurrence, attribute.value)}</strong></div>`
+    ));
     const facts = [
       ...(time === null ? [] : [`<div class="fact"><span class="fact-label">When</span><strong class="fact-value">${time}</strong></div>`]),
-      ...occurrence.attributes.map((attribute) => `<div class="fact" data-activity-attribute="${htmlText(attribute.kind)}" data-provenance="${attribute.provenance}"><span class="fact-label">${htmlText(attribute.label)}</span><strong class="fact-value">${renderActivitySharedValues(attribute.value)}</strong></div>`),
+      ...renderedAttributes,
     ].join("");
 
     return reply
@@ -79,9 +82,12 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
     const cards = await Promise.all(occurrences.map(async (occurrence) => {
       const actions = await activityOccurrenceRenderActions(occurrence, guildie?.guildieId ?? null);
       const time = occurrenceTime(occurrence.occursAt);
+      const renderedAttributes = await Promise.all(occurrence.attributes.map(async (attribute) =>
+        `<div class="fact" data-activity-attribute="${htmlText(attribute.kind)}" data-provenance="${attribute.provenance}"><span class="fact-label">${htmlText(attribute.label)}</span><strong class="fact-value">${await renderActivityOccurrenceSharedValues(occurrence, attribute.value)}</strong></div>`
+      ));
       const facts = [
         ...(time === null ? [] : [`<div class="fact"><span class="fact-label">When</span><strong class="fact-value">${time}</strong></div>`]),
-        ...occurrence.attributes.map((attribute) => `<div class="fact" data-activity-attribute="${htmlText(attribute.kind)}" data-provenance="${attribute.provenance}"><span class="fact-label">${htmlText(attribute.label)}</span><strong class="fact-value">${renderActivitySharedValues(attribute.value)}</strong></div>`),
+        ...renderedAttributes,
       ].join("");
       const actionLinks = actions.map((action) => `<a class="button-${action.kind}" href="${htmlText(action.href)}">${htmlText(action.label)}</a>`).join("");
       return `<article class="activity-card"><div class="activity-card-header"><h2 class="activity-card-title"><a href="/activities/${encodeURIComponent(occurrence.activityKind)}/${encodeURIComponent(occurrence.activityId)}">${htmlText(occurrence.title)}</a></h2><p class="status${occurrence.phase === "active" ? " status-active" : ""}">${occurrence.phase === "active" ? "Active" : "Record"}</p>${occurrence.description ? `<p>${htmlText(occurrence.description)}</p>` : ""}</div><div class="facts">${facts}</div>${actionLinks ? `<nav class="activity-card-actions" aria-label="${htmlText(occurrence.title)} actions">${actionLinks}</nav>` : ""}</article>`;
