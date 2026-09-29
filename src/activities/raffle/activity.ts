@@ -4,60 +4,14 @@ import { pool } from "../../db.js";
 import { guildieHasGuildCapabilityOrOperator } from "../../core/authority/guild-permissions.js";
 import {
   registerActivity,
-  type ActivityOccurrenceAttribute,
 } from "../../core/activity/registry.js";
 import { getRaffleClaim, raffleFacts, raffleFactsForOperation } from "./queries.js";
 import { RAFFLE_CAPABILITY_DEFINITIONS, RAFFLE_CLAIMS_CAPABILITY, RAFFLE_DRAW_CAPABILITY, RAFFLE_MODIFY_CAPABILITY, RAFFLE_STAGE_CAPABILITY } from "./permissions.js";
+import { raffleOccurrenceProjection } from "./occurrence.js";
 
 async function raffleOccurrence(raffleId: string) {
   const facts = await raffleFacts(raffleId);
-  if (!facts) return null;
-  const raffle = facts.raffle;
-
-  const attributes: ActivityOccurrenceAttribute[] = [
-    { kind: "entry_price", label: "Entry price", provenance: "declared", value: { type: "bigint", value: raffle.entryPriceGold, unit: "gold" } },
-    { kind: "approved_entries", label: "Entries", provenance: "derived", value: { type: "integer", value: facts.metrics.approvedEntryCount } },
-  ];
-
-  if (raffle.prizeKind === "gold" && raffle.winnerPercentage !== null) {
-    attributes.push({
-      kind: "prize",
-      label: "Prize",
-      provenance: "declared",
-      value: { type: "string", value: `${raffle.winnerPercentage}% of pot` },
-    });
-    const currentPrize = BigInt(raffle.entryPriceGold)
-      * BigInt(facts.metrics.approvedEntryCount)
-      * BigInt(raffle.winnerPercentage)
-      / 100n;
-    attributes.push({
-      kind: "current_prize",
-      label: "Current prize",
-      provenance: "derived",
-      value: { type: "bigint", value: currentPrize.toString(), unit: "gold" },
-    });
-  } else if (raffle.prizeDescription) {
-    attributes.push({
-      kind: "prize",
-      label: "Prize",
-      provenance: "declared",
-      value: { type: "string", value: raffle.prizeDescription },
-    });
-  }
-
-  return {
-    occursAt: raffle.conclusion === "operator_cancelled" ? null : { start: null, end: raffle.drawingAtUnix },
-    title: raffle.title ?? "Guild Raffle",
-    description: raffle.prizeKind === "gold" ? null : raffle.prizeDescription,
-    phase: raffle.conclusion === null ? "active" as const : "record" as const,
-    attributes,
-    interactions: raffle.conclusion !== null
-      ? []
-      : [
-          ...(facts.participationOpen ? [{ kind: "participate" as const, label: "Enter raffle" }] : []),
-          { kind: "operate" as const, label: "Manage raffle" },
-        ],
-  };
+  return facts ? raffleOccurrenceProjection(facts.raffle, facts.metrics.approvedEntryCount, facts.participationOpen) : null;
 }
 
 export function registerRaffleActivityIntegration(): void {

@@ -450,6 +450,27 @@ export async function denyRaffleClaim(actorGuildieId:string, claimId:string, rea
   });
 }
 
+export async function approvedRaffleEntryCount(client: PoolClient, raffleId: string): Promise<number> {
+  const approved = await client.query<{ claim_id: string }>(
+    "SELECT claim_id FROM raffle_claims WHERE raffle_id=$1 AND resolution_kind='approved'",
+    [raffleId],
+  );
+  const offers = await activityParticipationOffersForActivity(client, {
+    activityKind: "raffle",
+    activityId: raffleId,
+    procedureReferences: approved.rows.map((row) => String(row.claim_id)),
+  });
+  let count = 0;
+  for (const offer of offers) {
+    const component = offer.components.find((candidate) => candidate.kind === "claim")?.value;
+    if (Array.isArray(component)) throw new Error("Raffle claim Participation Offer does not satisfy its declared contract");
+    const value = component as ActivitySharedValue | undefined;
+    if (!value || value.type !== "integer") throw new Error("Raffle claim Participation Offer does not satisfy its declared contract");
+    count += value.value;
+  }
+  return count;
+}
+
 export async function drawRaffle(actorGuildieId:string, raffleId:string, client:PoolClient|null=null):Promise<Raffle> {
   return withOptionalTransaction(client,async(transactionClient)=>{
     const raffle=await lockedRaffle(transactionClient,raffleId);

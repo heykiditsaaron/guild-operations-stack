@@ -1,3 +1,4 @@
+import { activityRecord } from "./records.js";
 import { activityParticipationOffersForGuildie as participationOffersForGuildie, activityParticipationsForGuildie as participationsForGuildie } from "./participation.js";
 import { knownActivityPlugin, knownActivityPlugins } from "./plugin-control.js";
 import { knownActivityCapabilityDeclarations } from "./plugin-administration.js";
@@ -24,7 +25,8 @@ export type ActivitySharedValue =
   | { type: "guild_character"; value: { characterRecordId: string; region: string; realmId: string; characterId: string; name: string } }
   | { type: "wow_class"; value: string }
   | { type: "wow_spec"; value: { className: string; specName: string } }
-  | { type: "wow_role"; value: "tank" | "healer" | "damage" };
+  | { type: "wow_role"; value: "tank" | "healer" | "damage" }
+  | { type: "participation_offer"; value: string };
 
 export type ActivityOccurrenceAttribute = {
   kind: string;
@@ -192,6 +194,8 @@ async function activeActivity(activityKind: string): Promise<ActivityRegistratio
 export async function activityOccurrence(activityKind: string, activityId: string): Promise<ActivityOccurrence | null> {
   const kind = requiredText(activityKind, "kind");
   const id = requiredText(activityId, "id");
+  const record = await activityRecord(kind, id);
+  if (record) return record.occurrence;
   const activity = await activeActivity(kind);
   if (!activity?.occurrence) return null;
   const occurrence = await activity.occurrence.resolve(id);
