@@ -41,9 +41,6 @@ CREATE TABLE raffles (
 CREATE TABLE raffle_claims (
   claim_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   raffle_id uuid NOT NULL REFERENCES raffles(raffle_id) ON DELETE RESTRICT,
-  claimant_guildie_id uuid NOT NULL REFERENCES guildies(guildie_id) ON DELETE RESTRICT,
-  character_record_id uuid NOT NULL REFERENCES characters(character_record_id) ON DELETE RESTRICT,
-  requested_entry_count integer NOT NULL CHECK (requested_entry_count > 0),
   promised_gold_value bigint NOT NULL CHECK (promised_gold_value > 0),
   created_at_unix bigint NOT NULL CHECK (created_at_unix >= 0),
   resolution_kind text CHECK (resolution_kind IS NULL OR resolution_kind IN ('approved', 'denied', 'revoked')),
@@ -65,4 +62,3 @@ ALTER TABLE raffles ADD CONSTRAINT raffles_winning_claim_fk
 
 CREATE INDEX raffles_guild_conclusion_idx ON raffles(guild_id, conclusion, drawing_at_unix);
 CREATE INDEX raffle_claims_raffle_resolution_idx ON raffle_claims(raffle_id, resolution_kind);
-CREATE INDEX raffle_claims_claimant_guildie_idx ON raffle_claims(claimant_guildie_id);
