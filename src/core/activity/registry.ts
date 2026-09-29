@@ -93,6 +93,15 @@ export type ActivityParticipationCapability = {
   project(activityId: string, procedureReference: string): Promise<ActivityParticipationProjection | null>;
 };
 
+export type ActivityAssignment = {
+  participationOfferId: string;
+  attributes: readonly ActivityOccurrenceAttribute[];
+};
+
+export type ActivityAssignmentCapability = {
+  project(activityId: string): Promise<readonly ActivityAssignment[]>;
+};
+
 export type ActivityInteractionCapability = {
   destination(kind: ActivityInteractionKind, activityId: string): string | null;
   availableTo?(kind: ActivityInteractionKind, activityId: string, guildieId: string | null): boolean | Promise<boolean>;
@@ -116,6 +125,7 @@ export type ActivityRegistration = {
   interaction?: ActivityInteractionCapability;
   kindInteraction?: ActivityKindInteractionCapability;
   participation?: ActivityParticipationCapability;
+  assignment?: ActivityAssignmentCapability;
   workspace?: ActivityWorkspaceCapability;
 };
 
@@ -302,6 +312,15 @@ export async function activityTemporalProjection(
   };
 }
 
+
+export async function activityAssignments(
+  activityKind: string,
+  activityId: string,
+): Promise<readonly ActivityAssignment[]> {
+  const activity = await activeActivity(requiredText(activityKind, "kind"));
+  if (!activity?.assignment) return [];
+  return activity.assignment.project(requiredText(activityId, "Assignment activity id"));
+}
 
 export async function activityWorkspace(
   activityKind: string,
