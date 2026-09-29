@@ -28,7 +28,7 @@ import { htmlText, renderOccurrenceOperations, renderPage, type SecondaryNavigat
 import { viewerForRequest } from "../../../web/viewer.js";
 
 type RaidParams = { raidId: string };
-type AssignBody = { signupRowId?: unknown; selectedSpec?: unknown; selectedRole?: unknown };
+type AssignBody = { signupRowId?: unknown; selectedClass?: unknown; selectedSpec?: unknown; selectedRole?: unknown };
 type UnassignBody = { signupRowId?: unknown };
 type AdjudicateBody = { signupRowId?: unknown; fulfilled?: unknown };
 type RaidSignupView = Awaited<ReturnType<typeof raidSignups>>[number];
@@ -62,18 +62,18 @@ function armorLabel(value: WowTrait): string {
   return value.replace("armor.", "").replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
-function specsByRole(className: string, willingSpecs: readonly string[], willingRoles: readonly RaidRole[]): Record<RaidRole, string[]> {
+function specsByRole(row: RaidSignupView): Record<RaidRole, Array<{ className:string; specName:string }>> {
   return {
-    tank: willingRoles.includes("tank") ? willingSpecs.filter((spec) => specHasTrait(className, spec, ROLE_TRAITS.tank)) : [],
-    healer: willingRoles.includes("healer") ? willingSpecs.filter((spec) => specHasTrait(className, spec, ROLE_TRAITS.healer)) : [],
-    damage: willingRoles.includes("damage") ? willingSpecs.filter((spec) => specHasTrait(className, spec, ROLE_TRAITS.damage)) : [],
+    tank: row.offeredSpecs.filter((spec) => specHasTrait(spec.className, spec.specName, ROLE_TRAITS.tank)),
+    healer: row.offeredSpecs.filter((spec) => specHasTrait(spec.className, spec.specName, ROLE_TRAITS.healer)),
+    damage: row.offeredSpecs.filter((spec) => specHasTrait(spec.className, spec.specName, ROLE_TRAITS.damage)),
   };
 }
 
 function coverageCount(rows: readonly RaidSignupView[], trait: WowTrait): number {
   return rows.reduce((count, row) => {
     if (!row.selectedSpec) return count;
-    return traitsForSpec(row.className, row.selectedSpec).includes(trait) ? count + 1 : count;
+    return row.selectedClass && traitsForSpec(row.selectedClass, row.selectedSpec).includes(trait) ? count + 1 : count;
   }, 0);
 }
 
@@ -84,38 +84,38 @@ async function specIcon(className: string, specName: string, classNameValue: str
 }
 
 function offeredRoleIcons(row: RaidSignupView): string {
-  const roleSpecs = specsByRole(row.className, row.willingSpecs, row.willingRoles);
+  const roleSpecs = specsByRole(row);
   const roles = RAID_ROLES.filter((role) => roleSpecs[role].length > 0);
   if (!roles.length) return "";
   return `<div class="raid-participant-roles" aria-label="Offered roles">${roles.map((role) => `<span class="raid-role-icon raid-role-icon-${role}" role="img" aria-label="${htmlText(roleLabel(role))}" title="${htmlText(roleLabel(role))}"></span>`).join("")}</div>`;
 }
 
 async function signupCard(row: RaidSignupView): Promise<string> {
-  const roleSpecs = specsByRole(row.className, row.willingSpecs, row.willingRoles);
+  const roleSpecs = specsByRole(row);
   return `<article class="raid-participant-card" draggable="true" tabindex="0"
     data-raid-participant-card
     data-assigned="false"
     data-signup-row-id="${htmlText(row.signupRowId)}"
     data-role-specs="${htmlText(JSON.stringify(roleSpecs))}">
     <div class="raid-participant-card-copy">
-      <strong>${htmlText(row.characterName ?? row.className)}</strong>
-      <span>${row.realmName ? `${htmlText(row.realmName)} · ` : ""}${htmlText(row.className)}</span>
+      <strong>${htmlText(row.displayName)}</strong>
+      <span>${row.offeredSpecs.map((spec) => htmlText(`${spec.specName} ${spec.className}`)).join(", ")}</span>
     </div>
     ${offeredRoleIcons(row)}
   </article>`;
 }
 
 async function assignedCard(row: RaidSignupView, mutable: boolean): Promise<string> {
-  const roleSpecs = specsByRole(row.className, row.willingSpecs, row.willingRoles);
+  const roleSpecs = specsByRole(row);
   const selectedSpec = row.selectedSpec ?? "";
-  const icon = selectedSpec ? await specIcon(row.className, selectedSpec, row.className) : "";
+  const icon = selectedSpec && row.selectedClass ? await specIcon(row.selectedClass, selectedSpec, row.selectedClass) : "";
   return `<article class="raid-participant-card raid-participant-card-assigned" draggable="${mutable ? "true" : "false"}"${mutable ? ` tabindex="0" data-raid-participant-card` : ""}
     data-assigned="true"
     data-current-role="${htmlText(row.selectedRole ?? "")}" data-current-spec="${htmlText(selectedSpec)}"
     data-signup-row-id="${htmlText(row.signupRowId)}" data-role-specs="${htmlText(JSON.stringify(roleSpecs))}">
     <div class="raid-participant-assigned-icon">${icon}</div>
-    <div class="raid-participant-card-copy"><strong>${htmlText(row.characterName ?? row.className)}</strong><span>${htmlText(selectedSpec)}</span></div>
-    ${mutable ? `<button type="button" class="raid-assignment-remove" data-raid-unassign aria-label="Return ${htmlText(row.characterName ?? row.className)} to available participants" title="Return to available">×</button>` : ""}
+    <div class="raid-participant-card-copy"><strong>${htmlText(row.displayName)}</strong><span>${htmlText(selectedSpec)}${row.selectedClass ? ` ${htmlText(row.selectedClass)}` : ""}</span></div>
+    ${mutable ? `<button type="button" class="raid-assignment-remove" data-raid-unassign aria-label="Return ${htmlText(row.displayName)} to available participants" title="Return to available">×</button>` : ""}
   </article>`;
 }
 
