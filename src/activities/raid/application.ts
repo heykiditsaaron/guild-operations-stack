@@ -172,7 +172,7 @@ export async function establishRaidSignup(input: EstablishRaidSignupInput): Prom
         FOR UPDATE`,
       [input.raidId, input.applicantAnchor.kind, input.applicantAnchor.value],
     );
-    if (existingOffers.rowCount > 1) throw new Error("Raid actor has multiple outstanding Participation Offers");
+    if ((existingOffers.rowCount ?? 0) > 1) throw new Error("Raid actor has multiple outstanding Participation Offers");
     const existing = existingOffers.rows[0]
       ? { rowCount: 1, rows: [{ signup_row_id: existingOffers.rows[0].procedure_reference }] }
       : { rowCount: 0, rows: [] as { signup_row_id: string }[] };
