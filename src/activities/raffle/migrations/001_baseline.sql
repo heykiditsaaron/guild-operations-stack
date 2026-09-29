@@ -58,8 +58,8 @@ CREATE TABLE raffle_claims (
       OR (resolution_kind = 'revoked' AND approved_by_guildie_id IS NULL AND approved_at_unix IS NULL AND denied_by_guildie_id IS NULL AND denied_at_unix IS NULL AND denial_reason IS NULL AND revoked_by_guildie_id IS NOT NULL AND revoked_at_unix IS NOT NULL))
 );
 
-ALTER TABLE raffles ADD CONSTRAINT raffles_winning_claim_fk
-  FOREIGN KEY (winning_participation_offer_id) REFERENCES raffle_claims(claim_id) ON DELETE RESTRICT;
+ALTER TABLE raffles ADD CONSTRAINT raffles_winning_participation_offer_fk
+  FOREIGN KEY (winning_participation_offer_id) REFERENCES activity_participation_offers(participation_offer_id) ON DELETE RESTRICT;
 
 CREATE INDEX raffles_guild_conclusion_idx ON raffles(guild_id, conclusion, drawing_at_unix);
 CREATE INDEX raffle_claims_raffle_resolution_idx ON raffle_claims(raffle_id, resolution_kind);
