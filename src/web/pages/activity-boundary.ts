@@ -199,6 +199,29 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
     const kindActions = await activityKindRenderActions(request.params.kind, guildie?.guildieId ?? null);
     const cards = await Promise.all(occurrences.map(async (occurrence) => {
       const actions = await activityOccurrenceRenderActions(occurrence, guildie?.guildieId ?? null);
+      const actionLinks = actions.map((action) => `<a class="button-${action.kind}" href="${htmlText(action.href)}">${htmlText(action.label)}</a>`).join("");
+
+      if (occurrence.activityKind === "raid") {
+        const difficulty = stringAttribute(occurrence, "difficulty") ?? "Raid";
+        const difficultyClass = difficulty.toLocaleLowerCase("en-US").replace(/[^a-z0-9_-]/g, "-");
+        const signedUp = integerAttribute(occurrence, "signed_up");
+        const firstPull = occurrence.occursAt?.start === null || occurrence.occursAt?.start === undefined
+          ? ""
+          : `<div class="raid-listing-time"><span>First pull</span><strong>${localTime(occurrence.occursAt.start)}</strong></div>`;
+        return `<article class="activity-card raid-listing-card">
+          <div class="raid-listing-identity">
+            <p class="raid-occurrence-kicker raid-difficulty-${htmlText(difficultyClass)}">${htmlText(difficulty.toUpperCase())} RAID</p>
+            <h2 class="activity-card-title"><a href="/activities/${encodeURIComponent(occurrence.activityKind)}/${encodeURIComponent(occurrence.activityId)}">${htmlText(occurrence.title)}</a></h2>
+            ${occurrence.description ? `<p class="raid-listing-description">${htmlText(occurrence.description)}</p>` : ""}
+          </div>
+          <div class="raid-listing-summary">
+            ${firstPull}
+            <p class="raid-listing-signups"><strong>${signedUp}</strong> signed up</p>
+          </div>
+          ${actionLinks ? `<nav class="activity-card-actions raid-listing-actions" aria-label="${htmlText(occurrence.title)} actions">${actionLinks}</nav>` : ""}
+        </article>`;
+      }
+
       const time = occurrenceTime(occurrence.occursAt);
       const renderedAttributes = await Promise.all(occurrence.attributes.map(async (attribute) =>
         `<div class="fact" data-activity-attribute="${htmlText(attribute.kind)}" data-provenance="${attribute.provenance}"><span class="fact-label">${htmlText(attribute.label)}</span><strong class="fact-value">${await renderActivityOccurrenceSharedValues(occurrence, attribute.value)}</strong></div>`
@@ -207,7 +230,6 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
         ...(time === null ? [] : [`<div class="fact"><span class="fact-label">When</span><strong class="fact-value">${time}</strong></div>`]),
         ...renderedAttributes,
       ].join("");
-      const actionLinks = actions.map((action) => `<a class="button-${action.kind}" href="${htmlText(action.href)}">${htmlText(action.label)}</a>`).join("");
       return `<article class="activity-card"><div class="activity-card-header"><h2 class="activity-card-title"><a href="/activities/${encodeURIComponent(occurrence.activityKind)}/${encodeURIComponent(occurrence.activityId)}">${htmlText(occurrence.title)}</a></h2><p class="status${occurrence.phase === "active" ? " status-active" : ""}">${occurrence.phase === "active" ? "Active" : "Record"}</p>${occurrence.description ? `<p>${htmlText(occurrence.description)}</p>` : ""}</div><div class="facts">${facts}</div>${actionLinks ? `<nav class="activity-card-actions" aria-label="${htmlText(occurrence.title)} actions">${actionLinks}</nav>` : ""}</article>`;
     }));
     const body = cards.length
@@ -220,7 +242,7 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
       description: `${label} guild activities.`,
       viewer,
       secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Activities", href: "/activities" }, { label }] },
-      header: `<div class="admin-page-header-row"><div><p class="eyebrow">Activities</p><h1 id="page-title">${htmlText(label)}</h1></div>${kindActions.map((action) => `<a class="button-${action.kind}" href="${htmlText(action.href)}">${htmlText(action.label)}</a>`).join("")}</div>`,
+      header: `<div class="activity-kind-header"><div><p class="eyebrow">Activities</p><h1 id="page-title">${htmlText(label)}</h1></div>${kindActions.map((action) => `<a class="button-${action.kind} activity-kind-new" href="${htmlText(action.href)}">+ ${htmlText(action.label.replace(/^Create\\s+/i, "New "))}</a>`).join("")}</div>`,
       body,
     }));
   });
