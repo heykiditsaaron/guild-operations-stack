@@ -174,7 +174,7 @@ async function renderRaidOrganizer(request: FastifyRequest<{ Params: RaidParams 
 
   const [rows, diagnostics, adjudications] = await Promise.all([raidSignups(raid.raidId), raidRosterDiagnostics(raid.raidId), raidCommitmentAdjudications(raid.raidId)]);
   const assigned = rows.filter((row) => row.assignmentId !== null);
-  const available = rows.filter((row) => row.assignmentId === null && row.deniedAtUnix === null && !rows.some((candidate) => candidate.applicantId === row.applicantId && candidate.assignmentId !== null));
+  const available = rows.filter((row) => row.assignmentId === null && row.deniedAtUnix === null && !rows.some((candidate) => candidate.actorKind === row.actorKind && candidate.actorReference === row.actorReference && candidate.assignmentId !== null));
   const navigation: SecondaryNavigation = { kind: "breadcrumb", items: [{ label: "Activities", href: "/activities" }, { label: "Raid operations", href: "/activities/raid/manage" }, { label: raid.label }] };
   const raidBuffItems = (await Promise.all(RAID_BUFF_TRAITS.map((trait) => raidBuffDiagnosticItem(trait, assigned)))).join("");
   const utilityItems = UTILITY_TRAITS.map((trait) => textDiagnosticItem(capabilityLabel(trait), coverageCount(assigned, trait))).join("");
