@@ -188,56 +188,67 @@ async function requireWowSpecComponents(
   request: Extract<ActivityParticipationComponentRequest, { type: "wow_spec" }>,
   raw: unknown,
 ): Promise<ActivityParticipationComponent> {
-  if (typeof raw !== "object" || raw === null) {
-    throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.kind} must identify specialization choices`);
+  if (!Array.isArray(raw) || !raw.length) {
+    throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.kind} requires at least one specialization`);
   }
-  const candidate = raw as {
-    specs?: unknown;
-    character?: { region?: unknown; realmId?: unknown; characterId?: unknown };
-    className?: unknown;
-  };
-  const specs = normalizedTexts(candidate.specs, request.kind);
-  let className: string;
 
-  if (request.identityPool === "declared") {
-    if (typeof candidate.className !== "string" || !candidate.className.trim()) {
-      throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.kind} requires a class`);
+  const values = await Promise.all(raw.map(async (item) => {
+    if (typeof item !== "object" || item === null) {
+      throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.kind} contains an invalid specialization choice`);
     }
-    className = candidate.className.trim();
-  } else {
-    if (actor.kind !== "guildie") {
-      throw new ActivityParticipationOfferError("wow_spec_requires_guildie", `${request.kind} must resolve through a Guildie`);
+    const candidate = item as {
+      specName?: unknown;
+      character?: { region?: unknown; realmId?: unknown; characterId?: unknown };
+      className?: unknown;
+    };
+    if (typeof candidate.specName !== "string" || !candidate.specName.trim()) {
+      throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.kind} contains an invalid specialization choice`);
     }
-    const coordinate = candidate.character;
-    if (!coordinate || typeof coordinate.region !== "string" || typeof coordinate.realmId !== "string" || typeof coordinate.characterId !== "string") {
-      throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.kind} must identify a controlled Character`);
-    }
-    const characters = request.identityPool === "controlled_guild_character"
-      ? await controlledGuildCharactersForGuildie(actor.reference)
-      : await controlledCharactersForGuildie(actor.reference);
-    const character = characters.find((item) =>
-      item.region === coordinate.region && item.realmId === coordinate.realmId && item.characterId === coordinate.characterId
-    );
-    if (!character) {
-      throw new ActivityParticipationOfferError(
-        "wow_spec_identity_unavailable",
-        request.identityPool === "controlled_guild_character"
-          ? `${request.kind} must resolve through a currently controlled Character on the current guild roster`
-          : `${request.kind} must resolve through a currently controlled Character`,
-        403,
+
+    let className: string;
+    if (request.identityPool === "declared") {
+      if (typeof candidate.className !== "string" || !candidate.className.trim()) {
+        throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.kind} requires a class for each declared specialization`);
+      }
+      className = candidate.className.trim();
+    } else {
+      if (actor.kind !== "guildie") {
+        throw new ActivityParticipationOfferError("wow_spec_requires_guildie", `${request.kind} must resolve through a Guildie`);
+      }
+      const coordinate = candidate.character;
+      if (!coordinate || typeof coordinate.region !== "string" || typeof coordinate.realmId !== "string" || typeof coordinate.characterId !== "string") {
+        throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.kind} must identify a controlled Character for each specialization`);
+      }
+      const characters = request.identityPool === "controlled_guild_character"
+        ? await controlledGuildCharactersForGuildie(actor.reference)
+        : await controlledCharactersForGuildie(actor.reference);
+      const character = characters.find((value) =>
+        value.region === coordinate.region && value.realmId === coordinate.realmId && value.characterId === coordinate.characterId
       );
+      if (!character) {
+        throw new ActivityParticipationOfferError(
+          "wow_spec_identity_unavailable",
+          request.identityPool === "controlled_guild_character"
+            ? `${request.kind} must resolve through currently controlled Characters on the current guild roster`
+            : `${request.kind} must resolve through currently controlled Characters`,
+          403,
+        );
+      }
+      if (!character.className) throw new ActivityParticipationOfferError("wow_spec_class_unavailable", "Character class facts are not available");
+      className = character.className;
     }
-    if (!character.className) throw new ActivityParticipationOfferError("wow_spec_class_unavailable", "Character class facts are not available");
-    className = character.className;
-  }
 
-  const canonicalSpecs = specsForClass(className);
-  const values = specs.map((specName) => {
-    const canonical = canonicalSpecs.find((item) => item.toLocaleLowerCase("en-US") === specName.toLocaleLowerCase("en-US"));
+    const specName = candidate.specName.trim();
+    const canonical = specsForClass(className)
+      .find((value) => value.toLocaleLowerCase("en-US") === specName.toLocaleLowerCase("en-US"));
     if (!canonical) throw new ActivityParticipationOfferError("invalid_wow_spec", `Unknown class/specialization combination: ${className} / ${specName}`);
     return { type: "wow_spec" as const, value: { className, specName: canonical } };
-  });
-  return { kind: componentKind(request.kind), value: values };
+  }));
+
+  const unique = values.filter((value, index) =>
+    values.findIndex((candidate) => candidate.value.className === value.value.className && candidate.value.specName === value.value.specName) === index
+  );
+  return { kind: componentKind(request.kind), value: unique };
 }
 
 async function constructParticipationComponent(
@@ -284,6 +295,24 @@ async function constructParticipationComponent(
   };
 }
 
+async function constructParticipationComponents(
+  actor: ActivityParticipationActor,
+  contract: ActivityParticipationOfferContract,
+  supplied: Readonly<Record<string, unknown>>,
+): Promise<ActivityParticipationComponent[]> {
+  const requests = contract.components;
+  const kinds = requests.map((request) => componentKind(request.kind));
+  if (new Set(kinds).size !== kinds.length) throw new Error("Activity Participation Offer contract component kinds must be unique");
+  const unexpected = Object.keys(supplied).filter((kind) => !kinds.includes(kind));
+  if (unexpected.length) throw new ActivityParticipationOfferError("unexpected_component", `Participation Offer does not accept component ${unexpected[0]}`);
+  return Promise.all(requests.map(async (request) => {
+    if (!Object.prototype.hasOwnProperty.call(supplied, request.kind)) {
+      throw new ActivityParticipationOfferError("missing_component", `Participation Offer requires component ${request.kind}`);
+    }
+    return constructParticipationComponent(actor, request, supplied[request.kind]);
+  }));
+}
+
 export async function constructActivityParticipationOffer(
   client: PoolClient,
   input: {
@@ -306,23 +335,7 @@ export async function constructActivityParticipationOffer(
     }
   }
 
-  const requests = input.contract.components;
-  const kinds = requests.map((request) => componentKind(request.kind));
-  if (new Set(kinds).size !== kinds.length) {
-    throw new Error("Activity Participation Offer contract component kinds must be unique");
-  }
-  const suppliedKinds = Object.keys(input.components);
-  const unexpected = suppliedKinds.filter((kind) => !kinds.includes(kind));
-  if (unexpected.length) {
-    throw new ActivityParticipationOfferError("unexpected_component", `Participation Offer does not accept component ${unexpected[0]}`);
-  }
-
-  const components = await Promise.all(requests.map(async (request) => {
-    if (!Object.prototype.hasOwnProperty.call(input.components, request.kind)) {
-      throw new ActivityParticipationOfferError("missing_component", `Participation Offer requires component ${request.kind}`);
-    }
-    return constructParticipationComponent(input.actor, request, input.components[request.kind]);
-  }));
+  const components = await constructParticipationComponents(input.actor, input.contract, input.components);
 
   return offerActivityParticipation(client, {
     activityKind: input.activityKind,
@@ -332,6 +345,48 @@ export async function constructActivityParticipationOffer(
     procedureReference: input.procedureReference,
     offeredAtUnix: input.offeredAtUnix,
   });
+}
+
+export async function reviseActivityParticipationOffer(
+  client: PoolClient,
+  input: {
+    activityKind: string;
+    activityId: string;
+    actor: ActivityParticipationActor;
+    contract: ActivityParticipationOfferContract;
+    components: Readonly<Record<string, unknown>>;
+    procedureReference: string;
+  },
+): Promise<ActivityParticipationOffer> {
+  const existing = await activityParticipationOfferByProcedureReference(client, {
+    activityKind: input.activityKind,
+    activityId: input.activityId,
+    procedureReference: input.procedureReference,
+  });
+  if (!existing || existing.revokedAtUnix !== null || existing.closedAtUnix !== null) {
+    throw new Error("Outstanding Activity Participation Offer was not found");
+  }
+  if (existing.actor.kind !== input.actor.kind || existing.actor.reference !== input.actor.reference) {
+    throw new Error("Outstanding Activity Participation Offer was not found for actor");
+  }
+  const components = await constructParticipationComponents(input.actor, input.contract, input.components);
+  const result = await client.query<any>(
+    `UPDATE activity_participation_offers offer
+        SET components=$4::jsonb
+      WHERE offer.participation_offer_id=$1
+        AND offer.activity_kind=$2
+        AND offer.activity_id=$3
+        AND offer.revoked_at_unix IS NULL
+        AND offer.closed_at_unix IS NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM activity_participations participation
+           WHERE participation.participation_offer_id=offer.participation_offer_id
+        )
+      RETURNING *`,
+    [existing.participationOfferId, input.activityKind, input.activityId, JSON.stringify(components)],
+  );
+  if (!result.rowCount) throw new Error("Outstanding Activity Participation Offer cannot be revised");
+  return mapParticipationOffer(result.rows[0]);
 }
 
 export type ActivityParticipation = {
