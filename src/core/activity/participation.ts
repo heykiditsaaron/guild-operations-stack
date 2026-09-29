@@ -295,6 +295,20 @@ async function constructParticipationComponent(
   };
 }
 
+async function validateParticipationOfferActor(
+  actor: ActivityParticipationActor,
+  contract: ActivityParticipationOfferContract,
+): Promise<void> {
+  const actorConstraint = contract.actorConstraint;
+  if (!actorConstraint) return;
+  if (actor.kind !== actorConstraint.kind) {
+    throw new ActivityParticipationOfferError("actor_ineligible", "Participation Offer actor does not satisfy the procedure", 403);
+  }
+  if (actorConstraint.kind === "guildie" && !await effectiveGuildAuthority(actor.reference, actorConstraint.currentGuildieIn)) {
+    throw new ActivityParticipationOfferError("actor_ineligible", "Participation Offer actor is not a current Guildie", 403);
+  }
+}
+
 async function constructParticipationComponents(
   actor: ActivityParticipationActor,
   contract: ActivityParticipationOfferContract,
@@ -325,16 +339,7 @@ export async function constructActivityParticipationOffer(
     offeredAtUnix?: number;
   },
 ): Promise<ActivityParticipationOffer> {
-  const actorConstraint = input.contract.actorConstraint;
-  if (actorConstraint) {
-    if (input.actor.kind !== actorConstraint.kind) {
-      throw new ActivityParticipationOfferError("actor_ineligible", "Participation Offer actor does not satisfy the procedure", 403);
-    }
-    if (actorConstraint.kind === "guildie" && !await effectiveGuildAuthority(input.actor.reference, actorConstraint.currentGuildieIn)) {
-      throw new ActivityParticipationOfferError("actor_ineligible", "Participation Offer actor is not a current Guildie", 403);
-    }
-  }
-
+  await validateParticipationOfferActor(input.actor, input.contract);
   const components = await constructParticipationComponents(input.actor, input.contract, input.components);
 
   return offerActivityParticipation(client, {
@@ -369,6 +374,7 @@ export async function reviseActivityParticipationOffer(
   if (existing.actor.kind !== input.actor.kind || existing.actor.reference !== input.actor.reference) {
     throw new Error("Outstanding Activity Participation Offer was not found for actor");
   }
+  await validateParticipationOfferActor(input.actor, input.contract);
   const components = await constructParticipationComponents(input.actor, input.contract, input.components);
   const result = await client.query<any>(
     `UPDATE activity_participation_offers offer
