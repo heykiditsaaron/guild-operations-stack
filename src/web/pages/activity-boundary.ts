@@ -1,11 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
-import { activityKindRenderActions, activityOccurrence, activityOccurrenceRenderActions, activityOccurrences, activityRegistrationState, activityWorkspace, type ActivityOccurrenceAttribute } from "../../core/activity/registry.js";
+import { activityKindRenderActions, activityOccurrence, activityOccurrenceRenderActions, activityOccurrences, activityRegistrationState, type ActivityOccurrence, type ActivityOccurrenceAttribute, type ActivityRenderAction } from "../../core/activity/registry.js";
 import { knownActivityPlugin } from "../../core/activity/plugin-control.js";
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage, renderPublicOccurrence } from "../render.js";
 import { renderActivityOccurrenceSharedValues } from "../activity-values.js";
-import { renderActivityWorkspace } from "../activity-workspace.js";
 import { viewerForRequest } from "../viewer.js";
 
 function localTime(unixSeconds: number): string {
@@ -23,6 +22,60 @@ function occurrenceTime(occursAt: { start: number | null; end: number | null } |
   return localTime(occursAt.start ?? occursAt.end!);
 }
 
+
+function scalarAttribute(occurrence: ActivityOccurrence, kind: string) {
+  const value = occurrence.attributes.find((attribute) => attribute.kind === kind)?.value;
+  return value && !Array.isArray(value) ? value : null;
+}
+
+function integerAttribute(occurrence: ActivityOccurrence, kind: string): number {
+  const value = scalarAttribute(occurrence, kind);
+  return value?.type === "integer" ? value.value : 0;
+}
+
+function stringAttribute(occurrence: ActivityOccurrence, kind: string): string | null {
+  const value = scalarAttribute(occurrence, kind);
+  return value?.type === "string" ? value.value : null;
+}
+
+function raidRoleMetric(label: string, count: number, role: "tank" | "healer" | "damage"): string {
+  return `<div class="raid-occurrence-role"><span class="raid-occurrence-role-icon raid-occurrence-role-icon-${role}" aria-hidden="true"></span><span class="raid-occurrence-role-copy"><strong>${count}</strong><span>${label}</span></span></div>`;
+}
+
+async function renderRaidOccurrence(occurrence: ActivityOccurrence, actions: readonly ActivityRenderAction[]): Promise<string> {
+  const difficulty = stringAttribute(occurrence, "difficulty") ?? "Raid";
+  const difficultyClass = difficulty.toLocaleLowerCase("en-US").replace(/[^a-z0-9_-]/g, "-");
+  const signedUp = integerAttribute(occurrence, "signed_up");
+  const requirements = occurrence.attributes.filter((attribute) => attribute.kind === "eligibility" || attribute.kind === "requirement");
+  const renderedRequirements = await Promise.all(requirements.map(async (attribute) =>
+    `<div class="raid-occurrence-requirement"><span>${htmlText(attribute.label)}</span><strong>${await renderActivityOccurrenceSharedValues(occurrence, attribute.value)}</strong></div>`
+  ));
+  const actionLinks = actions.map((action) => `<a class="button-${action.kind}" href="${htmlText(action.href)}">${htmlText(action.label)}</a>`).join("");
+  const firstPull = occurrence.occursAt?.start === null || occurrence.occursAt?.start === undefined
+    ? ""
+    : `<section class="raid-occurrence-first-pull" aria-label="Raid time"><span>First pull</span><strong>${localTime(occurrence.occursAt.start)}</strong></section>`;
+
+  return `<article class="public-occurrence raid-occurrence">
+    <header class="raid-occurrence-hero">
+      <p class="raid-occurrence-kicker raid-difficulty-${htmlText(difficultyClass)}">${htmlText(difficulty.toUpperCase())} RAID</p>
+      <h1>${htmlText(occurrence.title)}</h1>
+      ${occurrence.description ? `<div class="raid-occurrence-description"><p>${htmlText(occurrence.description)}</p></div>` : ""}
+      ${firstPull}
+    </header>
+    <section class="raid-occurrence-composition" aria-labelledby="raid-composition-heading">
+      <div class="raid-occurrence-section-heading"><div><p class="eyebrow">Raid group</p><h2 id="raid-composition-heading">Composition</h2></div><p class="raid-occurrence-signups"><strong>${signedUp}</strong> signed up</p></div>
+      <div class="raid-occurrence-role-grid">
+        ${raidRoleMetric("Tank", integerAttribute(occurrence, "tanks"), "tank")}
+        ${raidRoleMetric("Healer", integerAttribute(occurrence, "healers"), "healer")}
+        ${raidRoleMetric("Melee", integerAttribute(occurrence, "melee"), "damage")}
+        ${raidRoleMetric("Ranged", integerAttribute(occurrence, "ranged"), "damage")}
+      </div>
+    </section>
+    ${renderedRequirements.length ? `<section class="raid-occurrence-requirements" aria-labelledby="raid-details-heading"><div class="raid-occurrence-section-heading"><div><p class="eyebrow">Before you sign up</p><h2 id="raid-details-heading">Raid details</h2></div></div><div class="raid-occurrence-requirement-grid">${renderedRequirements.join("")}</div></section>` : ""}
+    ${actionLinks ? `<nav class="public-occurrence-actions raid-occurrence-actions" aria-label="Raid actions">${actionLinks}</nav>` : ""}
+  </article>`;
+}
+
 export async function registerActivityBoundaryRoutes(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get<{ Params: { kind: string; activityId: string } }>("/activities/:kind/:activityId", async (request, reply) => {
     const occurrence = await activityOccurrence(request.params.kind, request.params.activityId);
@@ -33,12 +86,28 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
       viewerForRequest(sessionToken),
       authenticatedGuildie(sessionToken),
     ]);
-    const [fingerprint, actions, workspace] = await Promise.all([
+    const [fingerprint, actions] = await Promise.all([
       knownActivityPlugin(occurrence.activityKind),
       activityOccurrenceRenderActions(occurrence, guildie?.guildieId ?? null),
-      occurrence.phase === "active" ? activityWorkspace(occurrence.activityKind, occurrence.activityId) : Promise.resolve(null),
     ]);
     const label = fingerprint?.label ?? occurrence.activityKind;
+
+    if (occurrence.activityKind === "raid") {
+      return reply
+        .header("Cache-Control", "no-cache")
+        .type("text/html; charset=utf-8")
+        .send(renderPage(assets, {
+          pathname: request.url,
+          title: `${occurrence.title} · ${label} · ${viewer.guildPresentation.guildName} Guild Operations`,
+          description: occurrence.description ?? `${label} activity occurrence.`,
+          viewer,
+          stylesheets: ["wow-role-icons.css"],
+          secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Activities", href: "/activities" }, { label }] },
+          header: "",
+          body: await renderRaidOccurrence(occurrence, actions),
+        }));
+    }
+
     const time = occurrenceTime(occurrence.occursAt);
     const renderedAttributes = await Promise.all(occurrence.attributes.map(async (attribute) =>
       `<div class="fact" data-activity-attribute="${htmlText(attribute.kind)}" data-provenance="${attribute.provenance}"><span class="fact-label">${htmlText(attribute.label)}</span><strong class="fact-value">${await renderActivityOccurrenceSharedValues(occurrence, attribute.value)}</strong></div>`
@@ -47,7 +116,6 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
       ...(time === null ? [] : [`<div class="fact"><span class="fact-label">When</span><strong class="fact-value">${time}</strong></div>`]),
       ...renderedAttributes,
     ].join("");
-    const workspaceHtml = workspace ? await renderActivityWorkspace(occurrence, workspace) : "";
 
     return reply
       .header("Cache-Control", "no-cache")
@@ -66,7 +134,6 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
           description: occurrence.description ? `<p>${htmlText(occurrence.description)}</p>` : undefined,
           facts,
           actions,
-          detail: workspaceHtml,
         }),
       }));
   });
