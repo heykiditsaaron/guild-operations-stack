@@ -16,16 +16,19 @@ function attribute(record: ActivityRecord, kind: string): ActivityOccurrenceAttr
   return record.occurrence.attributes.find((candidate) => candidate.kind === kind) ?? null;
 }
 
+function singleValue(attributeValue: ActivityOccurrenceAttribute["value"] | undefined) {
+  if (!attributeValue) return null;
+  return Array.isArray(attributeValue) ? null : attributeValue as Exclude<ActivityOccurrenceAttribute["value"], readonly unknown[]>;
+}
+
 function stringAttribute(record: ActivityRecord, kind: string): string | null {
-  const value = attribute(record, kind)?.value;
-  if (!value || Array.isArray(value) || value.type !== "string") return null;
-  return value.value;
+  const value = singleValue(attribute(record, kind)?.value);
+  return value?.type === "string" ? value.value : null;
 }
 
 function integerAttribute(record: ActivityRecord, kind: string): number | null {
-  const value = attribute(record, kind)?.value;
-  if (!value || Array.isArray(value) || value.type !== "integer") return null;
-  return value.value;
+  const value = singleValue(attribute(record, kind)?.value);
+  return value?.type === "integer" ? value.value : null;
 }
 
 function status(record: ActivityRecord): string {
