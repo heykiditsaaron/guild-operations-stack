@@ -1,6 +1,6 @@
 import { characterByRecordId } from "../../core/identity/controlled-characters.js";
 import type { ActivitySharedValue } from "../../core/activity/registry.js";
-import { activityParticipationOffersForActivity } from "../../core/activity/participation.js";
+import { activityParticipationOfferById, activityParticipationOffersForActivity } from "../../core/activity/participation.js";
 import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import { pool } from "../../db.js";
 import { getRaffle, raffleParticipationIsOpen, type Raffle, type RaffleClaim } from "./application.js";
@@ -101,11 +101,11 @@ async function raffleWinnerFacts(raffle: Raffle): Promise<RaffleWinnerFacts | nu
   if (!raffle.winningParticipationOfferId) return null;
   const client=await pool.connect();
   try {
-    const offers=await activityParticipationOffersForActivity(client,{
+    const offer=await activityParticipationOfferById(client,{
       activityKind:"raffle",
       activityId:raffle.raffleId,
+      participationOfferId:raffle.winningParticipationOfferId,
     });
-    const offer=offers.find((candidate)=>candidate.participationOfferId===raffle.winningParticipationOfferId);
     const characterComponent=offer?.components.find((component)=>component.kind==="character")?.value;
     if(!offer||Array.isArray(characterComponent)) return null;
     const characterValue=characterComponent as ActivitySharedValue|undefined;

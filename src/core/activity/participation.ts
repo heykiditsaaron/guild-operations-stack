@@ -589,6 +589,23 @@ export async function outstandingActivityParticipationOffersForActor(
   return result.rows.map(mapParticipationOffer);
 }
 
+export async function activityParticipationOfferById(
+  client: PoolClient,
+  input: { activityKind: string; activityId: string; participationOfferId: string },
+): Promise<ActivityParticipationOffer | null> {
+  const result = await client.query<any>(
+    `SELECT *
+       FROM activity_participation_offers
+      WHERE activity_kind=$1 AND activity_id=$2 AND participation_offer_id=$3`,
+    [
+      requiredText(input.activityKind, "Offer kind"),
+      requiredText(input.activityId, "Offer activity id"),
+      requiredText(input.participationOfferId, "Participation Offer id"),
+    ],
+  );
+  return result.rows[0] ? mapParticipationOffer(result.rows[0]) : null;
+}
+
 export async function activityParticipationOfferByProcedureReference(
   client: PoolClient,
   input: { activityKind: string; activityId: string; procedureReference: string },
