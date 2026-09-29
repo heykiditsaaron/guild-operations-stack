@@ -54,7 +54,7 @@ export type Raffle = {
   concludedAtUnix: number | null;
   totalEntries: number | null;
   selectedIndex: number | null;
-  winningClaimId: string | null;
+  winningParticipationOfferId: string | null;
 };
 
 export type RaffleClaim = {
@@ -176,7 +176,7 @@ function mapRaffle(row: Record<string, unknown>): Raffle {
     concludedAtUnix: nullableNumber(row.concluded_at_unix),
     totalEntries: nullableNumber(row.total_entries),
     selectedIndex: nullableNumber(row.selected_index),
-    winningClaimId: nullableString(row.winning_claim_id),
+    winningParticipationOfferId: nullableString(row.winning_participation_offer_id),
   };
 }
 
@@ -478,7 +478,7 @@ export async function drawRaffle(actorGuildieId:string, raffleId:string, client:
       if(!singularClaimValue || singularClaimValue.type!=="integer") {
         throw new Error("Raffle claim Participation Offer does not satisfy its declared contract");
       }
-      for(let index=0;index<singularClaimValue.value;index+=1) population.push(claim.claim_id);
+      for(let index=0;index<singularClaimValue.value;index+=1) population.push(offer.participationOfferId);
     }
 
     if(population.length===0){
@@ -488,11 +488,11 @@ export async function drawRaffle(actorGuildieId:string, raffleId:string, client:
       return mapRaffle(result.rows[0] as Record<string,unknown>);
     }
     const selectedIndex=randomInt(population.length);
-    const winningClaimId=population[selectedIndex];
+    const winningParticipationOfferId=population[selectedIndex];
     const result=await transactionClient.query(
       `UPDATE raffles SET conclusion='drawn', concluded_by_guildie_id=$2, concluded_at_unix=$3,
-       total_entries=$4, selected_index=$5, winning_claim_id=$6 WHERE raffle_id=$1 RETURNING *`,
-      [raffleId,actorGuildieId,now,population.length,selectedIndex,winningClaimId]);
+       total_entries=$4, selected_index=$5, winning_participation_offer_id=$6 WHERE raffle_id=$1 RETURNING *`,
+      [raffleId,actorGuildieId,now,population.length,selectedIndex,winningParticipationOfferId]);
     return mapRaffle(result.rows[0] as Record<string,unknown>);
   });
 }

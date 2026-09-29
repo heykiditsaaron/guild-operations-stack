@@ -130,12 +130,12 @@ export async function drawRaffle(actorGuildieId: string, raffleId: string): Prom
     return { raffle, publication };
   });
   const concluded = persisted.raffle;
-  if (concluded.conclusion === "drawn" && !concluded.winningClaimId) {
-    console.error(`[raffle] drawn Raffle ${concluded.raffleId} is missing its winning claim`);
+  if (concluded.conclusion === "drawn" && !concluded.winningParticipationOfferId) {
+    console.error(`[raffle] drawn Raffle ${concluded.raffleId} is missing its winning Participation Offer`);
     await publishRaffleOperationalException({
       operation: "raffle.draw",
       actorGuildieId,
-      summary: "Drawn Raffle is missing its winning claim.",
+      summary: "Drawn Raffle is missing its winning Participation Offer.",
       details: { raffle_id: concluded.raffleId, conclusion: concluded.conclusion },
     });
   }

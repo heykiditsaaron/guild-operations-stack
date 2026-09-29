@@ -98,15 +98,14 @@ export async function raffleClaimMetrics(raffleId: string): Promise<RaffleClaimM
   };
 }
 async function raffleWinnerFacts(raffle: Raffle): Promise<RaffleWinnerFacts | null> {
-  if (!raffle.winningClaimId) return null;
+  if (!raffle.winningParticipationOfferId) return null;
   const client=await pool.connect();
   try {
     const offers=await activityParticipationOffersForActivity(client,{
       activityKind:"raffle",
       activityId:raffle.raffleId,
-      procedureReferences:[raffle.winningClaimId],
     });
-    const offer=offers[0];
+    const offer=offers.find((candidate)=>candidate.participationOfferId===raffle.winningParticipationOfferId);
     const characterComponent=offer?.components.find((component)=>component.kind==="character")?.value;
     if(!offer||Array.isArray(characterComponent)) return null;
     const characterValue=characterComponent as ActivitySharedValue|undefined;
@@ -114,7 +113,7 @@ async function raffleWinnerFacts(raffle: Raffle): Promise<RaffleWinnerFacts | nu
     const offeredCharacter=characterValue.value;
     const recognizedCharacter=await characterByRecordId(offeredCharacter.characterRecordId);
     return {
-      claimId:raffle.winningClaimId,
+      claimId:offer.procedureReference,
       character:{
         characterId:offeredCharacter.characterId,
         name:recognizedCharacter?.name??offeredCharacter.name,

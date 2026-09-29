@@ -62,7 +62,7 @@ function raffleRepresentation(facts: RaffleFacts) {
       ? { pot: pot.toString(), winner_prize: winnerPrize?.toString() ?? null, guild_share: guildShare?.toString() ?? null }
       : null,
     total_entries: raffle.totalEntries,
-    winning_claim_id: raffle.winningClaimId,
+    winning_participation_offer_id: raffle.winningParticipationOfferId,
     winner: winner ? { claim_id: winner.claimId, character: characterRepresentation(winner.character) } : null,
   };
 }
