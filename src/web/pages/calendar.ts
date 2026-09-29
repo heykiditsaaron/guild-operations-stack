@@ -3,7 +3,7 @@ import { guildState } from "../../core/guild/guild-state.js";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
 import { calendarViewForGuildie, isCalendarViewMode, setCalendarViewForGuildie, type CalendarViewMode } from "../../core/calendar/preference.js";
 import { discoverableGuildCalendarPoints, type GuildCalendarOccursAt, type GuildCalendarPoint } from "../../core/calendar/registry.js";
-import { activityOccurrence, type ActivityOccurrence } from "../../core/activity/registry.js";
+import { activityKindRenderActions, activityOccurrence, discoverableActivities, type ActivityOccurrence } from "../../core/activity/registry.js";
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage } from "../render.js";
 import { renderActivitySharedValues } from "../activity-values.js";
@@ -179,7 +179,13 @@ export async function registerCalendarPage(app: FastifyInstance, assets: AssetRe
       guildState(),
     ]);
     const selectedView = guildie ? await calendarViewForGuildie(guildie.guildieId) : "agenda";
-    const createEvent = "";
+    const activityKinds = await discoverableActivities();
+    const establishmentActions = (await Promise.all(activityKinds.map((activity) =>
+      activityKindRenderActions(activity.kind, guildie?.guildieId ?? null)
+    ))).flat();
+    const createEvent = establishmentActions.length
+      ? `<details class="menu-surface"><summary class="button-primary">Create New</summary><div class="menu-panel">${establishmentActions.map((action) => `<a href="${htmlText(action.href)}">${htmlText(action.label)}</a>`).join("")}</div></details>`
+      : "";
 
     const occurrences = await calendarOccurrences(calendarPoints);
     const relevant = occurrences.filter((event) => occursThrough(event.occursAt) >= nowUnix);
