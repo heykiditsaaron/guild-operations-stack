@@ -32,7 +32,6 @@ export async function renderActivityWorkspace(
   occurrence: Pick<ActivityOccurrence, "activityKind" | "activityId">,
   workspace: ActivityWorkspace,
 ): Promise<string> {
-  const placements = new Map(workspace.placements.map((placement) => [placement.objectId, placement]));
   const objects = new Map(workspace.objects.map((object) => [object.id, object]));
   const positions = await Promise.all(workspace.positions.map(async (position) => {
     const members = workspace.placements
