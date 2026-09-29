@@ -2,6 +2,7 @@ import type { ActivityOccurrenceAttribute, ActivitySharedValue } from "./registr
 
 export type ActivityPresentationValue =
   | "raid_participant_card"
+  | "raid_participant_pool"
   | "raid_role_lane";
 
 export type ActivityWorkspaceObject = {
