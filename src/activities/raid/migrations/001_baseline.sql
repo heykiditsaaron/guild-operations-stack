@@ -21,40 +21,24 @@ CREATE TABLE raid_events (
   CHECK (cancelled_at_unix IS NULL OR concluded_at_unix IS NULL)
 );
 
-CREATE TABLE raid_applicants (
-  applicant_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  raid_id uuid NOT NULL REFERENCES raid_events(raid_id) ON DELETE CASCADE,
-  anchor_kind text NOT NULL CHECK (anchor_kind IN ('guildie', 'external')),
-  anchor_value text NOT NULL CHECK (length(btrim(anchor_value)) > 0),
-  resolved_guildie_id uuid REFERENCES guildies(guildie_id) ON DELETE RESTRICT,
-  created_at_unix bigint NOT NULL DEFAULT (extract(epoch FROM now())::bigint),
-  UNIQUE (raid_id, anchor_kind, anchor_value)
-);
-
 CREATE TABLE raid_signup_rows (
   signup_row_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   raid_id uuid NOT NULL REFERENCES raid_events(raid_id) ON DELETE CASCADE,
-  applicant_id uuid NOT NULL REFERENCES raid_applicants(applicant_id) ON DELETE CASCADE,
   created_at_unix bigint NOT NULL DEFAULT (extract(epoch FROM now())::bigint),
   updated_at_unix bigint NOT NULL DEFAULT (extract(epoch FROM now())::bigint),
   withdrawn_at_unix bigint,
-  UNIQUE (raid_id, applicant_id, signup_row_id)
 );
 
 CREATE TABLE raid_assignments (
   assignment_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   raid_id uuid NOT NULL REFERENCES raid_events(raid_id) ON DELETE CASCADE,
-  applicant_id uuid NOT NULL REFERENCES raid_applicants(applicant_id) ON DELETE CASCADE,
   signup_row_id uuid NOT NULL,
   selected_class text NOT NULL CHECK (length(btrim(selected_class)) > 0),
   selected_spec text NOT NULL CHECK (length(btrim(selected_spec)) > 0),
   selected_role text NOT NULL CHECK (selected_role IN ('tank', 'healer', 'damage')),
   assigned_by_guildie_id uuid NOT NULL REFERENCES guildies(guildie_id) ON DELETE RESTRICT,
   assigned_at_unix bigint NOT NULL DEFAULT (extract(epoch FROM now())::bigint),
-  UNIQUE (raid_id, applicant_id),
-  UNIQUE (raid_id, signup_row_id),
-  FOREIGN KEY (raid_id, applicant_id, signup_row_id)
-    REFERENCES raid_signup_rows(raid_id, applicant_id, signup_row_id) ON DELETE CASCADE
+  UNIQUE (raid_id, signup_row_id)
 );
 
 CREATE TABLE raid_commitment_adjudications (
@@ -92,10 +76,5 @@ CREATE TABLE raid_signup_denials (
 
 CREATE INDEX raid_events_occurs_idx ON raid_events(occurs_start_unix);
 CREATE INDEX raid_events_active_occurs_idx ON raid_events(guild_id, occurs_start_unix) WHERE cancelled_at_unix IS NULL;
-CREATE INDEX raid_signup_rows_applicant_idx ON raid_signup_rows(raid_id, applicant_id);
-CREATE INDEX raid_signup_rows_active_idx ON raid_signup_rows(raid_id, applicant_id) WHERE withdrawn_at_unix IS NULL;
 CREATE INDEX raid_assignments_raid_idx ON raid_assignments(raid_id, assigned_at_unix, assignment_id);
 CREATE INDEX raid_action_history_raid_idx ON raid_action_history(raid_id, occurred_at_unix, action_id);
-CREATE UNIQUE INDEX raid_signup_rows_active_applicant_uq
-  ON raid_signup_rows (raid_id, applicant_id)
-  WHERE withdrawn_at_unix IS NULL;
