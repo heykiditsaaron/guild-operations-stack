@@ -1362,3 +1362,64 @@ h1 {
   font-size: 1.05em;
   transform: translateY(-0.02em);
 }
+
+.activity-workspace {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.activity-workspace-position {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  padding: 1rem;
+}
+
+.activity-workspace-position-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.activity-workspace-position-heading h3 {
+  margin: 0;
+}
+
+.activity-workspace-position-objects {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.activity-workspace-card {
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  background: var(--surface-raised, var(--surface));
+  padding: 0.75rem;
+}
+
+.activity-workspace-card-copy {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.activity-workspace-card-copy span,
+.activity-workspace-empty {
+  color: var(--muted);
+}
+
+.activity-workspace-empty {
+  margin: 0;
+}
+
+@media (min-width: 760px) {
+  .activity-workspace {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .activity-workspace-position[data-activity-presentation="raid_participant_pool"] {
+    grid-column: 1 / -1;
+  }
+}
