@@ -20,6 +20,7 @@ export type RaidParticipationCharacter = {
 
 export type RaidSignupView = {
   signupRowId: string;
+  participationOfferId: string;
   actorKind: "guildie" | "external";
   actorReference: string;
   displayName: string;
@@ -135,6 +136,7 @@ async function raidSignupRows(raidId: string, includeWithdrawn: boolean): Promis
     const attribution = offer.actor.kind === "guildie" ? attributions.get(offer.actor.reference) : null;
     return {
       signupRowId: row.signup_row_id,
+      participationOfferId: offer.participationOfferId,
       actorKind: offer.actor.kind,
       actorReference: offer.actor.reference,
       displayName: attribution?.displayName ?? (offer.actor.kind === "external" ? offer.actor.reference : `Guildie ${offer.actor.reference.slice(0, 8)}`),
