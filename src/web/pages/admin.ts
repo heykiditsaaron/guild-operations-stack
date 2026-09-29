@@ -26,12 +26,6 @@ import {
 import { activityAdministration, activityCapabilityDeclarationState, activityRegistrationStates, type ActivityRegistrationState } from "../../core/activity/registry.js";
 import { knownActivityPlugins } from "../../core/activity/plugin-control.js";
 import { setActivityPluginEnabled } from "../../core/activity/plugin-enablement.js";
-import {
-  isPackagedCapabilityKey,
-  packagedCapabilityStates,
-  setPackagedCapabilityEnabled,
-  type PackagedCapabilityState,
-} from "../../packaged-capability-lifecycle.js";
 import { hasDevelopmentGuildMasterAuthority } from "../../core/authority/operator-authority.js";
 import { GUILD_THEMES, guildTheme, isGuildThemeKey, setGuildTheme, type GuildThemeKey } from "../../core/presentation/guild-theme.js";
 import { guildPresentation, parseGuildPresentationUrl, setGuildPresentationDestinations, setGuildSettingsLocationAcknowledged, type GuildPresentation } from "../../core/presentation/guild-presentation.js";
@@ -47,19 +41,6 @@ function htmlText(value: string): string {
 
 function administrationSection(sectionId: string, headingId: string, heading: string, content: string): string {
   return `<section id="${sectionId}" class="admin-section" aria-labelledby="${headingId}"><h2 id="${headingId}">${heading}</h2>${content}</section>`;
-}
-
-function renderPackagedCapabilityLifecycle(capabilities: PackagedCapabilityState[], canConfigureDiscord: boolean): string {
-  const renderGroup = (kind: "module" | "plugin", heading: string) => {
-    const members = capabilities.filter((capability) => capability.kind === kind);
-    if (members.length === 0) return "";
-    return `<section class="packaged-capability-group"><h3>${heading}</h3><div class="module-lifecycle-list">${members.map((module) => {
-
-    const configurationAction = module.key === "discord" && canConfigureDiscord ? `<a class="module-lifecycle-configure" href="/admin/plugins/discord">Configure integration <span aria-hidden="true">→</span></a>` : "";
-    return `<article class="module-lifecycle-card settings-panel" data-module-key="${module.key}"><div class="module-lifecycle-copy"><div class="module-lifecycle-heading"><h3>${htmlText(module.label)}</h3><span class="module-lifecycle-availability">Available</span></div><p>${module.enabled ? "Enabled for Guild Operations." : "Installed but disabled."}</p>${configurationAction}</div><label class="switch module-lifecycle-toggle"><input type="checkbox" data-module-enabled${module.enabled ? " checked" : ""}><span class="switch-control" aria-hidden="true"></span><span data-module-switch-label>${module.enabled ? "On" : "Off"}</span></label><p class="module-lifecycle-feedback" data-module-feedback role="status" aria-live="polite"></p></article>`;
-    }).join("\n")}</div></section>`;
-  };
-  return `${renderGroup("module", "Modules")}${renderGroup("plugin", "Plugins")}`;
 }
 
 async function renderActivityAdministration(guildieId: string, canConfigureModules: boolean): Promise<string> {
@@ -165,15 +146,8 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie] = await Promise.all([viewerForRequest(sessionToken), authenticatedGuildie(sessionToken)]);
     if (!guildie) return reply.code(401).send("Authentication is required.");
-    const [canConfigureModules, administration, modulesState] = await Promise.all([
-      guildieHasGuildCapabilityOrOperator(guildie.guildieId, MODULES_CONFIGURE_CAPABILITY),
-      administrationAvailabilityForGuildie(guildie.guildieId),
-      packagedCapabilityStates(),
-    ]);
-    const activityLifecycle = await renderActivityAdministration(guildie.guildieId, canConfigureModules);
-    let lifecycle = renderPackagedCapabilityLifecycle(modulesState.filter((module) => module.key === "discord"), administration.canConfigureDiscord);
-    lifecycle = activityLifecycle + lifecycle;
-    if (!canConfigureModules) lifecycle = lifecycle.replaceAll("<input type=\"checkbox\" data-module-enabled", "<input type=\"checkbox\" data-module-enabled disabled");
+    const canConfigureModules = await guildieHasGuildCapabilityOrOperator(guildie.guildieId, MODULES_CONFIGURE_CAPABILITY);
+    const lifecycle = await renderActivityAdministration(guildie.guildieId, canConfigureModules);
     const content = administrationSection("modules", "modules-heading", "Packaged capabilities", `${lifecycle}<p class="admin-section-note">Availability and entitlement are distinct from enablement. Controls are available only when your authority permits changes.</p>`);
     const html = renderPage(assets, { pathname: "/admin/modules", title: `Module Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Inspect and configure packaged Guild Operations capabilities.", viewer, stylesheets: ["admin.css", "admin-modules.css"], scripts: ["admin-modules.js", "admin-permissions.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Inspect and manage packaged Modules and Plugins.</p></div>`, body: `<div class="admin-sections">${content}</div>` });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
@@ -199,17 +173,6 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       details: { activityKind: params.activityKind, enabled: body.enabled },
     });
     return reply.send({ activityKind: params.activityKind, enabled: body.enabled });
-  });
-
-  app.put("/admin/modules/:moduleKey", async (request, reply) => {
-    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
-    if (!guildie) return reply.code(401).send({ error: "authentication_required" });
-    if (!await guildieHasGuildCapabilityOrOperator(guildie.guildieId, MODULES_CONFIGURE_CAPABILITY)) return reply.code(403).send({ error: "module_configuration_not_authorized" });
-    const params = request.params as { moduleKey?: unknown };
-    const body = (request.body ?? {}) as { enabled?: unknown };
-    if (typeof params.moduleKey !== "string" || !isPackagedCapabilityKey(params.moduleKey)) return reply.code(404).send({ error: "unknown_module" });
-    if (typeof body.enabled !== "boolean") return reply.code(400).send({ error: "enabled_must_be_boolean" });
-    return reply.send({ module: await setPackagedCapabilityEnabled(params.moduleKey, body.enabled) });
   });
 
 
