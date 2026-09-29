@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import { controlledCharactersForGuildie, controlledGuildCharactersForGuildie } from "../../core/identity/controlled-characters.js";
-import { activityParticipationOfferByProcedureReference, closeActivityParticipationOffer, closeOutstandingActivityParticipationOffers, constructActivityParticipationOffer, establishActivityParticipation, reviseActivityParticipationOffer, revokeActivityParticipationOffer, type ActivityParticipationOffer, type ActivityParticipationOfferContract } from "../../core/activity/participation.js";
+import { activityParticipationOfferByProcedureReference, closeActivityParticipationOffer, closeOutstandingActivityParticipationOffers, constructActivityParticipationOffer, establishActivityParticipation, outstandingActivityParticipationOffersForActor, reviseActivityParticipationOffer, revokeActivityParticipationOffer, type ActivityParticipationOffer, type ActivityParticipationOfferContract } from "../../core/activity/participation.js";
 import { pool, withTransaction } from "../../db.js";
 import { deliverEmission, publishEmission } from "../../emissions/registry.js";
 import { publishActivityDeclaration } from "../../core/activity/declarations.js";
@@ -160,23 +160,14 @@ export async function establishRaidSignup(input: EstablishRaidSignupInput): Prom
   if (!input.offeredSpecs.length) throw new Error("At least one specialization is required");
 
   const persisted = await withTransaction(async (client) => {
-    const existingOffers = await client.query<{ procedure_reference: string }>(
-      `SELECT procedure_reference
-         FROM activity_participation_offers
-        WHERE activity_kind='raid'
-          AND activity_id=$1
-          AND party_kind=$2
-          AND party_reference=$3
-          AND revoked_at_unix IS NULL
-          AND closed_at_unix IS NULL
-        FOR UPDATE`,
-      [input.raidId, input.applicantAnchor.kind, input.applicantAnchor.value],
-    );
-    if ((existingOffers.rowCount ?? 0) > 1) throw new Error("Raid actor has multiple outstanding Participation Offers");
-    const existing = existingOffers.rows[0]
-      ? { rowCount: 1, rows: [{ signup_row_id: existingOffers.rows[0].procedure_reference }] }
-      : { rowCount: 0, rows: [] as { signup_row_id: string }[] };
-    const signupRowId = existing.rows[0]?.signup_row_id ?? randomUUID();
+    const existingOffers = await outstandingActivityParticipationOffersForActor(client, {
+      activityKind: "raid",
+      activityId: input.raidId,
+      actor: { kind: input.applicantAnchor.kind, reference: input.applicantAnchor.value },
+    });
+    if (existingOffers.length > 1) throw new Error("Raid actor has multiple outstanding Participation Offers");
+    const existingOffer = existingOffers[0] ?? null;
+    const signupRowId = existingOffer?.procedureReference ?? randomUUID();
     const offerInput = {
       activityKind: "raid",
       activityId: input.raidId,
@@ -185,12 +176,12 @@ export async function establishRaidSignup(input: EstablishRaidSignupInput): Prom
       components: { specs: input.offeredSpecs },
       procedureReference: signupRowId,
     };
-    const offer = existing.rowCount
+    const offer = existingOffer
       ? await reviseActivityParticipationOffer(client, offerInput)
       : await constructActivityParticipationOffer(client, offerInput);
     raidOfferedSpecs(offer);
 
-    if (!existing.rowCount) {
+    if (!existingOffer) {
       await client.query(
         `INSERT INTO raid_signup_rows (signup_row_id,raid_id) VALUES ($1,$2)`,
         [signupRowId, input.raidId],
