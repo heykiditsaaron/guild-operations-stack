@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
-import { activityOccurrence, activityOccurrenceRenderActions, activityOccurrences, activityRegistrationState, activityWorkspace, type ActivityOccurrenceAttribute } from "../../core/activity/registry.js";
+import { activityKindRenderActions, activityOccurrence, activityOccurrenceRenderActions, activityOccurrences, activityRegistrationState, activityWorkspace, type ActivityOccurrenceAttribute } from "../../core/activity/registry.js";
 import { knownActivityPlugin } from "../../core/activity/plugin-control.js";
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage, renderPublicOccurrence } from "../render.js";
@@ -83,6 +83,7 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
       activityOccurrences(request.params.kind),
     ]);
     const label = fingerprint?.label ?? request.params.kind;
+    const kindActions = await activityKindRenderActions(request.params.kind, guildie?.guildieId ?? null);
     const cards = await Promise.all(occurrences.map(async (occurrence) => {
       const actions = await activityOccurrenceRenderActions(occurrence, guildie?.guildieId ?? null);
       const time = occurrenceTime(occurrence.occursAt);
@@ -106,7 +107,7 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
       description: `${label} guild activities.`,
       viewer,
       secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Activities", href: "/activities" }, { label }] },
-      header: `<div><p class="eyebrow">Activities</p><h1 id="page-title">${htmlText(label)}</h1></div>`,
+      header: `<div class="admin-page-header-row"><div><p class="eyebrow">Activities</p><h1 id="page-title">${htmlText(label)}</h1></div>${kindActions.map((action) => `<a class="button-${action.kind}" href="${htmlText(action.href)}">${htmlText(action.label)}</a>`).join("")}</div>`,
       body,
     }));
   });
