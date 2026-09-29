@@ -1,9 +1,11 @@
 import { controlledCharactersForGuildie, controlledGuildCharactersForGuildie } from "../../core/identity/controlled-characters.js";
+import { guildieAttributionsForGuildies } from "../../core/identity/guildie-attribution.js";
+import { activityParticipationOffersForActivity } from "../../core/activity/participation.js";
 import { pool } from "../../db.js";
 import { effectiveGuildAuthority } from "../../core/authority/guild-permissions.js";
 import { specHasTrait, specsForClass } from "../../wow-traits/registry.js";
 import { raidEventFacts, type RaidEventFacts } from "./application.js";
-import type { RaidRole } from "./domain.js";
+import type { RaidOfferedSpec, RaidRole } from "./domain.js";
 
 export type RaidParticipationCharacter = {
   region: string;
@@ -19,15 +21,13 @@ export type RaidParticipationCharacter = {
 export type RaidSignupView = {
   signupRowId: string;
   applicantId: string;
-  anchorKind: "guildie" | "external";
-  anchorValue: string;
-  resolvedGuildieId: string | null;
-  characterName: string | null;
-  realmName: string | null;
-  className: string;
-  willingSpecs: string[];
+  actorKind: "guildie" | "external";
+  actorReference: string;
+  displayName: string;
+  offeredSpecs: RaidOfferedSpec[];
   willingRoles: RaidRole[];
   assignmentId: string | null;
+  selectedClass: string | null;
   selectedSpec: string | null;
   selectedRole: RaidRole | null;
   deniedAtUnix: number | null;
@@ -35,11 +35,11 @@ export type RaidSignupView = {
   withdrawnAtUnix: number | null;
 };
 
-function rolesForSpecs(className: string, specs: readonly string[]): RaidRole[] {
+function rolesForSpecs(specs: readonly RaidOfferedSpec[]): RaidRole[] {
   const roles: RaidRole[] = [];
-  if (specs.some((spec) => specHasTrait(className, spec, "role.tank"))) roles.push("tank");
-  if (specs.some((spec) => specHasTrait(className, spec, "role.healer"))) roles.push("healer");
-  if (specs.some((spec) => specHasTrait(className, spec, "role.damage"))) roles.push("damage");
+  if (specs.some((spec) => specHasTrait(spec.className, spec.specName, "role.tank"))) roles.push("tank");
+  if (specs.some((spec) => specHasTrait(spec.className, spec.specName, "role.healer"))) roles.push("healer");
+  if (specs.some((spec) => specHasTrait(spec.className, spec.specName, "role.damage"))) roles.push("damage");
   return roles;
 }
 
@@ -73,7 +73,7 @@ export async function raidParticipationCharacters(
         realmName: character.realmName,
         className,
         specs,
-        roles: rolesForSpecs(className, specs),
+        roles: rolesForSpecs(specs.map((specName) => ({ className, specName }))),
       };
     }),
   };
@@ -83,15 +83,8 @@ async function raidSignupRows(raidId: string, includeWithdrawn: boolean): Promis
   const result = await pool.query<{
     signup_row_id: string;
     applicant_id: string;
-    anchor_kind: "guildie" | "external";
-    anchor_value: string;
-    resolved_guildie_id: string | null;
-    character_name: string | null;
-    realm_name: string | null;
-    class_name: string | null;
-    declared_class: string | null;
-    willing_specs: string[];
     assignment_id: string | null;
+    selected_class: string | null;
     selected_spec: string | null;
     selected_role: RaidRole | null;
     denied_at_unix: string | number | null;
@@ -101,30 +94,14 @@ async function raidSignupRows(raidId: string, includeWithdrawn: boolean): Promis
     `SELECT
        rr.signup_row_id,
        rr.applicant_id,
-       ra.anchor_kind,
-       ra.anchor_value,
-       ra.resolved_guildie_id,
-       COALESCE(wcp.name, c.name) AS character_name,
-       COALESCE(wcp.realm_name, c.realm_name) AS realm_name,
-       wcp.class_name,
-       rr.declared_class,
-       rr.willing_specs,
        ras.assignment_id,
+       ras.selected_class,
        ras.selected_spec,
        ras.selected_role,
        rsd.denied_at_unix,
        rsd.denied_by_guildie_id,
        rr.withdrawn_at_unix
      FROM raid_signup_rows rr
-     JOIN raid_applicants ra ON ra.applicant_id = rr.applicant_id
-     LEFT JOIN characters c
-       ON c.region = rr.character_region
-      AND c.realm_id = rr.character_realm_id
-      AND c.character_id = rr.character_id
-     LEFT JOIN wow_character_profiles wcp
-       ON wcp.region = rr.character_region
-      AND wcp.realm_id = rr.character_realm_id
-      AND wcp.character_id = rr.character_id
      LEFT JOIN raid_assignments ras ON ras.signup_row_id = rr.signup_row_id
      LEFT JOIN raid_signup_denials rsd ON rsd.raid_id = rr.raid_id AND rsd.signup_row_id = rr.signup_row_id
      WHERE rr.raid_id = $1
@@ -133,20 +110,42 @@ async function raidSignupRows(raidId: string, includeWithdrawn: boolean): Promis
     [raidId, includeWithdrawn],
   );
 
+  const client = await pool.connect();
+  let offers;
+  try {
+    offers = await activityParticipationOffersForActivity(client, {
+      activityKind: "raid",
+      activityId: raidId,
+      procedureReferences: result.rows.map((row) => row.signup_row_id),
+    });
+  } finally {
+    client.release();
+  }
+  const offerByReference = new Map(offers.map((offer) => [offer.procedureReference, offer]));
+  const guildieIds = offers.flatMap((offer) => offer.actor.kind === "guildie" ? [offer.actor.reference] : []);
+  const attributions = await guildieAttributionsForGuildies(guildieIds);
+
   return result.rows.map((row) => {
-    const className = row.class_name ?? row.declared_class ?? "Unknown";
+    const offer = offerByReference.get(row.signup_row_id);
+    if (!offer) throw new Error("Raid signup Participation Offer not found");
+    const component = offer.components.find((value) => value.kind === "specs");
+    if (!Array.isArray(component?.value) || !component.value.length || component.value.some((value) => value.type !== "wow_spec")) {
+      throw new Error("Raid signup Participation Offer does not contain valid specialization choices");
+    }
+    const offeredSpecs = component.value.flatMap((value) =>
+      value.type === "wow_spec" ? [{ className: value.value.className, specName: value.value.specName }] : []
+    );
+    const attribution = offer.actor.kind === "guildie" ? attributions.get(offer.actor.reference) : null;
     return {
       signupRowId: row.signup_row_id,
       applicantId: row.applicant_id,
-      anchorKind: row.anchor_kind,
-      anchorValue: row.anchor_value,
-      resolvedGuildieId: row.resolved_guildie_id,
-      characterName: row.character_name,
-      realmName: row.realm_name,
-      className,
-      willingSpecs: row.willing_specs,
-      willingRoles: className === "Unknown" ? [] : rolesForSpecs(className, row.willing_specs),
+      actorKind: offer.actor.kind,
+      actorReference: offer.actor.reference,
+      displayName: attribution?.displayName ?? (offer.actor.kind === "external" ? offer.actor.reference : `Guildie ${offer.actor.reference.slice(0, 8)}`),
+      offeredSpecs,
+      willingRoles: rolesForSpecs(offeredSpecs),
       assignmentId: row.assignment_id,
+      selectedClass: row.selected_class,
       selectedSpec: row.selected_spec,
       selectedRole: row.selected_role,
       deniedAtUnix: row.denied_at_unix === null ? null : Number(row.denied_at_unix),
@@ -164,11 +163,12 @@ export async function raidSignup(raidId: string, signupRowId: string): Promise<R
   return (await raidSignupRows(raidId, true)).find((row) => row.signupRowId === signupRowId) ?? null;
 }
 
-export async function raidAssignment(raidId: string, signupRowId: string): Promise<Pick<RaidSignupView, "assignmentId" | "selectedSpec" | "selectedRole"> | null> {
+export async function raidAssignment(raidId: string, signupRowId: string): Promise<Pick<RaidSignupView, "assignmentId" | "selectedClass" | "selectedSpec" | "selectedRole"> | null> {
   const signup = await raidSignup(raidId, signupRowId);
   if (!signup?.assignmentId) return null;
   return {
     assignmentId: signup.assignmentId,
+    selectedClass: signup.selectedClass,
     selectedSpec: signup.selectedSpec,
     selectedRole: signup.selectedRole,
   };
@@ -176,12 +176,10 @@ export async function raidAssignment(raidId: string, signupRowId: string): Promi
 
 export async function raidSignupsForGuildie(raidId: string, guildieId: string): Promise<RaidSignupView[]> {
   return (await raidSignups(raidId)).filter(
-    (row) => row.anchorKind === "guildie" && row.anchorValue === guildieId,
+    (row) => row.actorKind === "guildie" && row.actorReference === guildieId,
   );
 }
-
 
 export async function activeRaidSignups(raidId: string): Promise<RaidSignupView[]> {
   return (await raidSignupRows(raidId, false)).filter((row) => row.deniedAtUnix === null);
 }
-
