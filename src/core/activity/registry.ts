@@ -38,6 +38,14 @@ export type ActivityOccurrenceAttribute = {
 
 export type ActivityInteractionKind = "participate" | "operate";
 
+export type ActivityKindInteractionKind = "establish";
+
+export type ActivityKindInteractionCapability = {
+  label(kind: ActivityKindInteractionKind): string;
+  destination(kind: ActivityKindInteractionKind): string | null;
+  availableTo?(kind: ActivityKindInteractionKind, guildieId: string | null): boolean | Promise<boolean>;
+};
+
 export type ActivityInteractionRequest = {
   kind: ActivityInteractionKind;
   label: string;
@@ -106,6 +114,7 @@ export type ActivityRegistration = {
   administration?: ActivityAdministration;
   occurrence?: ActivityOccurrenceCapability;
   interaction?: ActivityInteractionCapability;
+  kindInteraction?: ActivityKindInteractionCapability;
   participation?: ActivityParticipationCapability;
   workspace?: ActivityWorkspaceCapability;
 };
@@ -221,6 +230,22 @@ export async function activityOccurrences(activityKind: string): Promise<readonl
     ...liveOccurrences.filter((occurrence): occurrence is ActivityOccurrence => occurrence !== null),
     ...records.map((record) => record.occurrence),
   ];
+}
+
+export async function activityKindRenderActions(
+  activityKind: string,
+  guildieId: string | null = null,
+): Promise<readonly ActivityRenderAction[]> {
+  const activity = await activeActivity(requiredText(activityKind, "kind"));
+  if (!activity?.kindInteraction) return [];
+  const kind: ActivityKindInteractionKind = "establish";
+  const available = activity.kindInteraction.availableTo
+    ? await activity.kindInteraction.availableTo(kind, guildieId)
+    : true;
+  if (!available) return [];
+  const href = activity.kindInteraction.destination(kind);
+  if (!href) return [];
+  return [{ label: requiredText(activity.kindInteraction.label(kind), "kind interaction label"), href, kind: "primary" }];
 }
 
 export async function activityOccurrenceRenderActions(
