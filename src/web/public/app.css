@@ -1423,3 +1423,269 @@ h1 {
     grid-column: 1 / -1;
   }
 }
+
+
+/* Raid occurrence: Core renders the public semantic story; the Activity plugin supplies facts. */
+.raid-occurrence {
+  gap: clamp(2rem, 5vw, 3.25rem);
+  width: min(100%, 58rem);
+}
+
+.raid-occurrence-hero {
+  position: relative;
+  display: grid;
+  gap: 0.9rem;
+  padding: clamp(1.2rem, 4vw, 2rem) 0 clamp(1.6rem, 5vw, 2.6rem);
+}
+
+.raid-occurrence-hero::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 1px;
+  background: linear-gradient(90deg, var(--theme-accent-border), rgba(255, 255, 255, 0.04) 72%, transparent);
+}
+
+.raid-occurrence-kicker {
+  width: fit-content;
+  margin: 0;
+  color: var(--theme-accent);
+  font-size: 0.78rem;
+  font-weight: 850;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.raid-difficulty-mythic {
+  color: #ff6b63;
+  text-shadow: 0 0 1.2rem rgba(255, 73, 64, 0.24);
+}
+
+.raid-difficulty-heroic {
+  color: #a67cff;
+  text-shadow: 0 0 1.2rem rgba(166, 124, 255, 0.2);
+}
+
+.raid-difficulty-normal {
+  color: #79c77b;
+}
+
+.raid-occurrence-hero h1 {
+  max-width: 52rem;
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.4rem, 8vw, 4.8rem);
+  line-height: 0.96;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+
+.raid-occurrence-description {
+  max-width: 42rem;
+  padding-left: 1rem;
+  border-left: 2px solid var(--theme-accent-border);
+  color: var(--theme-text-secondary);
+  font-size: clamp(0.96rem, 2vw, 1.08rem);
+  line-height: 1.65;
+}
+
+.raid-occurrence-description p {
+  margin: 0;
+}
+
+.raid-occurrence-first-pull {
+  display: grid;
+  gap: 0.3rem;
+  width: fit-content;
+  margin-top: 0.65rem;
+}
+
+.raid-occurrence-first-pull > span {
+  color: var(--theme-text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.raid-occurrence-first-pull > strong {
+  font-size: clamp(1.25rem, 4vw, 1.8rem);
+  line-height: 1.15;
+}
+
+.raid-occurrence-composition,
+.raid-occurrence-requirements {
+  display: grid;
+  gap: 1rem;
+}
+
+.raid-occurrence-section-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.raid-occurrence-section-heading .eyebrow {
+  margin-bottom: 0.3rem;
+  color: var(--theme-text-muted);
+  font-size: 0.68rem;
+}
+
+.raid-occurrence-section-heading h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.55rem, 5vw, 2.2rem);
+  line-height: 1;
+}
+
+.raid-occurrence-signups {
+  margin: 0 0 0.1rem;
+  color: var(--theme-text-muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.raid-occurrence-signups strong {
+  color: var(--theme-text);
+  font-size: 1.15rem;
+}
+
+.raid-occurrence-role-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 1rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.018));
+}
+
+.raid-occurrence-role {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: clamp(0.85rem, 2.5vw, 1.15rem);
+}
+
+.raid-occurrence-role + .raid-occurrence-role {
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.raid-occurrence-role-icon {
+  width: 2.15rem;
+  height: 2.15rem;
+  flex: 0 0 auto;
+  border-radius: 0.45rem;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  box-shadow: 0 0.35rem 1rem rgba(0, 0, 0, 0.25);
+}
+
+.raid-occurrence-role-icon-tank {
+  background-image: var(--raid-role-tank-icon);
+}
+
+.raid-occurrence-role-icon-healer {
+  background-image: var(--raid-role-healer-icon);
+}
+
+.raid-occurrence-role-icon-damage {
+  background-image: var(--raid-role-damage-icon);
+}
+
+.raid-occurrence-role-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.05rem;
+}
+
+.raid-occurrence-role-copy strong {
+  font-size: clamp(1.45rem, 4vw, 2rem);
+  line-height: 1;
+}
+
+.raid-occurrence-role-copy span {
+  color: var(--theme-text-muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.raid-occurrence-requirement-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.raid-occurrence-requirement {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.9rem 1rem 0.9rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.raid-occurrence-requirement:nth-child(even) {
+  padding-left: 1rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.raid-occurrence-requirement > span {
+  color: var(--theme-text-muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.raid-occurrence-requirement > strong {
+  font-size: 1rem;
+}
+
+.raid-occurrence-actions {
+  padding-top: 0.25rem;
+}
+
+.raid-occurrence-actions .button-primary {
+  min-width: 9rem;
+}
+
+@media (max-width: 42rem) {
+  .raid-occurrence-role-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .raid-occurrence-role:nth-child(3) {
+    border-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .raid-occurrence-role:nth-child(4) {
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+  }
+}
+
+@media (max-width: 30rem) {
+  .raid-occurrence-hero h1 {
+    font-size: clamp(2.15rem, 12vw, 3.25rem);
+  }
+
+  .raid-occurrence-section-heading {
+    align-items: start;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .raid-occurrence-requirement-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .raid-occurrence-requirement,
+  .raid-occurrence-requirement:nth-child(even) {
+    padding-inline: 0;
+    border-left: 0;
+  }
+}
