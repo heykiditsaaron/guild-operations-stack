@@ -1717,16 +1717,35 @@ h1 {
 }
 
 .raid-listing-identity {
+  position: relative;
   display: grid;
   gap: 0.7rem;
+  padding-top: 0.15rem;
+}
+
+.raid-listing-difficulty {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: fit-content;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.18);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 .raid-listing-identity .activity-card-title {
+  max-width: calc(100% - 5rem);
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(1.7rem, 5vw, 2.35rem);
-  line-height: 1.02;
-  letter-spacing: -0.025em;
+  font-size: clamp(1.25rem, 3.5vw, 1.65rem);
+  line-height: 1.08;
+  letter-spacing: -0.015em;
 }
 
 .raid-listing-description {
