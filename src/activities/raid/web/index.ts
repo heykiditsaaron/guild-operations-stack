@@ -20,19 +20,20 @@ function ownSignupsView(rows:readonly RaidSignupView[],canWithdraw:boolean):stri
   return rows.length?`<section class="raid-my-offers"><h2>Your participation</h2><div>${rows.map(row=>`<article><strong>${htmlText(row.displayName)}</strong><span>Willing to play: ${row.offeredSpecs.map(spec=>htmlText(`${spec.specName} ${spec.className}`)).join(", ")}</span>${row.assignmentId!==null?`<span>Assigned: ${htmlText(row.selectedSpec??"")} ${htmlText(row.selectedClass??"")} · ${htmlText(roleLabel(row.selectedRole!))}</span>`:""}${canWithdraw?`<button type="button" class="button-secondary" data-raid-revoke-signup="${htmlText(row.signupRowId)}">Withdraw</button>`:""}</article>`).join("")}</div></section>`:"";
 }
 
-async function characterSpecChoices(character:RaidParticipationCharacter, selected:Set<string>):Promise<string>{
-  const choices=await Promise.all(character.specs.map(async specName=>{
-    const icon=await specializationIconUrl(character.className,specName);
-    const key=`${character.className}\u0000${specName}`;
-    return `<label class="raid-spec-choice"><input type="checkbox" name="spec" value="${htmlText(specName)}" data-class-name="${htmlText(character.className)}" data-region="${htmlText(character.region)}" data-realm-id="${htmlText(character.realmId)}" data-character-id="${htmlText(character.characterId)}"${selected.has(key)?" checked":""}>${icon?`<img src="${htmlText(icon)}" alt="" loading="lazy">`:""}<span>${htmlText(specName)}</span></label>`;
-  }));
-  return `<fieldset data-raid-character-specs><legend>${htmlText(character.name)}${character.realmName?` — ${htmlText(character.realmName)}`:""} · ${htmlText(character.className)}</legend><div class="raid-spec-choices">${choices.join("")}</div></fieldset>`;
-}
-
 async function participationEditor(characters:RaidParticipationCharacter[],existing:RaidSignupView|null):Promise<string>{
   const selected=new Set((existing?.offeredSpecs??[]).map(spec=>`${spec.className}\u0000${spec.specName}`));
-  const characterChoices=await Promise.all(characters.map(character=>characterSpecChoices(character,selected)));
-  return `<section class="raid-participation participation-workspace" aria-labelledby="raid-signup-heading"><div class="participation-workspace-header"><h2 id="raid-signup-heading">${existing?"Revise your offer":"Sign up"}</h2><p>Select every specialization you are willing to bring. Your choices may span multiple characters and classes.</p></div><form class="raid-offer-form" data-raid-signup-form><div data-raid-spec-choices>${characterChoices.join("")}</div><button type="submit" class="button-primary">${existing?"Update offer":"Sign up"}</button><p data-raid-signup-status role="status" aria-live="polite"></p></form></section>`;
+  const choices=new Map<string,{character:RaidParticipationCharacter;specName:string}>();
+  for(const character of characters){
+    for(const specName of character.specs){
+      const key=`${character.className}\u0000${specName}`;
+      if(!choices.has(key))choices.set(key,{character,specName});
+    }
+  }
+  const rendered=await Promise.all([...choices.entries()].map(async([key,{character,specName}])=>{
+    const icon=await specializationIconUrl(character.className,specName);
+    return `<label class="raid-spec-choice"><input type="checkbox" name="spec" value="${htmlText(specName)}" data-class-name="${htmlText(character.className)}" data-region="${htmlText(character.region)}" data-realm-id="${htmlText(character.realmId)}" data-character-id="${htmlText(character.characterId)}"${selected.has(key)?" checked":""}>${icon?`<img src="${htmlText(icon)}" alt="" loading="lazy">`:""}<span>${htmlText(specName)} ${htmlText(character.className)}</span></label>`;
+  }));
+  return `<section class="raid-participation participation-workspace" aria-labelledby="raid-signup-heading"><div class="participation-workspace-header"><h2 id="raid-signup-heading">${existing?"Revise your offer":"Sign up"}</h2><p>Select every specialization you are willing to bring. Guild Operations resolves these choices from your eligible characters.</p></div><form class="raid-offer-form" data-raid-signup-form><fieldset data-raid-specs><legend>Specializations you are willing to play</legend><div class="raid-spec-choices" data-raid-spec-choices>${rendered.join("")}</div></fieldset><button type="submit" class="button-primary">${existing?"Update offer":"Sign up"}</button><p data-raid-signup-status role="status" aria-live="polite"></p></form></section>`;
 }
 
 function offeredSpecInput(value:unknown):RaidOfferedSpecInput|null{
