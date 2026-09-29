@@ -66,7 +66,7 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
           description: occurrence.description ? `<p>${htmlText(occurrence.description)}</p>` : undefined,
           facts,
           actions,
-          afterFacts: workspaceHtml,
+          detail: workspaceHtml,
         }),
       }));
   });
