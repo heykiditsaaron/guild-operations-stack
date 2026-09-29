@@ -23,6 +23,13 @@ export function registerRaffleActivityIntegration(): void {
       tagline: "Take your shot at the pot.",
       destination: "/activities/raffle",
     },
+    kindInteraction: {
+      label() { return "Create Raffle"; },
+      destination() { return "/activities/raffle/manage?create=1"; },
+      async availableTo(_kind, guildieId) {
+        return guildieId ? guildieHasGuildCapabilityOrOperator(guildieId, RAFFLE_MODIFY_CAPABILITY) : false;
+      },
+    },
     occurrence: {
       resolve: raffleOccurrence,
       async list() {
