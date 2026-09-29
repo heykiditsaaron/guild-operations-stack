@@ -137,6 +137,13 @@ export function registerRaidActivityIntegration(): void {
       tagline: "Organized guild raiding and roster participation.",
       destination: "/activities/raid",
     },
+    kindInteraction: {
+      label() { return "Create Raid"; },
+      destination() { return "/activities/raid/manage?create=1"; },
+      async availableTo(_kind, guildieId) {
+        return guildieId ? guildieHasGuildCapabilityOrOperator(guildieId, RAID_MODIFY_CAPABILITY) : false;
+      },
+    },
     occurrence: {
       resolve: raidOccurrence,
       async list() {
