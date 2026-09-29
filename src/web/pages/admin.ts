@@ -29,7 +29,6 @@ import { setActivityPluginEnabled } from "../../core/activity/plugin-enablement.
 import { hasDevelopmentGuildMasterAuthority } from "../../core/authority/operator-authority.js";
 import { GUILD_THEMES, guildTheme, isGuildThemeKey, setGuildTheme, type GuildThemeKey } from "../../core/presentation/guild-theme.js";
 import { guildPresentation, parseGuildPresentationUrl, setGuildPresentationDestinations, setGuildSettingsLocationAcknowledged, type GuildPresentation } from "../../core/presentation/guild-presentation.js";
-import { administrationAvailabilityForGuildie } from "../administration.js";
 import type { AssetRegistry } from "../assets.js";
 import { renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
