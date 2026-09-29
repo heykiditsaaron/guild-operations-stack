@@ -76,13 +76,13 @@ if (signupsToggle instanceof HTMLButtonElement) {
   });
 }
 
-async function assignParticipant(signupRowId, selectedSpec, selectedRole) {
+async function assignParticipant(signupRowId, selectedClass, selectedSpec, selectedRole) {
   setActionStatus(`Assigning ${selectedSpec} ${selectedRole}…`);
   try {
     const response = await fetch(`${window.location.pathname}/assign`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ signupRowId, selectedSpec, selectedRole }),
+      body: JSON.stringify({ signupRowId, selectedClass, selectedSpec, selectedRole }),
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error ?? "Participant could not be assigned");
@@ -115,7 +115,7 @@ const specCancel = document.querySelector("[data-raid-spec-cancel]");
 
 function chooseSpec(signupRowId, role, specs) {
   if (specs.length === 1) {
-    void assignParticipant(signupRowId, specs[0], role);
+    void assignParticipant(signupRowId, specs[0].className, specs[0].specName, role);
     return;
   }
   if (!(specDialog instanceof HTMLDialogElement) || !(specOptions instanceof HTMLElement)) return;
@@ -127,10 +127,10 @@ function chooseSpec(signupRowId, role, specs) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "button-primary";
-    button.textContent = spec;
+    button.textContent = `${spec.specName} ${spec.className}`;
     button.addEventListener("click", () => {
       specDialog.close();
-      void assignParticipant(signupRowId, spec, role);
+      void assignParticipant(signupRowId, spec.className, spec.specName, role);
     });
     specOptions.append(button);
   }
@@ -152,7 +152,7 @@ function participantRoleSpecs(card, role) {
   try {
     const parsed = JSON.parse(card.dataset.roleSpecs ?? "{}");
     const specs = parsed?.[role];
-    return Array.isArray(specs) ? specs.filter((value) => typeof value === "string") : [];
+    return Array.isArray(specs) ? specs.filter((value) => value && typeof value === "object" && typeof value.className === "string" && typeof value.specName === "string") : [];
   } catch {
     return [];
   }
