@@ -1,11 +1,12 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
-import { activityKindRenderActions, activityOccurrence, activityOccurrenceRenderActions, activityOccurrences, activityRegistrationState, type ActivityOccurrence, type ActivityOccurrenceAttribute, type ActivityRenderAction, type ActivitySharedValue } from "../../core/activity/registry.js";
+import { activityAssignments, activityKindRenderActions, activityOccurrence, activityOccurrenceRenderActions, activityOccurrences, activityRegistrationState, type ActivityAssignment, type ActivityOccurrence, type ActivityOccurrenceAttribute, type ActivityRenderAction, type ActivitySharedValue } from "../../core/activity/registry.js";
 import { knownActivityPlugin } from "../../core/activity/plugin-control.js";
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage, renderPublicOccurrence } from "../render.js";
 import { renderActivityOccurrenceSharedValues } from "../activity-values.js";
 import { viewerForRequest } from "../viewer.js";
+import { positionForSpec } from "../../wow-traits/registry.js";
 
 function localTime(unixSeconds: number): string {
   const instant = new Date(unixSeconds * 1000).toISOString();
@@ -43,10 +44,45 @@ function raidRoleMetric(label: string, count: number, role: "tank" | "healer" | 
   return `<div class="raid-occurrence-role"><span class="raid-occurrence-role-icon raid-occurrence-role-icon-${role}" aria-hidden="true"></span><span class="raid-occurrence-role-copy"><strong>${count}</strong><span>${label}</span></span></div>`;
 }
 
-async function renderRaidOccurrence(occurrence: ActivityOccurrence, actions: readonly ActivityRenderAction[]): Promise<string> {
+function assignmentAttribute(assignment: ActivityAssignment, kind: string): ActivitySharedValue | null {
+  const value = assignment.attributes.find((attribute) => attribute.kind === kind)?.value;
+  if (!value || Array.isArray(value)) return null;
+  return value as ActivitySharedValue;
+}
+
+function raidAssignmentComposition(assignments: readonly ActivityAssignment[]) {
+  let tanks = 0;
+  let healers = 0;
+  let melee = 0;
+  let ranged = 0;
+
+  for (const assignment of assignments) {
+    const role = assignmentAttribute(assignment, "assigned_role");
+    if (role?.type !== "wow_role") continue;
+    if (role.value === "tank") {
+      tanks += 1;
+      continue;
+    }
+    if (role.value === "healer") {
+      healers += 1;
+      continue;
+    }
+
+    const spec = assignmentAttribute(assignment, "assigned_spec");
+    if (spec?.type !== "wow_spec") continue;
+    const position = positionForSpec(spec.value.className, spec.value.specName);
+    if (position === "melee") melee += 1;
+    if (position === "ranged") ranged += 1;
+  }
+
+  return { tanks, healers, melee, ranged };
+}
+
+async function renderRaidOccurrence(occurrence: ActivityOccurrence, actions: readonly ActivityRenderAction[], assignments: readonly ActivityAssignment[]): Promise<string> {
   const difficulty = stringAttribute(occurrence, "difficulty") ?? "Raid";
   const difficultyClass = difficulty.toLocaleLowerCase("en-US").replace(/[^a-z0-9_-]/g, "-");
   const signedUp = integerAttribute(occurrence, "signed_up");
+  const composition = raidAssignmentComposition(assignments);
   const requirements = occurrence.attributes.filter((attribute) => attribute.kind === "eligibility" || attribute.kind === "requirement");
   const renderedRequirements = await Promise.all(requirements.map(async (attribute) =>
     `<div class="raid-occurrence-requirement"><span>${htmlText(attribute.label)}</span><strong>${await renderActivityOccurrenceSharedValues(occurrence, attribute.value)}</strong></div>`
@@ -66,10 +102,10 @@ async function renderRaidOccurrence(occurrence: ActivityOccurrence, actions: rea
     <section class="raid-occurrence-composition" aria-labelledby="raid-composition-heading">
       <div class="raid-occurrence-section-heading"><div><p class="eyebrow">Raid group</p><h2 id="raid-composition-heading">Composition</h2></div><p class="raid-occurrence-signups"><strong>${signedUp}</strong> signed up</p></div>
       <div class="raid-occurrence-role-grid">
-        ${raidRoleMetric("Tank", integerAttribute(occurrence, "tanks"), "tank")}
-        ${raidRoleMetric("Healer", integerAttribute(occurrence, "healers"), "healer")}
-        ${raidRoleMetric("Melee", integerAttribute(occurrence, "melee"), "damage")}
-        ${raidRoleMetric("Ranged", integerAttribute(occurrence, "ranged"), "damage")}
+        ${raidRoleMetric("Tank", composition.tanks, "tank")}
+        ${raidRoleMetric("Healer", composition.healers, "healer")}
+        ${raidRoleMetric("Melee", composition.melee, "damage")}
+        ${raidRoleMetric("Ranged", composition.ranged, "damage")}
       </div>
     </section>
     ${renderedRequirements.length ? `<section class="raid-occurrence-requirements" aria-labelledby="raid-details-heading"><div class="raid-occurrence-section-heading"><div><p class="eyebrow">Before you sign up</p><h2 id="raid-details-heading">Raid details</h2></div></div><div class="raid-occurrence-requirement-grid">${renderedRequirements.join("")}</div></section>` : ""}
@@ -87,9 +123,10 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
       viewerForRequest(sessionToken),
       authenticatedGuildie(sessionToken),
     ]);
-    const [fingerprint, actions] = await Promise.all([
+    const [fingerprint, actions, assignments] = await Promise.all([
       knownActivityPlugin(occurrence.activityKind),
       activityOccurrenceRenderActions(occurrence, guildie?.guildieId ?? null),
+      activityAssignments(occurrence.activityKind, occurrence.activityId),
     ]);
     const label = fingerprint?.label ?? occurrence.activityKind;
 
@@ -105,7 +142,7 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
           stylesheets: ["wow-role-icons.css"],
           secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Activities", href: "/activities" }, { label }] },
           header: "",
-          body: await renderRaidOccurrence(occurrence, actions),
+          body: await renderRaidOccurrence(occurrence, actions, assignments),
         }));
     }
 
