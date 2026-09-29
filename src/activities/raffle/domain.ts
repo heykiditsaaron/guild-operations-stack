@@ -180,28 +180,6 @@ function mapRaffle(row: Record<string, unknown>): Raffle {
   };
 }
 
-function mapClaim(row: Record<string, unknown>): RaffleClaim {
-  return {
-    claimId: String(row.claim_id),
-    raffleId: String(row.raffle_id),
-    claimantGuildieId: String(row.claimant_guildie_id),
-    characterRecordId: String(row.character_record_id),
-    characterId: String(row.character_id),
-    realmId: String(row.realm_id),
-    characterName: String(row.character_name),
-    requestedEntryCount: Number(row.requested_entry_count),
-    promisedGoldValue: String(row.promised_gold_value),
-    createdAtUnix: Number(row.created_at_unix),
-    resolutionKind: row.resolution_kind as RaffleClaimResolution,
-    approvedByGuildieId: nullableString(row.approved_by_guildie_id),
-    approvedAtUnix: nullableNumber(row.approved_at_unix),
-    deniedByGuildieId: nullableString(row.denied_by_guildie_id),
-    deniedAtUnix: nullableNumber(row.denied_at_unix),
-    denialReason: nullableString(row.denial_reason),
-    revokedByGuildieId: nullableString(row.revoked_by_guildie_id),
-    revokedAtUnix: nullableNumber(row.revoked_at_unix),
-  };
-}
 
 async function lockedRaffle(client: PoolClient, raffleId: string): Promise<Record<string, unknown>> {
   const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
@@ -371,29 +349,33 @@ export async function establishRaffleClaim(claimantGuildieId: string, raffleId: 
     const character = singularCharacterValue.value;
     const entryCount = singularClaimValue.value;
     const promisedGoldValue = BigInt(String(raffleRow.entry_price_gold)) * BigInt(entryCount);
-    const insert = await client.query(
+    await client.query(
       `INSERT INTO raffle_claims (
-         claim_id, raffle_id, claimant_guildie_id, character_record_id, requested_entry_count,
-         promised_gold_value, created_at_unix, participation_offer_id
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [
-        claimId,
-        raffleId,
-        claimantGuildieId,
-        character.characterRecordId,
-        entryCount,
-        promisedGoldValue.toString(),
-        offeredAtUnix,
-        offer.participationOfferId,
-      ],
+         claim_id, raffle_id, promised_gold_value, created_at_unix, participation_offer_id
+       ) VALUES ($1,$2,$3,$4,$5)`,
+      [claimId, raffleId, promisedGoldValue.toString(), offeredAtUnix, offer.participationOfferId],
     );
 
-    return mapClaim({
-      ...insert.rows[0] as Record<string, unknown>,
-      character_id: character.characterId,
-      realm_id: character.realmId,
-      character_name: character.name,
-    });
+    return {
+      claimId,
+      raffleId,
+      claimantGuildieId: offer.actor.reference,
+      characterRecordId: character.characterRecordId,
+      characterId: character.characterId,
+      realmId: character.realmId,
+      characterName: character.name,
+      requestedEntryCount: entryCount,
+      promisedGoldValue: promisedGoldValue.toString(),
+      createdAtUnix: offeredAtUnix,
+      resolutionKind: null,
+      approvedByGuildieId: null,
+      approvedAtUnix: null,
+      deniedByGuildieId: null,
+      deniedAtUnix: null,
+      denialReason: null,
+      revokedByGuildieId: null,
+      revokedAtUnix: null,
+    };
   });
 }
 
