@@ -46,3 +46,20 @@ export async function activityRecord(activityKindInput: string, activityIdInput:
   const row = result.rows[0];
   return row ? { activityKind, activityId, occurrence: row.occurrence, frozenAtUnix: Number(row.frozen_at_unix) } : null;
 }
+
+export async function activityRecords(activityKindInput: string): Promise<readonly ActivityRecord[]> {
+  const activityKind = requiredText(activityKindInput, "kind");
+  const result = await pool.query<{ activity_id: string; occurrence: ActivityOccurrence; frozen_at_unix: string }>(
+    `SELECT activity_id,occurrence,frozen_at_unix
+       FROM activity_records
+      WHERE activity_kind=$1
+      ORDER BY frozen_at_unix DESC,activity_id ASC`,
+    [activityKind],
+  );
+  return result.rows.map((row) => ({
+    activityKind,
+    activityId: row.activity_id,
+    occurrence: row.occurrence,
+    frozenAtUnix: Number(row.frozen_at_unix),
+  }));
+}

@@ -1,4 +1,4 @@
-import { activityRecord } from "./records.js";
+import { activityRecord, activityRecords } from "./records.js";
 import { activityParticipationOffersForGuildie as participationOffersForGuildie, activityParticipationsForGuildie as participationsForGuildie } from "./participation.js";
 import { knownActivityPlugin, knownActivityPlugins } from "./plugin-control.js";
 import { knownActivityCapabilityDeclarations } from "./plugin-administration.js";
@@ -207,9 +207,18 @@ export async function activityOccurrences(activityKind: string): Promise<readonl
   const activity = await activeActivity(kind);
   if (!activity?.occurrence?.list) return [];
 
-  const ids = await activity.occurrence.list();
-  const occurrences = await Promise.all(ids.map((activityId) => activityOccurrence(kind, activityId)));
-  return occurrences.filter((occurrence): occurrence is ActivityOccurrence => occurrence !== null);
+  const [liveIds, records] = await Promise.all([
+    activity.occurrence.list(),
+    activityRecords(kind),
+  ]);
+  const recordIds = new Set(records.map((record) => record.activityId));
+  const liveOccurrences = await Promise.all(
+    liveIds.filter((activityId) => !recordIds.has(activityId)).map((activityId) => activityOccurrence(kind, activityId)),
+  );
+  return [
+    ...liveOccurrences.filter((occurrence): occurrence is ActivityOccurrence => occurrence !== null),
+    ...records.map((record) => record.occurrence),
+  ];
 }
 
 export async function activityOccurrenceRenderActions(
