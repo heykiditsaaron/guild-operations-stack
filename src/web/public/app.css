@@ -1697,3 +1697,114 @@ h1 {
     border-left: 0;
   }
 }
+
+
+/* Activity kind listings */
+.activity-kind-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.activity-kind-new {
+  flex: 0 0 auto;
+}
+
+.raid-listing-card {
+  display: grid;
+  gap: 1.35rem;
+}
+
+.raid-listing-identity {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.raid-listing-identity .activity-card-title {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.7rem, 5vw, 2.35rem);
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+}
+
+.raid-listing-description {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 0;
+  color: var(--theme-text-secondary);
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.raid-listing-summary {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.raid-listing-time {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.raid-listing-time > span {
+  color: var(--theme-text-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.raid-listing-time > strong {
+  color: var(--theme-accent);
+  font-size: 1.05rem;
+  line-height: 1.2;
+}
+
+.raid-listing-signups {
+  margin: 0;
+  color: var(--theme-text-muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.raid-listing-signups strong {
+  color: var(--theme-text);
+  font-size: 1rem;
+}
+
+.raid-listing-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.raid-listing-actions .button-participate {
+  flex: 1 1 auto;
+}
+
+.raid-listing-actions .button-operate {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 30rem) {
+  .activity-kind-header {
+    align-items: center;
+  }
+
+  .activity-kind-new {
+    min-width: auto;
+  }
+
+  .raid-listing-summary {
+    align-items: start;
+    flex-direction: column;
+    gap: 0.65rem;
+  }
+}
