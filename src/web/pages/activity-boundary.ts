@@ -1,10 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
-import { activityOccurrence, activityOccurrenceRenderActions, activityOccurrences, activityRegistrationState, type ActivityOccurrenceAttribute } from "../../core/activity/registry.js";
+import { activityOccurrence, activityOccurrenceRenderActions, activityOccurrences, activityRegistrationState, activityWorkspace, type ActivityOccurrenceAttribute } from "../../core/activity/registry.js";
 import { knownActivityPlugin } from "../../core/activity/plugin-control.js";
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage, renderPublicOccurrence } from "../render.js";
 import { renderActivityOccurrenceSharedValues } from "../activity-values.js";
+import { renderActivityWorkspace } from "../activity-workspace.js";
 import { viewerForRequest } from "../viewer.js";
 
 function localTime(unixSeconds: number): string {
@@ -32,9 +33,10 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
       viewerForRequest(sessionToken),
       authenticatedGuildie(sessionToken),
     ]);
-    const [fingerprint, actions] = await Promise.all([
+    const [fingerprint, actions, workspace] = await Promise.all([
       knownActivityPlugin(occurrence.activityKind),
       activityOccurrenceRenderActions(occurrence, guildie?.guildieId ?? null),
+      occurrence.phase === "active" ? activityWorkspace(occurrence.activityKind, occurrence.activityId) : Promise.resolve(null),
     ]);
     const label = fingerprint?.label ?? occurrence.activityKind;
     const time = occurrenceTime(occurrence.occursAt);
@@ -45,6 +47,7 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
       ...(time === null ? [] : [`<div class="fact"><span class="fact-label">When</span><strong class="fact-value">${time}</strong></div>`]),
       ...renderedAttributes,
     ].join("");
+    const workspaceHtml = workspace ? await renderActivityWorkspace(occurrence, workspace) : "";
 
     return reply
       .header("Cache-Control", "no-cache")
@@ -63,6 +66,7 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
           description: occurrence.description ? `<p>${htmlText(occurrence.description)}</p>` : undefined,
           facts,
           actions,
+          afterFacts: workspaceHtml,
         }),
       }));
   });
