@@ -210,7 +210,7 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
           : `<div class="raid-listing-time"><span>First pull</span><strong>${localTime(occurrence.occursAt.start)}</strong></div>`;
         return `<article class="activity-card raid-listing-card">
           <div class="raid-listing-identity">
-            <p class="raid-occurrence-kicker raid-difficulty-${htmlText(difficultyClass)}">${htmlText(difficulty.toUpperCase())} RAID</p>
+            <span class="raid-listing-difficulty raid-difficulty-${htmlText(difficultyClass)}">${htmlText(difficulty)}</span>
             <h2 class="activity-card-title"><a href="/activities/${encodeURIComponent(occurrence.activityKind)}/${encodeURIComponent(occurrence.activityId)}">${htmlText(occurrence.title)}</a></h2>
             ${occurrence.description ? `<p class="raid-listing-description">${htmlText(occurrence.description)}</p>` : ""}
           </div>
@@ -242,7 +242,7 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
       description: `${label} guild activities.`,
       viewer,
       secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Activities", href: "/activities" }, { label }] },
-      header: `<div class="activity-kind-header"><div><p class="eyebrow">Activities</p><h1 id="page-title">${htmlText(label)}</h1></div>${kindActions.map((action) => `<a class="button-${action.kind} activity-kind-new" href="${htmlText(action.href)}">+ ${htmlText(action.label.replace(/^Create\\s+/i, "New "))}</a>`).join("")}</div>`,
+      header: `<div class="activity-kind-header"><div><p class="eyebrow">Activities</p><h1 id="page-title">${htmlText(label)}</h1></div>${kindActions.map((action) => `<a class="button-${action.kind} activity-kind-new" href="${htmlText(action.href)}">+ ${htmlText(action.label.startsWith("Create ") ? `New ${action.label.slice(7)}` : action.label)}</a>`).join("")}</div>`,
       body,
     }));
   });
