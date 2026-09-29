@@ -11,7 +11,7 @@ import { raidListingParticipationSummary } from "./listing-view.js";
 import { RAID_ASSIGN_CAPABILITY, RAID_CAPABILITY_DEFINITIONS, RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILITY } from "./permissions.js";
 import type { RaidDifficulty, RaidEligibility } from "./domain.js";
 import { raidsForOperation } from "./operation-view.js";
-import { raidSignup } from "./participation-view.js";
+import { raidSignup, raidSignups } from "./participation-view.js";
 
 function difficultyLabel(value: RaidDifficulty): string {
   return value[0].toUpperCase() + value.slice(1);
@@ -67,6 +67,67 @@ async function raidOccurrence(raidId: string) {
   };
 }
 
+async function raidAssignmentWorkspace(raidId: string) {
+  const raid = await raidEventFactsIncludingCancelled(raidId);
+  if (!raid || raid.cancelledAtUnix !== null) return null;
+
+  const rows = await raidSignups(raidId);
+  const assigned = rows.filter((row) => row.assignmentId !== null);
+  const available = rows.filter((row) =>
+    row.assignmentId === null
+    && row.deniedAtUnix === null
+    && !rows.some((candidate) =>
+      candidate.actorKind === row.actorKind
+      && candidate.actorReference === row.actorReference
+      && candidate.assignmentId !== null
+    )
+  );
+  const visible = [...available, ...assigned];
+
+  return {
+    kind: "raid_assignment",
+    objects: visible.map((row) => ({
+      id: row.signupRowId,
+      value: { type: "participation_offer" as const, value: row.participationOfferId },
+      presentation: "raid_participant_card" as const,
+      attributes: [
+        {
+          kind: "offered_specs",
+          label: "Willing to play",
+          provenance: "declared" as const,
+          value: row.offeredSpecs.map((spec) => ({ type: "wow_spec" as const, value: spec })),
+        },
+      ],
+    })),
+    positions: [
+      { id: "available", label: "Available", presentation: "raid_participant_pool" as const },
+      ...(["tank", "healer", "damage"] as const).map((role) => ({
+        id: role,
+        label: role === "damage" ? "Damage" : role === "healer" ? "Healer" : "Tank",
+        value: { type: "wow_role" as const, value: role },
+        presentation: "raid_role_lane" as const,
+      })),
+    ],
+    placements: visible.map((row) => ({
+      objectId: row.signupRowId,
+      positionId: row.selectedRole ?? "available",
+      attributes: row.selectedClass && row.selectedSpec
+        ? [{
+            kind: "selected_spec",
+            label: "Assigned spec",
+            provenance: "derived" as const,
+            value: { type: "wow_spec" as const, value: { className: row.selectedClass, specName: row.selectedSpec } },
+          }]
+        : [],
+    })),
+    constraints: [{
+      kind: "wow_spec_supports_role" as const,
+      objectAttributeKind: "offered_specs",
+      positionValueType: "wow_role" as const,
+    }],
+  };
+}
+
 export function registerRaidActivityIntegration(): void {
   registerActivity({
     kind: "raid",
@@ -83,6 +144,9 @@ export function registerRaidActivityIntegration(): void {
           .filter((raid) => raid.concludedAtUnix === null)
           .map((raid) => raid.raidId);
       },
+    },
+    workspace: {
+      project: raidAssignmentWorkspace,
     },
     participation: {
       async project(activityId, procedureReference) {
