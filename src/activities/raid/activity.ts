@@ -89,12 +89,11 @@ export function registerRaidActivityIntegration(): void {
         const signup = await raidSignup(activityId, procedureReference);
         if (!signup) return null;
         return {
-          title: signup.characterName ?? signup.className,
+          title: signup.displayName,
           attributes: [
-            { kind: "class", label: "Class", provenance: "declared", value: { type: "wow_class", value: signup.className } },
-            { kind: "willingness", label: "Willing to play", provenance: "declared", value: signup.willingSpecs.map((spec) => ({ type: "wow_spec" as const, value: { className: signup.className, specName: spec } })) },
+            { kind: "offered_specs", label: "Willing to play", provenance: "declared", value: signup.offeredSpecs.map((spec) => ({ type: "wow_spec" as const, value: spec })) },
             ...(signup.assignmentId === null ? [] : [
-              ...(signup.selectedSpec ? [{ kind: "assigned_spec", label: "Assigned spec", provenance: "derived" as const, value: { type: "wow_spec" as const, value: { className: signup.className, specName: signup.selectedSpec } } }] : []),
+              ...(signup.selectedSpec && signup.selectedClass ? [{ kind: "assigned_spec", label: "Assigned spec", provenance: "derived" as const, value: { type: "wow_spec" as const, value: { className: signup.selectedClass!, specName: signup.selectedSpec } } }] : []),
               ...(signup.selectedRole ? [{ kind: "assigned_role", label: "Assigned role", provenance: "derived" as const, value: { type: "wow_role" as const, value: signup.selectedRole } }] : []),
             ]),
           ],
