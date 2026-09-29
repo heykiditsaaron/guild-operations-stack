@@ -78,9 +78,17 @@ function raidAssignmentComposition(assignments: readonly ActivityAssignment[]) {
   return { tanks, healers, melee, ranged };
 }
 
+function raidTitleScale(title: string): "short" | "medium" | "long" {
+  const length = [...title.trim()].length;
+  if (length > 52) return "long";
+  if (length > 30) return "medium";
+  return "short";
+}
+
 async function renderRaidOccurrence(occurrence: ActivityOccurrence, actions: readonly ActivityRenderAction[], assignments: readonly ActivityAssignment[]): Promise<string> {
   const difficulty = stringAttribute(occurrence, "difficulty") ?? "Raid";
   const difficultyClass = difficulty.toLocaleLowerCase("en-US").replace(/[^a-z0-9_-]/g, "-");
+  const titleScale = raidTitleScale(occurrence.title);
   const signedUp = integerAttribute(occurrence, "signed_up");
   const composition = raidAssignmentComposition(assignments);
   const requirements = occurrence.attributes.filter((attribute) => attribute.kind === "eligibility" || attribute.kind === "requirement");
@@ -95,12 +103,12 @@ async function renderRaidOccurrence(occurrence: ActivityOccurrence, actions: rea
   return `<article class="public-occurrence raid-occurrence">
     <header class="raid-occurrence-hero">
       <p class="raid-occurrence-kicker raid-difficulty-${htmlText(difficultyClass)}">${htmlText(difficulty.toUpperCase())} RAID</p>
-      <h1>${htmlText(occurrence.title)}</h1>
+      <h1 class="raid-occurrence-title raid-occurrence-title-${titleScale}">${htmlText(occurrence.title)}</h1>
       ${occurrence.description ? `<div class="raid-occurrence-description"><p>${htmlText(occurrence.description)}</p></div>` : ""}
       ${firstPull}
     </header>
     <section class="raid-occurrence-composition" aria-labelledby="raid-composition-heading">
-      <div class="raid-occurrence-section-heading"><div><p class="eyebrow">Raid group</p><h2 id="raid-composition-heading">Composition</h2></div><p class="raid-occurrence-signups"><strong>${signedUp}</strong> signed up</p></div>
+      <div class="raid-occurrence-section-heading"><div><p class="eyebrow">Raid group</p><h2 id="raid-composition-heading">Who's in so far</h2></div><p class="raid-occurrence-signups"><strong>${signedUp}</strong> signed up</p></div>
       <div class="raid-occurrence-role-grid">
         ${raidRoleMetric("Tank", composition.tanks, "tank")}
         ${raidRoleMetric("Healer", composition.healers, "healer")}
