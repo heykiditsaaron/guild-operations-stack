@@ -5,7 +5,6 @@ import {
 } from "../../core/activity/registry.js";
 import {
   raidEventFactsIncludingCancelled,
-  raidRosterDiagnostics,
 } from "./application.js";
 import { raidListingParticipationSummary } from "./listing-view.js";
 import { RAID_ASSIGN_CAPABILITY, RAID_CAPABILITY_DEFINITIONS, RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILITY } from "./permissions.js";
@@ -27,10 +26,7 @@ async function raidOccurrence(raidId: string) {
   const raid = await raidEventFactsIncludingCancelled(raidId);
   if (!raid) return null;
 
-  const [participation, roster] = await Promise.all([
-    raidListingParticipationSummary(raidId),
-    raidRosterDiagnostics(raidId),
-  ]);
+  const participation = await raidListingParticipationSummary(raidId);
 
   const attributes: ActivityOccurrenceAttribute[] = [
     { kind: "difficulty", label: "Difficulty", provenance: "declared", value: { type: "string", value: difficultyLabel(raid.difficulty) } },
@@ -42,12 +38,6 @@ async function raidOccurrence(raidId: string) {
       value: { type: "string" as const, value: requirement.value },
     })),
     { kind: "signed_up", label: "Signed up", provenance: "derived", value: { type: "integer", value: participation.signedUp } },
-    { kind: "assigned", label: "Assigned", provenance: "derived", value: { type: "integer", value: roster.assigned } },
-    { kind: "tanks", label: "Tanks", provenance: "derived", value: { type: "integer", value: roster.tanks } },
-    { kind: "healers", label: "Healers", provenance: "derived", value: { type: "integer", value: roster.healers } },
-    { kind: "damage", label: "Damage", provenance: "derived", value: { type: "integer", value: roster.damage } },
-    { kind: "melee", label: "Melee", provenance: "derived", value: { type: "integer", value: roster.melee } },
-    { kind: "ranged", label: "Ranged", provenance: "derived", value: { type: "integer", value: roster.ranged } },
   ];
 
   return {
@@ -150,6 +140,24 @@ export function registerRaidActivityIntegration(): void {
         return (await raidsForOperation())
           .filter((raid) => raid.concludedAtUnix === null)
           .map((raid) => raid.raidId);
+      },
+    },
+    assignment: {
+      async project(activityId) {
+        return (await raidSignups(activityId))
+          .filter((signup) => signup.assignmentId !== null && signup.selectedRole !== null)
+          .map((signup) => ({
+            participationOfferId: signup.participationOfferId,
+            attributes: [
+              { kind: "assigned_role", label: "Assigned role", provenance: "derived" as const, value: { type: "wow_role" as const, value: signup.selectedRole! } },
+              ...(signup.selectedClass && signup.selectedSpec ? [{
+                kind: "assigned_spec",
+                label: "Assigned spec",
+                provenance: "derived" as const,
+                value: { type: "wow_spec" as const, value: { className: signup.selectedClass, specName: signup.selectedSpec } },
+              }] : []),
+            ],
+          }));
       },
     },
     workspace: {
