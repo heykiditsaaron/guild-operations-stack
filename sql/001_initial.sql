@@ -238,6 +238,14 @@ CREATE TABLE discord_module_settings (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE guild_module_enablement (
+  guild_id text NOT NULL REFERENCES guilds(guild_id) ON DELETE CASCADE,
+  module_key text NOT NULL CHECK (length(btrim(module_key)) > 0),
+  enabled boolean NOT NULL,
+  updated_at_unix bigint NOT NULL DEFAULT (extract(epoch FROM now())::bigint),
+  PRIMARY KEY (guild_id, module_key)
+);
+
 CREATE TABLE guild_activity_plugin_enablement (
   guild_id text NOT NULL REFERENCES guilds(guild_id) ON DELETE CASCADE,
   activity_kind text NOT NULL,
