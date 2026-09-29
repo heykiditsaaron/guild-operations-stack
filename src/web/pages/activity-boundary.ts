@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
-import { activityKindRenderActions, activityOccurrence, activityOccurrenceRenderActions, activityOccurrences, activityRegistrationState, type ActivityOccurrence, type ActivityOccurrenceAttribute, type ActivityRenderAction } from "../../core/activity/registry.js";
+import { activityKindRenderActions, activityOccurrence, activityOccurrenceRenderActions, activityOccurrences, activityRegistrationState, type ActivityOccurrence, type ActivityOccurrenceAttribute, type ActivityRenderAction, type ActivitySharedValue } from "../../core/activity/registry.js";
 import { knownActivityPlugin } from "../../core/activity/plugin-control.js";
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage, renderPublicOccurrence } from "../render.js";
@@ -23,9 +23,10 @@ function occurrenceTime(occursAt: { start: number | null; end: number | null } |
 }
 
 
-function scalarAttribute(occurrence: ActivityOccurrence, kind: string) {
+function scalarAttribute(occurrence: ActivityOccurrence, kind: string): ActivitySharedValue | null {
   const value = occurrence.attributes.find((attribute) => attribute.kind === kind)?.value;
-  return value && !Array.isArray(value) ? value : null;
+  if (!value || Array.isArray(value)) return null;
+  return value as ActivitySharedValue;
 }
 
 function integerAttribute(occurrence: ActivityOccurrence, kind: string): number {
