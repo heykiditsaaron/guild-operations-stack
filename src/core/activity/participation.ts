@@ -564,6 +564,31 @@ export async function closeOutstandingActivityParticipationOffers(
   );
   return result.rowCount ?? 0;
 }
+export async function outstandingActivityParticipationOffersForActor(
+  client: PoolClient,
+  input: { activityKind: string; activityId: string; actor: ActivityParticipationActor },
+): Promise<ActivityParticipationOffer[]> {
+  const result = await client.query<any>(
+    `SELECT *
+       FROM activity_participation_offers
+      WHERE activity_kind=$1
+        AND activity_id=$2
+        AND party_kind=$3
+        AND party_reference=$4
+        AND revoked_at_unix IS NULL
+        AND closed_at_unix IS NULL
+      ORDER BY offered_at_unix ASC, participation_offer_id ASC
+      FOR UPDATE`,
+    [
+      requiredText(input.activityKind, "Offer kind"),
+      requiredText(input.activityId, "Offer activity id"),
+      input.actor.kind,
+      requiredText(input.actor.reference, "Offer actor reference"),
+    ],
+  );
+  return result.rows.map(mapParticipationOffer);
+}
+
 export async function activityParticipationOfferByProcedureReference(
   client: PoolClient,
   input: { activityKind: string; activityId: string; procedureReference: string },
