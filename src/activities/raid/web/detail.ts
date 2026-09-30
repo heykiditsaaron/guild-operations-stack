@@ -142,7 +142,7 @@ function raidActionStatusCode(error: unknown): 400 | 403 {
 async function renderRaidOrganizer(request: FastifyRequest<{ Params: RaidParams }>, reply: FastifyReply, assets: AssetRegistry) {
   const sessionToken = request.cookies[SESSION_COOKIE_NAME];
   const [viewer, identity] = await Promise.all([viewerForRequest(sessionToken), authenticatedIdentity(sessionToken)]);
-  const [canModify, canStage, canAssign] = guildie
+  const [canModify, canStage, canAssign] = identity
     ? await Promise.all([
         identityHasGuildCapabilityOrOperator(identity.identityId, RAID_MODIFY_CAPABILITY),
         identityHasGuildCapabilityOrOperator(identity.identityId, RAID_STAGE_CAPABILITY),
