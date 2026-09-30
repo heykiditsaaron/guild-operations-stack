@@ -50,12 +50,12 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
 
     const [canModify, canStage] = guildie
       ? await Promise.all([
-          identityHasGuildCapabilityOrOperator(guildie.guildieId, RAID_MODIFY_CAPABILITY),
-          identityHasGuildCapabilityOrOperator(guildie.guildieId, RAID_STAGE_CAPABILITY),
+          identityHasGuildCapabilityOrOperator(identity.identityId, RAID_MODIFY_CAPABILITY),
+          identityHasGuildCapabilityOrOperator(identity.identityId, RAID_STAGE_CAPABILITY),
         ])
       : [false, false];
-    if (!guildie || (!canModify && !canStage)) {
-      return reply.code(guildie ? 403 : 401).send({ error: "Raid editing is not available for this account" });
+    if (!identity || (!canModify && !canStage)) {
+      return reply.code(identity ? 403 : 401).send({ error: "Raid editing is not available for this account" });
     }
 
     const destinations = raidOccurrenceDestinations(raid.raidId);
@@ -98,24 +98,24 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
   });
 
   app.post<{ Params: RaidParams; Body: DefinitionBody }>("/activities/raid/:raidId/manage/definition", async (request, reply) => {
-    const guildie = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
-    if (!guildie) return reply.code(401).send({ error: "Authentication required" });
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "Authentication required" });
     const body = request.body ?? {};
     if (typeof body.label !== "string" || typeof body.description !== "string" || !Array.isArray(body.occursAt) || body.occursAt.length !== 1 || typeof body.occursAt[0] !== "number" || !validDifficulty(body.difficulty) || !validRequirements(body.requirements)) {
       return reply.code(400).send({ error: "Raid definition is invalid" });
     }
     try {
-      return { raid: await modifyRaid(guildie.guildieId, request.params.raidId, { label: body.label, description: body.description, occursAt: [body.occursAt[0]], difficulty: body.difficulty, requirements: body.requirements }) };
+      return { raid: await modifyRaid(identity.identityId, request.params.raidId, { label: body.label, description: body.description, occursAt: [body.occursAt[0]], difficulty: body.difficulty, requirements: body.requirements }) };
     } catch (error) {
       return reply.code(status(error)).send({ error: error instanceof Error ? error.message : "Raid could not be modified" });
     }
   });
 
   app.post<{ Params: RaidParams }>("/activities/raid/:raidId/manage/cancel", async (request, reply) => {
-    const guildie = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
-    if (!guildie) return reply.code(401).send({ error: "Authentication required" });
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "Authentication required" });
     try {
-      await cancelRaid(guildie.guildieId, request.params.raidId);
+      await cancelRaid(identity.identityId, request.params.raidId);
       return { ok: true };
     } catch (error) {
       return reply.code(status(error)).send({ error: error instanceof Error ? error.message : "Raid could not be cancelled" });
