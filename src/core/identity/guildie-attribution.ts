@@ -25,7 +25,7 @@ export async function guildieAttributionsForGuildies(
        COALESCE(grm.character_name, c.name) AS main_character_name,
        COALESCE(grm.realm_name, c.realm_name) AS realm_name
      FROM identities g
-     LEFT JOIN guildie_main_characters gmc
+     LEFT JOIN identity_character_representations gmc
        ON gmc.identity_id = g.identity_id
       AND gmc.guild_id = $2
      LEFT JOIN characters c
