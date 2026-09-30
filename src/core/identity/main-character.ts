@@ -72,7 +72,7 @@ export async function selectMainCharacter(
   if (changed) {
     await pool.query(
       `INSERT INTO identity_character_representations (
-         guildie_id, guild_id, region, realm_id, character_id
+         identity_id, guild_id, region, realm_id, character_id
        ) VALUES ($1,$2,$3,$4,$5)
        ON CONFLICT (identity_id, guild_id) DO UPDATE SET
          region = EXCLUDED.region,
