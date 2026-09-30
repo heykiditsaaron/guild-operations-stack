@@ -26,10 +26,10 @@ export async function guildieAttributionsForGuildies(
        COALESCE(grm.realm_name, c.realm_name) AS realm_name
      FROM guildies g
      LEFT JOIN guildie_main_characters gmc
-       ON gmc.guildie_id = g.guildie_id
+       ON gmc.identity_id = g.guildie_id
       AND gmc.guild_id = $2
      LEFT JOIN characters c
-       ON c.guildie_id = g.guildie_id
+       ON c.identity_id = g.guildie_id
       AND c.region = gmc.region
       AND c.realm_id = gmc.realm_id
       AND c.character_id = gmc.character_id
