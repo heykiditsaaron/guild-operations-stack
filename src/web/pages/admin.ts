@@ -20,8 +20,8 @@ import {
   GUILD_PRESENTATION_CONFIGURE_CAPABILITY,
   MODULES_CONFIGURE_CAPABILITY,
   THEME_CONFIGURE_CAPABILITY,
-  guildieHasGuildCapability,
-  guildieHasGuildCapabilityOrOperator,
+  identityHasGuildCapability,
+  identityHasGuildCapabilityOrOperator,
 } from "../../core/authority/guild-permissions.js";
 import { activityAdministration, activityCapabilityDeclarationState, activityRegistrationStates, type ActivityRegistrationState } from "../../core/activity/registry.js";
 import { knownActivityPlugins } from "../../core/activity/plugin-control.js";
@@ -118,10 +118,10 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     if (!identity) return reply.code(401).send("Authentication is required.");
 
     const [canConfigureGuildRefreshSchedule, canConfigureTheme, canConfigureGuildPresentation, canRefresh] = await Promise.all([
-      guildieHasGuildCapability(identity.identityId, GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY),
-      guildieHasGuildCapability(identity.identityId, THEME_CONFIGURE_CAPABILITY),
-      guildieHasGuildCapability(identity.identityId, GUILD_PRESENTATION_CONFIGURE_CAPABILITY),
-      guildieHasGuildCapability(identity.identityId, GUILD_REFRESH_CAPABILITY),
+      identityHasGuildCapability(identity.identityId, GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY),
+      identityHasGuildCapability(identity.identityId, THEME_CONFIGURE_CAPABILITY),
+      identityHasGuildCapability(identity.identityId, GUILD_PRESENTATION_CONFIGURE_CAPABILITY),
+      identityHasGuildCapability(identity.identityId, GUILD_REFRESH_CAPABILITY),
     ]);
     const [refreshSchedule, theme, presentation, refreshStatus] = await Promise.all([
       guildRefreshSchedule(),
@@ -145,7 +145,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie] = await Promise.all([viewerForRequest(sessionToken), authenticatedIdentity(sessionToken)]);
     if (!identity) return reply.code(401).send("Authentication is required.");
-    const canConfigureModules = await guildieHasGuildCapabilityOrOperator(identity.identityId, MODULES_CONFIGURE_CAPABILITY);
+    const canConfigureModules = await identityHasGuildCapabilityOrOperator(identity.identityId, MODULES_CONFIGURE_CAPABILITY);
     const lifecycle = await renderActivityAdministration(identity.identityId, canConfigureModules);
     const content = administrationSection("modules", "modules-heading", "Packaged capabilities", `${lifecycle}<p class="admin-section-note">Availability and entitlement are distinct from enablement. Controls are available only when your authority permits changes.</p>`);
     const html = renderPage(assets, { pathname: "/admin/modules", title: `Module Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Inspect and configure packaged Guild Operations capabilities.", viewer, stylesheets: ["admin.css", "admin-modules.css"], scripts: ["admin-modules.js", "admin-permissions.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Inspect and manage packaged Modules and Plugins.</p></div>`, body: `<div class="admin-sections">${content}</div>` });
@@ -155,7 +155,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
   app.put("/admin/activities/:activityKind", async (request, reply) => {
     const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
     if (!identity) return reply.code(401).send({ error: "authentication_required" });
-    if (!await guildieHasGuildCapabilityOrOperator(identity.identityId, MODULES_CONFIGURE_CAPABILITY)) return reply.code(403).send({ error: "module_configuration_not_authorized" });
+    if (!await identityHasGuildCapabilityOrOperator(identity.identityId, MODULES_CONFIGURE_CAPABILITY)) return reply.code(403).send({ error: "module_configuration_not_authorized" });
     const params = request.params as { activityKind?: unknown }; const body = (request.body ?? {}) as { enabled?: unknown };
     if (typeof params.activityKind !== "string" || typeof body.enabled !== "boolean") return reply.code(400).send({ error: "invalid_activity_configuration" });
     const state = (await activityRegistrationStates()).find((candidate) => candidate.kind === params.activityKind);
@@ -178,7 +178,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
   app.put("/admin/general/theme", async (request, reply) => {
     const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
     if (!identity) return reply.code(401).send({ error: "authentication_required" });
-    if (!await guildieHasGuildCapability(identity.identityId, THEME_CONFIGURE_CAPABILITY)) return reply.code(403).send({ error: "theme_configuration_not_authorized" });
+    if (!await identityHasGuildCapability(identity.identityId, THEME_CONFIGURE_CAPABILITY)) return reply.code(403).send({ error: "theme_configuration_not_authorized" });
     const body = (request.body ?? {}) as { theme?: unknown };
     if (typeof body.theme !== "string" || !isGuildThemeKey(body.theme)) return reply.code(400).send({ error: "unknown_theme" });
     return reply.send({ theme: await setGuildTheme(body.theme) });
@@ -187,7 +187,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
   app.put("/admin/general/orientation", async (request, reply) => {
     const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
     if (!identity) return reply.code(401).send({ error: "authentication_required" });
-    if (!await guildieHasGuildCapability(identity.identityId, GUILD_PRESENTATION_CONFIGURE_CAPABILITY)) return reply.code(403).send({ error: "guild_presentation_configuration_not_authorized" });
+    if (!await identityHasGuildCapability(identity.identityId, GUILD_PRESENTATION_CONFIGURE_CAPABILITY)) return reply.code(403).send({ error: "guild_presentation_configuration_not_authorized" });
     const body = (request.body ?? {}) as { acknowledged?: unknown };
     if (typeof body.acknowledged !== "boolean") return reply.code(400).send({ error: "acknowledged_must_be_boolean" });
     return reply.send({ acknowledged: await setGuildSettingsLocationAcknowledged(body.acknowledged) });
@@ -196,7 +196,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
   app.put("/admin/general/presentation", async (request, reply) => {
     const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
     if (!identity) return reply.code(401).send({ error: "authentication_required" });
-    if (!await guildieHasGuildCapability(identity.identityId, GUILD_PRESENTATION_CONFIGURE_CAPABILITY)) return reply.code(403).send({ error: "guild_presentation_configuration_not_authorized" });
+    if (!await identityHasGuildCapability(identity.identityId, GUILD_PRESENTATION_CONFIGURE_CAPABILITY)) return reply.code(403).send({ error: "guild_presentation_configuration_not_authorized" });
     const body = (request.body ?? {}) as { raiderIoUrl?: unknown; warcraftLogsUrl?: unknown };
     const raiderIoUrl = parseGuildPresentationUrl(body.raiderIoUrl ?? null);
     const warcraftLogsUrl = parseGuildPresentationUrl(body.warcraftLogsUrl ?? null);
