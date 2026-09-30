@@ -1,6 +1,6 @@
 import { requireOperationalInstallationGuildBinding } from "../installation/guild-binding.js";
 import { pool } from "../../db.js";
-import { controlledGuildMemberCharacters } from "../guild/guild-characters.js";
+import { guildie } from "../guild/guildie.js";
 import { hasDevelopmentGuildMasterAuthority } from "./operator-authority.js";
 
 export type GuildCapability = string;
@@ -27,22 +27,21 @@ export async function effectiveGuildAuthority(
   guildId?: string,
 ): Promise<EffectiveGuildAuthority | null> {
   const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
-  const guildMemberCharacters = await controlledGuildMemberCharacters(identityId, resolvedGuildId);
-  const highestAuthorityCharacter = guildMemberCharacters[0];
-  if (!highestAuthorityCharacter) return null;
+  const derivedGuildie = await guildie(identityId, resolvedGuildId);
+  if (!derivedGuildie) return null;
 
   const rankResult = await pool.query<{ display_name: string | null }>(
     `SELECT display_name
        FROM guild_rank_definitions
       WHERE guild_id = $1 AND rank_index = $2`,
-    [resolvedGuildId, highestAuthorityCharacter.rankIndex],
+    [resolvedGuildId, derivedGuildie.rankIndex],
   );
   const rankDisplayName = rankResult.rows[0]?.display_name ?? `Rank ${highestAuthorityCharacter.rankIndex}`;
   const capabilityResult = await pool.query<{ capability: string }>(
     `SELECT capability FROM guild_rank_capabilities WHERE guild_id = $1 AND rank_index = $2 ORDER BY capability`,
-    [resolvedGuildId, highestAuthorityCharacter.rankIndex],
+    [resolvedGuildId, derivedGuildie.rankIndex],
   );
-  return { identityId, guildId: resolvedGuildId, rankIndex: highestAuthorityCharacter.rankIndex, rankDisplayName, capabilities: capabilityResult.rows.map((row) => row.capability), developmentGuildMasterAuthority: hasDevelopmentGuildMasterAuthority(identityId) };
+  return { identityId, guildId: resolvedGuildId, rankIndex: derivedGuildie.rankIndex, rankDisplayName, capabilities: capabilityResult.rows.map((row) => row.capability), developmentGuildMasterAuthority: hasDevelopmentGuildMasterAuthority(identityId) };
 }
 
 function hasInherentGuildCapability(authority: EffectiveGuildAuthority | null, identityId: string): boolean {
