@@ -74,10 +74,12 @@ export async function authenticatedIdentity(token: string | undefined): Promise<
 } | null> {
   if (!token) return null;
   const result = await pool.query<{ identity_id: string; region: Region; character_count: string }>(
-    `SELECT s.identity_id, wai.region, count(c.character_record_id)::text AS character_count
+    `SELECT s.identity_id, wai.region, count(ccr.character_record_id)::text AS character_count
        FROM application_sessions s
        JOIN wow_account_identities wai ON wai.identity_id = s.identity_id
-       LEFT JOIN characters c ON c.identity_id = s.identity_id AND c.currently_controlled = true
+       LEFT JOIN controlled_character_roster ccr
+         ON ccr.identity_id = s.identity_id
+        AND ccr.currently_controlled = true
       WHERE s.token_hash = $1 AND s.revoked_at IS NULL AND s.expires_at > now()
       GROUP BY s.identity_id, wai.region`,
     [sha256(token)],
@@ -132,17 +134,16 @@ async function eligibleCharacterPresentationTargets(
     character_name: string;
     realm_slug: string | null;
   }>(
-    `SELECT c.region, c.realm_id, c.character_id, c.name AS character_name, c.realm_slug
-       FROM characters c
-       JOIN guild_roster_memberships grm
-         ON grm.region = c.region
-        AND grm.realm_id = c.realm_id
-        AND grm.character_id = c.character_id
-        AND grm.currently_present = true
-      WHERE c.identity_id = $1
-        AND c.currently_controlled = true
-        AND grm.guild_id = $2
-      ORDER BY grm.rank_index, c.name`,
+    `SELECT cr.region, cr.realm_id, cr.character_id, cr.name AS character_name, cr.realm_slug
+       FROM controlled_character_roster ccr
+       JOIN character_roster cr ON cr.character_record_id = ccr.character_record_id
+       JOIN guild_roster gr
+         ON gr.character_record_id = cr.character_record_id
+        AND gr.currently_present = true
+      WHERE ccr.identity_id = $1
+        AND ccr.currently_controlled = true
+        AND gr.guild_id = $2
+      ORDER BY gr.rank_index, cr.name`,
     [identityId, guildId],
   );
 
