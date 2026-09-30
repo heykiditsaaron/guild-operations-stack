@@ -42,14 +42,14 @@ function administrationSection(sectionId: string, headingId: string, heading: st
   return `<section id="${sectionId}" class="admin-section" aria-labelledby="${headingId}"><h2 id="${headingId}">${heading}</h2>${content}</section>`;
 }
 
-async function renderActivityAdministration(guildieId: string, canConfigureModules: boolean): Promise<string> {
+async function renderActivityAdministration(identityId: string, canConfigureModules: boolean): Promise<string> {
   const [states, fingerprints] = await Promise.all([activityRegistrationStates(), knownActivityPlugins()]);
   const labels = new Map(fingerprints.map((plugin) => [plugin.kind, plugin.label]));
   const cards = await Promise.all(states.map(async (state: ActivityRegistrationState) => {
     const administration = await activityAdministration(state.kind);
     const definitions = administration?.capabilities ?? [];
     const policies = await guildCapabilityPoliciesForDefinitions(definitions);
-    const authorityChecks = await Promise.all(definitions.map((definition) => canAdministerGuildCapability(guildieId, definition.key)));
+    const authorityChecks = await Promise.all(definitions.map((definition) => canAdministerGuildCapability(identityId, definition.key)));
     const editable = Boolean(administration?.authoritative && state.status !== "failed" && authorityChecks.some(Boolean));
     const permissionView = policies.capabilities.length ? `<div class="permission-capabilities">${policies.capabilities.map((policy) => renderPermissionCapability(policy, policies.ranks)).join("\n")}</div>` : '<p class="admin-section-note">This Activity declares no configurable capabilities.</p>';
     const frozen = editable ? "" : '<p class="admin-section-note"><strong>Last known declaration.</strong> Permission values are read-only until this Activity successfully registers again.</p>';
