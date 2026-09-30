@@ -8,7 +8,7 @@ import { specsForClass } from "../../wow-traits/registry.js";
 import type { ActivitySharedValue } from "./registry.js";
 
 export type ActivityParticipationActor =
-  | { kind: "guildie"; reference: string }
+  | { kind: "native"; reference: string }
   | { kind: "external"; reference: string };
 
 export type ActivityParticipationParty = ActivityParticipationActor;
@@ -63,7 +63,7 @@ export type ActivityParticipationFulfillmentConstraint =
     };
 
 export type ActivityParticipationActorConstraint =
-  | { kind: "guildie"; currentGuildieIn: string };
+  | { kind: "native"; currentGuildieIn: string };
 
 
 
@@ -95,7 +95,7 @@ function mapParticipationOffer(row: {
   participation_offer_id: string;
   activity_kind: string;
   activity_id: string;
-  party_kind: "guildie" | "external";
+  party_kind: "native" | "external";
   party_reference: string;
   components: unknown;
   procedure_reference: string;
@@ -220,8 +220,8 @@ async function requireWowSpecComponents(
 
     let className: string;
     if (candidate.character) {
-      if (actor.kind !== "guildie") {
-        throw new ActivityParticipationOfferError("wow_spec_requires_guildie", `${request.kind} must resolve Character provenance through a Guildie`);
+      if (actor.kind !== "native") {
+        throw new ActivityParticipationOfferError("wow_spec_requires_native_identity", `${request.kind} must resolve Character provenance through a native identity`);
       }
       const coordinate = candidate.character;
       if (typeof coordinate.region !== "string" || typeof coordinate.realmId !== "string" || typeof coordinate.characterId !== "string") {
@@ -292,8 +292,8 @@ async function constructParticipationComponent(
     return requireWowSpecComponents(actor, request, fulfillment, raw);
   }
 
-  if (actor.kind !== "guildie") {
-    throw new ActivityParticipationOfferError("guild_character_requires_guildie", "A guild Character must be offered by a Guildie");
+  if (actor.kind !== "native") {
+    throw new ActivityParticipationOfferError("guild_character_requires_native_identity", "A guild Character must be offered by a native identity");
   }
   if (typeof raw !== "object" || raw === null) {
     throw new ActivityParticipationOfferError("invalid_guild_character", `${request.kind} must identify a guild Character`);
@@ -339,7 +339,7 @@ async function validateParticipationOfferActor(
   if (actor.kind !== actorConstraint.kind) {
     throw new ActivityParticipationOfferError("actor_ineligible", "Participation Offer actor does not satisfy the procedure", 403);
   }
-  if (actorConstraint.kind === "guildie" && !await effectiveGuildAuthority(actor.reference, actorConstraint.currentGuildieIn)) {
+  if (actorConstraint.kind === "native" && !await effectiveGuildAuthority(actor.reference, actorConstraint.currentGuildieIn)) {
     throw new ActivityParticipationOfferError("actor_ineligible", "Participation Offer actor is not a current Guildie", 403);
   }
 }
