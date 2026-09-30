@@ -10,7 +10,7 @@ import {
   identityHasGuildCapability,
 } from "../core/authority/guild-permissions.js";
 import { administrationAvailabilityForIdentity } from "./administration.js";
-import { webPresentationContributionsForGuildie } from "./presentation-contributions.js";
+import { webPresentationContributionsForIdentity } from "./presentation-contributions.js";
 import type { WebViewer } from "./render.js";
 
 export async function viewerForRequest(sessionToken: string | undefined): Promise<WebViewer> {
@@ -21,7 +21,7 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
       authenticated: false,
       theme,
       guildPresentation: presentation,
-      presentationContributions: await webPresentationContributionsForGuildie(null),
+      presentationContributions: await webPresentationContributionsForIdentity(null),
     };
   }
 
@@ -31,7 +31,7 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
     administrationAvailabilityForIdentity(identity.identityId),
     identityHasGuildCapability(identity.identityId, GUILD_REFRESH_CAPABILITY),
     identityHasGuildCapability(identity.identityId, OPERATIONS_INSPECT_CAPABILITY),
-    webPresentationContributionsForGuildie(identity.identityId),
+    webPresentationContributionsForIdentity(identity.identityId),
   ]);
 
   const characters = await characterProjections(guildMemberCharacters.map((character) => character.characterRecordId));
