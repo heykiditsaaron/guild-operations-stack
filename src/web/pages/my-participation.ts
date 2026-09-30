@@ -25,7 +25,7 @@ function projectionFacts(projection: Awaited<ReturnType<typeof activityParticipa
 export async function registerMyParticipationPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/me/participation", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [guildie, viewer] = await Promise.all([
+    const [identity, viewer] = await Promise.all([
       authenticatedIdentity(sessionToken),
       viewerForRequest(sessionToken),
     ]);
