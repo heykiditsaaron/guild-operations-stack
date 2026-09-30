@@ -34,7 +34,7 @@ export async function guildCharactersForGuildie(guildieId: string): Promise<Guil
        ON grm.region = c.region AND grm.realm_id = c.realm_id AND grm.character_id = c.character_id AND grm.currently_present = true
      LEFT JOIN wow_character_profiles wcp
        ON wcp.region = grm.region AND wcp.realm_id = grm.realm_id AND wcp.character_id = grm.character_id
-     WHERE c.guildie_id = $1 AND c.currently_controlled = true AND grm.guild_id = $2
+     WHERE c.identity_id = $1 AND c.currently_controlled = true AND grm.guild_id = $2
      ORDER BY grm.rank_index, grm.character_name`,
     [guildieId, guildId],
   );
