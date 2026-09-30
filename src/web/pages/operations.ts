@@ -35,8 +35,8 @@ function renderRecord(record: OperationalRecord): string {
   const result = record.result
     ? `<span class="operations-record-result operations-record-result-${record.result}">${escapeHtml(record.result)}</span>`
     : "";
-  const actor = record.actorGuildieId
-    ? `<span class="operations-record-actor">Actor: ${escapeHtml(record.actorGuildieId)}</span>`
+  const actor = record.actorIdentityId
+    ? `<span class="operations-record-actor">Actor: ${escapeHtml(record.actorIdentityId)}</span>`
     : "";
 
   return `<article class="operations-record">
