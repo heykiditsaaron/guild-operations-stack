@@ -138,12 +138,12 @@ export async function getRaffleClaim(claimId:string):Promise<RaffleClaimFacts|nu
   const guildId=(await requireOperationalInstallationGuildBinding()).guildId;
   const result=await pool.query<{
     claim_id:string;raffle_id:string;promised_gold_value:string;created_at_unix:string;
-    resolution_kind:RaffleClaimResolution;approved_by_guildie_id:string|null;approved_at_unix:string|null;denied_by_guildie_id:string|null;
-    denied_at_unix:string|null;denial_reason:string|null;revoked_by_guildie_id:string|null;revoked_at_unix:string|null;
+    resolution_kind:RaffleClaimResolution;approved_by_identity_id:string|null;approved_at_unix:string|null;denied_by_identity_id:string|null;
+    denied_at_unix:string|null;denial_reason:string|null;revoked_by_identity_id:string|null;revoked_at_unix:string|null;
   }>(
     `SELECT rc.claim_id,rc.raffle_id,rc.promised_gold_value,rc.created_at_unix,
-       rc.resolution_kind,rc.approved_by_guildie_id,rc.approved_at_unix,rc.denied_by_guildie_id,rc.denied_at_unix,
-       rc.denial_reason,rc.revoked_by_guildie_id,rc.revoked_at_unix
+       rc.resolution_kind,rc.approved_by_identity_id,rc.approved_at_unix,rc.denied_by_identity_id,rc.denied_at_unix,
+       rc.denial_reason,rc.revoked_by_identity_id,rc.revoked_at_unix
        FROM raffle_claims rc JOIN raffles r ON r.raffle_id=rc.raffle_id AND r.guild_id=$2
        WHERE rc.claim_id=$1`,
     [claimId,guildId],
@@ -175,10 +175,10 @@ export async function getRaffleClaim(claimId:string):Promise<RaffleClaimFacts|nu
       claimId:String(row.claim_id),raffleId:String(row.raffle_id),claimantGuildieId:offer.actor.reference,
       characterRecordId:offeredCharacter.characterRecordId,characterId:offeredCharacter.characterId,realmId:offeredCharacter.realmId,
       characterName,requestedEntryCount:claimValue.value,promisedGoldValue:String(row.promised_gold_value),
-      createdAtUnix:Number(row.created_at_unix),resolutionKind:row.resolution_kind,approvedByGuildieId:nullableString(row.approved_by_guildie_id),
-      approvedAtUnix:row.approved_at_unix===null?null:Number(row.approved_at_unix),deniedByGuildieId:nullableString(row.denied_by_guildie_id),
+      createdAtUnix:Number(row.created_at_unix),resolutionKind:row.resolution_kind,approvedByGuildieId:nullableString(row.approved_by_identity_id),
+      approvedAtUnix:row.approved_at_unix===null?null:Number(row.approved_at_unix),deniedByGuildieId:nullableString(row.denied_by_identity_id),
       deniedAtUnix:row.denied_at_unix===null?null:Number(row.denied_at_unix),denialReason:nullableString(row.denial_reason),
-      revokedByGuildieId:nullableString(row.revoked_by_guildie_id),revokedAtUnix:row.revoked_at_unix===null?null:Number(row.revoked_at_unix),
+      revokedByGuildieId:nullableString(row.revoked_by_identity_id),revokedAtUnix:row.revoked_at_unix===null?null:Number(row.revoked_at_unix),
     };
     return {...claim,character:{characterId:offeredCharacter.characterId,name:characterName,realmId:offeredCharacter.realmId,realmName,realmSlug},resolutionAtUnix:resolutionAtUnix(claim),resolutionActorGuildieId:resolutionActorGuildieId(claim)};
   } finally {
