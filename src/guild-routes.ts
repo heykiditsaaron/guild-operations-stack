@@ -29,7 +29,7 @@ export async function registerGuildRoutes(app: FastifyInstance): Promise<void> {
         guild_id: result.guildId,
         roster_count: result.rosterCount,
         requested_by: {
-          guildie_id: identity.identityId,
+          identity_id: identity.identityId,
           effective_rank: authority.rankIndex,
         },
         reconciliation: {
