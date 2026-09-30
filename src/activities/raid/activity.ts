@@ -1,4 +1,4 @@
-import { guildieHasGuildCapabilityOrOperator } from "../../core/authority/guild-permissions.js";
+import { identityHasGuildCapabilityOrOperator } from "../../core/authority/guild-permissions.js";
 import {
   registerActivity,
   type ActivityOccurrenceAttribute,
@@ -131,7 +131,7 @@ export function registerRaidActivityIntegration(): void {
       label() { return "Create Raid"; },
       destination() { return "/activities/raid/manage?create=1"; },
       async availableTo(_kind, guildieId) {
-        return guildieId ? guildieHasGuildCapabilityOrOperator(guildieId, RAID_MODIFY_CAPABILITY) : false;
+        return guildieId ? identityHasGuildCapabilityOrOperator(guildieId, RAID_MODIFY_CAPABILITY) : false;
       },
     },
     occurrence: {
@@ -187,7 +187,7 @@ export function registerRaidActivityIntegration(): void {
           RAID_MODIFY_CAPABILITY,
           RAID_STAGE_CAPABILITY,
           RAID_ASSIGN_CAPABILITY,
-        ].map((capability) => guildieHasGuildCapabilityOrOperator(guildieId, capability)));
+        ].map((capability) => identityHasGuildCapabilityOrOperator(guildieId, capability)));
         return permitted.some(Boolean);
       },
       destination(kind, activityId) {
