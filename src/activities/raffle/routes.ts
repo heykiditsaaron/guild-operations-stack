@@ -10,7 +10,7 @@ import {
 
 async function requireGuildie(request:FastifyRequest,reply:FastifyReply):Promise<string|null>{
   const identity=await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
-  if(!guildie){await reply.code(401).send({error:"not_authenticated"});return null;}
+  if(!identity){await reply.code(401).send({error:"not_authenticated"});return null;}
   return identity.identityId;
 }
 function bodyObject(value:unknown):Record<string,unknown>{return value&&typeof value==="object"?value as Record<string,unknown>:{};}
