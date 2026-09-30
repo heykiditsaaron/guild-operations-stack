@@ -145,7 +145,7 @@ CREATE TABLE authentication_attempts (
   created_at timestamptz NOT NULL DEFAULT now(),
   expires_at timestamptz NOT NULL,
   consumed_at timestamptz,
-  CHECK ((purpose = 'login' AND guildie_id IS NULL) OR (purpose = 'self_refresh' AND guildie_id IS NOT NULL))
+  CHECK ((purpose = 'login' AND identity_id IS NULL) OR (purpose = 'self_refresh' AND identity_id IS NOT NULL))
 );
 
 CREATE TABLE application_sessions (
