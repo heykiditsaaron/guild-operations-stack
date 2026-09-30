@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { authenticatedIdentity, SESSION_COOKIE_NAME } from "../../auth.js";
 import {
   OPERATIONS_INSPECT_CAPABILITY,
-  guildieHasGuildCapability,
+  identityHasGuildCapability,
 } from "../../core/authority/guild-permissions.js";
 import {
   listOperationalRecords,
@@ -112,7 +112,7 @@ export async function registerOperationsAdminPage(
       authenticatedIdentity(sessionToken),
     ]);
 
-    const canInspect = guildie ? await guildieHasGuildCapability(identity.identityId, OPERATIONS_INSPECT_CAPABILITY) : false;
+    const canInspect = identity ? await identityHasGuildCapability(identity.identityId, OPERATIONS_INSPECT_CAPABILITY) : false;
 
     const query = request.query as { source?: string; kind?: string };
     const source = query.source?.trim() || undefined;
