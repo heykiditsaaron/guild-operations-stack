@@ -21,15 +21,15 @@ export async function guildieAttributionsForGuildies(
     realm_name: string | null;
   }>(
     `SELECT
-       g.guildie_id,
+       g.identity_id AS guildie_id,
        COALESCE(grm.character_name, c.name) AS main_character_name,
        COALESCE(grm.realm_name, c.realm_name) AS realm_name
-     FROM guildies g
+     FROM identities g
      LEFT JOIN guildie_main_characters gmc
-       ON gmc.identity_id = g.guildie_id
+       ON gmc.identity_id = g.identity_id
       AND gmc.guild_id = $2
      LEFT JOIN characters c
-       ON c.identity_id = g.guildie_id
+       ON c.identity_id = g.identity_id
       AND c.region = gmc.region
       AND c.realm_id = gmc.realm_id
       AND c.character_id = gmc.character_id
@@ -38,7 +38,7 @@ export async function guildieAttributionsForGuildies(
       AND grm.region = gmc.region
       AND grm.realm_id = gmc.realm_id
       AND grm.character_id = gmc.character_id
-     WHERE g.guildie_id = ANY($1::uuid[])`,
+     WHERE g.identity_id = ANY($1::uuid[])`,
     [uniqueGuildieIds, guildId],
   );
 
