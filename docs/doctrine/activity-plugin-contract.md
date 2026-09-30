@@ -252,6 +252,38 @@ For example, a plugin may declare that its procedure requires a guild Character 
 
 > **Knowing a word is not authority to decide what the speaker means by using it.**
 
+## Actor identity
+
+An **Actor** is an identified party that Activity procedure can durably reference. Identification is constitutive of Actorhood; an unidentified or merely labelled subject is not an Actor in Activity vocabulary.
+
+Actor identity may be established by Guild Operations or by another identity authority available through an integration. The authority may differ without weakening the invariant. A Guildie identifier and a durable externally-authoritative subject identifier can both identify Actors; an unresolvable display name or other ungrounded label cannot.
+
+Activity plugins may constrain which Actors their procedure accepts according to meanings they own, such as organizational eligibility. Those constraints answer whether an already-identified Actor is eligible for the procedure. They do not determine whether the party is an Actor in the first place.
+
+```text
+subject encountered
+      │
+      ▼
+identifier resolved?
+  │           │
+ yes          no
+  │           │
+  ▼           ▼
+Actor      unresolved subject
+  │
+  ▼
+plugin-owned eligibility
+  │
+  ▼
+Activity procedure
+```
+
+This invariant applies to all Activity Participation, including procedures with no explicit Offer. Fulfillment may be discovered rather than consciously offered, but Activity cannot establish a Participation observation until the participating party is an Actor.
+
+> **An Actor has a durable identifier by definition. If a party cannot be resolved to an identifier, Activity cannot establish Participation for that party.**
+
+> **Eligibility constrains Actors; it does not create them.**
+
 ## Participation
 
 Participation is an optional systemic Activity observation: a party participated in an Activity occurrence. An Activity need not produce Participation observations.
