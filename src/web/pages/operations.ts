@@ -141,7 +141,7 @@ export async function registerOperationsAdminPage(
     });
 
     const available = canInspect;
-    const statusCode = !guildie ? 401 : available ? 200 : 403;
+    const statusCode = !identity ? 401 : available ? 200 : 403;
     return reply
       .code(statusCode)
       .header("Cache-Control", "no-cache")
