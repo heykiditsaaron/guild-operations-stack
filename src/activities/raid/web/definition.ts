@@ -48,7 +48,7 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
     ]);
     if (!raid) return reply.code(404).send({ error: "Raid not found" });
 
-    const [canModify, canStage] = guildie
+    const [canModify, canStage] = identity
       ? await Promise.all([
           identityHasGuildCapabilityOrOperator(identity.identityId, RAID_MODIFY_CAPABILITY),
           identityHasGuildCapabilityOrOperator(identity.identityId, RAID_STAGE_CAPABILITY),
