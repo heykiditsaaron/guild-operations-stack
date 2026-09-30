@@ -1,7 +1,7 @@
 import { requireOperationalInstallationGuildBinding } from "../installation/guild-binding.js";
 import { pool } from "../../db.js";
 
-export type GuildCharacter = {
+export type ControlledGuildMemberCharacter = {
   guildId: string;
   characterId: string;
   realmId: string;
@@ -17,7 +17,7 @@ export type GuildCharacter = {
   mainUrl: string | null;
 };
 
-export async function guildCharactersForIdentity(identityId: string): Promise<GuildCharacter[]> {
+export async function controlledGuildMemberCharacters(identityId: string): Promise<ControlledGuildMemberCharacter[]> {
   const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
   const result = await pool.query<{
     guild_id: string; character_id: string; realm_id: string; character_name: string; realm_name: string | null;
