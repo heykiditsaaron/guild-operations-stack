@@ -23,7 +23,7 @@ export type RaidParticipationCharacter = {
 export type RaidSignupView = {
   signupRowId: string;
   participationOfferId: string;
-  actorKind: "guildie" | "external";
+  actorKind: "native" | "external";
   actorReference: string;
   displayName: string;
   offeredSpecs: RaidOfferedSpec[];
@@ -125,7 +125,7 @@ async function raidSignupRows(raidId: string, includeWithdrawn: boolean): Promis
     client.release();
   }
   const offerByReference = new Map(offers.map((offer) => [offer.procedureReference, offer]));
-  const guildieIds = offers.flatMap((offer) => offer.actor.kind === "guildie" ? [offer.actor.reference] : []);
+  const guildieIds = offers.flatMap((offer) => offer.actor.kind === "native" ? [offer.actor.reference] : []);
   const attributions = await identityRepresentations(guildieIds);
 
   return result.rows.map((row) => {
@@ -138,13 +138,13 @@ async function raidSignupRows(raidId: string, includeWithdrawn: boolean): Promis
     const offeredSpecs = component.value.flatMap((value) =>
       value.type === "wow_spec" ? [{ className: value.value.className, specName: value.value.specName }] : []
     );
-    const attribution = offer.actor.kind === "guildie" ? attributions.get(offer.actor.reference) : null;
+    const attribution = offer.actor.kind === "native" ? attributions.get(offer.actor.reference) : null;
     return {
       signupRowId: row.signup_row_id,
       participationOfferId: offer.participationOfferId,
       actorKind: offer.actor.kind,
       actorReference: offer.actor.reference,
-      displayName: attribution?.displayName ?? (offer.actor.kind === "external" ? offer.actor.reference : `Guildie ${offer.actor.reference.slice(0, 8)}`),
+      displayName: attribution?.displayName ?? (offer.actor.kind === "external" ? offer.actor.reference : `Identity ${offer.actor.reference.slice(0, 8)}`),
       offeredSpecs,
       willingRoles: rolesForSpecs(offeredSpecs),
       assignmentId: row.assignment_id,
@@ -179,7 +179,7 @@ export async function raidAssignment(raidId: string, signupRowId: string): Promi
 
 export async function raidSignupsForGuildie(raidId: string, guildieId: string): Promise<RaidSignupView[]> {
   return (await raidSignups(raidId)).filter(
-    (row) => row.actorKind === "guildie" && row.actorReference === guildieId,
+    (row) => row.actorKind === "native" && row.actorReference === guildieId,
   );
 }
 
