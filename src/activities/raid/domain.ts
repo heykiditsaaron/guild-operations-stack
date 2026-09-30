@@ -14,7 +14,7 @@ export type RaidRequirement = {
 };
 
 export type RaidApplicantAnchor =
-  | { kind: "guildie"; value: string }
+  | { kind: "native"; value: string }
   | { kind: "external"; value: string };
 
 export type RaidCharacterReference = {
