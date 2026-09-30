@@ -1,4 +1,4 @@
-import { guildCharactersForIdentity } from "../core/guild/guild-characters.js";
+import { controlledGuildMemberCharacters } from "../core/guild/guild-characters.js";
 import { characterRepresentationForIdentity } from "../core/identity/main-character.js";
 import { authenticatedIdentity } from "../auth.js";
 import { guildTheme } from "../core/presentation/guild-theme.js";
@@ -25,7 +25,7 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
   }
 
   const [characters, selectedMain, administration, canRefreshGuild, canInspectOperations, presentationContributions] = await Promise.all([
-    guildCharactersForIdentity(identity.identityId),
+    controlledGuildMemberCharacters(identity.identityId),
     characterRepresentationForIdentity(identity.identityId),
     administrationAvailabilityForIdentity(identity.identityId),
     identityHasGuildCapability(identity.identityId, GUILD_REFRESH_CAPABILITY),
