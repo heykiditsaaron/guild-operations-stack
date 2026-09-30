@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import type { FastifyInstance, FastifyReply } from "fastify";
-import { acquireAuthority, authorizationUrl, exchangeAuthorizationCode } from "./blizzard.js";
+import { acquireAuthority, authorizationUrl, exchangeAuthorizationCode, type BlizzardWowProfile } from "./blizzard.js";
 import { config, parseRegion, type Region } from "./config.js";
 import { pool } from "./db.js";
 import {
@@ -13,8 +13,9 @@ import { guildCharactersForGuildie } from "./core/guild/guild-characters.js";
 import { mainCharacterForGuildie, selectMainCharacter } from "./core/identity/main-character.js";
 import { publishOperationalRecord } from "./operational-inspection.js";
 import {
-  establishOrResolveGuildie,
-  reconcileExistingGuildieBlizzardObservation,
+  discoveredWowAccounts,
+  establishOrResolveWowAccountIdentity,
+  reconcileExistingWowAccountIdentity,
 } from "./core/identity/blizzard-identity.js";
 import { installationPublicOrigin } from "./core/installation/public-origin.js";
 
@@ -26,7 +27,7 @@ type AuthenticationAttempt = {
   region: Region;
   returnTo: string | null;
   purpose: AuthenticationPurpose;
-  guildieId: string | null;
+  identityId: string | null;
 };
 
 function sha256(value: string): string {
@@ -45,12 +46,12 @@ function withQueryValue(path: string, key: string, value: string): string {
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
-async function createSession(guildieId: string): Promise<string> {
+async function createSession(identityId: string): Promise<string> {
   const token = randomBytes(32).toString("base64url");
   await pool.query(
-    `INSERT INTO application_sessions (guildie_id, token_hash, expires_at)
+    `INSERT INTO application_sessions (identity_id, token_hash, expires_at)
      VALUES ($1, $2, now() + ($3 * interval '1 day'))`,
-    [guildieId, sha256(token), config.sessionTtlDays],
+    [identityId, sha256(token), config.sessionTtlDays],
   );
   return token;
 }
@@ -65,46 +66,40 @@ function setSessionCookie(reply: FastifyReply, token: string, secure: boolean): 
   });
 }
 
-export async function authenticatedGuildie(token: string | undefined): Promise<{
-  guildieId: string;
+export async function authenticatedIdentity(token: string | undefined): Promise<{
+  identityId: string;
   region: Region;
   characterCount: number;
 } | null> {
   if (!token) return null;
-
-  const result = await pool.query<{
-    guildie_id: string;
-    region: Region;
-    character_count: string;
-  }>(
-    `SELECT s.guildie_id, bp.region, count(c.character_record_id)::text AS character_count
+  const result = await pool.query<{ identity_id: string; region: Region; character_count: string }>(
+    `SELECT s.identity_id, wai.region, count(c.character_record_id)::text AS character_count
        FROM application_sessions s
-       JOIN blizzard_principals bp ON bp.guildie_id = s.guildie_id
-       LEFT JOIN characters c
-         ON c.guildie_id = s.guildie_id
-        AND c.currently_controlled = true
-      WHERE s.token_hash = $1
-        AND s.revoked_at IS NULL
-        AND s.expires_at > now()
-      GROUP BY s.guildie_id, bp.region`,
+       JOIN wow_account_identities wai ON wai.identity_id = s.identity_id
+       LEFT JOIN characters c ON c.identity_id = s.identity_id AND c.currently_controlled = true
+      WHERE s.token_hash = $1 AND s.revoked_at IS NULL AND s.expires_at > now()
+      GROUP BY s.identity_id, wai.region`,
     [sha256(token)],
   );
-
   if (!result.rowCount) return null;
-  return {
-    guildieId: result.rows[0].guildie_id,
-    region: result.rows[0].region,
-    characterCount: Number(result.rows[0].character_count),
-  };
+  return { identityId: result.rows[0].identity_id, region: result.rows[0].region, characterCount: Number(result.rows[0].character_count) };
+}
+
+/** Temporary compatibility seam while Core consumers migrate to Identity. */
+export async function authenticatedGuildie(token: string | undefined): Promise<{
+  guildieId: string; region: Region; characterCount: number;
+} | null> {
+  const identity = await authenticatedIdentity(token);
+  return identity ? { guildieId: identity.identityId, region: identity.region, characterCount: identity.characterCount } : null;
 }
 
 async function createAttempt(input: AuthenticationAttempt): Promise<string> {
   const state = randomBytes(32).toString("base64url");
   await pool.query(
     `INSERT INTO authentication_attempts (
-       state_hash, region, purpose, guildie_id, return_to, expires_at
+       state_hash, region, purpose, identity_id, return_to, expires_at
      ) VALUES ($1, $2, $3, $4, $5, now() + ($6 * interval '1 minute'))`,
-    [sha256(state), input.region, input.purpose, input.guildieId, input.returnTo, config.authAttemptTtlMinutes],
+    [sha256(state), input.region, input.purpose, input.identityId, input.returnTo, config.authAttemptTtlMinutes],
   );
   return state;
 }
@@ -114,14 +109,14 @@ async function consumeAttempt(state: string): Promise<AuthenticationAttempt | nu
     region: Region;
     return_to: string | null;
     purpose: AuthenticationPurpose;
-    guildie_id: string | null;
+    identity_id: string | null;
   }>(
     `UPDATE authentication_attempts
        SET consumed_at = now()
      WHERE state_hash = $1
        AND consumed_at IS NULL
        AND expires_at > now()
-     RETURNING region, return_to, purpose, guildie_id`,
+     RETURNING region, return_to, purpose, identity_id`,
     [sha256(state)],
   );
   if (!result.rowCount) return null;
@@ -129,16 +124,8 @@ async function consumeAttempt(state: string): Promise<AuthenticationAttempt | nu
     region: result.rows[0].region,
     returnTo: result.rows[0].return_to,
     purpose: result.rows[0].purpose,
-    guildieId: result.rows[0].guildie_id,
+    identityId: result.rows[0].identity_id,
   };
-}
-
-async function guildieForBlizzardPrincipal(region: Region, principalId: string): Promise<string | null> {
-  const result = await pool.query<{ guildie_id: string }>(
-    `SELECT guildie_id FROM blizzard_principals WHERE region = $1 AND principal_id = $2`,
-    [region, principalId],
-  );
-  return result.rows[0]?.guildie_id ?? null;
 }
 
 async function eligibleCharacterPresentationTargets(
@@ -159,7 +146,7 @@ async function eligibleCharacterPresentationTargets(
         AND grm.realm_id = c.realm_id
         AND grm.character_id = c.character_id
         AND grm.currently_present = true
-      WHERE c.guildie_id = $1
+      WHERE c.identity_id = $1
         AND c.currently_controlled = true
         AND grm.guild_id = $2
       ORDER BY grm.rank_index, c.name`,
@@ -216,7 +203,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       region,
       returnTo: safeReturnTo(query.return_to),
       purpose: "login",
-      guildieId: null,
+      identityId: null,
     });
     return reply.redirect(await authorizationUrl(state));
   });
@@ -233,7 +220,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       region: guildie.region,
       returnTo: safeReturnTo(query.return_to) ?? "/",
       purpose: "self_refresh",
-      guildieId: guildie.guildieId,
+      identityId: guildie.guildieId,
     });
     return reply.redirect(await authorizationUrl(state));
   });
@@ -265,23 +252,17 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
 
       if (attempt.purpose === "self_refresh") {
         const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
-        if (!guildie || !attempt.guildieId || guildie.guildieId !== attempt.guildieId) {
+        if (!guildie || !attempt.identityId || guildie.guildieId !== attempt.identityId) {
           return reply.redirect(withQueryValue(returnTo, "refresh", "failed"));
         }
 
         const membership = await effectiveGuildAuthority(guildie.guildieId);
         if (!membership) return reply.redirect(withQueryValue(returnTo, "refresh", "failed"));
 
-        const authorityGuildieId = await guildieForBlizzardPrincipal(attempt.region, authority.principalId);
-        if (authorityGuildieId !== guildie.guildieId) {
-          return reply.redirect(withQueryValue(returnTo, "refresh", "failed"));
-        }
-
         try {
-          await reconcileExistingGuildieBlizzardObservation({
-            guildieId: guildie.guildieId,
+          await reconcileExistingWowAccountIdentity({
+            identityId: guildie.guildieId,
             region: attempt.region,
-            principalId: authority.principalId,
             profile: authority.profile,
           });
         } catch (error) {
@@ -359,21 +340,56 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
         return reply.redirect(await redirectAfterIdentityCeremony(guildie.guildieId, returnTo, "success"));
       }
 
-      const guildieId = await establishOrResolveGuildie({
-        region: attempt.region,
-        principalId: authority.principalId,
-        profile: authority.profile,
-      });
-      const sessionToken = await createSession(guildieId);
-      const publicOrigin = await installationPublicOrigin();
-      setSessionCookie(reply, sessionToken, publicOrigin?.startsWith("https://") ?? false);
-      return reply.redirect(await redirectAfterIdentityCeremony(guildieId, returnTo));
+      const accounts = discoveredWowAccounts(authority.profile);
+      if (!accounts.length) return reply.code(409).send({ error: "no_wow_accounts_discovered" });
+      const selectionToken = randomBytes(32).toString("base64url");
+      await pool.query(
+        `INSERT INTO identity_selection_attempts (
+           selection_token_hash, region, principal_id, profile_payload, return_to, expires_at
+         ) VALUES ($1,$2,$3,$4,$5,now() + ($6 * interval '1 minute'))`,
+        [sha256(selectionToken), attempt.region, authority.principalId, authority.profile, returnTo, config.authAttemptTtlMinutes],
+      );
+      const options = accounts.map((account) => {
+        const names = (account.characters ?? []).map((character) => character.name).slice(0, 4).join(", ");
+        const detail = names ? ` — ${names}` : "";
+        return `<label><input type="radio" name="wow_account_id" value="${account.wowAccountId}" required> WoW Account ${account.wowAccountId}${detail}</label>`;
+      }).join("<br>");
+      return reply.type("text/html; charset=utf-8").send(`<!doctype html><html><head><meta charset="utf-8"><title>Choose WoW Account</title></head><body><main><h1>Choose your WoW Account</h1><p>Select the WoW Account you want to use for this Guild Operations session.</p><form method="post" action="/auth/blizzard/select-account"><input type="hidden" name="selection_token" value="${selectionToken}">${options}<p><button type="submit">Continue</button></p></form></main></body></html>`);
     } catch (error) {
       request.log.error({ err: error }, "Blizzard authentication ceremony failed");
       if (attempt.purpose === "self_refresh") {
         return reply.redirect(withQueryValue(returnTo, "refresh", "failed"));
       }
       return reply.code(500).send({ error: "authentication_ceremony_failed" });
+    }
+  });
+
+  app.post("/auth/blizzard/select-account", async (request, reply) => {
+    const body = (request.body ?? {}) as { selection_token?: unknown; wow_account_id?: unknown };
+    if (typeof body.selection_token !== "string" || typeof body.wow_account_id !== "string") {
+      return reply.code(400).send({ error: "invalid_account_selection" });
+    }
+    const pending = await pool.query<{ region: Region; profile_payload: BlizzardWowProfile; return_to: string | null }>(
+      `UPDATE identity_selection_attempts SET consumed_at = now()
+        WHERE selection_token_hash = $1 AND consumed_at IS NULL AND expires_at > now()
+        RETURNING region, profile_payload, return_to`,
+      [sha256(body.selection_token)],
+    );
+    if (!pending.rowCount) return reply.code(400).send({ error: "invalid_or_expired_account_selection" });
+    try {
+      const row = pending.rows[0];
+      const identityId = await establishOrResolveWowAccountIdentity({
+        region: row.region,
+        wowAccountId: body.wow_account_id,
+        profile: row.profile_payload,
+      });
+      const sessionToken = await createSession(identityId);
+      const publicOrigin = await installationPublicOrigin();
+      setSessionCookie(reply, sessionToken, publicOrigin?.startsWith("https://") ?? false);
+      return reply.redirect(await redirectAfterIdentityCeremony(identityId, row.return_to ?? "/"));
+    } catch (error) {
+      request.log.error({ err: error }, "WoW Account Identity establishment failed");
+      return reply.code(409).send({ error: "wow_account_identity_establishment_failed" });
     }
   });
 
