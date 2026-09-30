@@ -22,7 +22,7 @@ export async function setCalendarViewForIdentity(
   await pool.query(
     `INSERT INTO identity_calendar_preferences (identity_id, view_mode, updated_at)
      VALUES ($1, $2, now())
-     ON CONFLICT (guildie_id) DO UPDATE SET
+     ON CONFLICT (identity_id) DO UPDATE SET
        view_mode = EXCLUDED.view_mode,
        updated_at = now()`,
     [identityId, viewMode],
