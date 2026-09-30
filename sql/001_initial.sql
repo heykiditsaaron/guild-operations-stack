@@ -1,34 +1,22 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-CREATE TABLE guildies (
-  guildie_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
+CREATE TABLE identities (
+  identity_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  established_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE blizzard_principals (
-  guildie_id uuid PRIMARY KEY REFERENCES guildies(guildie_id) ON DELETE RESTRICT,
-  region text NOT NULL,
-  principal_id text NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  last_seen_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (region, principal_id)
-);
-
-CREATE TABLE wow_accounts (
-  wow_account_record_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  guildie_id uuid NOT NULL REFERENCES guildies(guildie_id) ON DELETE RESTRICT,
+CREATE TABLE wow_account_identities (
+  identity_id uuid PRIMARY KEY REFERENCES identities(identity_id) ON DELETE RESTRICT,
   region text NOT NULL,
   wow_account_id text NOT NULL,
-  first_seen_at timestamptz NOT NULL DEFAULT now(),
+  established_at timestamptz NOT NULL DEFAULT now(),
   last_seen_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (region, wow_account_id)
 );
 
 CREATE TABLE characters (
   character_record_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  guildie_id uuid NOT NULL REFERENCES guildies(guildie_id) ON DELETE RESTRICT,
-  wow_account_record_id uuid NOT NULL REFERENCES wow_accounts(wow_account_record_id) ON DELETE RESTRICT,
+  identity_id uuid NOT NULL REFERENCES identities(identity_id) ON DELETE RESTRICT,
   region text NOT NULL,
   realm_id text NOT NULL,
   character_id text NOT NULL,
@@ -134,14 +122,14 @@ CREATE TABLE guild_rank_capabilities (
     ON DELETE CASCADE
 );
 
-CREATE TABLE guildie_main_characters (
-  guildie_id uuid NOT NULL REFERENCES guildies(guildie_id) ON DELETE RESTRICT,
+CREATE TABLE identity_character_representations (
+  identity_id uuid NOT NULL REFERENCES identities(identity_id) ON DELETE RESTRICT,
   guild_id text NOT NULL REFERENCES guilds(guild_id) ON DELETE RESTRICT,
   region text NOT NULL,
   realm_id text NOT NULL,
   character_id text NOT NULL,
   selected_at timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (guildie_id, guild_id),
+  PRIMARY KEY (identity_id, guild_id),
   FOREIGN KEY (region, realm_id, character_id)
     REFERENCES characters(region, realm_id, character_id)
     ON DELETE RESTRICT
@@ -152,7 +140,7 @@ CREATE TABLE authentication_attempts (
   state_hash text NOT NULL UNIQUE,
   region text NOT NULL,
   purpose text NOT NULL DEFAULT 'login' CHECK (purpose IN ('login', 'self_refresh')),
-  guildie_id uuid REFERENCES guildies(guildie_id) ON DELETE RESTRICT,
+  identity_id uuid REFERENCES identities(identity_id) ON DELETE RESTRICT,
   return_to text,
   created_at timestamptz NOT NULL DEFAULT now(),
   expires_at timestamptz NOT NULL,
@@ -162,7 +150,7 @@ CREATE TABLE authentication_attempts (
 
 CREATE TABLE application_sessions (
   session_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  guildie_id uuid NOT NULL REFERENCES guildies(guildie_id) ON DELETE RESTRICT,
+  identity_id uuid NOT NULL REFERENCES identities(identity_id) ON DELETE RESTRICT,
   token_hash text NOT NULL UNIQUE,
   created_at timestamptz NOT NULL DEFAULT now(),
   expires_at timestamptz NOT NULL,
@@ -176,7 +164,7 @@ CREATE TABLE operational_records (
   operation text NOT NULL CHECK (length(btrim(operation)) > 0),
   kind text NOT NULL CHECK (kind IN ('result', 'exception')),
   result text CHECK (result IN ('success', 'partial', 'failure')),
-  actor_guildie_id uuid REFERENCES guildies(guildie_id) ON DELETE SET NULL,
+  actor_identity_id uuid REFERENCES identities(identity_id) ON DELETE SET NULL,
   summary text NOT NULL CHECK (length(btrim(summary)) > 0),
   details jsonb,
   CHECK ((kind = 'result' AND result IS NOT NULL) OR (kind = 'exception' AND result IS NULL))
@@ -246,8 +234,8 @@ CREATE TABLE guild_presentation_settings (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE guildie_calendar_preferences (
-  guildie_id uuid PRIMARY KEY REFERENCES guildies(guildie_id) ON DELETE CASCADE,
+CREATE TABLE identity_calendar_preferences (
+  identity_id uuid PRIMARY KEY REFERENCES identities(identity_id) ON DELETE CASCADE,
   view_mode text NOT NULL CHECK (view_mode IN ('agenda', 'week', 'month')),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -256,14 +244,14 @@ CREATE TABLE installation_guild_binding (
   singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton = true),
   guild_id text NOT NULL REFERENCES guilds(guild_id) ON DELETE RESTRICT,
   bound_at timestamptz NOT NULL DEFAULT now(),
-  bound_by_guildie_id uuid REFERENCES guildies(guildie_id) ON DELETE RESTRICT,
+  bound_by_identity_id uuid REFERENCES identities(identity_id) ON DELETE RESTRICT,
   authorized_at timestamptz,
-  authorized_by_guildie_id uuid REFERENCES guildies(guildie_id) ON DELETE RESTRICT,
+  authorized_by_identity_id uuid REFERENCES identities(identity_id) ON DELETE RESTRICT,
   authorization_kind text CHECK (authorization_kind IS NULL OR authorization_kind IN ('guild_master', 'original_install_bypass')),
   CHECK (
-    (authorized_at IS NULL AND authorized_by_guildie_id IS NULL AND authorization_kind IS NULL)
+    (authorized_at IS NULL AND authorized_by_identity_id IS NULL AND authorization_kind IS NULL)
     OR
-    (authorized_at IS NOT NULL AND authorized_by_guildie_id IS NOT NULL AND authorization_kind IS NOT NULL)
+    (authorized_at IS NOT NULL AND authorized_by_identity_id IS NOT NULL AND authorization_kind IS NOT NULL)
   )
 );
 
@@ -331,8 +319,8 @@ CREATE TABLE activity_plugin_capability_declarations (
   PRIMARY KEY (activity_kind, capability)
 );
 
-CREATE INDEX application_sessions_guildie_id_idx ON application_sessions(guildie_id);
-CREATE INDEX characters_guildie_id_idx ON characters(guildie_id);
+CREATE INDEX application_sessions_identity_id_idx ON application_sessions(identity_id);
+CREATE INDEX characters_identity_id_idx ON characters(identity_id);
 CREATE INDEX guild_roster_memberships_current_idx ON guild_roster_memberships(guild_id, currently_present);
 CREATE INDEX guild_roster_memberships_character_idx ON guild_roster_memberships(region, realm_id, character_id);
 CREATE INDEX wow_character_profiles_name_idx ON wow_character_profiles(region, realm_slug, name);
