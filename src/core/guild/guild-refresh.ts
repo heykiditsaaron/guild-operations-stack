@@ -42,13 +42,13 @@ function coordinateKey(character: GuildCharacterCoordinate): string {
 }
 
 type GuildieRosterState = {
-  guildieId: string;
+  identityId: string;
   rankIndex: number;
 };
 
 async function guildieRosterState(client: PoolClient, guildId: string): Promise<Map<string, GuildieRosterState>> {
-  const result = await client.query<{ guildie_id: string; rank_index: number }>(
-    `SELECT c.identity_id AS guildie_id, MIN(grm.rank_index)::integer AS rank_index
+  const result = await client.query<{ identity_id: string; rank_index: number }>(
+    `SELECT c.identity_id AS identity_id, MIN(grm.rank_index)::integer AS rank_index
        FROM characters c
        JOIN guild_roster_memberships grm
          ON grm.region = c.region
@@ -61,15 +61,15 @@ async function guildieRosterState(client: PoolClient, guildId: string): Promise<
     [guildId],
   );
 
-  return new Map(result.rows.map((row) => [row.guildie_id, {
-    guildieId: row.guildie_id,
+  return new Map(result.rows.map((row) => [row.identity_id, {
+    identityId: row.identity_id,
     rankIndex: row.rank_index,
   }]));
 }
 
 type GuildieRosterTransition = {
   code: "guildie.joined" | "guildie.left" | "guildie.rank.modified";
-  guildieId: string;
+  identityId: string;
 };
 
 function guildieRosterTransitions(
@@ -78,17 +78,17 @@ function guildieRosterTransitions(
 ): GuildieRosterTransition[] {
   const transitions: GuildieRosterTransition[] = [];
 
-  for (const [guildieId, afterState] of after) {
-    const beforeState = before.get(guildieId);
+  for (const [identityId, afterState] of after) {
+    const beforeState = before.get(identityId);
     if (!beforeState) {
-      transitions.push({ code: "guildie.joined", guildieId });
+      transitions.push({ code: "guildie.joined", identityId });
     } else if (beforeState.rankIndex !== afterState.rankIndex) {
-      transitions.push({ code: "guildie.rank.modified", guildieId });
+      transitions.push({ code: "guildie.rank.modified", identityId });
     }
   }
 
-  for (const guildieId of before.keys()) {
-    if (!after.has(guildieId)) transitions.push({ code: "guildie.left", guildieId });
+  for (const identityId of before.keys()) {
+    if (!after.has(identityId)) transitions.push({ code: "guildie.left", identityId });
   }
 
   return transitions;
@@ -250,7 +250,7 @@ export async function refreshGuildAuthority(): Promise<GuildRefreshResult> {
     for (const transition of guildieTransitions) {
       publications.push(await publishEmission(client, {
         code: transition.code,
-        subject: transition.guildieId,
+        subject: transition.identityId,
       }));
     }
     return {
@@ -267,7 +267,7 @@ export async function refreshGuildAuthority(): Promise<GuildRefreshResult> {
 
   await publishGuildRefreshObservation({
     guildId: persisted.guildId,
-    changedGuildieIds: persisted.guildieTransitions.map((transition) => transition.guildieId),
+    changedGuildieIds: persisted.guildieTransitions.map((transition) => transition.identityId),
   });
 
   const targets = await guildCharactersNeedingEnrichment(persisted.guildId, persisted.roster.changedPresentationCoordinates);
