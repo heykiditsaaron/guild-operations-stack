@@ -60,19 +60,19 @@ export type InstallationGuildBinding = {
 
 export async function installationGuildBinding(): Promise<InstallationGuildBinding | null> {
   const result = await pool.query<{
-    guild_id: string; bound_at: Date; bound_by_guildie_id: string | null;
-    authorized_at: Date | null; authorized_by_guildie_id: string | null;
+    guild_id: string; bound_at: Date; bound_by_identity_id: string | null;
+    authorized_at: Date | null; authorized_by_identity_id: string | null;
     authorization_kind: InstallationGuildBinding["authorizationKind"];
-  }>(`SELECT guild_id, bound_at, bound_by_guildie_id, authorized_at,
-             authorized_by_guildie_id, authorization_kind
+  }>(`SELECT guild_id, bound_at, bound_by_identity_id, authorized_at,
+             authorized_by_identity_id, authorization_kind
         FROM installation_guild_binding WHERE singleton = true`);
   const row = result.rows[0];
   return row ? {
     guildId: row.guild_id,
     boundAt: row.bound_at,
-    boundByGuildieId: row.bound_by_guildie_id,
+    boundByGuildieId: row.bound_by_identity_id,
     authorizedAt: row.authorized_at,
-    authorizedByGuildieId: row.authorized_by_guildie_id,
+    authorizedByGuildieId: row.authorized_by_identity_id,
     authorizationKind: row.authorization_kind,
   } : null;
 }
@@ -121,7 +121,7 @@ export async function establishPendingInstallationGuildBinding(input: {
     const guildId = await persistGuild(client, candidate.region, authority.profile, candidate.referenceHref);
     await persistGuildRoster(client, guildId, candidate.region, authority.roster);
     await client.query(
-      `INSERT INTO installation_guild_binding (singleton, guild_id, bound_by_guildie_id)
+      `INSERT INTO installation_guild_binding (singleton, guild_id, bound_by_identity_id)
        VALUES (true, $1, $2)`,
       [guildId, input.guildieId],
     );
@@ -148,7 +148,7 @@ export async function authorizeInstallationGuildBinding(
         AND grm.realm_id = c.realm_id
         AND grm.character_id = c.character_id
         AND grm.currently_present = true
-      WHERE c.guildie_id = $1
+      WHERE c.identity_id = $1
         AND c.currently_controlled = true
         AND grm.guild_id = $2
       HAVING count(*) > 0`,
@@ -167,7 +167,7 @@ export async function authorizeInstallationGuildBinding(
   await pool.query(
     `UPDATE installation_guild_binding
         SET authorized_at = now(),
-            authorized_by_guildie_id = $1,
+            authorized_by_identity_id = $1,
             authorization_kind = $2
       WHERE singleton = true
         AND authorized_at IS NULL`,
