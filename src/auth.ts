@@ -268,7 +268,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
             source: "guildie",
             operation: "self_refresh",
             kind: "exception",
-            actorGuildieId: identity.identityId,
+            actorIdentityId: identity.identityId,
             summary: "Guildie self refresh did not complete account and Character-control reconciliation.",
             details: {
               account_reconciliation_succeeded: false,
@@ -294,7 +294,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
             operation: "self_refresh",
             kind: "result",
             result: partial ? "partial" : "success",
-            actorGuildieId: identity.identityId,
+            actorIdentityId: identity.identityId,
             summary: partial
               ? "Refreshed Blizzard account and Character-control state; some Character presentation acquisition failed."
               : "Refreshed Blizzard account, Character-control, and Character presentation state.",
@@ -324,7 +324,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
             source: "guildie",
             operation: "self_refresh",
             kind: "exception",
-            actorGuildieId: identity.identityId,
+            actorIdentityId: identity.identityId,
             summary: "Guildie self refresh updated account and Character-control state, but Character presentation acquisition raised an exception.",
             details: {
               account_reconciliation_succeeded: true,
