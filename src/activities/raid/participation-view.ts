@@ -1,4 +1,6 @@
-import { controlledCharactersForGuildie, controlledGuildCharactersForGuildie } from "../../core/identity/controlled-characters.js";
+import { controlledCharactersForIdentity } from "../../core/identity/controlled-characters.js";
+import { controlledGuildMemberCharacters } from "../../core/guild/guild-characters.js";
+import { characterProjections } from "../../core/identity/character-projection.js";
 import { guildieAttributionsForGuildies } from "../../core/identity/guildie-attribution.js";
 import { activityParticipationOffersForActivity } from "../../core/activity/participation.js";
 import { pool } from "../../db.js";
@@ -56,8 +58,11 @@ export async function raidParticipationCharacters(
   }
 
   const controlled = raid.eligibility === "guild_character_member"
-    ? await controlledGuildCharactersForGuildie(guildieId)
-    : await controlledCharactersForGuildie(guildieId);
+    ? await characterProjections(
+        (await controlledGuildMemberCharacters(guildieId, raid.guildId))
+          .map((character) => character.characterRecordId),
+      )
+    : await controlledCharactersForIdentity(guildieId);
   const eligible = controlled.filter((character) => character.className !== null);
 
   return {
