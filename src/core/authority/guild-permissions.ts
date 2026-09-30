@@ -32,7 +32,7 @@ export async function effectiveGuildAuthority(
        JOIN guild_roster_memberships grm
          ON grm.region = c.region AND grm.realm_id = c.realm_id AND grm.character_id = c.character_id AND grm.currently_present = true
        LEFT JOIN guild_rank_definitions grd ON grd.guild_id = grm.guild_id AND grd.rank_index = grm.rank_index
-      WHERE c.guildie_id = $1 AND c.currently_controlled = true AND grm.guild_id = $2
+      WHERE c.identity_id = $1 AND c.currently_controlled = true AND grm.guild_id = $2
       ORDER BY grm.rank_index ASC LIMIT 1`,
     [guildieId, resolvedGuildId],
   );
