@@ -169,23 +169,6 @@ CREATE TABLE application_sessions (
   revoked_at timestamptz
 );
 
-CREATE TABLE discord_association_attempts (
-  attempt_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  state_hash text NOT NULL UNIQUE,
-  guildie_id uuid NOT NULL REFERENCES guildies(guildie_id) ON DELETE RESTRICT,
-  return_to text,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  expires_at timestamptz NOT NULL,
-  consumed_at timestamptz
-);
-
-CREATE TABLE discord_associations (
-  guildie_id uuid PRIMARY KEY REFERENCES guildies(guildie_id) ON DELETE RESTRICT,
-  discord_user_id text NOT NULL UNIQUE,
-  username text NOT NULL,
-  connected_at timestamptz NOT NULL DEFAULT now()
-);
-
 CREATE TABLE operational_records (
   operational_record_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   occurred_at_unix bigint NOT NULL CHECK (occurred_at_unix >= 0),
@@ -206,36 +189,6 @@ CREATE TABLE guild_refresh_schedule (
   next_due_at_unix bigint,
   CHECK (next_due_at_unix IS NULL OR next_due_at_unix >= 0),
   CHECK ((enabled AND next_due_at_unix IS NOT NULL) OR (NOT enabled AND next_due_at_unix IS NULL))
-);
-
-CREATE TABLE guild_discord_projection_settings (
-  guild_id text PRIMARY KEY REFERENCES guilds(guild_id) ON DELETE CASCADE,
-  linked_role_id text,
-  linked_enabled boolean NOT NULL DEFAULT false,
-  rank_enabled boolean NOT NULL DEFAULT false,
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE TABLE guild_discord_rank_roles (
-  guild_id text NOT NULL,
-  rank_index integer NOT NULL CHECK (rank_index >= 0),
-  discord_role_id text NOT NULL CHECK (length(discord_role_id) > 0),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (guild_id, rank_index),
-  FOREIGN KEY (guild_id, rank_index)
-    REFERENCES guild_rank_definitions(guild_id, rank_index)
-    ON DELETE CASCADE
-);
-
-CREATE TABLE discord_module_settings (
-  guild_id text PRIMARY KEY REFERENCES guilds(guild_id) ON DELETE CASCADE,
-  enabled boolean NOT NULL DEFAULT false,
-  client_id text,
-  client_secret_ciphertext text,
-  discord_guild_id text,
-  bot_token_ciphertext text,
-  invite_url text,
-  updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE guild_activity_plugin_enablement (
