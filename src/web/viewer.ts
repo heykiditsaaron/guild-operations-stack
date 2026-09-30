@@ -65,7 +65,7 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
       realmId: character.realmId,
       name: character.name,
       realmName: character.realmName,
-      rankIndex: guildMembershipByCharacterRecordId.get(character.characterRecordId)?.rankIndex ?? 0,
+      rankIndex: guildMembershipByCharacterRecordId.get(character.characterRecordId)!.rankIndex,
       level: character.level,
       className: character.className,
       raceName: character.raceName,
