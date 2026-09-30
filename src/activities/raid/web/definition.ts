@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
-import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../auth.js";
-import { GuildCapabilityDeniedError, guildieHasGuildCapabilityOrOperator } from "../../../core/authority/guild-permissions.js";
+import { authenticatedIdentity, SESSION_COOKIE_NAME } from "../../../auth.js";
+import { GuildCapabilityDeniedError, identityHasGuildCapabilityOrOperator } from "../../../core/authority/guild-permissions.js";
 import { RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILITY } from "../permissions.js";
 
 import { cancelRaid, modifyRaid, raidEventFacts, raidOccurrenceDestinations } from "../application.js";
@@ -43,15 +43,15 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
     const token = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie, raid] = await Promise.all([
       viewerForRequest(token),
-      authenticatedGuildie(token),
+      authenticatedIdentity(token),
       raidEventFacts(request.params.raidId),
     ]);
     if (!raid) return reply.code(404).send({ error: "Raid not found" });
 
     const [canModify, canStage] = guildie
       ? await Promise.all([
-          guildieHasGuildCapabilityOrOperator(guildie.guildieId, RAID_MODIFY_CAPABILITY),
-          guildieHasGuildCapabilityOrOperator(guildie.guildieId, RAID_STAGE_CAPABILITY),
+          identityHasGuildCapabilityOrOperator(guildie.guildieId, RAID_MODIFY_CAPABILITY),
+          identityHasGuildCapabilityOrOperator(guildie.guildieId, RAID_STAGE_CAPABILITY),
         ])
       : [false, false];
     if (!guildie || (!canModify && !canStage)) {
@@ -98,7 +98,7 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
   });
 
   app.post<{ Params: RaidParams; Body: DefinitionBody }>("/activities/raid/:raidId/manage/definition", async (request, reply) => {
-    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
+    const guildie = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
     if (!guildie) return reply.code(401).send({ error: "Authentication required" });
     const body = request.body ?? {};
     if (typeof body.label !== "string" || typeof body.description !== "string" || !Array.isArray(body.occursAt) || body.occursAt.length !== 1 || typeof body.occursAt[0] !== "number" || !validDifficulty(body.difficulty) || !validRequirements(body.requirements)) {
@@ -112,7 +112,7 @@ export async function registerRaidDefinitionPage(app: FastifyInstance, assets: A
   });
 
   app.post<{ Params: RaidParams }>("/activities/raid/:raidId/manage/cancel", async (request, reply) => {
-    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
+    const guildie = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
     if (!guildie) return reply.code(401).send({ error: "Authentication required" });
     try {
       await cancelRaid(guildie.guildieId, request.params.raidId);
