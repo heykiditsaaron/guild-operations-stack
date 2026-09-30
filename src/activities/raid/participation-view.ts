@@ -1,7 +1,7 @@
 import { controlledCharactersForIdentity } from "../../core/identity/controlled-characters.js";
 import { controlledGuildMemberCharacters } from "../../core/guild/guild-characters.js";
 import { characterProjections } from "../../core/identity/character-projection.js";
-import { guildieAttributionsForGuildies } from "../../core/identity/guildie-attribution.js";
+import { identityRepresentations } from "../../core/identity/guildie-attribution.js";
 import { activityParticipationOffersForActivity } from "../../core/activity/participation.js";
 import { pool } from "../../db.js";
 import { effectiveGuildAuthority } from "../../core/authority/guild-permissions.js";
@@ -126,7 +126,7 @@ async function raidSignupRows(raidId: string, includeWithdrawn: boolean): Promis
   }
   const offerByReference = new Map(offers.map((offer) => [offer.procedureReference, offer]));
   const guildieIds = offers.flatMap((offer) => offer.actor.kind === "guildie" ? [offer.actor.reference] : []);
-  const attributions = await guildieAttributionsForGuildies(guildieIds);
+  const attributions = await identityRepresentations(guildieIds);
 
   return result.rows.map((row) => {
     const offer = offerByReference.get(row.signup_row_id);
