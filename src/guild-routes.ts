@@ -20,7 +20,7 @@ export async function registerGuildRoutes(app: FastifyInstance): Promise<void> {
     try {
       const authority = await requireGuildCapability(identity.identityId, GUILD_REFRESH_CAPABILITY);
       const result = await performGuildRefresh({
-        actorGuildieId: identity.identityId,
+        actorIdentityId: identity.identityId,
         onInspectionFailure: (error) => {
           request.log.error({ err: error }, "Operational inspection publication failed for guild refresh");
         },
