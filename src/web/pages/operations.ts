@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
+import { authenticatedIdentity, SESSION_COOKIE_NAME } from "../../auth.js";
 import {
   OPERATIONS_INSPECT_CAPABILITY,
   guildieHasGuildCapability,
@@ -109,10 +109,10 @@ export async function registerOperationsAdminPage(
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie] = await Promise.all([
       viewerForRequest(sessionToken),
-      authenticatedGuildie(sessionToken),
+      authenticatedIdentity(sessionToken),
     ]);
 
-    const canInspect = guildie ? await guildieHasGuildCapability(guildie.guildieId, OPERATIONS_INSPECT_CAPABILITY) : false;
+    const canInspect = guildie ? await guildieHasGuildCapability(identity.identityId, OPERATIONS_INSPECT_CAPABILITY) : false;
 
     const query = request.query as { source?: string; kind?: string };
     const source = query.source?.trim() || undefined;
