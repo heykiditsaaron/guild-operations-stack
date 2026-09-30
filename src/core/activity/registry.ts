@@ -1,5 +1,5 @@
 import { activityRecord, activityRecords } from "./records.js";
-import { activityParticipationOffersForGuildie as participationOffersForGuildie, activityParticipationsForGuildie as participationsForGuildie } from "./participation.js";
+import { activityParticipationOffersForIdentity as participationOffersForIdentity, activityParticipationsForIdentity as participationsForIdentity } from "./participation.js";
 import { knownActivityPlugin, knownActivityPlugins } from "./plugin-control.js";
 import { knownActivityCapabilityDeclarations } from "./plugin-administration.js";
 import { registerGuildCapabilityDefinitions, type GuildCapabilityDefinition } from "../authority/guild-capability-policy.js";
@@ -344,7 +344,7 @@ export async function activityParticipationProjection(
   );
 }
 
-export async function activityParticipationOffersForGuildie(
+export async function activityParticipationOffersForIdentity(
   guildieId: string,
 ): Promise<Array<ActivityParticipationOfferReference & { procedureReference: string; destination: string }>> {
   const relationships = await participationOffersForGuildie(requiredText(guildieId, "participation Guildie id"));
@@ -370,7 +370,7 @@ export async function activityParticipationOffersForGuildie(
 }
 
 
-export async function activityParticipationsForGuildie(
+export async function activityParticipationsForIdentity(
   guildieId: string,
 ): Promise<Array<{ participationId: string; activityKind: string; activityId: string; procedureReference: string; establishedAtUnix: number; destination: string }>> {
   const relationships = await participationsForGuildie(requiredText(guildieId, "Participation Guildie id"));
