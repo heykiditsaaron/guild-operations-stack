@@ -1,6 +1,6 @@
 import { config } from "../../config.js";
 
-export function hasDevelopmentGuildMasterAuthority(guildieId: string): boolean {
+export function hasDevelopmentGuildMasterAuthority(identityId: string): boolean {
   return config.developmentAuthorityGuildieId !== null
-    && guildieId === config.developmentAuthorityGuildieId;
+    && identityId === config.developmentAuthorityGuildieId;
 }
