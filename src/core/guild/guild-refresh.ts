@@ -48,7 +48,7 @@ type GuildieRosterState = {
 
 async function guildieRosterState(client: PoolClient, guildId: string): Promise<Map<string, GuildieRosterState>> {
   const result = await client.query<{ guildie_id: string; rank_index: number }>(
-    `SELECT c.guildie_id, MIN(grm.rank_index)::integer AS rank_index
+    `SELECT c.identity_id, MIN(grm.rank_index)::integer AS rank_index
        FROM characters c
        JOIN guild_roster_memberships grm
          ON grm.region = c.region
@@ -57,7 +57,7 @@ async function guildieRosterState(client: PoolClient, guildId: string): Promise<
         AND grm.currently_present = true
       WHERE c.currently_controlled = true
         AND grm.guild_id = $1
-      GROUP BY c.guildie_id`,
+      GROUP BY c.identity_id`,
     [guildId],
   );
 
