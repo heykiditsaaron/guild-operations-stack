@@ -52,9 +52,9 @@ async function persistGuild(client: PoolClient, region: Region, profile: Blizzar
 export type InstallationGuildBinding = {
   guildId: string;
   boundAt: Date;
-  boundByGuildieId: string | null;
+  boundByIdentityId: string | null;
   authorizedAt: Date | null;
-  authorizedByGuildieId: string | null;
+  authorizedByIdentityId: string | null;
   authorizationKind: "guild_master" | "original_install_bypass" | null;
 };
 
@@ -70,21 +70,21 @@ export async function installationGuildBinding(): Promise<InstallationGuildBindi
   return row ? {
     guildId: row.guild_id,
     boundAt: row.bound_at,
-    boundByGuildieId: row.bound_by_identity_id,
+    boundByIdentityId: row.bound_by_identity_id,
     authorizedAt: row.authorized_at,
-    authorizedByGuildieId: row.authorized_by_identity_id,
+    authorizedByIdentityId: row.authorized_by_identity_id,
     authorizationKind: row.authorization_kind,
   } : null;
 }
 
 export async function establishPendingInstallationGuildBinding(input: {
-  guildieId: string;
+  identityId: string;
   region: Region;
   guildId: string;
 }): Promise<InstallationGuildBinding> {
   if (await installationGuildBinding()) throw new Error("Installation is already bound to a guild");
 
-  const candidates = await discoverInstallationGuildCandidates(input.guildieId);
+  const candidates = await discoverInstallationGuildCandidates(input.identityId);
   const candidate = candidates.find((value) => value.region === input.region && value.guildId === input.guildId);
   if (!candidate) throw new Error("Selected guild is not a current controlled-character guild candidate");
 
@@ -105,7 +105,7 @@ export async function establishPendingInstallationGuildBinding(input: {
     throw new Error("Blizzard guild profile did not corroborate the selected guild realm");
   }
 
-  const controlled = await controlledCharactersForIdentity(input.guildieId);
+  const controlled = await controlledCharactersForIdentity(input.identityId);
   const controlledCoordinates = new Set(controlled.map((character) =>
     `${character.region}:${character.realmId}:${character.characterId}`
   ));
@@ -123,7 +123,7 @@ export async function establishPendingInstallationGuildBinding(input: {
     await client.query(
       `INSERT INTO installation_guild_binding (singleton, guild_id, bound_by_identity_id)
        VALUES (true, $1, $2)`,
-      [guildId, input.guildieId],
+      [guildId, input.identityId],
     );
   });
 
@@ -134,7 +134,7 @@ export async function establishPendingInstallationGuildBinding(input: {
 
 
 export async function authorizeInstallationGuildBinding(
-  guildieId: string,
+  identityId: string,
 ): Promise<InstallationGuildBinding> {
   const binding = await installationGuildBinding();
   if (!binding) throw new Error("Installation is not bound to a guild");
@@ -150,12 +150,12 @@ export async function authorizeInstallationGuildBinding(
         AND ccr.currently_controlled = true
         AND gr.guild_id = $2
       HAVING count(*) > 0`,
-    [guildieId, binding.guildId],
+    [identityId, binding.guildId],
   );
   const rankIndex = rankResult.rows[0]?.rank_index;
   const authorizationKind = rankIndex === 0
     ? "guild_master"
-    : rankIndex !== undefined && hasDevelopmentGuildMasterAuthority(guildieId)
+    : rankIndex !== undefined && hasDevelopmentGuildMasterAuthority(identityId)
       ? "original_install_bypass"
       : null;
   if (!authorizationKind) {
@@ -169,7 +169,7 @@ export async function authorizeInstallationGuildBinding(
             authorization_kind = $2
       WHERE singleton = true
         AND authorized_at IS NULL`,
-    [guildieId, authorizationKind],
+    [identityId, authorizationKind],
   );
 
   const authorized = await installationGuildBinding();
