@@ -16,6 +16,18 @@ export type ControlledCharacter = {
   avatarUrl: string | null;
 };
 
+export async function controlledCharacterRecordIdsForIdentity(identityId: string): Promise<string[]> {
+  const result = await pool.query<{ character_record_id: string }>(
+    `SELECT character_record_id
+       FROM controlled_character_roster
+      WHERE identity_id = $1
+        AND currently_controlled = true
+      ORDER BY character_record_id`,
+    [identityId],
+  );
+  return result.rows.map((row) => row.character_record_id);
+}
+
 export async function controlledCharactersForIdentity(identityId: string): Promise<ControlledCharacter[]> {
   const result = await pool.query<{
     character_record_id: string;
