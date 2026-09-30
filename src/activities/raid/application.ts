@@ -129,14 +129,17 @@ export async function cancelRaid(actorGuildieId:string,raidId:string):Promise<vo
 }
 
 function raidSignupOfferContract(raid: RaidEventFacts, actor: RaidApplicantAnchor): ActivityParticipationOfferContract {
-  const identityPool = actor.kind === "external"
-    ? "declared"
+  const sources = actor.kind === "external"
+    ? ["declared"] as const
     : raid.eligibility === "guild_character_member"
-      ? "controlled_guild_character"
-      : "controlled_character";
+      ? ["controlled_guild_character"] as const
+      : raid.eligibility === "guildie"
+        ? ["controlled_character"] as const
+        : ["controlled_character", "declared"] as const;
   return {
     ...(raid.eligibility === "anyone" ? {} : { actorConstraint: { kind: "guildie" as const, currentGuildieIn: raid.guildId } }),
-    components: [{ kind: "specs", type: "wow_spec", multiple: true, identityPool }],
+    fulfillment: [{ component: "specs", kind: "wow_class_pool", sources }],
+    components: [{ kind: "specs", type: "wow_spec", multiple: true }],
   };
 }
 
