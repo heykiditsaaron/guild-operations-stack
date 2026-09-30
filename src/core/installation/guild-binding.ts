@@ -2,7 +2,7 @@ import type { PoolClient } from "pg";
 import { acquireGuildAuthorityByReference, type BlizzardGuildProfile } from "../../blizzard.js";
 import type { Region } from "../../config.js";
 import { pool, withTransaction } from "../../db.js";
-import { controlledCharactersForGuildie } from "../identity/controlled-characters.js";
+import { controlledCharactersForIdentity } from "../identity/controlled-characters.js";
 import { persistGuildRoster } from "../guild/guild-refresh.js";
 import { hasDevelopmentGuildMasterAuthority } from "../authority/operator-authority.js";
 import { discoverInstallationGuildCandidates } from "./guild-candidates.js";
@@ -105,7 +105,7 @@ export async function establishPendingInstallationGuildBinding(input: {
     throw new Error("Blizzard guild profile did not corroborate the selected guild realm");
   }
 
-  const controlled = await controlledCharactersForGuildie(input.guildieId);
+  const controlled = await controlledCharactersForIdentity(input.guildieId);
   const controlledCoordinates = new Set(controlled.map((character) =>
     `${character.region}:${character.realmId}:${character.characterId}`
   ));
