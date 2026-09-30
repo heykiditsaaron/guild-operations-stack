@@ -25,14 +25,14 @@ const unavailableAdministration: AdministrationAvailability = {
   canConfigureGuildRefreshSchedule: false,
 };
 
-export async function administrationAvailabilityForGuildie(
-  guildieId: string,
+export async function administrationAvailabilityForIdentity(
+  identityId: string,
 ): Promise<AdministrationAvailability> {
-  const authority = await effectiveGuildAuthority(guildieId);
+  const authority = await effectiveGuildAuthority(identityId);
   if (!authority) return unavailableAdministration;
 
   const canConfigureModules = authority.developmentGuildMasterAuthority || authority.capabilities.includes(MODULES_CONFIGURE_CAPABILITY);
-  const canConfigurePermissions = await canAdministerGuildPermissions(guildieId);
+  const canConfigurePermissions = await canAdministerGuildPermissions(identityId);
   const canConfigureTheme = authority.developmentGuildMasterAuthority || authority.rankIndex === 0 || authority.capabilities.includes(THEME_CONFIGURE_CAPABILITY);
   const canConfigureGuildPresentation = authority.developmentGuildMasterAuthority || authority.rankIndex === 0 || authority.capabilities.includes(GUILD_PRESENTATION_CONFIGURE_CAPABILITY);
   const canConfigureGuildRefreshSchedule = authority.capabilities.includes(GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY);
