@@ -114,7 +114,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
 
   app.get("/admin/general", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, guildie] = await Promise.all([viewerForRequest(sessionToken), authenticatedIdentity(sessionToken)]);
+    const [viewer, identity] = await Promise.all([viewerForRequest(sessionToken), authenticatedIdentity(sessionToken)]);
     if (!identity) return reply.code(401).send("Authentication is required.");
 
     const [canConfigureGuildRefreshSchedule, canConfigureTheme, canConfigureGuildPresentation, canRefresh] = await Promise.all([
@@ -143,7 +143,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
 
   app.get("/admin/modules", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, guildie] = await Promise.all([viewerForRequest(sessionToken), authenticatedIdentity(sessionToken)]);
+    const [viewer, identity] = await Promise.all([viewerForRequest(sessionToken), authenticatedIdentity(sessionToken)]);
     if (!identity) return reply.code(401).send("Authentication is required.");
     const canConfigureModules = await identityHasGuildCapabilityOrOperator(identity.identityId, MODULES_CONFIGURE_CAPABILITY);
     const lifecycle = await renderActivityAdministration(identity.identityId, canConfigureModules);
@@ -206,7 +206,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
 
   app.get("/admin/permissions", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, guildie] = await Promise.all([viewerForRequest(sessionToken), authenticatedIdentity(sessionToken)]);
+    const [viewer, identity] = await Promise.all([viewerForRequest(sessionToken), authenticatedIdentity(sessionToken)]);
     const authorized = identity ? await canAdministerGuildPermissions(identity.identityId) : false;
     const policies = authorized && identity ? await guildCapabilityPoliciesForActor(identity.identityId) : null;
     const globalPolicies = policies ? { ...policies, capabilities: policies.capabilities.filter((capability) => capability.namespace === "global") } : null;
