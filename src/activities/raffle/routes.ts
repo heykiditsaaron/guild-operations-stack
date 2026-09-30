@@ -9,9 +9,9 @@ import {
 } from "./application.js";
 
 async function requireGuildie(request:FastifyRequest,reply:FastifyReply):Promise<string|null>{
-  const guildie=await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+  const identity=await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
   if(!guildie){await reply.code(401).send({error:"not_authenticated"});return null;}
-  return guildie.guildieId;
+  return identity.identityId;
 }
 function bodyObject(value:unknown):Record<string,unknown>{return value&&typeof value==="object"?value as Record<string,unknown>:{};}
 function requiredString(value:unknown,field:string):string{if(typeof value!=="string"||!value.trim())throw new RaffleRuleError("invalid_input",`${field} is required`,400);return value.trim();}
