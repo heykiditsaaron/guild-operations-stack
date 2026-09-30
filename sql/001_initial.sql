@@ -14,9 +14,8 @@ CREATE TABLE wow_account_identities (
   UNIQUE (region, wow_account_id)
 );
 
-CREATE TABLE characters (
+CREATE TABLE character_roster (
   character_record_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  identity_id uuid NOT NULL REFERENCES identities(identity_id) ON DELETE RESTRICT,
   region text NOT NULL,
   realm_id text NOT NULL,
   character_id text NOT NULL,
@@ -27,9 +26,21 @@ CREATE TABLE characters (
   faction text,
   first_seen_at timestamptz NOT NULL DEFAULT now(),
   last_seen_at timestamptz NOT NULL DEFAULT now(),
-  currently_controlled boolean NOT NULL DEFAULT true,
   UNIQUE (region, realm_id, character_id)
 );
+
+CREATE TABLE controlled_character_roster (
+  identity_id uuid NOT NULL REFERENCES identities(identity_id) ON DELETE RESTRICT,
+  character_record_id uuid NOT NULL REFERENCES character_roster(character_record_id) ON DELETE RESTRICT,
+  first_seen_at timestamptz NOT NULL DEFAULT now(),
+  last_seen_at timestamptz NOT NULL DEFAULT now(),
+  currently_controlled boolean NOT NULL DEFAULT true,
+  PRIMARY KEY (identity_id, character_record_id)
+);
+
+CREATE UNIQUE INDEX controlled_character_roster_current_character_idx
+  ON controlled_character_roster(character_record_id)
+  WHERE currently_controlled = true;
 
 CREATE TABLE guilds (
   guild_id text PRIMARY KEY,
@@ -48,19 +59,14 @@ CREATE TABLE guilds (
 COMMENT ON COLUMN guilds.blizzard_reference_href IS
   'Canonical Blizzard guild API reference used as the durable transport locator for refresh operations.';
 
-CREATE TABLE guild_roster_memberships (
+CREATE TABLE guild_roster (
   guild_id text NOT NULL REFERENCES guilds(guild_id) ON DELETE RESTRICT,
-  region text NOT NULL,
-  realm_id text NOT NULL,
-  character_id text NOT NULL,
+  character_record_id uuid NOT NULL REFERENCES character_roster(character_record_id) ON DELETE RESTRICT,
   rank_index integer NOT NULL CHECK (rank_index >= 0),
-  character_name text NOT NULL,
-  realm_name text,
-  realm_slug text,
   first_seen_at timestamptz NOT NULL DEFAULT now(),
   last_seen_at timestamptz NOT NULL DEFAULT now(),
   currently_present boolean NOT NULL DEFAULT true,
-  PRIMARY KEY (guild_id, region, realm_id, character_id)
+  PRIMARY KEY (guild_id, character_record_id)
 );
 
 CREATE TABLE wow_character_profiles (
@@ -131,7 +137,7 @@ CREATE TABLE identity_character_representations (
   selected_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (identity_id, guild_id),
   FOREIGN KEY (region, realm_id, character_id)
-    REFERENCES characters(region, realm_id, character_id)
+    REFERENCES character_roster(region, realm_id, character_id)
     ON DELETE RESTRICT
 );
 
@@ -331,9 +337,9 @@ CREATE TABLE activity_plugin_capability_declarations (
 );
 
 CREATE INDEX application_sessions_identity_id_idx ON application_sessions(identity_id);
-CREATE INDEX characters_identity_id_idx ON characters(identity_id);
-CREATE INDEX guild_roster_memberships_current_idx ON guild_roster_memberships(guild_id, currently_present);
-CREATE INDEX guild_roster_memberships_character_idx ON guild_roster_memberships(region, realm_id, character_id);
+CREATE INDEX controlled_character_roster_identity_idx ON controlled_character_roster(identity_id, currently_controlled);
+CREATE INDEX guild_roster_current_idx ON guild_roster(guild_id, currently_present);
+CREATE INDEX guild_roster_character_idx ON guild_roster(character_record_id);
 CREATE INDEX wow_character_profiles_name_idx ON wow_character_profiles(region, realm_slug, name);
 CREATE INDEX operational_records_occurred_idx ON operational_records(occurred_at_unix DESC);
 CREATE INDEX operational_records_source_occurred_idx ON operational_records(source, occurred_at_unix DESC);
