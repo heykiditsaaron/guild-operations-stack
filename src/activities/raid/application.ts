@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
-import { controlledCharactersForGuildie, controlledGuildCharactersForGuildie } from "../../core/identity/controlled-characters.js";
 import { activityParticipationOfferByProcedureReference, closeActivityParticipationOffer, closeOutstandingActivityParticipationOffers, constructActivityParticipationOffer, establishActivityParticipation, outstandingActivityParticipationOffersForActor, reviseActivityParticipationOffer, revokeActivityParticipationOffer, type ActivityParticipationOffer, type ActivityParticipationOfferContract } from "../../core/activity/participation.js";
 import { pool, withTransaction } from "../../db.js";
 import { deliverEmission, publishEmission } from "../../emissions/registry.js";
