@@ -196,7 +196,7 @@ async function publishSelfRefreshRecord(
 export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
   if (!app.hasContentTypeParser("application/x-www-form-urlencoded")) {
     app.addContentTypeParser("application/x-www-form-urlencoded", { parseAs: "string" }, (_request, body, done) => {
-      const params = new URLSearchParams(body);
+      const params = new URLSearchParams(typeof body === "string" ? body : body.toString("utf8"));
       done(null, Object.fromEntries(params.entries()));
     });
   }
