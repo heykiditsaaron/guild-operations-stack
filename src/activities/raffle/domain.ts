@@ -323,7 +323,7 @@ export async function establishRaffleClaim(claimantGuildieId: string, raffleId: 
     const offer = await constructActivityParticipationOffer(client, {
       activityKind: "raffle",
       activityId: raffleId,
-      actor: { kind: "guildie", reference: claimantGuildieId },
+      actor: { kind: "native", reference: claimantGuildieId },
       contract: raffleClaimOfferContract,
       components: {
         character: { realmId, characterId },
@@ -387,7 +387,7 @@ export async function revokeRaffleClaim(claimantGuildieId: string, claimId: stri
       activityId: String(claim.raffle_id),
       procedureReference: claimId,
     });
-    if (!offer || offer.actor.kind !== "guildie" || offer.actor.reference !== claimantGuildieId) {
+    if (!offer || offer.actor.kind !== "native" || offer.actor.reference !== claimantGuildieId) {
       throw new RaffleRuleError("claim_not_owned", "A member may only revoke their own Raffle claim", 403);
     }
     if (claim.raffle_conclusion !== null) throw new RaffleRuleError("raffle_concluded", "Claims cannot be revoked after the Raffle concludes");
@@ -401,7 +401,7 @@ export async function revokeRaffleClaim(claimantGuildieId: string, claimId: stri
     await revokeActivityParticipationOffer(client, {
       activityKind: "raffle",
       activityId: String(claim.raffle_id),
-      actor: { kind: "guildie", reference: claimantGuildieId },
+      actor: { kind: "native", reference: claimantGuildieId },
       procedureReference: claimId,
       revokedAtUnix,
     });
@@ -551,7 +551,7 @@ export async function raffleClaims(raffleId:string):Promise<RaffleClaim[]> {
     for(const row of result.rows){
       const claimId=String(row.claim_id);
       const offer=offersByClaimId.get(claimId);
-      if(!offer || offer.actor.kind!=="guildie") throw new Error(`Raffle claim ${claimId} is missing its Participation Offer`);
+      if(!offer || offer.actor.kind!=="native") throw new Error(`Raffle claim ${claimId} is missing its Participation Offer`);
       const characterValue=offer.components.find((component)=>component.kind==="character")?.value;
       const claimValue=offer.components.find((component)=>component.kind==="claim")?.value;
       if(Array.isArray(characterValue)||Array.isArray(claimValue)) throw new Error(`Raffle claim ${claimId} Participation Offer does not satisfy its declared contract`);
