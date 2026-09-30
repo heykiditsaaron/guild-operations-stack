@@ -9,8 +9,8 @@ import {
 } from "./core/guild/guild-character-enrichment.js";
 import { effectiveGuildAuthority } from "./core/authority/guild-permissions.js";
 import { installationGuildBinding, installationOperational, requireOperationalInstallationGuildBinding } from "./core/installation/guild-binding.js";
-import { guildCharactersForGuildie } from "./core/guild/guild-characters.js";
-import { mainCharacterForGuildie, selectMainCharacter } from "./core/identity/main-character.js";
+import { guildCharactersForIdentity } from "./core/guild/guild-characters.js";
+import { characterRepresentationForIdentity, selectCharacterRepresentation } from "./core/identity/main-character.js";
 import { publishOperationalRecord } from "./operational-inspection.js";
 import {
   discoveredWowAccounts,
@@ -85,14 +85,6 @@ export async function authenticatedIdentity(token: string | undefined): Promise<
   return { identityId: result.rows[0].identity_id, region: result.rows[0].region, characterCount: Number(result.rows[0].character_count) };
 }
 
-/** Temporary compatibility seam while Core consumers migrate to Identity. */
-export async function authenticatedGuildie(token: string | undefined): Promise<{
-  guildieId: string; region: Region; characterCount: number;
-} | null> {
-  const identity = await authenticatedIdentity(token);
-  return identity ? { guildieId: identity.identityId, region: identity.region, characterCount: identity.characterCount } : null;
-}
-
 async function createAttempt(input: AuthenticationAttempt): Promise<string> {
   const state = randomBytes(32).toString("base64url");
   await pool.query(
@@ -129,7 +121,7 @@ async function consumeAttempt(state: string): Promise<AuthenticationAttempt | nu
 }
 
 async function eligibleCharacterPresentationTargets(
-  guildieId: string,
+  identityId: string,
 ): Promise<CharacterPresentationAcquisitionTarget[]> {
   const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
   const result = await pool.query<{
@@ -150,7 +142,7 @@ async function eligibleCharacterPresentationTargets(
         AND c.currently_controlled = true
         AND grm.guild_id = $2
       ORDER BY grm.rank_index, c.name`,
-    [guildieId, guildId],
+    [identityId, guildId],
   );
 
   return result.rows.map((row) => {
@@ -170,14 +162,14 @@ async function eligibleCharacterPresentationTargets(
 }
 
 async function redirectAfterIdentityCeremony(
-  guildieId: string,
+  identityId: string,
   returnTo: string,
   refreshResult?: "success" | "failed",
 ): Promise<string> {
   if (!(await installationOperational())) return "/setup";
   let destination = returnTo;
   if (refreshResult) destination = withQueryValue(destination, "refresh", refreshResult);
-  const mainCharacter = await mainCharacterForGuildie(guildieId);
+  const mainCharacter = await characterRepresentationForIdentity(guildieId);
   if (!mainCharacter) destination = withQueryValue(destination, "select_main", "required");
   return destination;
 }
@@ -215,10 +207,10 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.get("/me/refresh", async (request, reply) => {
-    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
-    if (!guildie) return reply.code(401).send({ error: "not_authenticated" });
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "not_authenticated" });
 
-    const membership = await effectiveGuildAuthority(guildie.guildieId);
+    const membership = await effectiveGuildAuthority(identity.identityId);
     if (!membership) return reply.code(403).send({ error: "current_guild_membership_required" });
 
     const query = request.query as { return_to?: unknown };
@@ -226,7 +218,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       region: guildie.region,
       returnTo: safeReturnTo(query.return_to) ?? "/",
       purpose: "self_refresh",
-      identityId: guildie.guildieId,
+      identityId: identity.identityId,
     });
     return reply.redirect(await authorizationUrl(state));
   });
@@ -257,17 +249,17 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       const authority = await acquireAuthority(attempt.region, accessToken);
 
       if (attempt.purpose === "self_refresh") {
-        const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
-        if (!guildie || !attempt.identityId || guildie.guildieId !== attempt.identityId) {
+        const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+        if (!identity || !attempt.identityId || identity.identityId !== attempt.identityId) {
           return reply.redirect(withQueryValue(returnTo, "refresh", "failed"));
         }
 
-        const membership = await effectiveGuildAuthority(guildie.guildieId);
+        const membership = await effectiveGuildAuthority(identity.identityId);
         if (!membership) return reply.redirect(withQueryValue(returnTo, "refresh", "failed"));
 
         try {
           await reconcileExistingWowAccountIdentity({
-            identityId: guildie.guildieId,
+            identityId: identity.identityId,
             region: attempt.region,
             profile: authority.profile,
           });
@@ -276,7 +268,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
             source: "guildie",
             operation: "self_refresh",
             kind: "exception",
-            actorGuildieId: guildie.guildieId,
+            actorGuildieId: identity.identityId,
             summary: "Guildie self refresh did not complete account and Character-control reconciliation.",
             details: {
               account_reconciliation_succeeded: false,
@@ -289,7 +281,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
         }
 
         try {
-          const targets = await eligibleCharacterPresentationTargets(guildie.guildieId);
+          const targets = await eligibleCharacterPresentationTargets(identity.identityId);
           const presentation = await acquireCharacterPresentation({ targets });
           const partial = presentation.failedProfiles > 0 || presentation.failedMedia > 0;
 
@@ -302,7 +294,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
             operation: "self_refresh",
             kind: "result",
             result: partial ? "partial" : "success",
-            actorGuildieId: guildie.guildieId,
+            actorGuildieId: identity.identityId,
             summary: partial
               ? "Refreshed Blizzard account and Character-control state; some Character presentation acquisition failed."
               : "Refreshed Blizzard account, Character-control, and Character presentation state.",
@@ -332,7 +324,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
             source: "guildie",
             operation: "self_refresh",
             kind: "exception",
-            actorGuildieId: guildie.guildieId,
+            actorGuildieId: identity.identityId,
             summary: "Guildie self refresh updated account and Character-control state, but Character presentation acquisition raised an exception.",
             details: {
               account_reconciliation_succeeded: true,
@@ -343,7 +335,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
           });
         }
 
-        return reply.redirect(await redirectAfterIdentityCeremony(guildie.guildieId, returnTo, "success"));
+        return reply.redirect(await redirectAfterIdentityCeremony(identity.identityId, returnTo, "success"));
       }
 
       const accounts = discoveredWowAccounts(authority.profile);
@@ -400,20 +392,20 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.get("/me", async (request, reply) => {
-    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
-    if (!guildie) return reply.code(401).send({ error: "not_authenticated" });
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "not_authenticated" });
 
     const binding = await installationGuildBinding();
     const operational = binding?.authorizedAt != null;
     const [guildCharacters, mainCharacter] = operational
       ? await Promise.all([
-          guildCharactersForGuildie(guildie.guildieId),
-          mainCharacterForGuildie(guildie.guildieId),
+          guildCharactersForIdentity(identity.identityId),
+          characterRepresentationForIdentity(identity.identityId),
         ])
       : [[], null];
 
     return reply.send({
-      guildie_id: guildie.guildieId,
+      guildie_id: identity.identityId,
       region: guildie.region,
       character_count: guildie.characterCount,
       guild: binding ? {
@@ -448,15 +440,15 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.put("/me/main-character", async (request, reply) => {
-    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
-    if (!guildie) return reply.code(401).send({ error: "not_authenticated" });
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "not_authenticated" });
 
     const body = request.body as { realm_id?: unknown; character_id?: unknown } | null;
     if (!body || typeof body.realm_id !== "string" || typeof body.character_id !== "string") {
       return reply.code(400).send({ error: "invalid_character_coordinate" });
     }
 
-    const selected = await selectMainCharacter(guildie.guildieId, body.realm_id, body.character_id);
+    const selected = await selectCharacterRepresentation(identity.identityId, body.realm_id, body.character_id);
     if (!selected) return reply.code(409).send({ error: "character_not_currently_eligible" });
 
     return reply.send({
