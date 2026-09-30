@@ -1,5 +1,6 @@
 import { requireOperationalInstallationGuildBinding } from "../installation/guild-binding.js";
 import { pool } from "../../db.js";
+import { controlledGuildMemberCharacters } from "../guild/guild-characters.js";
 import { hasDevelopmentGuildMasterAuthority } from "./operator-authority.js";
 
 export type GuildCapability = string;
@@ -26,23 +27,22 @@ export async function effectiveGuildAuthority(
   guildId?: string,
 ): Promise<EffectiveGuildAuthority | null> {
   const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
-  const rankResult = await pool.query<{ rank_index: number; display_name: string | null }>(
-    `SELECT grm.rank_index, grd.display_name
-       FROM characters c
-       JOIN guild_roster_memberships grm
-         ON grm.region = c.region AND grm.realm_id = c.realm_id AND grm.character_id = c.character_id AND grm.currently_present = true
-       LEFT JOIN guild_rank_definitions grd ON grd.guild_id = grm.guild_id AND grd.rank_index = grm.rank_index
-      WHERE c.identity_id = $1 AND c.currently_controlled = true AND grm.guild_id = $2
-      ORDER BY grm.rank_index ASC LIMIT 1`,
-    [identityId, resolvedGuildId],
+  const guildMemberCharacters = await controlledGuildMemberCharacters(identityId, resolvedGuildId);
+  const highestAuthorityCharacter = guildMemberCharacters[0];
+  if (!highestAuthorityCharacter) return null;
+
+  const rankResult = await pool.query<{ display_name: string | null }>(
+    `SELECT display_name
+       FROM guild_rank_definitions
+      WHERE guild_id = $1 AND rank_index = $2`,
+    [resolvedGuildId, highestAuthorityCharacter.rankIndex],
   );
-  const rank = rankResult.rows[0];
-  if (!rank) return null;
+  const rankDisplayName = rankResult.rows[0]?.display_name ?? `Rank ${highestAuthorityCharacter.rankIndex}`;
   const capabilityResult = await pool.query<{ capability: string }>(
     `SELECT capability FROM guild_rank_capabilities WHERE guild_id = $1 AND rank_index = $2 ORDER BY capability`,
-    [resolvedGuildId, rank.rank_index],
+    [resolvedGuildId, highestAuthorityCharacter.rankIndex],
   );
-  return { identityId, guildId: resolvedGuildId, rankIndex: rank.rank_index, rankDisplayName: rank.display_name ?? `Rank ${rank.rank_index}`, capabilities: capabilityResult.rows.map((row) => row.capability), developmentGuildMasterAuthority: hasDevelopmentGuildMasterAuthority(identityId) };
+  return { identityId, guildId: resolvedGuildId, rankIndex: highestAuthorityCharacter.rankIndex, rankDisplayName: rank.display_name ?? `Rank ${highestAuthorityCharacter.rankIndex}`, capabilities: capabilityResult.rows.map((row) => row.capability), developmentGuildMasterAuthority: hasDevelopmentGuildMasterAuthority(identityId) };
 }
 
 function hasInherentGuildCapability(authority: EffectiveGuildAuthority | null, identityId: string): boolean {
