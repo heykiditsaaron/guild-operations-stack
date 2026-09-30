@@ -159,7 +159,7 @@ export async function getRaffleClaim(claimId:string):Promise<RaffleClaimFacts|nu
       procedureReferences:[claimId],
     });
     const offer=offers[0];
-    if(!offer || offer.actor.kind!=="guildie") return null;
+    if(!offer || offer.actor.kind!=="native") return null;
     const characterComponent=offer.components.find((component)=>component.kind==="character")?.value;
     const claimComponent=offer.components.find((component)=>component.kind==="claim")?.value;
     if(Array.isArray(characterComponent)||Array.isArray(claimComponent)) return null;
@@ -214,7 +214,7 @@ export async function raffleClaimFactsForMember(guildieId:string,raffleId:string
     });
     const memberClaimIds=new Set(
       offers
-        .filter((offer)=>offer.actor.kind==="guildie"&&offer.actor.reference===guildieId)
+        .filter((offer)=>offer.actor.kind==="native"&&offer.actor.reference===guildieId)
         .map((offer)=>offer.procedureReference),
     );
     return claimFactsForIds(claimIds.filter((claimId)=>memberClaimIds.has(claimId)));
