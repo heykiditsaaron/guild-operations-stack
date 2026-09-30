@@ -2,51 +2,41 @@
 
 ## Purpose
 
-Main-character selection is the first Guild Operations-owned member decision layered on top of Blizzard authority.
+Main-character selection is an Identity-owned representation preference.
 
-Blizzard establishes which Characters an authenticated Guildie controls and which of those Characters are currently members of guild `65431436`. Guild Operations allows the Guildie to choose one currently eligible guild Character as their main operational representation.
+It answers a narrow presentation question:
+
+> If Guild Operations must represent this Identity as a Character, and the surrounding context has not explicitly established which Character is relevant, which Character does the Identity owner prefer as the fallback?
+
+The selected main does not universally represent the Identity. A procedure that already carries a Character-specific context, such as Character-specific raid participation, may use that explicit Character instead.
 
 ## Authority boundary
 
-Blizzard owns:
+Blizzard-observed state establishes which Characters a WoW Account Identity currently controls and which Characters are currently members of the subject guild. Guild Operations owns the Identity user's main-Character selection.
 
-- authenticated Blizzard account authority;
-- which Characters that authority establishes as currently controlled by the Guildie;
-- current membership of a Character in the WoW guild;
-- the Character's current numeric guild rank.
+A selected main is presentation preference, not identity or authorization. Changing it does not establish Identity, Character control, Guildie status, rank, capability, participation, or Actor attribution.
 
-Guild Operations owns:
+## Selection
 
-- durable Guildie continuity through `guildie_id`;
-- which currently eligible guild Character the Guildie has selected as their main.
+A user may select a Character as their main only when current persisted observations establish both:
 
-A selected main is not identity or authorization. Changing it does not create a new Guildie, change Blizzard account authority, or rewrite participation history.
+1. the Identity currently controls that Character; and
+2. that Character is currently present on the subject guild roster.
 
-## Canonical selection
+The HTTP surface accepts the external Character coordinate needed to identify the requested Character. Once resolved, GO persists the preference as a reference to the existing Character record through `character_record_id`; Character facts remain owned by Character authority.
 
-A selection is addressed by the durable Character coordinate:
-
-`region + realm_id + character_id`
-
-Character name and realm name are presentation, not selection identity.
-
-A Guildie may select a Character only when the current persisted Blizzard observations establish both:
-
-1. the Guildie currently controls that Character; and
-2. that Character is currently present on the roster of guild `65431436`.
-
-The API rejects arbitrary or currently ineligible Character coordinates.
+Character name, realm name, and other presentation facts are not copied into the preference.
 
 ## Loss of eligibility
 
-Roster synchronization does not destroy a prior main selection when Blizzard no longer reports the Character as a current guild member. The selection remains first-party historical state, while its projection reports that it is no longer currently eligible.
+Roster or control reconciliation does not destroy a prior main selection when the Character ceases to be currently eligible. The Identity-owned preference remains selected while its projection reports that it is no longer currently eligible.
 
-A stale selection therefore does not become false history and does not confer current guild eligibility.
+A stale preference therefore does not become false history and does not confer current guild eligibility or authority.
 
 ## HTTP surface
 
-`GET /me` projects the current main selection alongside the Guildie's currently eligible guild Characters and identifies the Guildie with `guildie_id`.
+`GET /me` projects the current main-Character preference alongside the Identity's currently eligible guild Characters.
 
-`PUT /me/main-character` accepts `realm_id` and `character_id` for an authenticated Guildie and changes the selection only after current eligibility is established.
+`PUT /me/main-character` accepts `realm_id` and `character_id` for the authenticated Identity and changes the preference only after current eligibility is established.
 
-`Subject` is not part of selected-main ownership or persistence; it is contextual language only.
+The current implementation scopes the preference to the installation's bound guild. That persistence scope is not a declaration that Representation as a general Identity concept is necessarily guild-scoped.

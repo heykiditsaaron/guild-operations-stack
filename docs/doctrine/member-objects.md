@@ -298,13 +298,15 @@ Attributes may have different authorities:
 - **Guildie** is derived by GO from Blizzard-authoritative Character facts.
 - **Representation** is declarable by the user.
 
-**Representation** answers how an Identity should be presented where GO permits a choice of representation. A selected main Character and a nickname are examples of the same class of work: choosing representation.
+**Representation** answers how an Identity should be presented where GO permits a choice of representation. Representation is contextual and may expose multiple independently meaningful attributes rather than requiring one universal representative. A selected main Character and a nickname are examples of the same class of work without being mutually exclusive.
 
-Representation does not establish Identity, Character control, Guildie status, rank, capability, or Actor attribution.
+A selected main Character is the Identity owner's preferred fallback when GO must present that Identity in Character context and the surrounding procedure has not already established a more specific Character. An explicitly contextual Character therefore supersedes the main-Character preference.
 
-A representation may become unavailable when the context supporting it changes without destroying the Identity or rewriting historical actions.
+Representation is passive presentation state. It does not establish Identity, Character control, Guildie status, rank, capability, participation, or Actor attribution.
 
-Do not create a second identity layer merely to model representation.
+A representation preference may become unavailable when the context supporting it changes without destroying the Identity or rewriting historical actions. Character-backed representation should retain a reference to the Character and derive current Character facts through Character authority rather than copying those facts into Identity-owned preference state.
+
+Do not create a second identity layer merely to model representation, and do not generalize today's Character-backed preference into a universal representation framework before another concrete representation requirement earns shared machinery.
 
 ## Participation and Actor resolution
 

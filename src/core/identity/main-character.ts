@@ -18,10 +18,8 @@ export async function selectCharacterRepresentation(
   characterId: string,
 ): Promise<CharacterRepresentation | null> {
   const binding = await requireOperationalInstallationGuildBinding();
-  const guild = await pool.query<{ region: string }>("SELECT region FROM guilds WHERE guild_id = $1", [binding.guildId]);
-  const guildRegion = guild.rows[0]?.region;
-  if (!guildRegion) throw new Error("Bound guild is not persisted");
   const result = await pool.query<{
+    character_record_id: string;
     guild_id: string;
     character_id: string;
     realm_id: string;
@@ -31,6 +29,7 @@ export async function selectCharacterRepresentation(
     avatar_url: string | null;
   }>(
     `SELECT
+       cr.character_record_id,
        gr.guild_id,
        cr.character_id,
        cr.realm_id,
@@ -58,27 +57,25 @@ export async function selectCharacterRepresentation(
   if (!result.rowCount) return null;
   const character = result.rows[0];
 
-  const existing = await pool.query<{ realm_id: string; character_id: string }>(
-    `SELECT realm_id, character_id
+  const existing = await pool.query<{ character_record_id: string }>(
+    `SELECT character_record_id
        FROM identity_character_representations
       WHERE identity_id = $1
         AND guild_id = $2`,
     [identityId, binding.guildId],
   );
   const previous = existing.rows[0];
-  const changed = !previous || previous.realm_id !== realmId || previous.character_id !== characterId;
+  const changed = !previous || previous.character_record_id !== character.character_record_id;
 
   if (changed) {
     await pool.query(
       `INSERT INTO identity_character_representations (
-         identity_id, guild_id, region, realm_id, character_id
-       ) VALUES ($1,$2,$3,$4,$5)
+         identity_id, guild_id, character_record_id
+       ) VALUES ($1,$2,$3)
        ON CONFLICT (identity_id, guild_id) DO UPDATE SET
-         region = EXCLUDED.region,
-         realm_id = EXCLUDED.realm_id,
-         character_id = EXCLUDED.character_id,
+         character_record_id = EXCLUDED.character_record_id,
          selected_at = now()`,
-      [identityId, binding.guildId, guildRegion, realmId, characterId],
+      [identityId, binding.guildId, character.character_record_id],
     );
   }
 
@@ -107,31 +104,29 @@ export async function characterRepresentationForIdentity(identityId: string): Pr
     avatar_url: string | null;
   }>(
     `SELECT
-       gmc.guild_id,
-       gmc.character_id,
-       gmc.realm_id,
+       representation.guild_id,
+       cr.character_id,
+       cr.realm_id,
        cr.name,
        cr.realm_name,
        CASE WHEN gr.currently_present IS TRUE THEN gr.rank_index ELSE NULL END AS rank_index,
        (ccr.currently_controlled IS TRUE AND gr.currently_present IS TRUE) AS currently_eligible,
        wcp.avatar_url
-     FROM identity_character_representations gmc
+     FROM identity_character_representations representation
      JOIN character_roster cr
-       ON cr.region = gmc.region
-      AND cr.realm_id = gmc.realm_id
-      AND cr.character_id = gmc.character_id
+       ON cr.character_record_id = representation.character_record_id
      LEFT JOIN controlled_character_roster ccr
-       ON ccr.identity_id = gmc.identity_id
-      AND ccr.character_record_id = cr.character_record_id
+       ON ccr.identity_id = representation.identity_id
+      AND ccr.character_record_id = representation.character_record_id
      LEFT JOIN guild_roster gr
-       ON gr.guild_id = gmc.guild_id
-      AND gr.character_record_id = cr.character_record_id
+       ON gr.guild_id = representation.guild_id
+      AND gr.character_record_id = representation.character_record_id
      LEFT JOIN wow_character_profiles wcp
        ON wcp.region = cr.region
       AND wcp.realm_id = cr.realm_id
       AND wcp.character_id = cr.character_id
-     WHERE gmc.identity_id = $1
-       AND gmc.guild_id = $2`,
+     WHERE representation.identity_id = $1
+       AND representation.guild_id = $2`,
     [identityId, binding.guildId],
   );
 

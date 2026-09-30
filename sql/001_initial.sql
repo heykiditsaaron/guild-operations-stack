@@ -131,14 +131,9 @@ CREATE TABLE guild_rank_capabilities (
 CREATE TABLE identity_character_representations (
   identity_id uuid NOT NULL REFERENCES identities(identity_id) ON DELETE RESTRICT,
   guild_id text NOT NULL REFERENCES guilds(guild_id) ON DELETE RESTRICT,
-  region text NOT NULL,
-  realm_id text NOT NULL,
-  character_id text NOT NULL,
+  character_record_id uuid NOT NULL REFERENCES character_roster(character_record_id) ON DELETE RESTRICT,
   selected_at timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (identity_id, guild_id),
-  FOREIGN KEY (region, realm_id, character_id)
-    REFERENCES character_roster(region, realm_id, character_id)
-    ON DELETE RESTRICT
+  PRIMARY KEY (identity_id, guild_id)
 );
 
 CREATE TABLE authentication_attempts (

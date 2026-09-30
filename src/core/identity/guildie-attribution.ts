@@ -25,20 +25,18 @@ export async function identityRepresentations(
        COALESCE(wcp.name, cr.name) AS main_character_name,
        COALESCE(wcp.realm_name, cr.realm_name) AS realm_name
      FROM identities i
-     LEFT JOIN identity_character_representations gmc
-       ON gmc.identity_id = i.identity_id
-      AND gmc.guild_id = $2
+     LEFT JOIN identity_character_representations representation
+       ON representation.identity_id = i.identity_id
+      AND representation.guild_id = $2
      LEFT JOIN character_roster cr
-       ON cr.region = gmc.region
-      AND cr.realm_id = gmc.realm_id
-      AND cr.character_id = gmc.character_id
+       ON cr.character_record_id = representation.character_record_id
      LEFT JOIN controlled_character_roster ccr
        ON ccr.identity_id = i.identity_id
-      AND ccr.character_record_id = cr.character_record_id
+      AND ccr.character_record_id = representation.character_record_id
       AND ccr.currently_controlled = true
      LEFT JOIN guild_roster gr
-       ON gr.guild_id = gmc.guild_id
-      AND gr.character_record_id = cr.character_record_id
+       ON gr.guild_id = representation.guild_id
+      AND gr.character_record_id = representation.character_record_id
       AND gr.currently_present = true
      LEFT JOIN wow_character_profiles wcp
        ON wcp.region = cr.region
