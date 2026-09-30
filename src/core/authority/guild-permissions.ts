@@ -36,7 +36,7 @@ export async function effectiveGuildAuthority(
       WHERE guild_id = $1 AND rank_index = $2`,
     [resolvedGuildId, derivedGuildie.rankIndex],
   );
-  const rankDisplayName = rankResult.rows[0]?.display_name ?? `Rank ${highestAuthorityCharacter.rankIndex}`;
+  const rankDisplayName = rankResult.rows[0]?.display_name ?? `Rank ${derivedGuildie.rankIndex}`;
   const capabilityResult = await pool.query<{ capability: string }>(
     `SELECT capability FROM guild_rank_capabilities WHERE guild_id = $1 AND rank_index = $2 ORDER BY capability`,
     [resolvedGuildId, derivedGuildie.rankIndex],
