@@ -100,7 +100,7 @@ owns procedural meaning                 owns systemic authority
 
 This is intentionally **the Guild Operations Activity framework**, not an attempt to discover a universal Activity or plugin model. Its language may contain Guild Operations-native concepts and translated World of Warcraft concepts because those are real meanings the product understands.
 
-Examples of Guild Operations-native shared concepts include Guildie and guild Character. Examples of World of Warcraft concepts translated into Guild Operations language include `wow_class`, `wow_spec`, and `wow_role`. Ordinary value types such as string, boolean, and integer quantities may participate alongside them. Their presence in shared language does not imply identical ownership; the framework preserves where each meaning originates and who may authoritatively establish it.
+Examples of Guild Operations-native shared concepts include Identity, Actor, the derived Guildie classification, and guild Character. Examples of World of Warcraft concepts translated into Guild Operations language include `wow_class`, `wow_spec`, and `wow_role`. Ordinary value types such as string, boolean, and integer quantities may participate alongside them. Their presence in shared language does not imply identical ownership; the framework preserves where each meaning originates and who may authoritatively establish it.
 
 New vocabulary and ceremony are earned by concrete Guild Operations requirements. The framework should not acquire generic schema machinery merely to accommodate hypothetical plugin concepts. When a real Activity procedure cannot faithfully compose its meaning from the language and capabilities Guild Operations already understands, that pressure is evidence for considering an extension to **this** framework.
 
@@ -221,7 +221,7 @@ A declaration says that systemic truth changed. A projection answers what the re
 
 Core and Activity plugins deliberately share systemic vocabulary.
 
-A plugin may understand and compose concepts such as Guildie, Character, guild Character classification, Role, Spec, rank, time, quantity, and Core capabilities into its procedure. Sharing those concepts does not transfer authority over them.
+A plugin may understand and compose concepts such as Identity, Actor, the derived Guildie classification, Character, guild Character classification, Role, Spec, rank, time, quantity, and Core capabilities into its procedure. Sharing those concepts does not transfer authority over them.
 
 The provider of a systemic primitive owns what that primitive means and how it is resolved. The plugin owns why its procedure requires it.
 
@@ -254,35 +254,35 @@ For example, a plugin may declare that its procedure requires a guild Character 
 
 ## Actor identity
 
-An **Actor** is an identified party that Activity procedure can durably reference. Identification is constitutive of Actorhood; an unidentified or merely labelled subject is not an Actor in Activity vocabulary.
+Activity consumes the Core Actor contract; it does not establish an alternate Activity-specific identity system.
 
-Actor identity may be established by Guild Operations or by another identity authority available through an integration. The authority may differ without weakening the invariant. A Guildie identifier and a durable externally-authoritative subject identifier can both identify Actors; an unresolvable display name or other ungrounded label cannot.
+An **Actor** is an accepted Identity authoring an action. Core identity resolution supplies:
 
-Activity plugins may constrain which Actors their procedure accepts according to meanings they own, such as organizational eligibility. Those constraints answer whether an already-identified Actor is eligible for the procedure. They do not determine whether the party is an Actor in the first place.
+- **subject** — the canonical Identity to which GO resolves and attributes the Actor;
+- **origin** — the Identity through which the action entered GO.
+
+For a self-resolving Identity, subject and origin are the same. When an external Identity is associated with a GO-recognized WoW Account Identity, the WoW Account Identity is the Actor subject and the external Identity remains the origin.
 
 ```text
-subject encountered
-      │
-      ▼
-identifier resolved?
-  │           │
- yes          no
-  │           │
-  ▼           ▼
-Actor      unresolved subject
-  │
-  ▼
-plugin-owned eligibility
-  │
-  ▼
-Activity procedure
+native WoW:
+  origin A → subject A
+
+unassociated external:
+  origin B → subject B
+
+associated external:
+  origin C → associated WoW A → subject A
 ```
 
-This invariant applies to all Activity Participation, including procedures with no explicit Offer. Fulfillment may be discovered rather than consciously offered, but Activity cannot establish a Participation observation until the participating party is an Actor.
+Activity procedure constrains already-resolved Actors according to meanings the procedure owns. Eligibility does not create Actorhood, and Activity plugins must not reproduce cross-authority association or Actor resolution.
 
-> **An Actor has a durable identifier by definition. If a party cannot be resolved to an identifier, Activity cannot establish Participation for that party.**
+A Participation Offer represents one Actor. Offer ownership and other procedure that requires singular Actor identity use the resolved Actor subject. Provider-specific provenance or representation may additionally use origin when relevant.
 
-> **Eligibility constrains Actors; it does not create them.**
+This permits guest participation without requiring association first. An unassociated external Identity can be a valid Actor for an `Any` procedure while remaining unable to satisfy WoW-derived constraints. If that external Identity is associated with a WoW Account Identity, the same ingress can resolve to the WoW-backed Actor subject and therefore gain access to the authoritative WoW context available to that subject.
+
+> **Identity establishes who can be recognized. Actor resolution establishes the canonical author. Procedure establishes whether and how that Actor may participate.**
+
+> **One Participation Offer represents one resolved Actor subject, even when multiple associated Identities can originate actions for that Actor.**
 
 ## Participation
 
