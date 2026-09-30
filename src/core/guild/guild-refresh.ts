@@ -48,16 +48,14 @@ type GuildieRosterState = {
 
 async function guildieRosterState(client: PoolClient, guildId: string): Promise<Map<string, GuildieRosterState>> {
   const result = await client.query<{ identity_id: string; rank_index: number }>(
-    `SELECT c.identity_id AS identity_id, MIN(grm.rank_index)::integer AS rank_index
-       FROM characters c
-       JOIN guild_roster_memberships grm
-         ON grm.region = c.region
-        AND grm.realm_id = c.realm_id
-        AND grm.character_id = c.character_id
-        AND grm.currently_present = true
-      WHERE c.currently_controlled = true
-        AND grm.guild_id = $1
-      GROUP BY c.identity_id`,
+    `SELECT ccr.identity_id AS identity_id, MIN(gr.rank_index)::integer AS rank_index
+       FROM controlled_character_roster ccr
+       JOIN guild_roster gr
+         ON gr.character_record_id = ccr.character_record_id
+        AND gr.currently_present = true
+      WHERE ccr.currently_controlled = true
+        AND gr.guild_id = $1
+      GROUP BY ccr.identity_id`,
     [guildId],
   );
 
@@ -156,15 +154,20 @@ export async function persistGuildRoster(client: PoolClient, guildId: string, re
   changedPresentationCoordinates: GuildCharacterCoordinate[];
 }> {
   const existingResult = await client.query<{
-    region: Region; realm_id: string; character_id: string; character_name: string;
-    realm_name: string | null; realm_slug: string | null; currently_present: boolean;
+    character_record_id: string; region: Region; realm_id: string; character_id: string;
+    name: string; realm_name: string | null; realm_slug: string | null; currently_present: boolean;
   }>(
-    `SELECT region, realm_id, character_id, character_name, realm_name, realm_slug, currently_present
-       FROM guild_roster_memberships WHERE guild_id = $1`, [guildId],
+    `SELECT cr.character_record_id, cr.region, cr.realm_id, cr.character_id,
+            cr.name, cr.realm_name, cr.realm_slug, gr.currently_present
+       FROM guild_roster gr
+       JOIN character_roster cr ON cr.character_record_id = gr.character_record_id
+      WHERE gr.guild_id = $1`, [guildId],
   );
-  const existing = new Map(existingResult.rows.map((row) => [coordinateKey({ region: row.region, realmId: row.realm_id, characterId: row.character_id }), row]));
+  const existing = new Map(existingResult.rows.map((row) => [
+    coordinateKey({ region: row.region, realmId: row.realm_id, characterId: row.character_id }), row,
+  ]));
 
-  await client.query(`UPDATE guild_roster_memberships SET currently_present = false WHERE guild_id = $1 AND currently_present = true`, [guildId]);
+  await client.query(`UPDATE guild_roster SET currently_present = false WHERE guild_id = $1 AND currently_present = true`, [guildId]);
 
   const observedRanks = new Set<number>();
   const changedPresentationCoordinates: GuildCharacterCoordinate[] = [];
@@ -181,19 +184,33 @@ export async function persistGuildRoster(client: PoolClient, guildId: string, re
     const realmSlug = character.realm.slug ?? null;
     const previous = existing.get(coordinateKey(coordinate));
 
-    if (!previous || !previous.currently_present || previous.character_name !== character.name || previous.realm_name !== realmName || previous.realm_slug !== realmSlug) {
+    if (!previous || !previous.currently_present || previous.name !== character.name || previous.realm_name !== realmName || previous.realm_slug !== realmSlug) {
       changedPresentationCoordinates.push(coordinate);
     }
 
+    const observedCharacter = await client.query<{ character_record_id: string }>(
+      `INSERT INTO character_roster (
+         region, realm_id, character_id, name, realm_name, realm_slug
+       ) VALUES ($1,$2,$3,$4,$5,$6)
+       ON CONFLICT (region, realm_id, character_id) DO UPDATE SET
+         name = EXCLUDED.name,
+         realm_name = EXCLUDED.realm_name,
+         realm_slug = EXCLUDED.realm_slug,
+         last_seen_at = now()
+       RETURNING character_record_id`,
+      [region, coordinate.realmId, coordinate.characterId, character.name, realmName, realmSlug],
+    );
+    const characterRecordId = observedCharacter.rows[0]?.character_record_id;
+    if (!characterRecordId) throw new Error("Guild roster Character observation was not persisted");
+
     await client.query(
-      `INSERT INTO guild_roster_memberships (
-         guild_id, region, realm_id, character_id, rank_index, character_name, realm_name, realm_slug
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-       ON CONFLICT (guild_id, region, realm_id, character_id) DO UPDATE SET
-         rank_index = EXCLUDED.rank_index, character_name = EXCLUDED.character_name,
-         realm_name = EXCLUDED.realm_name, realm_slug = EXCLUDED.realm_slug,
-         last_seen_at = now(), currently_present = true`,
-      [guildId, region, coordinate.realmId, coordinate.characterId, member.rank, character.name, realmName, realmSlug],
+      `INSERT INTO guild_roster (guild_id, character_record_id, rank_index)
+       VALUES ($1,$2,$3)
+       ON CONFLICT (guild_id, character_record_id) DO UPDATE SET
+         rank_index = EXCLUDED.rank_index,
+         last_seen_at = now(),
+         currently_present = true`,
+      [guildId, characterRecordId, member.rank],
     );
     observedRanks.add(member.rank);
     observed += 1;
