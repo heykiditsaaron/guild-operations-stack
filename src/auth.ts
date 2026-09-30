@@ -194,6 +194,12 @@ async function publishSelfRefreshRecord(
 }
 
 export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
+  if (!app.hasContentTypeParser("application/x-www-form-urlencoded")) {
+    app.addContentTypeParser("application/x-www-form-urlencoded", { parseAs: "string" }, (_request, body, done) => {
+      const params = new URLSearchParams(body);
+      done(null, Object.fromEntries(params.entries()));
+    });
+  }
   app.get("/auth/blizzard/start", async (request, reply) => {
     const query = request.query as { region?: unknown; return_to?: unknown };
     const region = parseRegion(query.region ?? "us");
