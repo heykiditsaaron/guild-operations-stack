@@ -10,7 +10,7 @@ import {
   THEME_CONFIGURE_CAPABILITY,
   type GuildCapability,
   effectiveGuildAuthority,
-  guildieHasGuildCapability,
+  identityHasGuildCapability,
 } from "./guild-permissions.js";
 import { registerGuildRefreshObserver } from "../guild/guild-refresh-observers.js";
 import { hasDevelopmentGuildMasterAuthority } from "./operator-authority.js";
@@ -56,33 +56,33 @@ export function registerGuildCapabilityPolicyObserver(): void {
 }
 export function registeredGuildCapabilityDefinitions(): GuildCapabilityDefinition[] { return [...definitions.values()]; }
 
-async function hasGlobalPermissionAdministration(guildieId: string, guildId: string): Promise<boolean> {
-  if (hasDevelopmentGuildMasterAuthority(guildieId)) return true;
-  const authority = await effectiveGuildAuthority(guildieId, guildId);
+async function hasGlobalPermissionAdministration(identityId: string, guildId: string): Promise<boolean> {
+  if (hasDevelopmentGuildMasterAuthority(identityId)) return true;
+  const authority = await effectiveGuildAuthority(identityId, guildId);
   return authority?.rankIndex === 0;
 }
 
-async function canAdministerCapabilityDefinition(guildieId: string, definition: GuildCapabilityDefinition, guildId: string): Promise<boolean> {
-  if (await hasGlobalPermissionAdministration(guildieId, guildId)) return true;
+async function canAdministerCapabilityDefinition(identityId: string, definition: GuildCapabilityDefinition, guildId: string): Promise<boolean> {
+  if (await hasGlobalPermissionAdministration(identityId, guildId)) return true;
   if (definition.namespace === "global") return false;
-  return guildieHasGuildCapability(guildieId, `${definition.namespace}.permissions`, guildId);
+  return identityHasGuildCapability(identityId, `${definition.namespace}.permissions`, guildId);
 }
 
-export async function canAdministerGuildCapability(guildieId: string, capability: GuildCapability, guildId?: string): Promise<boolean> {
+export async function canAdministerGuildCapability(identityId: string, capability: GuildCapability, guildId?: string): Promise<boolean> {
   const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
   const definition = definitions.get(capability);
-  return definition ? canAdministerCapabilityDefinition(guildieId, definition, resolvedGuildId) : false;
+  return definition ? canAdministerCapabilityDefinition(identityId, definition, resolvedGuildId) : false;
 }
 
-export async function canAdministerGuildPermissions(guildieId: string, guildId?: string): Promise<boolean> {
+export async function canAdministerGuildPermissions(identityId: string, guildId?: string): Promise<boolean> {
   const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
-  if (await hasGlobalPermissionAdministration(guildieId, resolvedGuildId)) return true;
+  if (await hasGlobalPermissionAdministration(identityId, resolvedGuildId)) return true;
   const namespaces = [...new Set(registeredGuildCapabilityDefinitions().map((definition) => definition.namespace).filter((namespace) => namespace !== "global"))];
-  const checks = await Promise.all(namespaces.map((namespace) => guildieHasGuildCapability(guildieId, `${namespace}.permissions`, resolvedGuildId)));
+  const checks = await Promise.all(namespaces.map((namespace) => identityHasGuildCapability(identityId, `${namespace}.permissions`, resolvedGuildId)));
   return checks.some(Boolean);
 }
-export async function requireGuildPermissionAdministration(guildieId: string, guildId?: string): Promise<void> {
-  if (!await canAdministerGuildPermissions(guildieId, guildId)) throw new Error("Guildie cannot administer guild permissions");
+export async function requireGuildPermissionAdministration(identityId: string, guildId?: string): Promise<void> {
+  if (!await canAdministerGuildPermissions(identityId, guildId)) throw new Error("Identity cannot administer guild permissions");
 }
 
 function configurableRanks(permittedRanks: readonly number[]): number[] {
@@ -142,14 +142,14 @@ export async function guildCapabilityPoliciesForDefinitions(definitionsInput: re
   return { ranks: ranksResult.rows.map((rank) => ({ rankIndex:rank.rank_index, displayName:rank.display_name ?? `Rank ${rank.rank_index}`, active:rank.active })), capabilities: definitionsInput.map(({defaultPermittedRanks:_defaults,...definition}) => ({...definition, permittedRanks:configured.get(definition.key) ?? []})) };
 }
 
-export async function guildCapabilityPoliciesForActor(guildieId: string, guildId?: string): Promise<GuildCapabilityPolicySet> {
+export async function guildCapabilityPoliciesForActor(identityId: string, guildId?: string): Promise<GuildCapabilityPolicySet> {
   const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
   const policies = await guildCapabilityPolicies(resolvedGuildId);
-  if (await hasGlobalPermissionAdministration(guildieId, resolvedGuildId)) return policies;
+  if (await hasGlobalPermissionAdministration(identityId, resolvedGuildId)) return policies;
   const allowedNamespaces = new Set<string>();
   for (const capability of policies.capabilities) {
     if (capability.namespace === "global" || allowedNamespaces.has(capability.namespace)) continue;
-    if (await guildieHasGuildCapability(guildieId, `${capability.namespace}.permissions`, resolvedGuildId)) allowedNamespaces.add(capability.namespace);
+    if (await identityHasGuildCapability(identityId, `${capability.namespace}.permissions`, resolvedGuildId)) allowedNamespaces.add(capability.namespace);
   }
   return { ranks: policies.ranks, capabilities: policies.capabilities.filter((capability) => allowedNamespaces.has(capability.namespace)) };
 }
@@ -161,11 +161,11 @@ export async function permittedGuildRanksForCapability(capability: GuildCapabili
   return configurableRanks(result.rows[0]?.permitted_ranks ?? []);
 }
 
-export async function setGuildCapabilityPermittedRanks(actorGuildieId: string, capability: GuildCapability, permittedRanks: readonly number[], guildId?: string): Promise<number[]> {
+export async function setGuildCapabilityPermittedRanks(actorIdentityId: string, capability: GuildCapability, permittedRanks: readonly number[], guildId?: string): Promise<number[]> {
   const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
   const definition = definitions.get(capability);
   if (!definition) throw new Error("Unknown configurable guild capability");
-  if (!await canAdministerCapabilityDefinition(actorGuildieId, definition, resolvedGuildId)) throw new Error("Guildie cannot administer guild permissions");
+  if (!await canAdministerCapabilityDefinition(actorIdentityId, definition, resolvedGuildId)) throw new Error("Identity cannot administer guild permissions");
   if (permittedRanks.some((rankIndex) => !Number.isInteger(rankIndex) || rankIndex < 0)) throw new Error("Guild permission rank is invalid");
   const normalized = configurableRanks(permittedRanks);
   await withTransaction(async (client) => {
