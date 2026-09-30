@@ -456,7 +456,7 @@ function mapParticipation(row: {
   participation_id: string;
   activity_kind: string;
   activity_id: string;
-  party_kind: "guildie" | "external";
+  party_kind: "native" | "external";
   party_reference: string;
   procedure_reference: string;
   participation_offer_id: string | null;
@@ -690,11 +690,11 @@ export async function activityParticipationOffersForActivity(
   return result.rows.map(mapParticipationOffer);
 }
 
-export async function activityParticipationOffersForGuildie(guildieId: string): Promise<ActivityParticipationOffer[]> {
+export async function activityParticipationOffersForIdentity(identityId: string): Promise<ActivityParticipationOffer[]> {
   const result = await pool.query<any>(
     `SELECT offer.*
        FROM activity_participation_offers offer
-      WHERE offer.party_kind='guildie'
+      WHERE offer.party_kind='native'
         AND offer.party_reference=$1
         AND offer.revoked_at_unix IS NULL
         AND offer.closed_at_unix IS NULL
@@ -703,18 +703,18 @@ export async function activityParticipationOffersForGuildie(guildieId: string): 
            WHERE participation.participation_offer_id=offer.participation_offer_id
         )
       ORDER BY offer.offered_at_unix DESC, offer.participation_offer_id DESC`,
-    [requiredText(guildieId, "Offer Guildie id")],
+    [requiredText(identityId, "Offer identity id")],
   );
   return result.rows.map(mapParticipationOffer);
 }
 
-export async function activityParticipationsForGuildie(guildieId: string): Promise<ActivityParticipation[]> {
+export async function activityParticipationsForIdentity(identityId: string): Promise<ActivityParticipation[]> {
   const result = await pool.query<any>(
     `SELECT *
        FROM activity_participations
-      WHERE party_kind='guildie' AND party_reference=$1
+      WHERE party_kind='native' AND party_reference=$1
       ORDER BY established_at_unix DESC, participation_id DESC`,
-    [requiredText(guildieId, "Guildie id")],
+    [requiredText(identityId, "identity id")],
   );
   return result.rows.map(mapParticipation);
 }
