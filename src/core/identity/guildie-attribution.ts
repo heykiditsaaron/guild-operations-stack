@@ -21,24 +21,31 @@ export async function guildieAttributionsForGuildies(
     realm_name: string | null;
   }>(
     `SELECT
-       g.identity_id AS guildie_id,
-       COALESCE(grm.character_name, c.name) AS main_character_name,
-       COALESCE(grm.realm_name, c.realm_name) AS realm_name
-     FROM identities g
+       i.identity_id AS guildie_id,
+       COALESCE(wcp.name, cr.name) AS main_character_name,
+       COALESCE(wcp.realm_name, cr.realm_name) AS realm_name
+     FROM identities i
      LEFT JOIN identity_character_representations gmc
-       ON gmc.identity_id = g.identity_id
+       ON gmc.identity_id = i.identity_id
       AND gmc.guild_id = $2
-     LEFT JOIN characters c
-       ON c.identity_id = g.identity_id
-      AND c.region = gmc.region
-      AND c.realm_id = gmc.realm_id
-      AND c.character_id = gmc.character_id
-     LEFT JOIN guild_roster_memberships grm
-       ON grm.guild_id = gmc.guild_id
-      AND grm.region = gmc.region
-      AND grm.realm_id = gmc.realm_id
-      AND grm.character_id = gmc.character_id
-     WHERE g.identity_id = ANY($1::uuid[])`,
+     LEFT JOIN character_roster cr
+       ON cr.region = gmc.region
+      AND cr.realm_id = gmc.realm_id
+      AND cr.character_id = gmc.character_id
+     LEFT JOIN controlled_character_roster ccr
+       ON ccr.identity_id = i.identity_id
+      AND ccr.character_record_id = cr.character_record_id
+      AND ccr.currently_controlled = true
+     LEFT JOIN guild_roster gr
+       ON gr.guild_id = gmc.guild_id
+      AND gr.character_record_id = cr.character_record_id
+      AND gr.currently_present = true
+     LEFT JOIN wow_character_profiles wcp
+       ON wcp.region = cr.region
+      AND wcp.realm_id = cr.realm_id
+      AND wcp.character_id = cr.character_id
+     WHERE i.identity_id = ANY($1::uuid[])
+       AND (cr.character_record_id IS NULL OR (ccr.character_record_id IS NOT NULL AND gr.character_record_id IS NOT NULL))`,
     [uniqueGuildieIds, guildId],
   );
 
