@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME, authenticatedIdentity } from "../../auth.js";
-import { activityOccurrence, activityParticipationOffersForGuildie, activityParticipationProjection, activityParticipationsForGuildie } from "../../core/activity/registry.js";
+import { activityOccurrence, activityParticipationOffersForIdentity, activityParticipationProjection, activityParticipationsForIdentity } from "../../core/activity/registry.js";
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage } from "../render.js";
 import { renderActivitySharedValues } from "../activity-values.js";
@@ -32,8 +32,8 @@ export async function registerMyParticipationPage(app: FastifyInstance, assets: 
     if (!identity || !viewer.authenticated) return reply.redirect("/auth/blizzard/start?return_to=%2Fme%2Fparticipation");
 
     const [participations, participationOffers] = await Promise.all([
-      activityParticipationsForGuildie(identity.identityId),
-      activityParticipationOffersForGuildie(identity.identityId),
+      activityParticipationsForIdentity(identity.identityId),
+      activityParticipationOffersForIdentity(identity.identityId),
     ]);
     const cards = await Promise.all([
       ...participations.map(async (reference) => {
