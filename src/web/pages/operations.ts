@@ -107,7 +107,7 @@ export async function registerOperationsAdminPage(
 
   app.get("/admin/history", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, guildie] = await Promise.all([
+    const [viewer, identity] = await Promise.all([
       viewerForRequest(sessionToken),
       authenticatedIdentity(sessionToken),
     ]);
