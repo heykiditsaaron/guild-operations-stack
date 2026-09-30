@@ -302,6 +302,22 @@ representation answers how an identity should be expressed in a particular conte
 
 The same identity, and even the same Participation Offer bound to that identity, may therefore be represented differently in different surfaces. An operator workspace may use a procedurally selected character while a public projection uses a nickname, and a Discord projection may prefer an associated Discord persona. These presentations do not alter the identity or the Participation Offer.
 
+Participation anchors procedure to identity; it does not anchor procedure to a chosen presentation of that identity. A Participation Offer therefore provides a stable route to the actor identity from which the representations available to a particular context may be resolved.
+
+```text
+Participation Offer
+        ↓
+actor identity
+        ↓
+contextual representation request
+        ↓
+Core resolution and rendering
+```
+
+Activity plugins and other producers may know about representation and request the representation appropriate to their context. They do not insert an already-resolved representation into systemic projection in place of the identity anchor. Core resolves the request against the identity and the authoritative context available to it.
+
+A representation request is a presentation preference, not an identity or procedural requirement. A producer may request a character representation or prefer a specific character when one is contextually relevant. If that representation cannot be resolved, Core owns fallback or degradation; inability to satisfy a presentation request does not by itself invalidate the identity, Participation Offer, or plugin procedure.
+
 Producing machinery may prescribe the kind or kinds of representation appropriate to its projection. Such a request may be ordered: for example, a consumer could prefer a nickname, then an appropriate character, then a specifically available character reference. The exact request vocabulary and resolution machinery should be earned by concrete consumers rather than generalized in advance.
 
 A procedural character reference and a character representation are distinct facts. Procedure may establish that a particular character is relevant to an action or Participation Offer without declaring that the identity must be presented as that character. The character reference remains available to a representation context that elects to use it.
