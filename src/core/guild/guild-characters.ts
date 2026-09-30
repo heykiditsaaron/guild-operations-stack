@@ -19,17 +19,16 @@ export async function controlledGuildMemberCharacters(
     guild_id: string;
     rank_index: number;
   }>(
-    `SELECT c.character_record_id, c.identity_id, grm.guild_id, grm.rank_index
-       FROM characters c
-       JOIN guild_roster_memberships grm
-         ON grm.region = c.region
-        AND grm.realm_id = c.realm_id
-        AND grm.character_id = c.character_id
-        AND grm.currently_present = true
-      WHERE c.identity_id = $1
-        AND c.currently_controlled = true
-        AND grm.guild_id = $2
-      ORDER BY grm.rank_index, c.character_record_id`,
+    `SELECT cr.character_record_id, ccr.identity_id, gr.guild_id, gr.rank_index
+       FROM controlled_character_roster ccr
+       JOIN character_roster cr ON cr.character_record_id = ccr.character_record_id
+       JOIN guild_roster gr
+         ON gr.character_record_id = cr.character_record_id
+        AND gr.currently_present = true
+      WHERE ccr.identity_id = $1
+        AND ccr.currently_controlled = true
+        AND gr.guild_id = $2
+      ORDER BY gr.rank_index, cr.character_record_id`,
     [identityId, resolvedGuildId],
   );
 
