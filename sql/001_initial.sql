@@ -148,6 +148,17 @@ CREATE TABLE authentication_attempts (
   CHECK ((purpose = 'login' AND identity_id IS NULL) OR (purpose = 'self_refresh' AND identity_id IS NOT NULL))
 );
 
+CREATE TABLE identity_selection_attempts (
+  selection_token_hash text PRIMARY KEY,
+  region text NOT NULL,
+  principal_id text NOT NULL,
+  profile_payload jsonb NOT NULL,
+  return_to text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  expires_at timestamptz NOT NULL,
+  consumed_at timestamptz
+);
+
 CREATE TABLE application_sessions (
   session_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   identity_id uuid NOT NULL REFERENCES identities(identity_id) ON DELETE RESTRICT,
