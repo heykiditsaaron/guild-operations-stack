@@ -17,8 +17,11 @@ export type ControlledGuildMemberCharacter = {
   mainUrl: string | null;
 };
 
-export async function controlledGuildMemberCharacters(identityId: string): Promise<ControlledGuildMemberCharacter[]> {
-  const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
+export async function controlledGuildMemberCharacters(
+  identityId: string,
+  guildId?: string,
+): Promise<ControlledGuildMemberCharacter[]> {
+  const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
   const result = await pool.query<{
     guild_id: string; character_id: string; realm_id: string; character_name: string; realm_name: string | null;
     rank_index: number; level: number | null; class_name: string | null; race_name: string | null;
@@ -36,7 +39,7 @@ export async function controlledGuildMemberCharacters(identityId: string): Promi
        ON wcp.region = grm.region AND wcp.realm_id = grm.realm_id AND wcp.character_id = grm.character_id
      WHERE c.identity_id = $1 AND c.currently_controlled = true AND grm.guild_id = $2
      ORDER BY grm.rank_index, grm.character_name`,
-    [identityId, guildId],
+    [identityId, resolvedGuildId],
   );
 
   return result.rows.map((row) => ({
