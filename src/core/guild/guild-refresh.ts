@@ -267,7 +267,7 @@ export async function refreshGuildAuthority(): Promise<GuildRefreshResult> {
 
   await publishGuildRefreshObservation({
     guildId: persisted.guildId,
-    changedGuildieIds: persisted.guildieTransitions.map((transition) => transition.identityId),
+    changedIdentityIds: persisted.guildieTransitions.map((transition) => transition.identityId),
   });
 
   const targets = await guildCharactersNeedingEnrichment(persisted.guildId, persisted.roster.changedPresentationCoordinates);
