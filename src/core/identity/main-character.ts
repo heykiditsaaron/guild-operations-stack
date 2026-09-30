@@ -48,7 +48,7 @@ export async function selectMainCharacter(
        ON wcp.region = c.region
       AND wcp.realm_id = c.realm_id
       AND wcp.character_id = c.character_id
-     WHERE c.guildie_id = $1
+     WHERE c.identity_id = $1
        AND c.currently_controlled = true
        AND grm.guild_id = $2
        AND c.realm_id = $3
@@ -61,8 +61,8 @@ export async function selectMainCharacter(
 
   const existing = await pool.query<{ realm_id: string; character_id: string }>(
     `SELECT realm_id, character_id
-       FROM guildie_main_characters
-      WHERE guildie_id = $1
+       FROM identity_character_representations
+      WHERE identity_id = $1
         AND guild_id = $2`,
     [guildieId, binding.guildId],
   );
@@ -71,10 +71,10 @@ export async function selectMainCharacter(
 
   if (changed) {
     await pool.query(
-      `INSERT INTO guildie_main_characters (
+      `INSERT INTO identity_character_representations (
          guildie_id, guild_id, region, realm_id, character_id
        ) VALUES ($1,$2,$3,$4,$5)
-       ON CONFLICT (guildie_id, guild_id) DO UPDATE SET
+       ON CONFLICT (identity_id, guild_id) DO UPDATE SET
          region = EXCLUDED.region,
          realm_id = EXCLUDED.realm_id,
          character_id = EXCLUDED.character_id,
@@ -116,9 +116,9 @@ export async function mainCharacterForGuildie(guildieId: string): Promise<Select
        CASE WHEN grm.currently_present IS TRUE THEN grm.rank_index ELSE NULL END AS rank_index,
        (c.currently_controlled IS TRUE AND grm.currently_present IS TRUE) AS currently_eligible,
        wcp.avatar_url
-     FROM guildie_main_characters gmc
+     FROM identity_character_representations gmc
      JOIN characters c
-       ON c.guildie_id = gmc.guildie_id
+       ON c.identity_id = gmc.identity_id
       AND c.region = gmc.region
       AND c.realm_id = gmc.realm_id
       AND c.character_id = gmc.character_id
@@ -131,7 +131,7 @@ export async function mainCharacterForGuildie(guildieId: string): Promise<Select
        ON wcp.region = gmc.region
       AND wcp.realm_id = gmc.realm_id
       AND wcp.character_id = gmc.character_id
-     WHERE gmc.guildie_id = $1
+     WHERE gmc.identity_id = $1
        AND gmc.guild_id = $2`,
     [guildieId, binding.guildId],
   );
