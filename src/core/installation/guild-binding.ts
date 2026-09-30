@@ -141,16 +141,14 @@ export async function authorizeInstallationGuildBinding(
   if (binding.authorizedAt) return binding;
 
   const rankResult = await pool.query<{ rank_index: number }>(
-    `SELECT MIN(grm.rank_index)::integer AS rank_index
-       FROM characters c
-       JOIN guild_roster_memberships grm
-         ON grm.region = c.region
-        AND grm.realm_id = c.realm_id
-        AND grm.character_id = c.character_id
-        AND grm.currently_present = true
-      WHERE c.identity_id = $1
-        AND c.currently_controlled = true
-        AND grm.guild_id = $2
+    `SELECT MIN(gr.rank_index)::integer AS rank_index
+       FROM controlled_character_roster ccr
+       JOIN guild_roster gr
+         ON gr.character_record_id = ccr.character_record_id
+        AND gr.currently_present = true
+      WHERE ccr.identity_id = $1
+        AND ccr.currently_controlled = true
+        AND gr.guild_id = $2
       HAVING count(*) > 0`,
     [guildieId, binding.guildId],
   );
