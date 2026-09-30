@@ -1,7 +1,7 @@
 import { requireOperationalInstallationGuildBinding } from "../installation/guild-binding.js";
 import { pool } from "../../db.js";
 
-export type SelectedMainCharacter = {
+export type CharacterRepresentation = {
   guildId: string;
   characterId: string;
   realmId: string;
@@ -12,11 +12,11 @@ export type SelectedMainCharacter = {
   avatarUrl: string | null;
 };
 
-export async function selectMainCharacter(
-  guildieId: string,
+export async function selectCharacterRepresentation(
+  identityId: string,
   realmId: string,
   characterId: string,
-): Promise<SelectedMainCharacter | null> {
+): Promise<CharacterRepresentation | null> {
   const binding = await requireOperationalInstallationGuildBinding();
   const guild = await pool.query<{ region: string }>("SELECT region FROM guilds WHERE guild_id = $1", [binding.guildId]);
   const guildRegion = guild.rows[0]?.region;
@@ -53,7 +53,7 @@ export async function selectMainCharacter(
        AND grm.guild_id = $2
        AND c.realm_id = $3
        AND c.character_id = $4`,
-    [guildieId, binding.guildId, realmId, characterId],
+    [identityId, binding.guildId, realmId, characterId],
   );
 
   if (!result.rowCount) return null;
@@ -64,7 +64,7 @@ export async function selectMainCharacter(
        FROM identity_character_representations
       WHERE identity_id = $1
         AND guild_id = $2`,
-    [guildieId, binding.guildId],
+    [identityId, binding.guildId],
   );
   const previous = existing.rows[0];
   const changed = !previous || previous.realm_id !== realmId || previous.character_id !== characterId;
@@ -79,7 +79,7 @@ export async function selectMainCharacter(
          realm_id = EXCLUDED.realm_id,
          character_id = EXCLUDED.character_id,
          selected_at = now()`,
-      [guildieId, binding.guildId, guildRegion, realmId, characterId],
+      [identityId, binding.guildId, guildRegion, realmId, characterId],
     );
   }
 
@@ -95,7 +95,7 @@ export async function selectMainCharacter(
   };
 }
 
-export async function mainCharacterForGuildie(guildieId: string): Promise<SelectedMainCharacter | null> {
+export async function characterRepresentationForIdentity(identityId: string): Promise<CharacterRepresentation | null> {
   const binding = await requireOperationalInstallationGuildBinding();
   const result = await pool.query<{
     guild_id: string;
@@ -133,7 +133,7 @@ export async function mainCharacterForGuildie(guildieId: string): Promise<Select
       AND wcp.character_id = gmc.character_id
      WHERE gmc.identity_id = $1
        AND gmc.guild_id = $2`,
-    [guildieId, binding.guildId],
+    [identityId, binding.guildId],
   );
 
   if (!result.rowCount) return null;
