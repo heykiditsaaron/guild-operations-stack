@@ -17,7 +17,7 @@ export type GuildCharacter = {
   mainUrl: string | null;
 };
 
-export async function guildCharactersForGuildie(guildieId: string): Promise<GuildCharacter[]> {
+export async function guildCharactersForIdentity(identityId: string): Promise<GuildCharacter[]> {
   const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
   const result = await pool.query<{
     guild_id: string; character_id: string; realm_id: string; character_name: string; realm_name: string | null;
@@ -36,7 +36,7 @@ export async function guildCharactersForGuildie(guildieId: string): Promise<Guil
        ON wcp.region = grm.region AND wcp.realm_id = grm.realm_id AND wcp.character_id = grm.character_id
      WHERE c.identity_id = $1 AND c.currently_controlled = true AND grm.guild_id = $2
      ORDER BY grm.rank_index, grm.character_name`,
-    [guildieId, guildId],
+    [identityId, guildId],
   );
 
   return result.rows.map((row) => ({
