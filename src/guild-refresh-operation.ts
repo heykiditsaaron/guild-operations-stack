@@ -2,7 +2,7 @@ import { refreshGuildAuthority, type GuildRefreshResult } from "./core/guild/gui
 import { publishOperationalRecord } from "./operational-inspection.js";
 
 type GuildRefreshOperationOptions = {
-  actorGuildieId?: string | null;
+  actorIdentityId?: string | null;
   onInspectionFailure?: (error: unknown) => void;
 };
 
@@ -60,7 +60,7 @@ export async function performGuildRefresh(
       operation: "refresh",
       kind: "result",
       result: partial ? "partial" : "success",
-      actorGuildieId: options.actorGuildieId ?? null,
+      actorIdentityId: options.actorIdentityId ?? null,
       summary: partial
         ? `Refreshed guild roster with ${result.rosterCount} members observed; some Character presentation acquisition failed.`
         : `Refreshed guild roster with ${result.rosterCount} members observed.`,
@@ -73,7 +73,7 @@ export async function performGuildRefresh(
       source: "guild",
       operation: "refresh",
       kind: "exception",
-      actorGuildieId: options.actorGuildieId ?? null,
+      actorIdentityId: options.actorIdentityId ?? null,
       summary: "Guild refresh did not complete.",
       details: {
         error: error instanceof Error ? error.message : String(error),
