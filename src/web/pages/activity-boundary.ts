@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
+import { authenticatedIdentity, SESSION_COOKIE_NAME } from "../../auth.js";
 import { activityAssignments, activityKindRenderActions, activityOccurrence, activityOccurrenceRenderActions, activityOccurrences, activityRegistrationState, type ActivityAssignment, type ActivityOccurrence, type ActivityOccurrenceAttribute, type ActivityRenderAction, type ActivitySharedValue } from "../../core/activity/registry.js";
 import { knownActivityPlugin } from "../../core/activity/plugin-control.js";
 import type { AssetRegistry } from "../assets.js";
@@ -129,7 +129,7 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie] = await Promise.all([
       viewerForRequest(sessionToken),
-      authenticatedGuildie(sessionToken),
+      authenticatedIdentity(sessionToken),
     ]);
     const [fingerprint, actions, assignments] = await Promise.all([
       knownActivityPlugin(occurrence.activityKind),
@@ -191,7 +191,7 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const [viewer, guildie, fingerprint, occurrences] = await Promise.all([
       viewerForRequest(sessionToken),
-      authenticatedGuildie(sessionToken),
+      authenticatedIdentity(sessionToken),
       knownActivityPlugin(request.params.kind),
       activityOccurrences(request.params.kind),
     ]);
