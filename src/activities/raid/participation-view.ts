@@ -87,7 +87,7 @@ async function raidSignupRows(raidId: string, includeWithdrawn: boolean): Promis
     selected_spec: string | null;
     selected_role: RaidRole | null;
     denied_at_unix: string | number | null;
-    denied_by_guildie_id: string | null;
+    denied_by_identity_id: string | null;
     withdrawn_at_unix: string | number | null;
   }>(
     `SELECT
@@ -97,7 +97,7 @@ async function raidSignupRows(raidId: string, includeWithdrawn: boolean): Promis
        ras.selected_spec,
        ras.selected_role,
        rsd.denied_at_unix,
-       rsd.denied_by_guildie_id,
+       rsd.denied_by_identity_id,
        rr.withdrawn_at_unix
      FROM raid_signup_rows rr
      LEFT JOIN raid_assignments ras ON ras.signup_row_id = rr.signup_row_id
@@ -147,7 +147,7 @@ async function raidSignupRows(raidId: string, includeWithdrawn: boolean): Promis
       selectedSpec: row.selected_spec,
       selectedRole: row.selected_role,
       deniedAtUnix: row.denied_at_unix === null ? null : Number(row.denied_at_unix),
-      deniedByGuildieId: row.denied_by_guildie_id,
+      deniedByGuildieId: row.denied_by_identity_id,
       withdrawnAtUnix: row.withdrawn_at_unix === null ? null : Number(row.withdrawn_at_unix),
     };
   });
