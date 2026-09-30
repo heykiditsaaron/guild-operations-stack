@@ -246,6 +246,36 @@ plugin
 
 For example, a plugin may declare that its procedure requires a guild Character without reimplementing the identity and roster machinery that determines whether a Character qualifies. Core resolves the classification and provides the systemic concept; the plugin understands that concept and decides what requiring it means to its procedure.
 
+## Requests, fulfillment, and procedural necessity
+
+Activity plugins do not acquire systemic authority merely because their procedure needs a systemic concept. When a plugin needs meaning owned outside its procedure, it **requests** the appropriate Core capability and consumes the authoritative result Core can provide.
+
+A plugin may make successful fulfillment of that request a condition of its own procedure only when the result is genuinely necessary to that procedure. For example, Raid may require Core to resolve the actor identity behind a Participation Offer. If Core cannot resolve that identity, Raid cannot establish meaningful participation; failure of the Core-owned capability therefore makes the Raid procedure unable to proceed without making identity Raid-owned.
+
+This differs from a request whose result is not procedurally necessary. Representation is the clearest example. A plugin may request that Core represent an identity as a character, or even prefer a particular character when that context is available. The plugin does not insert the representation, resolve it, or make successful presentation a procedural condition merely because it expressed a preference. Core owns representation resolution, fallback, and rendering.
+
+```text
+plugin procedure
+    │
+    ├── requires systemic meaning
+    │      ↓ request
+    │    Core fulfills authoritatively
+    │      ↓
+    │    unresolved → procedure may be unable to proceed
+    │
+    └── requests non-procedural expression
+           ↓ request
+         Core resolves / degrades / falls back
+           ↓
+         procedure remains unchanged
+```
+
+The distinction is semantic necessity, not ownership. Plugins necessarily depend on concepts they do not own. A plugin decides whether its procedure genuinely requires a Core-owned result; it does not gain authority to establish that result itself.
+
+> **Plugins request. Core fulfills under the authority of the domain that owns the requested meaning.**
+
+> **A Core-owned result may be procedurally required without becoming plugin-owned. A presentational request must not acquire procedural significance merely because a plugin requested it.**
+
 > **The framework shares language without sharing authority.**
 
 > **Shared vocabulary does not imply shared motivation.**
