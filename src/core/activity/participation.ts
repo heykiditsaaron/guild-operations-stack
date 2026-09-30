@@ -1,6 +1,6 @@
 import type { PoolClient } from "pg";
 import { pool } from "../../db.js";
-import { controlledCharactersForIdentity } from "../identity/controlled-characters.js";
+import { controlledCharacterRecordIdsForIdentity } from "../identity/controlled-characters.js";
 import { controlledGuildMemberCharacters } from "../guild/guild-characters.js";
 import { characterProjections } from "../identity/character-projection.js";
 import { effectiveGuildAuthority } from "../authority/guild-permissions.js";
@@ -240,7 +240,7 @@ async function requireWowSpecComponents(
             (await controlledGuildMemberCharacters(actor.reference))
               .map((character) => character.characterRecordId),
           )
-        : await controlledCharactersForIdentity(actor.reference);
+        : await characterProjections(await controlledCharacterRecordIdsForIdentity(actor.reference));
       const character = characters.find((value) =>
         value.region === coordinate.region && value.realmId === coordinate.realmId && value.characterId === coordinate.characterId
       );
