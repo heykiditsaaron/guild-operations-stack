@@ -141,7 +141,7 @@ function raidActionStatusCode(error: unknown): 400 | 403 {
 
 async function renderRaidOrganizer(request: FastifyRequest<{ Params: RaidParams }>, reply: FastifyReply, assets: AssetRegistry) {
   const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-  const [viewer, guildie] = await Promise.all([viewerForRequest(sessionToken), authenticatedIdentity(sessionToken)]);
+  const [viewer, identity] = await Promise.all([viewerForRequest(sessionToken), authenticatedIdentity(sessionToken)]);
   const [canModify, canStage, canAssign] = guildie
     ? await Promise.all([
         identityHasGuildCapabilityOrOperator(identity.identityId, RAID_MODIFY_CAPABILITY),
@@ -231,12 +231,12 @@ async function unassignParticipant(request: FastifyRequest<{ Params: RaidParams;
 }
 
 async function adjudicateCommitment(request:FastifyRequest<{Params:RaidParams;Body:AdjudicateBody}>,reply:FastifyReply){
-  const identity=await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);if(!guildie)return reply.code(401).send({error:"Authentication required"});
+  const identity=await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);if(!identity)return reply.code(401).send({error:"Authentication required"});
   if(typeof request.body?.signupRowId!=="string"||typeof request.body?.fulfilled!=="boolean")return reply.code(400).send({error:"Commitment adjudication is incomplete"});
   try{await adjudicateRaidCommitment(identity.identityId,request.params.raidId,request.body.signupRowId,request.body.fulfilled);return{ok:true};}catch(error){return reply.code(raidActionStatusCode(error)).send({error:error instanceof Error?error.message:"Commitment could not be adjudicated"});}
 }
 async function concludeRaidOperation(request:FastifyRequest<{Params:RaidParams}>,reply:FastifyReply){
-  const identity=await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);if(!guildie)return reply.code(401).send({error:"Authentication required"});
+  const identity=await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);if(!identity)return reply.code(401).send({error:"Authentication required"});
   try{await concludeRaid(identity.identityId,request.params.raidId);return{ok:true};}catch(error){return reply.code(raidActionStatusCode(error)).send({error:error instanceof Error?error.message:"Raid could not be concluded"});}
 }
 
