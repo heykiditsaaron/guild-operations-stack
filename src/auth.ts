@@ -169,7 +169,7 @@ async function redirectAfterIdentityCeremony(
   if (!(await installationOperational())) return "/setup";
   let destination = returnTo;
   if (refreshResult) destination = withQueryValue(destination, "refresh", refreshResult);
-  const mainCharacter = await characterRepresentationForIdentity(guildieId);
+  const mainCharacter = await characterRepresentationForIdentity(identityId);
   if (!mainCharacter) destination = withQueryValue(destination, "select_main", "required");
   return destination;
 }
@@ -215,7 +215,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
 
     const query = request.query as { return_to?: unknown };
     const state = await createAttempt({
-      region: guildie.region,
+      region: identity.region,
       returnTo: safeReturnTo(query.return_to) ?? "/",
       purpose: "self_refresh",
       identityId: identity.identityId,
@@ -405,9 +405,9 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       : [[], null];
 
     return reply.send({
-      guildie_id: identity.identityId,
-      region: guildie.region,
-      character_count: guildie.characterCount,
+      identity_id: identity.identityId,
+      region: identity.region,
+      character_count: identity.characterCount,
       guild: binding ? {
         guild_id: binding.guildId,
         main_character: mainCharacter
