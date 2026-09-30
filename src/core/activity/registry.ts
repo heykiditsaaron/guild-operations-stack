@@ -347,7 +347,7 @@ export async function activityParticipationProjection(
 export async function activityParticipationOffersForIdentity(
   guildieId: string,
 ): Promise<Array<ActivityParticipationOfferReference & { procedureReference: string; destination: string }>> {
-  const relationships = await participationOffersForGuildie(requiredText(guildieId, "participation Guildie id"));
+  const relationships = await participationOffersForIdentity(requiredText(guildieId, "participation identity id"));
 
   const resolved = await Promise.all(relationships.map(async (relationship) => {
     const activity = await activeActivity(relationship.activityKind);
@@ -373,7 +373,7 @@ export async function activityParticipationOffersForIdentity(
 export async function activityParticipationsForIdentity(
   guildieId: string,
 ): Promise<Array<{ participationId: string; activityKind: string; activityId: string; procedureReference: string; establishedAtUnix: number; destination: string }>> {
-  const relationships = await participationsForGuildie(requiredText(guildieId, "Participation Guildie id"));
+  const relationships = await participationsForIdentity(requiredText(guildieId, "Participation identity id"));
 
   const resolved = await Promise.all(relationships.map(async (relationship) => {
     const activity = await activeActivity(relationship.activityKind);
