@@ -20,7 +20,7 @@ export type ControlledCharacter = {
 export async function controlledCharactersForGuildie(guildieId: string): Promise<ControlledCharacter[]> {
   const result = await pool.query<{
     character_record_id: string;
-    guildie_id: string;
+    identity_id: string;
     region: Region;
     realm_id: string;
     character_id: string;
@@ -34,7 +34,7 @@ export async function controlledCharactersForGuildie(guildieId: string): Promise
   }>(
     `SELECT
        c.character_record_id,
-       c.guildie_id,
+       c.identity_id,
        c.region,
        c.realm_id,
        c.character_id,
@@ -50,7 +50,7 @@ export async function controlledCharactersForGuildie(guildieId: string): Promise
        ON wcp.region = c.region
       AND wcp.realm_id = c.realm_id
       AND wcp.character_id = c.character_id
-     WHERE c.guildie_id = $1
+     WHERE c.identity_id = $1
        AND c.currently_controlled = true
      ORDER BY character_name, realm_name NULLS LAST`,
     [guildieId],
@@ -58,7 +58,7 @@ export async function controlledCharactersForGuildie(guildieId: string): Promise
 
   return result.rows.map((row) => ({
     characterRecordId: row.character_record_id,
-    guildieId: row.guildie_id,
+    guildieId: row.identity_id,
     region: row.region,
     realmId: row.realm_id,
     characterId: row.character_id,
@@ -77,7 +77,7 @@ export async function controlledGuildCharactersForGuildie(guildieId: string): Pr
   const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
   const result = await pool.query<{
     character_record_id: string;
-    guildie_id: string;
+    identity_id: string;
     region: Region;
     realm_id: string;
     character_id: string;
@@ -91,7 +91,7 @@ export async function controlledGuildCharactersForGuildie(guildieId: string): Pr
   }>(
     `SELECT
        c.character_record_id,
-       c.guildie_id,
+       c.identity_id,
        c.region,
        c.realm_id,
        c.character_id,
@@ -113,7 +113,7 @@ export async function controlledGuildCharactersForGuildie(guildieId: string): Pr
        ON wcp.region = c.region
       AND wcp.realm_id = c.realm_id
       AND wcp.character_id = c.character_id
-     WHERE c.guildie_id = $1
+     WHERE c.identity_id = $1
        AND c.currently_controlled = true
      ORDER BY grm.rank_index, character_name, realm_name NULLS LAST`,
     [guildieId, guildId],
@@ -121,7 +121,7 @@ export async function controlledGuildCharactersForGuildie(guildieId: string): Pr
 
   return result.rows.map((row) => ({
     characterRecordId: row.character_record_id,
-    guildieId: row.guildie_id,
+    guildieId: row.identity_id,
     region: row.region,
     realmId: row.realm_id,
     characterId: row.character_id,
@@ -139,7 +139,7 @@ export async function controlledGuildCharactersForGuildie(guildieId: string): Pr
 export async function characterByRecordId(characterRecordId: string): Promise<ControlledCharacter | null> {
   const result = await pool.query<{
     character_record_id: string;
-    guildie_id: string;
+    identity_id: string;
     region: Region;
     realm_id: string;
     character_id: string;
@@ -153,7 +153,7 @@ export async function characterByRecordId(characterRecordId: string): Promise<Co
   }>(
     `SELECT
        c.character_record_id,
-       c.guildie_id,
+       c.identity_id,
        c.region,
        c.realm_id,
        c.character_id,
@@ -175,7 +175,7 @@ export async function characterByRecordId(characterRecordId: string): Promise<Co
   const row = result.rows[0];
   return row ? {
     characterRecordId: row.character_record_id,
-    guildieId: row.guildie_id,
+    guildieId: row.identity_id,
     region: row.region,
     realmId: row.realm_id,
     characterId: row.character_id,
