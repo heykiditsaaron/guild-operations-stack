@@ -161,11 +161,11 @@ function renderCalendar(
 
 export async function registerCalendarPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.post("/calendar/view", async (request, reply) => {
-    const guildie = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
-    if (!guildie) return reply.code(401).send({ error: "authentication_required" });
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "authentication_required" });
     const view = (request.body as { view?: unknown } | null)?.view;
     if (!isCalendarViewMode(view)) return reply.code(400).send({ error: "invalid_calendar_view" });
-    await setCalendarViewForIdentity(guildie.guildieId, view);
+    await setCalendarViewForIdentity(identity.identityId, view);
     return reply.code(204).send();
   });
 
@@ -178,7 +178,7 @@ export async function registerCalendarPage(app: FastifyInstance, assets: AssetRe
       discoverableGuildCalendarPoints(),
       guildState(),
     ]);
-    const selectedView = guildie ? await calendarViewForIdentity(guildie.guildieId) : "agenda";
+    const selectedView = identity ? await calendarViewForIdentity(identity.identityId) : "agenda";
     const activityKinds = await discoverableActivities();
     const establishmentActions = (await Promise.all(activityKinds.map((activity) =>
       activityKindRenderActions(activity.kind, guildie?.guildieId ?? null)
