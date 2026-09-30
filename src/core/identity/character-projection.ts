@@ -54,7 +54,7 @@ export async function characterProjections(
        wcp.avatar_url,
        wcp.inset_url,
        wcp.main_url
-     FROM characters c
+     FROM character_roster c
      LEFT JOIN wow_character_profiles wcp
        ON wcp.region = c.region
       AND wcp.realm_id = c.realm_id
