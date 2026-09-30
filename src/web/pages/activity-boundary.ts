@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
+import { authenticatedIdentity, SESSION_COOKIE_NAME } from "../../auth.js";
 import { activityAssignments, activityKindRenderActions, activityOccurrence, activityOccurrenceRenderActions, activityOccurrences, activityRegistrationState, type ActivityAssignment, type ActivityOccurrence, type ActivityOccurrenceAttribute, type ActivityRenderAction, type ActivitySharedValue } from "../../core/activity/registry.js";
 import { knownActivityPlugin } from "../../core/activity/plugin-control.js";
 import type { AssetRegistry } from "../assets.js";
@@ -127,13 +127,13 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
     if (!occurrence) return reply.callNotFound();
 
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, guildie] = await Promise.all([
+    const [viewer, identity] = await Promise.all([
       viewerForRequest(sessionToken),
-      authenticatedGuildie(sessionToken),
+      authenticatedIdentity(sessionToken),
     ]);
     const [fingerprint, actions, assignments] = await Promise.all([
       knownActivityPlugin(occurrence.activityKind),
-      activityOccurrenceRenderActions(occurrence, guildie?.guildieId ?? null),
+      activityOccurrenceRenderActions(occurrence, identity?.identityId ?? null),
       activityAssignments(occurrence.activityKind, occurrence.activityId),
     ]);
     const label = fingerprint?.label ?? occurrence.activityKind;
@@ -189,16 +189,16 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
     if (!state?.active) return reply.callNotFound();
 
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, guildie, fingerprint, occurrences] = await Promise.all([
+    const [viewer, identity, fingerprint, occurrences] = await Promise.all([
       viewerForRequest(sessionToken),
-      authenticatedGuildie(sessionToken),
+      authenticatedIdentity(sessionToken),
       knownActivityPlugin(request.params.kind),
       activityOccurrences(request.params.kind),
     ]);
     const label = fingerprint?.label ?? request.params.kind;
-    const kindActions = await activityKindRenderActions(request.params.kind, guildie?.guildieId ?? null);
+    const kindActions = await activityKindRenderActions(request.params.kind, identity?.identityId ?? null);
     const cards = await Promise.all(occurrences.map(async (occurrence) => {
-      const actions = await activityOccurrenceRenderActions(occurrence, guildie?.guildieId ?? null);
+      const actions = await activityOccurrenceRenderActions(occurrence, identity?.identityId ?? null);
       const actionLinks = actions.map((action) => `<a class="button-${action.kind}" href="${htmlText(action.href)}">${htmlText(action.label)}</a>`).join("");
 
       if (occurrence.activityKind === "raid") {

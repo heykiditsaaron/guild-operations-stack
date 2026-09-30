@@ -5,7 +5,7 @@ export type WebPresentationContributions = {
 };
 
 export type WebPresentationContributionProvider = (
-  guildieId: string | null,
+  identityId: string | null,
 ) => Promise<WebPresentationContributions>;
 
 const providers: WebPresentationContributionProvider[] = [];
@@ -15,10 +15,10 @@ export function registerWebPresentationContributionProvider(provider: WebPresent
   providers.push(provider);
 }
 
-export async function webPresentationContributionsForGuildie(
-  guildieId: string | null,
+export async function webPresentationContributionsForIdentity(
+  identityId: string | null,
 ): Promise<WebPresentationContributions> {
-  const contributions = await Promise.all(providers.map((provider) => provider(guildieId)));
+  const contributions = await Promise.all(providers.map((provider) => provider(identityId)));
   return {
     meMenuSections: contributions.flatMap((contribution) => contribution.meMenuSections),
     footerCommunityLinks: contributions.flatMap((contribution) => contribution.footerCommunityLinks),

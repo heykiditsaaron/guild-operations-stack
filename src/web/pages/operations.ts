@@ -1,8 +1,8 @@
 import type { FastifyInstance } from "fastify";
-import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
+import { authenticatedIdentity, SESSION_COOKIE_NAME } from "../../auth.js";
 import {
   OPERATIONS_INSPECT_CAPABILITY,
-  guildieHasGuildCapability,
+  identityHasGuildCapability,
 } from "../../core/authority/guild-permissions.js";
 import {
   listOperationalRecords,
@@ -35,8 +35,8 @@ function renderRecord(record: OperationalRecord): string {
   const result = record.result
     ? `<span class="operations-record-result operations-record-result-${record.result}">${escapeHtml(record.result)}</span>`
     : "";
-  const actor = record.actorGuildieId
-    ? `<span class="operations-record-actor">Actor: ${escapeHtml(record.actorGuildieId)}</span>`
+  const actor = record.actorIdentityId
+    ? `<span class="operations-record-actor">Actor: ${escapeHtml(record.actorIdentityId)}</span>`
     : "";
 
   return `<article class="operations-record">
@@ -107,12 +107,12 @@ export async function registerOperationsAdminPage(
 
   app.get("/admin/history", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, guildie] = await Promise.all([
+    const [viewer, identity] = await Promise.all([
       viewerForRequest(sessionToken),
-      authenticatedGuildie(sessionToken),
+      authenticatedIdentity(sessionToken),
     ]);
 
-    const canInspect = guildie ? await guildieHasGuildCapability(guildie.guildieId, OPERATIONS_INSPECT_CAPABILITY) : false;
+    const canInspect = identity ? await identityHasGuildCapability(identity.identityId, OPERATIONS_INSPECT_CAPABILITY) : false;
 
     const query = request.query as { source?: string; kind?: string };
     const source = query.source?.trim() || undefined;
@@ -141,7 +141,7 @@ export async function registerOperationsAdminPage(
     });
 
     const available = canInspect;
-    const statusCode = !guildie ? 401 : available ? 200 : 403;
+    const statusCode = !identity ? 401 : available ? 200 : 403;
     return reply
       .code(statusCode)
       .header("Cache-Control", "no-cache")

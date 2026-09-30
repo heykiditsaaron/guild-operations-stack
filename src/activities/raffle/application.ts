@@ -43,10 +43,10 @@ export {
   type RaffleTerms,
 };
 
-export async function establishRaffle(actorGuildieId: string, terms: RaffleTerms): Promise<Raffle> {
-  await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_MODIFY_CAPABILITY);
+export async function establishRaffle(actorIdentityId: string, terms: RaffleTerms): Promise<Raffle> {
+  await requireGuildCapabilityOrOperator(actorIdentityId, RAFFLE_MODIFY_CAPABILITY);
   const persisted = await withTransaction(async (client) => {
-    const raffle = await establishRaffleDomain(actorGuildieId, terms, client);
+    const raffle = await establishRaffleDomain(actorIdentityId, terms, client);
     const publication = await publishEmission(client, { code: "raffle.established", subject: raffle.raffleId });
     const activityDeclaration = await publishActivityDeclaration(client, { kind: "temporal-relevance-changed", activityKind: "raffle", activityId: raffle.raffleId });
     return { raffle, publication, activityDeclaration };
@@ -56,12 +56,12 @@ export async function establishRaffle(actorGuildieId: string, terms: RaffleTerms
   return persisted.raffle;
 }
 
-export async function modifyRaffle(actorGuildieId: string, raffleId: string, terms: RaffleTerms): Promise<Raffle> {
-  await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_MODIFY_CAPABILITY);
+export async function modifyRaffle(actorIdentityId: string, raffleId: string, terms: RaffleTerms): Promise<Raffle> {
+  await requireGuildCapabilityOrOperator(actorIdentityId, RAFFLE_MODIFY_CAPABILITY);
   const before = await getRaffle(raffleId);
   if (!before) throw new Error(`Raffle ${raffleId} was not found`);
   const persisted = await withTransaction(async (client) => {
-    const raffle = await modifyRaffleDomain(actorGuildieId, raffleId, terms, client);
+    const raffle = await modifyRaffleDomain(actorIdentityId, raffleId, terms, client);
     const publication = await publishEmission(client, { code: "raffle.modified", subject: raffle.raffleId });
     const activityDeclaration = raffle.drawingAtUnix !== before.drawingAtUnix
       ? await publishActivityDeclaration(client, { kind: "temporal-relevance-changed", activityKind: "raffle", activityId: raffle.raffleId })
@@ -73,25 +73,25 @@ export async function modifyRaffle(actorGuildieId: string, raffleId: string, ter
   return persisted.raffle;
 }
 
-export async function openRaffleParticipation(actorGuildieId: string, raffleId: string): Promise<Raffle> {
-  await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_STAGE_CAPABILITY);
-  return openRaffleParticipationDomain(actorGuildieId, raffleId);
+export async function openRaffleParticipation(actorIdentityId: string, raffleId: string): Promise<Raffle> {
+  await requireGuildCapabilityOrOperator(actorIdentityId, RAFFLE_STAGE_CAPABILITY);
+  return openRaffleParticipationDomain(actorIdentityId, raffleId);
 }
 
-export async function pauseRaffleParticipation(actorGuildieId: string, raffleId: string): Promise<Raffle> {
-  await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_STAGE_CAPABILITY);
-  return pauseRaffleParticipationDomain(actorGuildieId, raffleId);
+export async function pauseRaffleParticipation(actorIdentityId: string, raffleId: string): Promise<Raffle> {
+  await requireGuildCapabilityOrOperator(actorIdentityId, RAFFLE_STAGE_CAPABILITY);
+  return pauseRaffleParticipationDomain(actorIdentityId, raffleId);
 }
 
-export async function resumeRaffleParticipation(actorGuildieId: string, raffleId: string): Promise<Raffle> {
-  await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_STAGE_CAPABILITY);
-  return resumeRaffleParticipationDomain(actorGuildieId, raffleId);
+export async function resumeRaffleParticipation(actorIdentityId: string, raffleId: string): Promise<Raffle> {
+  await requireGuildCapabilityOrOperator(actorIdentityId, RAFFLE_STAGE_CAPABILITY);
+  return resumeRaffleParticipationDomain(actorIdentityId, raffleId);
 }
 
-export async function cancelRaffle(actorGuildieId: string, raffleId: string): Promise<Raffle> {
-  await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_STAGE_CAPABILITY);
+export async function cancelRaffle(actorIdentityId: string, raffleId: string): Promise<Raffle> {
+  await requireGuildCapabilityOrOperator(actorIdentityId, RAFFLE_STAGE_CAPABILITY);
   const persisted = await withTransaction(async (client) => {
-    const raffle = await cancelRaffleDomain(actorGuildieId, raffleId, client);
+    const raffle = await cancelRaffleDomain(actorIdentityId, raffleId, client);
     const approvedEntryCount = await approvedRaffleEntryCount(client, raffle.raffleId);
     await freezeActivityOccurrence(client, {
       activityKind: "raffle",
@@ -121,20 +121,20 @@ export async function revokeRaffleClaim(claimantGuildieId: string, claimId: stri
   await revokeRaffleClaimDomain(claimantGuildieId, claimId);
 }
 
-export async function approveRaffleClaim(actorGuildieId: string, claimId: string): Promise<void> {
-  await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_CLAIMS_CAPABILITY);
-  await approveRaffleClaimDomain(actorGuildieId, claimId);
+export async function approveRaffleClaim(actorIdentityId: string, claimId: string): Promise<void> {
+  await requireGuildCapabilityOrOperator(actorIdentityId, RAFFLE_CLAIMS_CAPABILITY);
+  await approveRaffleClaimDomain(actorIdentityId, claimId);
 }
 
-export async function denyRaffleClaim(actorGuildieId: string, claimId: string, reasonInput: string): Promise<void> {
-  await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_CLAIMS_CAPABILITY);
-  await denyRaffleClaimDomain(actorGuildieId, claimId, reasonInput);
+export async function denyRaffleClaim(actorIdentityId: string, claimId: string, reasonInput: string): Promise<void> {
+  await requireGuildCapabilityOrOperator(actorIdentityId, RAFFLE_CLAIMS_CAPABILITY);
+  await denyRaffleClaimDomain(actorIdentityId, claimId, reasonInput);
 }
 
-export async function drawRaffle(actorGuildieId: string, raffleId: string): Promise<Raffle> {
-  await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_DRAW_CAPABILITY);
+export async function drawRaffle(actorIdentityId: string, raffleId: string): Promise<Raffle> {
+  await requireGuildCapabilityOrOperator(actorIdentityId, RAFFLE_DRAW_CAPABILITY);
   const persisted = await withTransaction(async (client) => {
-    const raffle = await drawRaffleDomain(actorGuildieId, raffleId, client);
+    const raffle = await drawRaffleDomain(actorIdentityId, raffleId, client);
     const approvedEntryCount = await approvedRaffleEntryCount(client, raffle.raffleId);
     await freezeActivityOccurrence(client, {
       activityKind: "raffle",
@@ -149,7 +149,7 @@ export async function drawRaffle(actorGuildieId: string, raffleId: string): Prom
     console.error(`[raffle] drawn Raffle ${concluded.raffleId} is missing its winning Participation Offer`);
     await publishRaffleOperationalException({
       operation: "raffle.draw",
-      actorGuildieId,
+      actorIdentityId,
       summary: "Drawn Raffle is missing its winning Participation Offer.",
       details: { raffle_id: concluded.raffleId, conclusion: concluded.conclusion },
     });

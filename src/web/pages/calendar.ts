@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { guildState } from "../../core/guild/guild-state.js";
-import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
-import { calendarViewForGuildie, isCalendarViewMode, setCalendarViewForGuildie, type CalendarViewMode } from "../../core/calendar/preference.js";
+import { authenticatedIdentity, SESSION_COOKIE_NAME } from "../../auth.js";
+import { calendarViewForIdentity, isCalendarViewMode, setCalendarViewForIdentity, type CalendarViewMode } from "../../core/calendar/preference.js";
 import { discoverableGuildCalendarPoints, type GuildCalendarOccursAt, type GuildCalendarPoint } from "../../core/calendar/registry.js";
 import { activityKindRenderActions, activityOccurrence, discoverableActivities, type ActivityOccurrence } from "../../core/activity/registry.js";
 import type { AssetRegistry } from "../assets.js";
@@ -161,27 +161,27 @@ function renderCalendar(
 
 export async function registerCalendarPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.post("/calendar/view", async (request, reply) => {
-    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
-    if (!guildie) return reply.code(401).send({ error: "authentication_required" });
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "authentication_required" });
     const view = (request.body as { view?: unknown } | null)?.view;
     if (!isCalendarViewMode(view)) return reply.code(400).send({ error: "invalid_calendar_view" });
-    await setCalendarViewForGuildie(guildie.guildieId, view);
+    await setCalendarViewForIdentity(identity.identityId, view);
     return reply.code(204).send();
   });
 
   app.get("/calendar", async (request, reply) => {
     const nowUnix = Math.floor(Date.now() / 1000);
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, guildie, calendarPoints, guild] = await Promise.all([
+    const [viewer, identity, calendarPoints, guild] = await Promise.all([
       viewerForRequest(sessionToken),
-      authenticatedGuildie(sessionToken),
+      authenticatedIdentity(sessionToken),
       discoverableGuildCalendarPoints(),
       guildState(),
     ]);
-    const selectedView = guildie ? await calendarViewForGuildie(guildie.guildieId) : "agenda";
+    const selectedView = identity ? await calendarViewForIdentity(identity.identityId) : "agenda";
     const activityKinds = await discoverableActivities();
     const establishmentActions = (await Promise.all(activityKinds.map((activity) =>
-      activityKindRenderActions(activity.kind, guildie?.guildieId ?? null)
+      activityKindRenderActions(activity.kind, identity?.identityId ?? null)
     ))).flat();
     const createEvent = establishmentActions.length
       ? `<details class="menu-surface"><summary class="button-primary">Create New</summary><div class="menu-panel">${establishmentActions.map((action) => `<a href="${htmlText(action.href)}">${htmlText(action.label)}</a>`).join("")}</div></details>`

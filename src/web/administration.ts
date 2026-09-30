@@ -6,7 +6,6 @@ import {
   effectiveGuildAuthority,
 } from "../core/authority/guild-permissions.js";
 import { canAdministerGuildPermissions } from "../core/authority/guild-capability-policy.js";
-import { DISCORD_ADMIN_CAPABILITY } from "../plugins/discord/authorization.js";
 
 export type AdministrationAvailability = {
   available: boolean;
@@ -14,7 +13,6 @@ export type AdministrationAvailability = {
   canConfigurePermissions: boolean;
   canConfigureTheme: boolean;
   canConfigureGuildPresentation: boolean;
-  canConfigureDiscord: boolean;
   canConfigureGuildRefreshSchedule: boolean;
 };
 
@@ -24,27 +22,24 @@ const unavailableAdministration: AdministrationAvailability = {
   canConfigurePermissions: false,
   canConfigureTheme: false,
   canConfigureGuildPresentation: false,
-  canConfigureDiscord: false,
   canConfigureGuildRefreshSchedule: false,
 };
 
-export async function administrationAvailabilityForGuildie(
-  guildieId: string,
+export async function administrationAvailabilityForIdentity(
+  identityId: string,
 ): Promise<AdministrationAvailability> {
-  const authority = await effectiveGuildAuthority(guildieId);
+  const authority = await effectiveGuildAuthority(identityId);
   if (!authority) return unavailableAdministration;
 
   const canConfigureModules = authority.developmentGuildMasterAuthority || authority.capabilities.includes(MODULES_CONFIGURE_CAPABILITY);
-  const canConfigurePermissions = await canAdministerGuildPermissions(guildieId);
+  const canConfigurePermissions = await canAdministerGuildPermissions(identityId);
   const canConfigureTheme = authority.developmentGuildMasterAuthority || authority.rankIndex === 0 || authority.capabilities.includes(THEME_CONFIGURE_CAPABILITY);
   const canConfigureGuildPresentation = authority.developmentGuildMasterAuthority || authority.rankIndex === 0 || authority.capabilities.includes(GUILD_PRESENTATION_CONFIGURE_CAPABILITY);
-  const canConfigureDiscord = authority.capabilities.includes(DISCORD_ADMIN_CAPABILITY);
   const canConfigureGuildRefreshSchedule = authority.capabilities.includes(GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY);
   const available = canConfigureModules
     || canConfigurePermissions
     || canConfigureTheme
     || canConfigureGuildPresentation
-    || canConfigureDiscord
     || canConfigureGuildRefreshSchedule;
 
   return {
@@ -53,7 +48,6 @@ export async function administrationAvailabilityForGuildie(
     canConfigurePermissions,
     canConfigureTheme,
     canConfigureGuildPresentation,
-    canConfigureDiscord,
     canConfigureGuildRefreshSchedule,
   };
 }

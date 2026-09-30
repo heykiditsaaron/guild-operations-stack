@@ -1,7 +1,7 @@
 import type { ActivitySharedValue } from "../../core/activity/registry.js";
 import { activityParticipationOfferByProcedureReference } from "../../core/activity/participation.js";
 import { pool } from "../../db.js";
-import { guildieHasGuildCapabilityOrOperator } from "../../core/authority/guild-permissions.js";
+import { identityHasGuildCapabilityOrOperator } from "../../core/authority/guild-permissions.js";
 import {
   registerActivity,
 } from "../../core/activity/registry.js";
@@ -27,7 +27,7 @@ export function registerRaffleActivityIntegration(): void {
       label() { return "Create Raffle"; },
       destination() { return "/activities/raffle/manage?create=1"; },
       async availableTo(_kind, guildieId) {
-        return guildieId ? guildieHasGuildCapabilityOrOperator(guildieId, RAFFLE_MODIFY_CAPABILITY) : false;
+        return guildieId ? identityHasGuildCapabilityOrOperator(guildieId, RAFFLE_MODIFY_CAPABILITY) : false;
       },
     },
     occurrence: {
@@ -76,7 +76,7 @@ export function registerRaffleActivityIntegration(): void {
           RAFFLE_STAGE_CAPABILITY,
           RAFFLE_CLAIMS_CAPABILITY,
           RAFFLE_DRAW_CAPABILITY,
-        ].map((capability) => guildieHasGuildCapabilityOrOperator(guildieId, capability)));
+        ].map((capability) => identityHasGuildCapabilityOrOperator(guildieId, capability)));
         return permitted.some(Boolean);
       },
       destination(kind, activityId) {

@@ -13,8 +13,6 @@ import { registerInstallationRoutes } from "./core/installation/routes.js";
 import { registerApplicationEmissionConsumers } from "./emissions/consumers.js";
 import { startEmissionRecovery } from "./emissions/recovery.js";
 import { startGuildRefreshScheduler } from "./guild-refresh-scheduler.js";
-import { registerDiscordPlugin, registerDiscordPluginAdministration } from "./plugins/discord/plugin.js";
-import { discordEncryptedSecretsExist } from "./plugins/discord/plugin-configuration.js";
 import { registerInstalledActivityPlugins } from "./activity-plugins.js";
 import { loadAssetRegistry, registerAssetRoutes } from "./web/assets.js";
 import { registerAdminPage } from "./web/pages/admin.js";
@@ -27,13 +25,12 @@ import { registerMyParticipationPage } from "./web/pages/my-participation.js";
 import { registerSiteInformationPages } from "./web/pages/site-information.js";
 import { registerSetupPage } from "./web/pages/setup.js";
 
-installationSecretKey({ encryptedDataExists: (await discordEncryptedSecretsExist()) || (await installationBlizzardEncryptedSecretExists()) });
+installationSecretKey({ encryptedDataExists: await installationBlizzardEncryptedSecretExists() });
 
 const app = Fastify({ logger: true, disableRequestLogging: true });
 await app.register(cookie);
 
 registerGlobalGuildCapabilityDefinitions();
-registerDiscordPluginAdministration();
 
 const webAssets = await loadAssetRegistry();
 await registerInstalledActivityPlugins(app, webAssets, app.log);
@@ -57,7 +54,6 @@ app.get("/events", async (_request, reply) => reply.redirect("/activities"));
 app.get<{ Params: { "*": string } }>("/events/*", async (request, reply) => reply.redirect(`/activities/${request.params["*"]}`));
 await registerAdminPage(app, webAssets);
 await registerOperationsAdminPage(app, webAssets);
-await registerDiscordPlugin(app, webAssets);
 await registerAuthRoutes(app);
 
 let stopGuildRefreshScheduler: (() => void) | null = null;

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
+import { authenticatedIdentity, SESSION_COOKIE_NAME } from "../../auth.js";
 import { guildRefreshStatus } from "../../core/guild/guild-refresh-status.js";
 import {
   canAdministerGuildPermissions,
@@ -20,8 +20,8 @@ import {
   GUILD_PRESENTATION_CONFIGURE_CAPABILITY,
   MODULES_CONFIGURE_CAPABILITY,
   THEME_CONFIGURE_CAPABILITY,
-  guildieHasGuildCapability,
-  guildieHasGuildCapabilityOrOperator,
+  identityHasGuildCapability,
+  identityHasGuildCapabilityOrOperator,
 } from "../../core/authority/guild-permissions.js";
 import { activityAdministration, activityCapabilityDeclarationState, activityRegistrationStates, type ActivityRegistrationState } from "../../core/activity/registry.js";
 import { knownActivityPlugins } from "../../core/activity/plugin-control.js";
@@ -42,14 +42,14 @@ function administrationSection(sectionId: string, headingId: string, heading: st
   return `<section id="${sectionId}" class="admin-section" aria-labelledby="${headingId}"><h2 id="${headingId}">${heading}</h2>${content}</section>`;
 }
 
-async function renderActivityAdministration(guildieId: string, canConfigureModules: boolean): Promise<string> {
+async function renderActivityAdministration(identityId: string, canConfigureModules: boolean): Promise<string> {
   const [states, fingerprints] = await Promise.all([activityRegistrationStates(), knownActivityPlugins()]);
   const labels = new Map(fingerprints.map((plugin) => [plugin.kind, plugin.label]));
   const cards = await Promise.all(states.map(async (state: ActivityRegistrationState) => {
     const administration = await activityAdministration(state.kind);
     const definitions = administration?.capabilities ?? [];
     const policies = await guildCapabilityPoliciesForDefinitions(definitions);
-    const authorityChecks = await Promise.all(definitions.map((definition) => canAdministerGuildCapability(guildieId, definition.key)));
+    const authorityChecks = await Promise.all(definitions.map((definition) => canAdministerGuildCapability(identityId, definition.key)));
     const editable = Boolean(administration?.authoritative && state.status !== "failed" && authorityChecks.some(Boolean));
     const permissionView = policies.capabilities.length ? `<div class="permission-capabilities">${policies.capabilities.map((policy) => renderPermissionCapability(policy, policies.ranks)).join("\n")}</div>` : '<p class="admin-section-note">This Activity declares no configurable capabilities.</p>';
     const frozen = editable ? "" : '<p class="admin-section-note"><strong>Last known declaration.</strong> Permission values are read-only until this Activity successfully registers again.</p>';
@@ -114,14 +114,14 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
 
   app.get("/admin/general", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, guildie] = await Promise.all([viewerForRequest(sessionToken), authenticatedGuildie(sessionToken)]);
-    if (!guildie) return reply.code(401).send("Authentication is required.");
+    const [viewer, identity] = await Promise.all([viewerForRequest(sessionToken), authenticatedIdentity(sessionToken)]);
+    if (!identity) return reply.code(401).send("Authentication is required.");
 
     const [canConfigureGuildRefreshSchedule, canConfigureTheme, canConfigureGuildPresentation, canRefresh] = await Promise.all([
-      guildieHasGuildCapability(guildie.guildieId, GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY),
-      guildieHasGuildCapability(guildie.guildieId, THEME_CONFIGURE_CAPABILITY),
-      guildieHasGuildCapability(guildie.guildieId, GUILD_PRESENTATION_CONFIGURE_CAPABILITY),
-      guildieHasGuildCapability(guildie.guildieId, GUILD_REFRESH_CAPABILITY),
+      identityHasGuildCapability(identity.identityId, GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY),
+      identityHasGuildCapability(identity.identityId, THEME_CONFIGURE_CAPABILITY),
+      identityHasGuildCapability(identity.identityId, GUILD_PRESENTATION_CONFIGURE_CAPABILITY),
+      identityHasGuildCapability(identity.identityId, GUILD_REFRESH_CAPABILITY),
     ]);
     const [refreshSchedule, theme, presentation, refreshStatus] = await Promise.all([
       guildRefreshSchedule(),
@@ -143,19 +143,19 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
 
   app.get("/admin/modules", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, guildie] = await Promise.all([viewerForRequest(sessionToken), authenticatedGuildie(sessionToken)]);
-    if (!guildie) return reply.code(401).send("Authentication is required.");
-    const canConfigureModules = await guildieHasGuildCapabilityOrOperator(guildie.guildieId, MODULES_CONFIGURE_CAPABILITY);
-    const lifecycle = await renderActivityAdministration(guildie.guildieId, canConfigureModules);
+    const [viewer, identity] = await Promise.all([viewerForRequest(sessionToken), authenticatedIdentity(sessionToken)]);
+    if (!identity) return reply.code(401).send("Authentication is required.");
+    const canConfigureModules = await identityHasGuildCapabilityOrOperator(identity.identityId, MODULES_CONFIGURE_CAPABILITY);
+    const lifecycle = await renderActivityAdministration(identity.identityId, canConfigureModules);
     const content = administrationSection("modules", "modules-heading", "Packaged capabilities", `${lifecycle}<p class="admin-section-note">Availability and entitlement are distinct from enablement. Controls are available only when your authority permits changes.</p>`);
     const html = renderPage(assets, { pathname: "/admin/modules", title: `Module Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Inspect and configure packaged Guild Operations capabilities.", viewer, stylesheets: ["admin.css", "admin-modules.css"], scripts: ["admin-modules.js", "admin-permissions.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Inspect and manage packaged Modules and Plugins.</p></div>`, body: `<div class="admin-sections">${content}</div>` });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
 
   app.put("/admin/activities/:activityKind", async (request, reply) => {
-    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
-    if (!guildie) return reply.code(401).send({ error: "authentication_required" });
-    if (!await guildieHasGuildCapabilityOrOperator(guildie.guildieId, MODULES_CONFIGURE_CAPABILITY)) return reply.code(403).send({ error: "module_configuration_not_authorized" });
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "authentication_required" });
+    if (!await identityHasGuildCapabilityOrOperator(identity.identityId, MODULES_CONFIGURE_CAPABILITY)) return reply.code(403).send({ error: "module_configuration_not_authorized" });
     const params = request.params as { activityKind?: unknown }; const body = (request.body ?? {}) as { enabled?: unknown };
     if (typeof params.activityKind !== "string" || typeof body.enabled !== "boolean") return reply.code(400).send({ error: "invalid_activity_configuration" });
     const state = (await activityRegistrationStates()).find((candidate) => candidate.kind === params.activityKind);
@@ -167,7 +167,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       operation: "enablement",
       kind: "result",
       result: "success",
-      actorGuildieId: guildie.guildieId,
+      actorIdentityId: identity.identityId,
       summary: `Activity plugin ${params.activityKind} was ${body.enabled ? "enabled" : "disabled"}.`,
       details: { activityKind: params.activityKind, enabled: body.enabled },
     });
@@ -176,27 +176,27 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
 
 
   app.put("/admin/general/theme", async (request, reply) => {
-    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
-    if (!guildie) return reply.code(401).send({ error: "authentication_required" });
-    if (!await guildieHasGuildCapability(guildie.guildieId, THEME_CONFIGURE_CAPABILITY)) return reply.code(403).send({ error: "theme_configuration_not_authorized" });
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "authentication_required" });
+    if (!await identityHasGuildCapability(identity.identityId, THEME_CONFIGURE_CAPABILITY)) return reply.code(403).send({ error: "theme_configuration_not_authorized" });
     const body = (request.body ?? {}) as { theme?: unknown };
     if (typeof body.theme !== "string" || !isGuildThemeKey(body.theme)) return reply.code(400).send({ error: "unknown_theme" });
     return reply.send({ theme: await setGuildTheme(body.theme) });
   });
 
   app.put("/admin/general/orientation", async (request, reply) => {
-    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
-    if (!guildie) return reply.code(401).send({ error: "authentication_required" });
-    if (!await guildieHasGuildCapability(guildie.guildieId, GUILD_PRESENTATION_CONFIGURE_CAPABILITY)) return reply.code(403).send({ error: "guild_presentation_configuration_not_authorized" });
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "authentication_required" });
+    if (!await identityHasGuildCapability(identity.identityId, GUILD_PRESENTATION_CONFIGURE_CAPABILITY)) return reply.code(403).send({ error: "guild_presentation_configuration_not_authorized" });
     const body = (request.body ?? {}) as { acknowledged?: unknown };
     if (typeof body.acknowledged !== "boolean") return reply.code(400).send({ error: "acknowledged_must_be_boolean" });
     return reply.send({ acknowledged: await setGuildSettingsLocationAcknowledged(body.acknowledged) });
   });
 
   app.put("/admin/general/presentation", async (request, reply) => {
-    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
-    if (!guildie) return reply.code(401).send({ error: "authentication_required" });
-    if (!await guildieHasGuildCapability(guildie.guildieId, GUILD_PRESENTATION_CONFIGURE_CAPABILITY)) return reply.code(403).send({ error: "guild_presentation_configuration_not_authorized" });
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "authentication_required" });
+    if (!await identityHasGuildCapability(identity.identityId, GUILD_PRESENTATION_CONFIGURE_CAPABILITY)) return reply.code(403).send({ error: "guild_presentation_configuration_not_authorized" });
     const body = (request.body ?? {}) as { raiderIoUrl?: unknown; warcraftLogsUrl?: unknown };
     const raiderIoUrl = parseGuildPresentationUrl(body.raiderIoUrl ?? null);
     const warcraftLogsUrl = parseGuildPresentationUrl(body.warcraftLogsUrl ?? null);
@@ -206,20 +206,20 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
 
   app.get("/admin/permissions", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, guildie] = await Promise.all([viewerForRequest(sessionToken), authenticatedGuildie(sessionToken)]);
-    const authorized = guildie ? await canAdministerGuildPermissions(guildie.guildieId) : false;
-    const policies = authorized && guildie ? await guildCapabilityPoliciesForActor(guildie.guildieId) : null;
+    const [viewer, identity] = await Promise.all([viewerForRequest(sessionToken), authenticatedIdentity(sessionToken)]);
+    const authorized = identity ? await canAdministerGuildPermissions(identity.identityId) : false;
+    const policies = authorized && identity ? await guildCapabilityPoliciesForActor(identity.identityId) : null;
     const globalPolicies = policies ? { ...policies, capabilities: policies.capabilities.filter((capability) => capability.namespace === "global") } : null;
-    const developmentAuthority = guildie ? hasDevelopmentGuildMasterAuthority(guildie.guildieId) : false;
+    const developmentAuthority = identity ? hasDevelopmentGuildMasterAuthority(identity.identityId) : false;
     const content = authorized && globalPolicies ? `<section class="permission-administration" aria-labelledby="permission-heading"><div class="permission-intro"><h2 id="permission-heading">Capability access</h2><p>Choose which current Blizzard guild ranks receive each Guild Operations capability in addition to Guild Master rank 0. Rank 0 and the development authority override are inherently capable and are not configurable here.</p>${developmentAuthority ? `<p class="permission-operator-notice"><strong>Development authority override active.</strong> This access is independent of your current guild rank.</p>` : ""}</div>${renderPermissionPolicies(globalPolicies)}</section>` : `<section class="admin-unavailable" aria-labelledby="admin-unavailable-heading"><h2 id="admin-unavailable-heading">Permission administration is not available for this account.</h2></section>`;
     const html = renderPage(assets, { pathname: "/admin/permissions", title: `Permissions Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Configure Guild Operations permission policy.", viewer, stylesheets: ["admin.css", "admin-permissions.css"], scripts: ["admin-permissions.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Configure who may use Guild Operations capabilities.</p></div>`, body: `${content}` });
-    if (!authorized) return reply.code(guildie ? 403 : 401).header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
+    if (!authorized) return reply.code(identity ? 403 : 401).header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
 
   app.put("/admin/permissions/:capability", async (request, reply) => {
-    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
-    if (!guildie) return reply.code(401).send({ error: "authentication_required" });
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "authentication_required" });
     const params = request.params as { capability?: unknown };
     const body = (request.body ?? {}) as { permittedRanks?: unknown };
     if (typeof params.capability !== "string") return reply.code(400).send({ error: "capability_required" });
@@ -227,7 +227,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     try {
       const activityDeclaration = await activityCapabilityDeclarationState(params.capability);
       if (activityDeclaration && !activityDeclaration.authoritative) return reply.code(409).send({ error: "activity_declaration_not_authoritative" });
-      const permittedRanks = await setGuildCapabilityPermittedRanks(guildie.guildieId, params.capability, body.permittedRanks as number[]);
+      const permittedRanks = await setGuildCapabilityPermittedRanks(identity.identityId, params.capability, body.permittedRanks as number[]);
       return reply.send({ capability: params.capability, permittedRanks });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Guild permission could not be updated";

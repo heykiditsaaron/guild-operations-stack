@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { authenticatedGuildie, SESSION_COOKIE_NAME } from "./auth.js";
+import { authenticatedIdentity, SESSION_COOKIE_NAME } from "./auth.js";
 import { performGuildRefresh } from "./guild-refresh-operation.js";
 import {
   configureGuildRefreshSchedule,
@@ -14,13 +14,13 @@ import {
 
 export async function registerGuildRoutes(app: FastifyInstance): Promise<void> {
   app.post("/guild/refresh", async (request, reply) => {
-    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
-    if (!guildie) return reply.code(401).send({ error: "not_authenticated" });
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "not_authenticated" });
 
     try {
-      const authority = await requireGuildCapability(guildie.guildieId, GUILD_REFRESH_CAPABILITY);
+      const authority = await requireGuildCapability(identity.identityId, GUILD_REFRESH_CAPABILITY);
       const result = await performGuildRefresh({
-        actorGuildieId: guildie.guildieId,
+        actorIdentityId: identity.identityId,
         onInspectionFailure: (error) => {
           request.log.error({ err: error }, "Operational inspection publication failed for guild refresh");
         },
@@ -29,7 +29,7 @@ export async function registerGuildRoutes(app: FastifyInstance): Promise<void> {
         guild_id: result.guildId,
         roster_count: result.rosterCount,
         requested_by: {
-          guildie_id: guildie.guildieId,
+          identity_id: identity.identityId,
           effective_rank: authority.rankIndex,
         },
         reconciliation: {
@@ -50,11 +50,11 @@ export async function registerGuildRoutes(app: FastifyInstance): Promise<void> {
   });
 
   app.put<{ Body: { enabled?: unknown; interval_seconds?: unknown } }>("/guild/refresh/schedule", async (request, reply) => {
-    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
-    if (!guildie) return reply.code(401).send({ error: "not_authenticated" });
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "not_authenticated" });
 
     try {
-      await requireGuildCapability(guildie.guildieId, GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY);
+      await requireGuildCapability(identity.identityId, GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY);
     } catch (error) {
       if (error instanceof GuildCapabilityDeniedError) {
         return reply.code(403).send({ error: "guild_capability_required", capability: error.capability });

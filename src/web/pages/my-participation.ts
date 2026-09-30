@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { SESSION_COOKIE_NAME, authenticatedGuildie } from "../../auth.js";
+import { SESSION_COOKIE_NAME, authenticatedIdentity } from "../../auth.js";
 import { activityOccurrence, activityParticipationOffersForGuildie, activityParticipationProjection, activityParticipationsForGuildie } from "../../core/activity/registry.js";
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage } from "../render.js";
@@ -25,15 +25,15 @@ function projectionFacts(projection: Awaited<ReturnType<typeof activityParticipa
 export async function registerMyParticipationPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/me/participation", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [guildie, viewer] = await Promise.all([
-      authenticatedGuildie(sessionToken),
+    const [identity, viewer] = await Promise.all([
+      authenticatedIdentity(sessionToken),
       viewerForRequest(sessionToken),
     ]);
-    if (!guildie || !viewer.authenticated) return reply.redirect("/auth/blizzard/start?return_to=%2Fme%2Fparticipation");
+    if (!identity || !viewer.authenticated) return reply.redirect("/auth/blizzard/start?return_to=%2Fme%2Fparticipation");
 
     const [participations, participationOffers] = await Promise.all([
-      activityParticipationsForGuildie(guildie.guildieId),
-      activityParticipationOffersForGuildie(guildie.guildieId),
+      activityParticipationsForGuildie(identity.identityId),
+      activityParticipationOffersForGuildie(identity.identityId),
     ]);
     const cards = await Promise.all([
       ...participations.map(async (reference) => {

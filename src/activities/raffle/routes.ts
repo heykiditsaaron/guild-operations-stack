@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
+import { authenticatedIdentity, SESSION_COOKIE_NAME } from "../../auth.js";
 import { GuildCapabilityDeniedError, requireGuildCapabilityOrOperator } from "../../core/authority/guild-permissions.js";
 import { RAFFLE_CLAIMS_CAPABILITY } from "./permissions.js";
 import {
@@ -9,9 +9,9 @@ import {
 } from "./application.js";
 
 async function requireGuildie(request:FastifyRequest,reply:FastifyReply):Promise<string|null>{
-  const guildie=await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
-  if(!guildie){await reply.code(401).send({error:"not_authenticated"});return null;}
-  return guildie.guildieId;
+  const identity=await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+  if(!identity){await reply.code(401).send({error:"not_authenticated"});return null;}
+  return identity.identityId;
 }
 function bodyObject(value:unknown):Record<string,unknown>{return value&&typeof value==="object"?value as Record<string,unknown>:{};}
 function requiredString(value:unknown,field:string):string{if(typeof value!=="string"||!value.trim())throw new RaffleRuleError("invalid_input",`${field} is required`,400);return value.trim();}

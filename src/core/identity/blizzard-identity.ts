@@ -1,6 +1,6 @@
 import type { PoolClient } from "pg";
-import type { BlizzardWowProfile } from "../../blizzard.js";
-import { config, type Region } from "../../config.js";
+import type { BlizzardWowAccount, BlizzardWowProfile } from "../../blizzard.js";
+import { type Region } from "../../config.js";
 import { withTransaction } from "../../db.js";
 
 function factionValue(value: unknown): string | null {
@@ -24,146 +24,129 @@ function localizedValue(value: unknown): string | null {
   return null;
 }
 
-async function resolveOrCreateGuildie(
-  client: PoolClient,
-  region: Region,
-  principalId: string,
-): Promise<string> {
-  await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [`${region}:${principalId}`]);
+export type DiscoveredWowAccount = {
+  wowAccountId: string;
+  characters: BlizzardWowAccount["characters"];
+};
 
-  const existing = await client.query<{ guildie_id: string }>(
-    "SELECT guildie_id FROM blizzard_principals WHERE region = $1 AND principal_id = $2",
-    [region, principalId],
-  );
-  if (existing.rowCount) {
-    await client.query(
-      "UPDATE blizzard_principals SET last_seen_at = now() WHERE guildie_id = $1",
-      [existing.rows[0].guildie_id],
-    );
-    return existing.rows[0].guildie_id;
-  }
-
-  const created = await client.query<{ guildie_id: string }>(
-    "INSERT INTO guildies DEFAULT VALUES RETURNING guildie_id",
-  );
-  const guildieId = created.rows[0].guildie_id;
-  await client.query(
-    "INSERT INTO blizzard_principals (guildie_id, region, principal_id) VALUES ($1, $2, $3)",
-    [guildieId, region, principalId],
-  );
-  return guildieId;
+export function discoveredWowAccounts(profile: BlizzardWowProfile): DiscoveredWowAccount[] {
+  return (profile.wow_accounts ?? []).map((account) => ({
+    wowAccountId: String(account.id),
+    characters: account.characters ?? [],
+  }));
 }
 
-async function reconcileGuildieBlizzardObservation(
+function selectedWowAccount(profile: BlizzardWowProfile, wowAccountId: string): BlizzardWowAccount | null {
+  return (profile.wow_accounts ?? []).find((account) => String(account.id) === wowAccountId) ?? null;
+}
+
+async function reconcileIdentityCharacters(
   client: PoolClient,
-  input: {
-    guildieId: string;
-    region: Region;
-    profile: BlizzardWowProfile;
-  },
+  input: { identityId: string; region: Region; account: BlizzardWowAccount },
 ): Promise<void> {
-  // Preserve every previously observed character, but make the latest successful
-  // Blizzard profile observation authoritative for current control.
   await client.query(
-    "UPDATE characters SET currently_controlled = false WHERE guildie_id = $1 AND region = $2",
-    [input.guildieId, input.region],
+    `UPDATE controlled_character_roster
+        SET currently_controlled = false
+      WHERE identity_id = $1
+        AND currently_controlled = true`,
+    [input.identityId],
   );
 
-  for (const account of input.profile.wow_accounts ?? []) {
-    const accountResult = await client.query<{ wow_account_record_id: string }>(
-      `INSERT INTO wow_accounts (guildie_id, region, wow_account_id)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (region, wow_account_id) DO UPDATE
-         SET last_seen_at = now()
-         WHERE wow_accounts.guildie_id = EXCLUDED.guildie_id
-       RETURNING wow_account_record_id`,
-      [input.guildieId, input.region, String(account.id)],
+  for (const character of input.account.characters ?? []) {
+    const observed = await client.query<{ character_record_id: string }>(
+      `INSERT INTO character_roster (
+         region, realm_id, character_id, name, realm_name, realm_slug, level, faction
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       ON CONFLICT (region, realm_id, character_id) DO UPDATE SET
+         name = EXCLUDED.name,
+         realm_name = EXCLUDED.realm_name,
+         realm_slug = EXCLUDED.realm_slug,
+         level = EXCLUDED.level,
+         faction = EXCLUDED.faction,
+         last_seen_at = now()
+       RETURNING character_record_id`,
+      [
+        input.region, String(character.realm.id), String(character.id),
+        character.name, localizedValue(character.realm.name), character.realm.slug ?? null,
+        character.level ?? null, factionValue(character.faction),
+      ],
     );
+    const characterRecordId = observed.rows[0]?.character_record_id;
+    if (!characterRecordId) throw new Error("Observed Blizzard Character was not persisted");
 
-    if (!accountResult.rowCount) {
-      throw new Error("Blizzard WoW account coordinate is already owned by another Guildie");
+    const controlledElsewhere = await client.query<{ identity_id: string }>(
+      `SELECT identity_id
+         FROM controlled_character_roster
+        WHERE character_record_id = $1
+          AND currently_controlled = true
+          AND identity_id <> $2`,
+      [characterRecordId, input.identityId],
+    );
+    if (controlledElsewhere.rowCount) {
+      throw new Error("Blizzard Character coordinate is already controlled by another Identity");
     }
-    const wowAccountRecordId = accountResult.rows[0].wow_account_record_id;
 
-    for (const character of account.characters ?? []) {
-      const result = await client.query(
-        `INSERT INTO characters (
-           guildie_id, wow_account_record_id, region, realm_id, character_id,
-           name, realm_name, realm_slug, level, faction, currently_controlled
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,true)
-         ON CONFLICT (region, realm_id, character_id) DO UPDATE SET
-           wow_account_record_id = EXCLUDED.wow_account_record_id,
-           name = EXCLUDED.name,
-           realm_name = EXCLUDED.realm_name,
-           realm_slug = EXCLUDED.realm_slug,
-           level = EXCLUDED.level,
-           faction = EXCLUDED.faction,
-           currently_controlled = true,
-           last_seen_at = now()
-         WHERE characters.guildie_id = EXCLUDED.guildie_id
-         RETURNING character_record_id`,
-        [
-          input.guildieId,
-          wowAccountRecordId,
-          input.region,
-          String(character.realm.id),
-          String(character.id),
-          character.name,
-          localizedValue(character.realm.name),
-          character.realm.slug ?? null,
-          character.level ?? null,
-          factionValue(character.faction),
-        ],
-      );
-      if (!result.rowCount) {
-        throw new Error("Blizzard character coordinate is already owned by another Guildie");
-      }
-    }
+    await client.query(
+      `INSERT INTO controlled_character_roster (
+         identity_id, character_record_id, currently_controlled
+       ) VALUES ($1,$2,true)
+       ON CONFLICT (identity_id, character_record_id) DO UPDATE SET
+         currently_controlled = true,
+         last_seen_at = now()`,
+      [input.identityId, characterRecordId],
+    );
   }
-
-  await client.query("UPDATE guildies SET updated_at = now() WHERE guildie_id = $1", [input.guildieId]);
 }
 
-export async function reconcileExistingGuildieBlizzardObservation(input: {
-  guildieId: string;
+export async function establishOrResolveWowAccountIdentity(input: {
   region: Region;
-  principalId: string;
+  wowAccountId: string;
   profile: BlizzardWowProfile;
-}): Promise<void> {
-  await withTransaction(async (client) => {
-    const principal = await client.query(
-      `UPDATE blizzard_principals
-          SET last_seen_at = now()
-        WHERE guildie_id = $1
-          AND region = $2
-          AND principal_id = $3
-      RETURNING guildie_id`,
-      [input.guildieId, input.region, input.principalId],
+}): Promise<string> {
+  const account = selectedWowAccount(input.profile, input.wowAccountId);
+  if (!account) throw new Error("Selected WoW Account is not present in the authenticated Blizzard profile");
+
+  return withTransaction(async (client) => {
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [`${input.region}:${input.wowAccountId}`]);
+    const existing = await client.query<{ identity_id: string }>(
+      "SELECT identity_id FROM wow_account_identities WHERE region = $1 AND wow_account_id = $2",
+      [input.region, input.wowAccountId],
     );
-    if (!principal.rowCount) {
-      throw new Error("Blizzard principal is not bound to the existing Guildie");
+
+    let identityId = existing.rows[0]?.identity_id;
+    if (!identityId) {
+      const created = await client.query<{ identity_id: string }>(
+        "INSERT INTO identities DEFAULT VALUES RETURNING identity_id",
+      );
+      identityId = created.rows[0].identity_id;
+      await client.query(
+        "INSERT INTO wow_account_identities (identity_id, region, wow_account_id) VALUES ($1,$2,$3)",
+        [identityId, input.region, input.wowAccountId],
+      );
+    } else {
+      await client.query("UPDATE wow_account_identities SET last_seen_at = now() WHERE identity_id = $1", [identityId]);
     }
 
-    await reconcileGuildieBlizzardObservation(client, {
-      guildieId: input.guildieId,
-      region: input.region,
-      profile: input.profile,
-    });
+    await reconcileIdentityCharacters(client, { identityId, region: input.region, account });
+    return identityId;
   });
 }
 
-export async function establishOrResolveGuildie(input: {
+export async function reconcileExistingWowAccountIdentity(input: {
+  identityId: string;
   region: Region;
-  principalId: string;
   profile: BlizzardWowProfile;
-}): Promise<string> {
-  return withTransaction(async (client) => {
-    const guildieId = await resolveOrCreateGuildie(client, input.region, input.principalId);
-    await reconcileGuildieBlizzardObservation(client, {
-      guildieId,
-      region: input.region,
-      profile: input.profile,
-    });
-    return guildieId;
+}): Promise<void> {
+  await withTransaction(async (client) => {
+    const backing = await client.query<{ wow_account_id: string }>(
+      "SELECT wow_account_id FROM wow_account_identities WHERE identity_id = $1 AND region = $2",
+      [input.identityId, input.region],
+    );
+    const wowAccountId = backing.rows[0]?.wow_account_id;
+    if (!wowAccountId) throw new Error("Identity is not backed by a WoW Account in the authenticated region");
+    const account = selectedWowAccount(input.profile, wowAccountId);
+    if (!account) throw new Error("Authenticated Blizzard principal no longer demonstrates control of the occupied WoW Account");
+    await client.query("UPDATE wow_account_identities SET last_seen_at = now() WHERE identity_id = $1", [input.identityId]);
+    await reconcileIdentityCharacters(client, { identityId: input.identityId, region: input.region, account });
   });
 }

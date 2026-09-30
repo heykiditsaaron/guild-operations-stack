@@ -7,7 +7,7 @@ Use these documents when deciding **what Guild Operations should mean**, which a
 The doctrine hierarchy is intentionally small:
 
 - [`architecture.md`](architecture.md) — product purpose, architectural center, authority ownership, application boundaries, persistence law, interface model, and feature-pressure rules.
-- [`member-objects.md`](member-objects.md) — Guildie, Character, Blizzard authority, current organizational participation, effective rank, selected main, Discord association, session, capability, and Subject meanings.
+- [`member-objects.md`](member-objects.md) — Identity, WoW Account authority, Actor resolution, Character control, derived Guildie status, representation, session, and rank-derived capability meanings.
 - [`guild-activity.md`](guild-activity.md) — Core Activity meaning: occurrence lifecycle, temporal relevance, Participation, shared language, and ownership.
 - [`activity-plugin-contract.md`](activity-plugin-contract.md) — Activity plugin boundary: procedure, declarations, projections, lifecycle meaning, Participation ceremony, and Core responsibilities.
 - [`module-conformity.md`](module-conformity.md) — legacy Module doctrine retained for deferred cleanup of remaining Module-era capabilities; it does not govern Activity plugins.

@@ -162,17 +162,17 @@ function mapRaffle(row: Record<string, unknown>): Raffle {
     prizeKind: row.prize_kind as RafflePrizeKind,
     winnerPercentage: nullableNumber(row.winner_percentage),
     prizeDescription: nullableString(row.prize_description),
-    createdByGuildieId: String(row.created_by_guildie_id),
+    createdByGuildieId: String(row.created_by_identity_id),
     createdAtUnix: Number(row.created_at_unix),
-    updatedByGuildieId: nullableString(row.updated_by_guildie_id),
+    updatedByGuildieId: nullableString(row.updated_by_identity_id),
     updatedAtUnix: nullableNumber(row.updated_at_unix),
-    openedByGuildieId: nullableString(row.opened_by_guildie_id),
+    openedByGuildieId: nullableString(row.opened_by_identity_id),
     openedAtUnix: nullableNumber(row.opened_at_unix),
-    participationPausedByGuildieId: nullableString(row.participation_paused_by_guildie_id),
+    participationPausedByGuildieId: nullableString(row.participation_paused_by_identity_id),
     participationPausedAtUnix: nullableNumber(row.participation_paused_at_unix),
-    participationResumedByGuildieId: nullableString(row.participation_resumed_by_guildie_id),
+    participationResumedByGuildieId: nullableString(row.participation_resumed_by_identity_id),
     participationResumedAtUnix: nullableNumber(row.participation_resumed_at_unix),
-    concludedByGuildieId: nullableString(row.concluded_by_guildie_id),
+    concludedByGuildieId: nullableString(row.concluded_by_identity_id),
     concludedAtUnix: nullableNumber(row.concluded_at_unix),
     totalEntries: nullableNumber(row.total_entries),
     selectedIndex: nullableNumber(row.selected_index),
@@ -209,7 +209,7 @@ export async function establishRaffle(actorGuildieId: string, termsInput: Raffle
   const result = await (client ?? pool).query(
     `INSERT INTO raffles (
        guild_id, title, drawing_at_unix, entry_price_gold, prize_kind,
-       winner_percentage, prize_description, created_by_guildie_id, created_at_unix
+       winner_percentage, prize_description, created_by_identity_id, created_at_unix
      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
     [guildId, terms.title, terms.drawingAtUnix, String(terms.entryPriceGold), terms.prizeKind, terms.winnerPercentage, terms.prizeDescription, actorGuildieId, unixNow()],
   );
@@ -225,7 +225,7 @@ export async function modifyRaffle(actorGuildieId: string, raffleId: string, ter
     requireFullOperationalBuffer(terms.drawingAtUnix);
     const result = await transactionClient.query(
       `UPDATE raffles SET title=$2, drawing_at_unix=$3, entry_price_gold=$4, prize_kind=$5,
-       winner_percentage=$6, prize_description=$7, updated_by_guildie_id=$8, updated_at_unix=$9
+       winner_percentage=$6, prize_description=$7, updated_by_identity_id=$8, updated_at_unix=$9
        WHERE raffle_id=$1 RETURNING *`,
       [raffleId, terms.title, terms.drawingAtUnix, String(terms.entryPriceGold), terms.prizeKind, terms.winnerPercentage, terms.prizeDescription, actorGuildieId, unixNow()],
     );
@@ -243,7 +243,7 @@ export async function openRaffleParticipation(actorGuildieId: string, raffleId: 
     }
     const openedAtUnix = unixNow();
     const result = await transactionClient.query(
-      "UPDATE raffles SET opened_by_guildie_id=$2, opened_at_unix=$3 WHERE raffle_id=$1 RETURNING *",
+      "UPDATE raffles SET opened_by_identity_id=$2, opened_at_unix=$3 WHERE raffle_id=$1 RETURNING *",
       [raffleId, actorGuildieId, openedAtUnix],
     );
     return mapRaffle(result.rows[0] as Record<string, unknown>);
@@ -260,8 +260,8 @@ export async function pauseRaffleParticipation(actorGuildieId: string, raffleId:
     const pausedAtUnix = unixNow();
     const result = await transactionClient.query(
       `UPDATE raffles
-          SET participation_paused_by_guildie_id=$2, participation_paused_at_unix=$3,
-              participation_resumed_by_guildie_id=NULL, participation_resumed_at_unix=NULL
+          SET participation_paused_by_identity_id=$2, participation_paused_at_unix=$3,
+              participation_resumed_by_identity_id=NULL, participation_resumed_at_unix=NULL
         WHERE raffle_id=$1 RETURNING *`,
       [raffleId, actorGuildieId, pausedAtUnix],
     );
@@ -280,7 +280,7 @@ export async function resumeRaffleParticipation(actorGuildieId: string, raffleId
       throw new RaffleRuleError("participation_freeze_reached", "Raffle participation cannot resume after the operational buffer begins");
     }
     const result = await transactionClient.query(
-      "UPDATE raffles SET participation_resumed_by_guildie_id=$2, participation_resumed_at_unix=$3 WHERE raffle_id=$1 RETURNING *",
+      "UPDATE raffles SET participation_resumed_by_identity_id=$2, participation_resumed_at_unix=$3 WHERE raffle_id=$1 RETURNING *",
       [raffleId, actorGuildieId, resumedAtUnix],
     );
     return mapRaffle(result.rows[0] as Record<string, unknown>);
@@ -298,7 +298,7 @@ export async function cancelRaffle(actorGuildieId: string, raffleId: string, cli
       closedAtUnix:concludedAtUnix,
     });
     const result = await transactionClient.query(
-      "UPDATE raffles SET conclusion='operator_cancelled', concluded_by_guildie_id=$2, concluded_at_unix=$3 WHERE raffle_id=$1 RETURNING *",
+      "UPDATE raffles SET conclusion='operator_cancelled', concluded_by_identity_id=$2, concluded_at_unix=$3 WHERE raffle_id=$1 RETURNING *",
       [raffleId, actorGuildieId, concludedAtUnix],
     );
     return mapRaffle(result.rows[0] as Record<string, unknown>);
@@ -395,7 +395,7 @@ export async function revokeRaffleClaim(claimantGuildieId: string, claimId: stri
 
     const revokedAtUnix = unixNow();
     await client.query(
-      "UPDATE raffle_claims SET resolution_kind='revoked', revoked_by_guildie_id=$2, revoked_at_unix=$3 WHERE claim_id=$1",
+      "UPDATE raffle_claims SET resolution_kind='revoked', revoked_by_identity_id=$2, revoked_at_unix=$3 WHERE claim_id=$1",
       [claimId, claimantGuildieId, revokedAtUnix],
     );
     await revokeActivityParticipationOffer(client, {
@@ -414,7 +414,7 @@ export async function approveRaffleClaim(actorGuildieId:string, claimId:string):
     if(claim.raffle_conclusion!==null) throw new RaffleRuleError("raffle_concluded","Claims can only be adjudicated before the Raffle concludes");
     if(claim.resolution_kind!==null) throw new RaffleRuleError("claim_already_resolved","Only an unresolved claim can be approved");
     const approvedAtUnix=unixNow();
-    await client.query("UPDATE raffle_claims SET resolution_kind='approved', approved_by_guildie_id=$2, approved_at_unix=$3 WHERE claim_id=$1",[claimId,actorGuildieId,approvedAtUnix]);
+    await client.query("UPDATE raffle_claims SET resolution_kind='approved', approved_by_identity_id=$2, approved_at_unix=$3 WHERE claim_id=$1",[claimId,actorGuildieId,approvedAtUnix]);
     const offer=await activityParticipationOfferByProcedureReference(client,{
       activityKind:"raffle",
       activityId:String(claim.raffle_id),
@@ -440,7 +440,7 @@ export async function denyRaffleClaim(actorGuildieId:string, claimId:string, rea
     if(claim.raffle_conclusion!==null) throw new RaffleRuleError("raffle_concluded","Claims can only be adjudicated before the Raffle concludes");
     if(claim.resolution_kind!==null) throw new RaffleRuleError("claim_already_resolved","Only an unresolved claim can be denied");
     const deniedAtUnix=unixNow();
-    await client.query("UPDATE raffle_claims SET resolution_kind='denied', denied_by_guildie_id=$2, denied_at_unix=$3, denial_reason=$4 WHERE claim_id=$1",[claimId,actorGuildieId,deniedAtUnix,reason]);
+    await client.query("UPDATE raffle_claims SET resolution_kind='denied', denied_by_identity_id=$2, denied_at_unix=$3, denial_reason=$4 WHERE claim_id=$1",[claimId,actorGuildieId,deniedAtUnix,reason]);
     await closeActivityParticipationOffer(client,{
       activityKind:"raffle",
       activityId:String(claim.raffle_id),
@@ -504,14 +504,14 @@ export async function drawRaffle(actorGuildieId:string, raffleId:string, client:
 
     if(population.length===0){
       const result=await transactionClient.query(
-        "UPDATE raffles SET conclusion='no_participation', concluded_by_guildie_id=$2, concluded_at_unix=$3 WHERE raffle_id=$1 RETURNING *",
+        "UPDATE raffles SET conclusion='no_participation', concluded_by_identity_id=$2, concluded_at_unix=$3 WHERE raffle_id=$1 RETURNING *",
         [raffleId,actorGuildieId,now]);
       return mapRaffle(result.rows[0] as Record<string,unknown>);
     }
     const selectedIndex=randomInt(population.length);
     const winningParticipationOfferId=population[selectedIndex];
     const result=await transactionClient.query(
-      `UPDATE raffles SET conclusion='drawn', concluded_by_guildie_id=$2, concluded_at_unix=$3,
+      `UPDATE raffles SET conclusion='drawn', concluded_by_identity_id=$2, concluded_at_unix=$3,
        total_entries=$4, selected_index=$5, winning_participation_offer_id=$6 WHERE raffle_id=$1 RETURNING *`,
       [raffleId,actorGuildieId,now,population.length,selectedIndex,winningParticipationOfferId]);
     return mapRaffle(result.rows[0] as Record<string,unknown>);
@@ -528,9 +528,9 @@ export async function raffleClaims(raffleId:string):Promise<RaffleClaim[]> {
   const guildId=(await requireOperationalInstallationGuildBinding()).guildId;
   const result=await pool.query<Record<string,unknown>>(
     `SELECT rc.claim_id,rc.raffle_id,rc.promised_gold_value,rc.created_at_unix,
-       rc.resolution_kind,rc.approved_by_guildie_id,rc.approved_at_unix,
-       rc.denied_by_guildie_id,rc.denied_at_unix,rc.denial_reason,
-       rc.revoked_by_guildie_id,rc.revoked_at_unix
+       rc.resolution_kind,rc.approved_by_identity_id,rc.approved_at_unix,
+       rc.denied_by_identity_id,rc.denied_at_unix,rc.denial_reason,
+       rc.revoked_by_identity_id,rc.revoked_at_unix
        FROM raffle_claims rc
        JOIN raffles r ON r.raffle_id=rc.raffle_id AND r.guild_id=$2
       WHERE rc.raffle_id=$1 ORDER BY rc.created_at_unix ASC,rc.claim_id ASC`,
@@ -572,12 +572,12 @@ export async function raffleClaims(raffleId:string):Promise<RaffleClaim[]> {
         promisedGoldValue:String(row.promised_gold_value),
         createdAtUnix:Number(row.created_at_unix),
         resolutionKind:row.resolution_kind as RaffleClaimResolution,
-        approvedByGuildieId:nullableString(row.approved_by_guildie_id),
+        approvedByGuildieId:nullableString(row.approved_by_identity_id),
         approvedAtUnix:nullableNumber(row.approved_at_unix),
-        deniedByGuildieId:nullableString(row.denied_by_guildie_id),
+        deniedByGuildieId:nullableString(row.denied_by_identity_id),
         deniedAtUnix:nullableNumber(row.denied_at_unix),
         denialReason:nullableString(row.denial_reason),
-        revokedByGuildieId:nullableString(row.revoked_by_guildie_id),
+        revokedByGuildieId:nullableString(row.revoked_by_identity_id),
         revokedAtUnix:nullableNumber(row.revoked_at_unix),
       });
     }

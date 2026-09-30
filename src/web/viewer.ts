@@ -1,37 +1,41 @@
-import { guildCharactersForGuildie } from "../core/guild/guild-characters.js";
-import { mainCharacterForGuildie } from "../core/identity/main-character.js";
-import { authenticatedGuildie } from "../auth.js";
+import { controlledGuildMemberCharacters } from "../core/guild/guild-characters.js";
+import { characterRepresentationForIdentity } from "../core/identity/main-character.js";
+import { characterProjections } from "../core/identity/character-projection.js";
+import { authenticatedIdentity } from "../auth.js";
 import { guildTheme } from "../core/presentation/guild-theme.js";
 import { guildPresentation } from "../core/presentation/guild-presentation.js";
 import {
   GUILD_REFRESH_CAPABILITY,
   OPERATIONS_INSPECT_CAPABILITY,
-  guildieHasGuildCapability,
+  identityHasGuildCapability,
 } from "../core/authority/guild-permissions.js";
-import { administrationAvailabilityForGuildie } from "./administration.js";
-import { webPresentationContributionsForGuildie } from "./presentation-contributions.js";
+import { administrationAvailabilityForIdentity } from "./administration.js";
+import { webPresentationContributionsForIdentity } from "./presentation-contributions.js";
 import type { WebViewer } from "./render.js";
 
 export async function viewerForRequest(sessionToken: string | undefined): Promise<WebViewer> {
-  const [guildie, theme, presentation] = await Promise.all([authenticatedGuildie(sessionToken), guildTheme(), guildPresentation()]);
+  const [identity, theme, presentation] = await Promise.all([authenticatedIdentity(sessionToken), guildTheme(), guildPresentation()]);
 
-  if (!guildie) {
+  if (!identity) {
     return {
       authenticated: false,
       theme,
       guildPresentation: presentation,
-      presentationContributions: await webPresentationContributionsForGuildie(null),
+      presentationContributions: await webPresentationContributionsForIdentity(null),
     };
   }
 
-  const [characters, selectedMain, administration, canRefreshGuild, canInspectOperations, presentationContributions] = await Promise.all([
-    guildCharactersForGuildie(guildie.guildieId),
-    mainCharacterForGuildie(guildie.guildieId),
-    administrationAvailabilityForGuildie(guildie.guildieId),
-    guildieHasGuildCapability(guildie.guildieId, GUILD_REFRESH_CAPABILITY),
-    guildieHasGuildCapability(guildie.guildieId, OPERATIONS_INSPECT_CAPABILITY),
-    webPresentationContributionsForGuildie(guildie.guildieId),
+  const [guildMemberCharacters, selectedMain, administration, canRefreshGuild, canInspectOperations, presentationContributions] = await Promise.all([
+    controlledGuildMemberCharacters(identity.identityId),
+    characterRepresentationForIdentity(identity.identityId),
+    administrationAvailabilityForIdentity(identity.identityId),
+    identityHasGuildCapability(identity.identityId, GUILD_REFRESH_CAPABILITY),
+    identityHasGuildCapability(identity.identityId, OPERATIONS_INSPECT_CAPABILITY),
+    webPresentationContributionsForIdentity(identity.identityId),
   ]);
+
+  const characters = await characterProjections(guildMemberCharacters.map((character) => character.characterRecordId));
+  const guildMembershipByCharacterRecordId = new Map(guildMemberCharacters.map((character) => [character.characterRecordId, character]));
 
   return {
     authenticated: true,
@@ -61,7 +65,7 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
       realmId: character.realmId,
       name: character.name,
       realmName: character.realmName,
-      rankIndex: character.rankIndex,
+      rankIndex: guildMembershipByCharacterRecordId.get(character.characterRecordId)!.rankIndex,
       level: character.level,
       className: character.className,
       raceName: character.raceName,

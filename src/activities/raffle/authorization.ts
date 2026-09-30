@@ -1,4 +1,4 @@
-import { guildieHasGuildCapability, type GuildCapability } from "../../core/authority/guild-permissions.js";
+import { identityHasGuildCapability, type GuildCapability } from "../../core/authority/guild-permissions.js";
 import { RAFFLE_CLAIMS_CAPABILITY, RAFFLE_DRAW_CAPABILITY, RAFFLE_MODIFY_CAPABILITY, RAFFLE_STAGE_CAPABILITY } from "./permissions.js";
 
 const RAFFLE_OPERATION_CAPABILITIES: readonly GuildCapability[] = [
@@ -15,7 +15,7 @@ const RAFFLE_OPERATION_CAPABILITIES: readonly GuildCapability[] = [
  */
 export async function raffleGuildieCanOperate(guildieId: string): Promise<boolean> {
   const checks = await Promise.all(
-    RAFFLE_OPERATION_CAPABILITIES.map((capability) => guildieHasGuildCapability(guildieId, capability)),
+    RAFFLE_OPERATION_CAPABILITIES.map((capability) => identityHasGuildCapability(guildieId, capability)),
   );
   return checks.some(Boolean);
 }

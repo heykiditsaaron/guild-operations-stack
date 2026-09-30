@@ -1,6 +1,8 @@
 import type { PoolClient } from "pg";
 import { pool } from "../../db.js";
-import { controlledCharactersForGuildie, controlledGuildCharactersForGuildie } from "../identity/controlled-characters.js";
+import { controlledCharacterRecordIdsForIdentity } from "../identity/controlled-characters.js";
+import { controlledGuildMemberCharacters } from "../guild/guild-characters.js";
+import { characterProjections } from "../identity/character-projection.js";
 import { effectiveGuildAuthority } from "../authority/guild-permissions.js";
 import { specsForClass } from "../../wow-traits/registry.js";
 import type { ActivitySharedValue } from "./registry.js";
@@ -234,8 +236,11 @@ async function requireWowSpecComponents(
         throw new ActivityParticipationOfferError("wow_spec_fulfillment_unavailable", `${request.kind} does not permit Character-derived class provenance`, 403);
       }
       const characters = source === "controlled_guild_character"
-        ? await controlledGuildCharactersForGuildie(actor.reference)
-        : await controlledCharactersForGuildie(actor.reference);
+        ? await characterProjections(
+            (await controlledGuildMemberCharacters(actor.reference))
+              .map((character) => character.characterRecordId),
+          )
+        : await characterProjections(await controlledCharacterRecordIdsForIdentity(actor.reference));
       const character = characters.find((value) =>
         value.region === coordinate.region && value.realmId === coordinate.realmId && value.characterId === coordinate.characterId
       );
@@ -298,8 +303,10 @@ async function constructParticipationComponent(
     throw new ActivityParticipationOfferError("invalid_guild_character", `${request.kind} must identify a guild Character`);
   }
 
-  const character = (await controlledGuildCharactersForGuildie(actor.reference))
-    .find((item) => item.realmId === candidate.realmId && item.characterId === candidate.characterId);
+  const guildMemberCharacters = await controlledGuildMemberCharacters(actor.reference);
+  const character = (await characterProjections(
+    guildMemberCharacters.map((item) => item.characterRecordId),
+  )).find((item) => item.realmId === candidate.realmId && item.characterId === candidate.characterId);
   if (!character) {
     throw new ActivityParticipationOfferError(
       "guild_character_unavailable",

@@ -1,6 +1,6 @@
 export type GuildRefreshObservation = {
   guildId: string;
-  changedGuildieIds: readonly string[];
+  changedIdentityIds: readonly string[];
 };
 
 export type GuildRefreshObserver = (observation: GuildRefreshObservation) => Promise<void>;

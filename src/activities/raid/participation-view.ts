@@ -1,5 +1,7 @@
-import { controlledCharactersForGuildie, controlledGuildCharactersForGuildie } from "../../core/identity/controlled-characters.js";
-import { guildieAttributionsForGuildies } from "../../core/identity/guildie-attribution.js";
+import { controlledCharacterRecordIdsForIdentity } from "../../core/identity/controlled-characters.js";
+import { controlledGuildMemberCharacters } from "../../core/guild/guild-characters.js";
+import { characterProjections } from "../../core/identity/character-projection.js";
+import { identityRepresentations } from "../../core/identity/guildie-attribution.js";
 import { activityParticipationOffersForActivity } from "../../core/activity/participation.js";
 import { pool } from "../../db.js";
 import { effectiveGuildAuthority } from "../../core/authority/guild-permissions.js";
@@ -56,8 +58,11 @@ export async function raidParticipationCharacters(
   }
 
   const controlled = raid.eligibility === "guild_character_member"
-    ? await controlledGuildCharactersForGuildie(guildieId)
-    : await controlledCharactersForGuildie(guildieId);
+    ? await characterProjections(
+        (await controlledGuildMemberCharacters(guildieId, raid.guildId))
+          .map((character) => character.characterRecordId),
+      )
+    : await characterProjections(await controlledCharacterRecordIdsForIdentity(guildieId));
   const eligible = controlled.filter((character) => character.className !== null);
 
   return {
@@ -87,7 +92,7 @@ async function raidSignupRows(raidId: string, includeWithdrawn: boolean): Promis
     selected_spec: string | null;
     selected_role: RaidRole | null;
     denied_at_unix: string | number | null;
-    denied_by_guildie_id: string | null;
+    denied_by_identity_id: string | null;
     withdrawn_at_unix: string | number | null;
   }>(
     `SELECT
@@ -97,7 +102,7 @@ async function raidSignupRows(raidId: string, includeWithdrawn: boolean): Promis
        ras.selected_spec,
        ras.selected_role,
        rsd.denied_at_unix,
-       rsd.denied_by_guildie_id,
+       rsd.denied_by_identity_id,
        rr.withdrawn_at_unix
      FROM raid_signup_rows rr
      LEFT JOIN raid_assignments ras ON ras.signup_row_id = rr.signup_row_id
@@ -121,7 +126,7 @@ async function raidSignupRows(raidId: string, includeWithdrawn: boolean): Promis
   }
   const offerByReference = new Map(offers.map((offer) => [offer.procedureReference, offer]));
   const guildieIds = offers.flatMap((offer) => offer.actor.kind === "guildie" ? [offer.actor.reference] : []);
-  const attributions = await guildieAttributionsForGuildies(guildieIds);
+  const attributions = await identityRepresentations(guildieIds);
 
   return result.rows.map((row) => {
     const offer = offerByReference.get(row.signup_row_id);
@@ -147,7 +152,7 @@ async function raidSignupRows(raidId: string, includeWithdrawn: boolean): Promis
       selectedSpec: row.selected_spec,
       selectedRole: row.selected_role,
       deniedAtUnix: row.denied_at_unix === null ? null : Number(row.denied_at_unix),
-      deniedByGuildieId: row.denied_by_guildie_id,
+      deniedByGuildieId: row.denied_by_identity_id,
       withdrawnAtUnix: row.withdrawn_at_unix === null ? null : Number(row.withdrawn_at_unix),
     };
   });

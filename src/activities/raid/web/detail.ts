@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../../auth.js";
-import { GuildCapabilityDeniedError, guildieHasGuildCapabilityOrOperator } from "../../../core/authority/guild-permissions.js";
+import { authenticatedIdentity, SESSION_COOKIE_NAME } from "../../../auth.js";
+import { GuildCapabilityDeniedError, identityHasGuildCapabilityOrOperator } from "../../../core/authority/guild-permissions.js";
 import { RAID_ASSIGN_CAPABILITY, RAID_MODIFY_CAPABILITY, RAID_STAGE_CAPABILITY } from "../permissions.js";
 
 import {
@@ -141,16 +141,16 @@ function raidActionStatusCode(error: unknown): 400 | 403 {
 
 async function renderRaidOrganizer(request: FastifyRequest<{ Params: RaidParams }>, reply: FastifyReply, assets: AssetRegistry) {
   const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-  const [viewer, guildie] = await Promise.all([viewerForRequest(sessionToken), authenticatedGuildie(sessionToken)]);
-  const [canModify, canStage, canAssign] = guildie
+  const [viewer, identity] = await Promise.all([viewerForRequest(sessionToken), authenticatedIdentity(sessionToken)]);
+  const [canModify, canStage, canAssign] = identity
     ? await Promise.all([
-        guildieHasGuildCapabilityOrOperator(guildie.guildieId, RAID_MODIFY_CAPABILITY),
-        guildieHasGuildCapabilityOrOperator(guildie.guildieId, RAID_STAGE_CAPABILITY),
-        guildieHasGuildCapabilityOrOperator(guildie.guildieId, RAID_ASSIGN_CAPABILITY),
+        identityHasGuildCapabilityOrOperator(identity.identityId, RAID_MODIFY_CAPABILITY),
+        identityHasGuildCapabilityOrOperator(identity.identityId, RAID_STAGE_CAPABILITY),
+        identityHasGuildCapabilityOrOperator(identity.identityId, RAID_ASSIGN_CAPABILITY),
       ])
     : [false, false, false];
   const authorized = canModify || canStage || canAssign;
-  if (!guildie || !authorized) {
+  if (!identity || !authorized) {
     const html = renderPage(assets, {
       pathname: request.url,
       title: `Raid Operations · ${viewer.guildPresentation.guildName} Guild Operations`,
@@ -160,7 +160,7 @@ async function renderRaidOrganizer(request: FastifyRequest<{ Params: RaidParams 
       header: `<div class="admin-page-header"><h1>Raid</h1></div>`,
       body: `<section class="admin-unavailable"><h2>Raid operations are not available for this account.</h2></section>`,
     });
-    return reply.code(guildie ? 403 : 401).header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
+    return reply.code(identity ? 403 : 401).header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   }
   if (!canAssign && (canModify || canStage)) return reply.redirect(`/activities/raid/${encodeURIComponent(request.params.raidId)}/manage/definition`);
 
@@ -206,12 +206,12 @@ async function renderRaidOrganizer(request: FastifyRequest<{ Params: RaidParams 
 }
 
 async function assignParticipant(request: FastifyRequest<{ Params: RaidParams; Body: AssignBody }>, reply: FastifyReply) {
-  const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
-  if (!guildie) return reply.code(401).send({ error: "Authentication required" });
+  const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+  if (!identity) return reply.code(401).send({ error: "Authentication required" });
   const body = request.body ?? {};
   if (typeof body.signupRowId !== "string" || typeof body.selectedClass !== "string" || typeof body.selectedSpec !== "string" || (body.selectedRole !== "tank" && body.selectedRole !== "healer" && body.selectedRole !== "damage")) return reply.code(400).send({ error: "Assignment is incomplete" });
   try {
-    const assignment = await setRaidAssignment(guildie.guildieId, { raidId: request.params.raidId, signupRowId: body.signupRowId, selectedClass: body.selectedClass, selectedSpec: body.selectedSpec, selectedRole: body.selectedRole });
+    const assignment = await setRaidAssignment(identity.identityId, { raidId: request.params.raidId, signupRowId: body.signupRowId, selectedClass: body.selectedClass, selectedSpec: body.selectedSpec, selectedRole: body.selectedRole });
     return reply.code(assignment.established ? 201 : 200).send({ assignmentId: assignment.assignmentId });
   } catch (error) {
     return reply.code(raidActionStatusCode(error)).send({ error: error instanceof Error ? error.message : "Participant could not be assigned" });
@@ -219,11 +219,11 @@ async function assignParticipant(request: FastifyRequest<{ Params: RaidParams; B
 }
 
 async function unassignParticipant(request: FastifyRequest<{ Params: RaidParams; Body: UnassignBody }>, reply: FastifyReply) {
-  const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
-  if (!guildie) return reply.code(401).send({ error: "Authentication required" });
+  const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+  if (!identity) return reply.code(401).send({ error: "Authentication required" });
   if (typeof request.body?.signupRowId !== "string") return reply.code(400).send({ error: "Participation row is required" });
   try {
-    await withdrawRaidAssignment(guildie.guildieId, request.params.raidId, request.body.signupRowId);
+    await withdrawRaidAssignment(identity.identityId, request.params.raidId, request.body.signupRowId);
     return { ok: true };
   } catch (error) {
     return reply.code(raidActionStatusCode(error)).send({ error: error instanceof Error ? error.message : "Participant could not be unassigned" });
@@ -231,13 +231,13 @@ async function unassignParticipant(request: FastifyRequest<{ Params: RaidParams;
 }
 
 async function adjudicateCommitment(request:FastifyRequest<{Params:RaidParams;Body:AdjudicateBody}>,reply:FastifyReply){
-  const guildie=await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);if(!guildie)return reply.code(401).send({error:"Authentication required"});
+  const identity=await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);if(!identity)return reply.code(401).send({error:"Authentication required"});
   if(typeof request.body?.signupRowId!=="string"||typeof request.body?.fulfilled!=="boolean")return reply.code(400).send({error:"Commitment adjudication is incomplete"});
-  try{await adjudicateRaidCommitment(guildie.guildieId,request.params.raidId,request.body.signupRowId,request.body.fulfilled);return{ok:true};}catch(error){return reply.code(raidActionStatusCode(error)).send({error:error instanceof Error?error.message:"Commitment could not be adjudicated"});}
+  try{await adjudicateRaidCommitment(identity.identityId,request.params.raidId,request.body.signupRowId,request.body.fulfilled);return{ok:true};}catch(error){return reply.code(raidActionStatusCode(error)).send({error:error instanceof Error?error.message:"Commitment could not be adjudicated"});}
 }
 async function concludeRaidOperation(request:FastifyRequest<{Params:RaidParams}>,reply:FastifyReply){
-  const guildie=await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);if(!guildie)return reply.code(401).send({error:"Authentication required"});
-  try{await concludeRaid(guildie.guildieId,request.params.raidId);return{ok:true};}catch(error){return reply.code(raidActionStatusCode(error)).send({error:error instanceof Error?error.message:"Raid could not be concluded"});}
+  const identity=await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);if(!identity)return reply.code(401).send({error:"Authentication required"});
+  try{await concludeRaid(identity.identityId,request.params.raidId);return{ok:true};}catch(error){return reply.code(raidActionStatusCode(error)).send({error:error instanceof Error?error.message:"Raid could not be concluded"});}
 }
 
 export async function registerRaidOperationDetailPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {

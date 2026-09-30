@@ -92,11 +92,12 @@ async function currentRosterCharacters(guildId: string): Promise<RosterCharacter
     character_name: string;
     realm_slug: string | null;
   }>(
-    `SELECT region, realm_id, character_id, character_name, realm_slug
-       FROM guild_roster_memberships
-      WHERE guild_id = $1
-        AND currently_present = true
-      ORDER BY rank_index, character_name`,
+    `SELECT cr.region, cr.realm_id, cr.character_id, cr.name AS character_name, cr.realm_slug
+       FROM guild_roster gr
+       JOIN character_roster cr ON cr.character_record_id = gr.character_record_id
+      WHERE gr.guild_id = $1
+        AND gr.currently_present = true
+      ORDER BY gr.rank_index, cr.name`,
     [guildId],
   );
 
@@ -133,26 +134,27 @@ export async function guildCharactersNeedingEnrichment(
     media_last_failure_status: number | null;
   }>(
     `SELECT
-       grm.region,
-       grm.realm_id,
-       grm.character_id,
+       cr.region,
+       cr.realm_id,
+       cr.character_id,
        (wcp.character_id IS NULL) AS profile_missing,
        (wcp.character_id IS NULL OR wcp.media_acquired_at IS NULL) AS media_missing,
        acq.profile_last_attempted_at,
        acq.profile_last_failure_status,
        acq.media_last_attempted_at,
        acq.media_last_failure_status
-     FROM guild_roster_memberships grm
+     FROM guild_roster gr
+     JOIN character_roster cr ON cr.character_record_id = gr.character_record_id
      LEFT JOIN wow_character_profiles wcp
-       ON wcp.region = grm.region
-      AND wcp.realm_id = grm.realm_id
-      AND wcp.character_id = grm.character_id
+       ON wcp.region = cr.region
+      AND wcp.realm_id = cr.realm_id
+      AND wcp.character_id = cr.character_id
      LEFT JOIN wow_character_presentation_acquisition acq
-       ON acq.region = grm.region
-      AND acq.realm_id = grm.realm_id
-      AND acq.character_id = grm.character_id
-     WHERE grm.guild_id = $1
-       AND grm.currently_present = true`,
+       ON acq.region = cr.region
+      AND acq.realm_id = cr.realm_id
+      AND acq.character_id = cr.character_id
+     WHERE gr.guild_id = $1
+       AND gr.currently_present = true`,
     [guildId],
   );
 

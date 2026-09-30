@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { SESSION_COOKIE_NAME, authenticatedGuildie } from "../../auth.js";
+import { SESSION_COOKIE_NAME, authenticatedIdentity } from "../../auth.js";
 import { installationGuildBinding } from "../../core/installation/guild-binding.js";
 import { discoverInstallationGuildCandidates } from "../../core/installation/guild-candidates.js";
 import { assetUrl, type AssetRegistry } from "../assets.js";
@@ -44,8 +44,8 @@ export async function registerSetupPage(app: FastifyInstance, assets: AssetRegis
     const binding = await installationGuildBinding();
     if (binding?.authorizedAt) return reply.redirect("/");
 
-    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
-    if (!guildie) {
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) {
       return reply.type("text/html; charset=utf-8").send(document(
         assets,
         '<p>Connect your Blizzard account to identify the guild this installation will serve.</p><p><a class="button-primary setup-action" href="/auth/blizzard/start?return_to=%2Fsetup">Continue with Blizzard</a></p>',
@@ -53,7 +53,7 @@ export async function registerSetupPage(app: FastifyInstance, assets: AssetRegis
     }
 
     if (!binding) {
-      const candidates = await discoverInstallationGuildCandidates(guildie.guildieId);
+      const candidates = await discoverInstallationGuildCandidates(identity.identityId);
       const choices = candidates.map((candidate) => `
         <form method="post" data-setup-guild>
           <input type="hidden" name="region" value="${escapeHtml(candidate.region)}">

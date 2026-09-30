@@ -4,7 +4,8 @@ import {
   type BlizzardCharacterGuildReference,
 } from "../../blizzard.js";
 import type { Region } from "../../config.js";
-import { controlledCharactersForGuildie } from "../identity/controlled-characters.js";
+import { controlledCharacterRecordIdsForIdentity } from "../identity/controlled-characters.js";
+import { characterProjections } from "../identity/character-projection.js";
 
 export type InstallationGuildCandidate = {
   guildId: string;
@@ -53,9 +54,9 @@ function candidateFromReference(
 }
 
 export async function discoverInstallationGuildCandidates(
-  guildieId: string,
+  identityId: string,
 ): Promise<InstallationGuildCandidate[]> {
-  const characters = await controlledCharactersForGuildie(guildieId);
+  const characters = await characterProjections(await controlledCharacterRecordIdsForIdentity(identityId));
   const accessToken = await applicationAccessToken();
   const candidates = new Map<string, InstallationGuildCandidate>();
 
