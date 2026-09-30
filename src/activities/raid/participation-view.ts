@@ -1,4 +1,4 @@
-import { controlledCharactersForIdentity } from "../../core/identity/controlled-characters.js";
+import { controlledCharacterRecordIdsForIdentity } from "../../core/identity/controlled-characters.js";
 import { controlledGuildMemberCharacters } from "../../core/guild/guild-characters.js";
 import { characterProjections } from "../../core/identity/character-projection.js";
 import { identityRepresentations } from "../../core/identity/guildie-attribution.js";
@@ -62,7 +62,7 @@ export async function raidParticipationCharacters(
         (await controlledGuildMemberCharacters(guildieId, raid.guildId))
           .map((character) => character.characterRecordId),
       )
-    : await controlledCharactersForIdentity(guildieId);
+    : await characterProjections(await controlledCharacterRecordIdsForIdentity(guildieId));
   const eligible = controlled.filter((character) => character.className !== null);
 
   return {
