@@ -1,9 +1,9 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { characterMembership } from "./core/guild/character-membership.js";
 import { effectiveGuildAuthority } from "./core/authority/guild-permissions.js";
-import { mainCharacterForGuildie } from "./core/identity/main-character.js";
-import { guildieExists } from "./core/identity/guildie.js";
-import { guildCharactersForGuildie } from "./core/guild/guild-characters.js";
+import { characterRepresentationForIdentity } from "./core/identity/main-character.js";
+import { identityExists } from "./core/identity/guildie.js";
+import { guildCharactersForIdentity } from "./core/guild/guild-characters.js";
 import { requireOperationalInstallationGuildBinding } from "./core/installation/guild-binding.js";
 import { parseRegion } from "./config.js";
 
@@ -15,24 +15,24 @@ function readAuthorized(request: FastifyRequest): boolean {
 }
 
 export async function registerApiV1Routes(app: FastifyInstance): Promise<void> {
-  app.get("/api/v1/guildies/:guildieId", async (request, reply) => {
+  app.get("/api/v1/identities/:identityId", async (request, reply) => {
     if (!readAuthorized(request)) return reply.code(401).send({ error: "invalid_machine_authority" });
 
-    const params = request.params as { guildieId?: unknown };
-    if (typeof params.guildieId !== "string" || !params.guildieId) {
-      return reply.code(400).send({ error: "invalid_guildie_coordinate" });
+    const params = request.params as { identityId?: unknown };
+    if (typeof params.identityId !== "string" || !params.identityId) {
+      return reply.code(400).send({ error: "invalid_identity_coordinate" });
     }
 
-    const exists = await guildieExists(params.guildieId);
-    if (!exists) return reply.code(404).send({ error: "guildie_not_found" });
+    const exists = await identityExists(params.identityId);
+    if (!exists) return reply.code(404).send({ error: "identity_not_found" });
 
     const [selectedMain, guildAuthority] = await Promise.all([
-      mainCharacterForGuildie(params.guildieId),
-      effectiveGuildAuthority(params.guildieId),
+      characterRepresentationForIdentity(params.identityId),
+      effectiveGuildAuthority(params.identityId),
     ]);
 
     return reply.send({
-      guildie_id: params.guildieId,
+      identity_id: params.identityId,
       guild: {
         membership: guildAuthority
           ? {
