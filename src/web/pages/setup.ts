@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { SESSION_COOKIE_NAME, authenticatedGuildie } from "../../auth.js";
+import { SESSION_COOKIE_NAME, authenticatedIdentity } from "../../auth.js";
 import { installationGuildBinding } from "../../core/installation/guild-binding.js";
 import { discoverInstallationGuildCandidates } from "../../core/installation/guild-candidates.js";
 import { assetUrl, type AssetRegistry } from "../assets.js";
@@ -44,7 +44,7 @@ export async function registerSetupPage(app: FastifyInstance, assets: AssetRegis
     const binding = await installationGuildBinding();
     if (binding?.authorizedAt) return reply.redirect("/");
 
-    const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
+    const guildie = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
     if (!guildie) {
       return reply.type("text/html; charset=utf-8").send(document(
         assets,
