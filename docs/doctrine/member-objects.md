@@ -1,88 +1,204 @@
-# Member Objects
+# Identity and Member Objects
 
-This document records the current working understanding of Guild Operations' member-related objects and how they should be used.
+This document defines Guild Operations' identity model and the member-related facts derived from it.
 
-It is guidance rather than frozen ontology. Concrete guild participation features are allowed to pressure these boundaries, but the distinctions below have now proven operationally useful.
+Guild Operations is a World of Warcraft guild product. Its identity model therefore begins with the identities and facts that are meaningful to operating a WoW guild rather than attempting to model a universal person above every external provider.
 
-## Subject is contextual, not an object
+## Identity is the stable layer
 
-Guild Operations does not have a domain object called `Subject` and does not persist one.
+An **Identity** is a durable identity that Guild Operations recognizes.
 
-**Subject** is contextual language: it designates an already existing object in relation to a question, statement, event, or operation.
+Identity answers:
 
-For example:
+> Who can Guild Operations recognize?
 
-- the subject of "what event happens tomorrow?" may be a raffle round;
-- the subject of "who won the raffle?" may be a Character;
-- the Guildie who controls that Character may be relevant attribution, but that does not make Guildie a universal Subject object.
-
-Persist and name the actual object or relationship: `guildie_id`, Character coordinates, `round_id`, `claim_id`, `guild_event_id`, and similarly specific coordinates. Do not introduce a generic `subject_id` as a domain or persistence coordinate.
-
-## The two guild membership realms
-
-OH CRIT I Pulled! exists in two related organizational realms:
+Identity is the stable layer beneath attributes, authority, capabilities, and actions:
 
 ```text
-WoW / Blizzard-established guild organization
-    member object: Character
-
-real-world guild organization around that WoW guild
-    member object: Guildie
+Identity
+   ↓
+Identity attributes and controlled context
+   ↓
+Authority / capabilities
+   ↓
+Actions
 ```
 
-Blizzard establishes the first organization and remains authoritative for its current Character roster and numeric ranks.
+An Identity is not required to be backed by Blizzard. Discord and future concrete authorities may establish identities that Guild Operations can legitimately recognize. Different backing authorities provide different domain context; they do not create different grades of identity validity.
 
-Guild Operations represents the second organization: the people who administer and participate around the WoW guild, together with the guild-created operational truth that Blizzard does not own.
+Do not introduce a universal human, person, member, or account-holder object above Identity. Cross-authority relationships are expressed between recognized Identities when concrete product behavior requires them.
 
-## Guildie
+## World of Warcraft is the domain anchor
 
-A **Guildie** is Guild Operations' durable representation of the real-world guild organizational member: the account holder and control representative for their WoW Characters.
+Guild Operations exists to operate around a World of Warcraft guild. The most important identity information it can obtain is therefore an authenticated, GO-recognized **WoW Account Identity**.
 
-The durable Guild Operations coordinate is:
+A WoW Account Identity is not privileged because Blizzard is universally a superior identity provider. It is privileged because World of Warcraft is the domain Guild Operations exists to serve. A WoW Account unlocks the authoritative context from which GO can understand controlled Characters, the subject guild, guild rank, derived Guildie status, and rank-derived capabilities.
+
+Accordingly:
+
+> **A WoW Account Identity is Guild Operations' canonical domain identity and richest desired form of identification.**
+
+This does not make WoW identity mandatory for every operation. An external Identity may act independently wherever the operation does not require WoW-derived facts.
+
+## Blizzard authentication and the WoW Account boundary
+
+Blizzard authentication establishes an authenticated Blizzard principal/profile and allows Guild Operations to discover the subordinate WoW accounts controlled through that authority.
+
+Conceptually:
 
 ```text
-guildie_id
+authenticated Blizzard principal/profile
+        │
+        │ reveals / establishes control authority over
+        ▼
+WoW Account(s)
+        │
+        ▼
+Character(s)
 ```
 
-Blizzard authentication establishes or resolves the Guildie through Blizzard account authority. The authenticated account profile reveals subordinate WoW accounts and controlled Characters.
+The authenticated Blizzard principal/profile is **authentication authority above the Guild Operations Identity boundary**. It is not itself the GO Identity.
 
-Guildie continuity is non-destructive. A Guildie remains known even when none of their currently controlled Characters are present on the Character roster.
-
-Guildie-owned or Guildie-facing state includes:
-
-- Blizzard account authority used to resolve that Guildie;
-- controlled Characters;
-- selected main;
-- optional Discord association;
-- current organizational participation;
-- effective current guild rank;
-- guild participation and history when the participation fact genuinely belongs to the Guildie.
-
-## Blizzard principal and account authority
-
-The Blizzard-authenticated principal establishes that the browser operator controls the corresponding Blizzard account context.
-
-The root external coordinate is currently:
+Each subordinate WoW account is independently meaningful in the WoW domain: it is independently occupiable in WoW and owns its own Character population. Guild Operations therefore recognizes an individual WoW account as the Identity boundary.
 
 ```text
-region + Blizzard authenticated principal identifier
+──────── outside GO Identity concern ────────
+authenticated Blizzard principal/profile
+        │
+────────── GO Identity boundary ─────────────
+        ▼
+WoW Account Identity
+        │
+        └── controlled Character(s)
 ```
 
-That authority resolves one Guildie and reveals the WoW accounts and Characters currently controlled through that Blizzard account context.
+One authenticated Blizzard principal may reveal multiple WoW Account Identities. Their common authentication authority does not merge or associate them inside Guild Operations.
 
-Blizzard account authority answers:
+> **Authentication topology must not become identity topology.**
 
-> Which Characters does this Guildie currently control?
+## Discovery, declaration, establishment, and occupation
 
-It does not by itself answer whether those Characters are currently members of OH CRIT I Pulled! or whether the Guildie currently has rank-derived organizational authority.
+External discovery and GO recognition are distinct.
 
-## WoW account
+**Discovery** means an external authority has revealed an identity candidate. Discovery alone does not establish a Guild Operations Identity.
 
-A WoW account preserves Blizzard's observed account structure between a Guildie and their Characters. It is not currently a meaningful member-facing Guild Operations object.
+For WoW-backed login, Blizzard authentication reveals the WoW accounts available to the authenticated principal. The user selects one. That selection is an implicit declaration of intent to occupy that Identity; it does not require a second confirmation ceremony.
 
-## Character
+If the selected WoW Account is not yet recognized by GO, GO **establishes** it and continues. Establishment means GO accepts the externally authoritative identity into its own durable identity space.
 
-A **Character** is a durable WoW character object and the member object of Blizzard's guild organization.
+```text
+Blizzard authentication
+        ↓
+discover WoW Accounts
+        ↓
+user selects one
+        ↓
+selection declares intent to occupy
+        ↓
+GO resolves selected account
+        │
+        ├── already established → occupy
+        └── not established     → establish → occupy
+```
+
+GO does not eagerly establish every identity an external provider exposes.
+
+An identity is **occupiable** when both its external authority and Guild Operations recognize it.
+
+For the web application, occupation is the active GO session backed by an established Identity. A separate durable occupation object is unnecessary:
+
+```text
+externally recognized identity
+        ↓
+user declaration / selection
+        ↓
+established GO Identity
+        ↓
+session = occupation
+```
+
+Signing out ends the session/occupation. It does not destroy the Identity or rewrite history.
+
+## Actor
+
+An **Actor** is an accepted Identity authoring an action.
+
+Actorhood is a role of Identity, not a second durable identity hierarchy. Procedure may constrain whether a particular Actor is allowed to perform an action, but those constraints do not create the Actor.
+
+An Actor has two identity coordinates when origination and canonical resolution differ:
+
+- **subject** — the canonical Identity to which GO resolves and attributes the Actor;
+- **origin** — the Identity through which the action entered Guild Operations.
+
+For ordinary self-resolving actions they are the same:
+
+```text
+native WoW action
+  subject = WoW Identity A
+  origin  = WoW Identity A
+
+unassociated Discord action
+  subject = Discord Identity B
+  origin  = Discord Identity B
+```
+
+When an external Identity is associated with a WoW Account Identity, the WoW Account is the canonical Actor subject while the external Identity remains the origin:
+
+```text
+Discord Identity C ── association ──► WoW Identity A
+
+Discord-originated action:
+  subject = WoW Identity A
+  origin  = Discord Identity C
+```
+
+The origin preserves truthful ingress/provenance and provider-specific context. The subject is the coordinate downstream domain procedure uses when singular Actor identity matters.
+
+> **Actor subject identifies who GO resolved the author to. Actor origin identifies the Identity through which the action was authored.**
+
+Historical attribution records the Identity coordinate appropriate to the historical fact. Current attributes, rank, capabilities, or representation must not be mistaken for historical Actor identity. Association/reconciliation policy for already-recorded history is a separate concern and must not silently corrupt truthful historical attribution.
+
+## Identity association
+
+Association exists only at the Identity layer.
+
+Every cross-authority association recognized by Guild Operations has exactly one GO-recognized WoW Account Identity as its domain anchor.
+
+```text
+GO-recognized WoW Account Identity
+              ▲
+              │ association
+              │
+       external Identity
+```
+
+Valid association does not form an arbitrary identity graph. External identities are not associated directly to Characters, Guildie status, selected representation, or one another in order to manufacture transitive identity.
+
+The association's consequence for Actor resolution is intentionally asymmetric even if the relationship itself is described conversationally as an association: an associated external Identity resolves to the WoW Account Identity because the WoW Account is GO's canonical domain identity.
+
+Association does not erase either Identity. The external Identity remains independently meaningful as an authority-specific identity and as the origin of interactions through that authority.
+
+This gives three important cases:
+
+```text
+WoW Identity A
+  → Actor subject A
+
+external Identity B, unassociated
+  → Actor subject B
+
+external Identity C, associated to WoW Identity A
+  → Actor subject A
+  → origin remains C when C authored the interaction
+```
+
+An external Identity that cannot resolve to a WoW Account Identity behaves as a **guest Actor**: it is fully identifiable and may act wherever procedure permits, but it has no WoW-backed context from which GO can derive WoW-specific attributes or capabilities.
+
+An associated external Identity is not a guest that has inherited arbitrary powers. It is an ingress identity for an Actor whose canonical subject resolves to a WoW-backed Identity.
+
+## Characters
+
+A **Character** is a durable World of Warcraft context object controlled beneath a WoW Account Identity.
 
 The durable Blizzard Character coordinate is:
 
@@ -90,249 +206,170 @@ The durable Blizzard Character coordinate is:
 region + realm_id + character_id
 ```
 
-A Character can be known through Blizzard's guild roster even when no Guildie has yet demonstrated control of it through Guild Operations.
+Character control is authoritative external context observed through Blizzard. Characters do not belong to Guildie. Guildie is derived later from Character facts.
 
-For guild operations, a Character is either currently on the Blizzard guild roster with a Blizzard-owned numeric rank, or it is not. Extra `character-member` or `character-membership` nouns are unnecessary to describe that state.
+A Character may be known through Blizzard's guild roster even when GO has not established the WoW Account Identity that controls it.
 
-Characters remain the primary recognition surface because they are how guildmates commonly recognize one another in WoW. Favor useful recognition cues over Armory-style profile completeness:
+Characters remain important recognition surfaces because guildmates commonly recognize one another through Characters. Useful presentation facts may include name, class or active specialization, realm, and current guild rank, but presentation does not establish identity, control, or guild membership.
 
-- character name;
-- class / active specialization;
-- realm;
-- current guild rank.
+## Subject guild and Guild Member Character
 
-## Character roster
+The **subject guild** is the World of Warcraft guild represented by this Guild Operations installation.
 
-The **Character roster** is dictated by the actual in-game guild environment and observed through Blizzard.
+Blizzard owns whether a Character is currently a member of that guild and the Character's numeric guild rank. Guild Operations persists/reconciles those observations without acquiring authority over their underlying truth.
+
+A **Guild Member Character** is a derived classification:
 
 ```text
-WoW / Blizzard
-    ↓
-current guild Character roster
+GuildMemberCharacter(character, subjectGuild)
+⇔
+character has a recognized guild rank in subjectGuild
 ```
 
-Blizzard owns whether a Character is currently on that roster and the Character's numeric guild rank. Guild Operations persists and reconciles those observations without converting them into permanent organizational membership.
+No recognized rank in the subject guild means the Character is not currently a Guild Member Character.
 
-A Character leaving the roster does not erase the Character or historical Guild Operations activity involving it.
+This classification is derived from authoritative Character state. It is not an independently authored or independently authoritative membership record.
 
-## Guildie roster and organizational authority
+## Guildie is a derived Identity attribute
 
-Current Guildie organizational participation and rank-derived authority come from two independent Blizzard-authoritative observations. Blizzard account authority establishes which Characters a Guildie currently controls; Blizzard guild-roster authority separately establishes which Characters are current guild members and the numeric rank attached to each.
+A **Guildie** is not an Identity, Actor, durable person object, or intermediate owner of Characters.
 
-Neither observation substitutes for the other:
+Guildie is a **derived Identity attribute**.
+
+For a WoW Account Identity:
 
 ```text
-control without roster membership
-    → known controlled Character
-    → not currently eligible for Guild Operations guild participation
-
-roster membership without demonstrated Guildie control
-    → current guild Character
-    → not attributable to that Guildie
-
-control + roster membership
-    → eligible Guild Operations Character for that Guildie
+Guildie(identity, subjectGuild)
+⇔
+∃ character ∈ ControlledCharacters(identity):
+    character has a recognized rank in subjectGuild
 ```
 
-Character presentation is another independent observation and cannot establish either control or guild membership.
-
-### Guildie roster and participation surface
-
-The **Guildie roster** is Guild Operations-derived current organizational participation.
+Therefore:
 
 ```text
-Guildie's currently controlled Characters
-                ∩
-current Blizzard Character roster
-                ↓
-current Guildie organizational participation
+Identity controls ≥1 Guild Member Character
+    → Identity currently has Guildie attribute
+
+Identity controls 0 Guild Member Characters
+    → Identity does not currently have Guildie attribute
 ```
 
-The same intersection defines which Characters a Guildie may currently manage or represent as inside Guild Operations:
+The Guildie attribute can appear or disappear as authoritative Character control or subject-guild roster facts change. The Identity remains stable.
+
+Guildie must not be independently authored or persisted as a competing source of membership truth. An implementation may cache/materialize a derived result for operational reasons, but the authoritative meaning remains derivable from Identity, Character control, and subject-guild rank.
+
+Terms such as `guildie.joined` or `guildie.left`, if retained, describe transitions of this derived attribute. They do not describe creation or destruction of Identity.
+
+> **Derived means derived.**
+
+## Rank and capability
+
+Blizzard owns the numeric guild rank of each current subject-guild Character. Guild Operations owns what those ranks permit inside Guild Operations.
+
+Rank is a Character-level authoritative fact. Rank-derived capability is evaluated from the subject-guild ranks of Characters controlled by the relevant WoW Account Identity.
+
+A selected Character representation does not determine authority.
+
+The dependency remains:
 
 ```text
-currently controlled by Guildie
-        ∩
-currently present in Blizzard guild roster
+WoW Account Identity
+        ↓ controls
+Character(s)
+        ↓ subject-guild rank
+derived Guildie / effective authority
         ↓
-eligible Guild Operations Character
+GO capabilities
 ```
 
-Control alone is insufficient. Guild-roster membership alone is insufficient. Character profile or media availability is also insufficient and cannot grant eligibility.
+An external guest Actor has no WoW Character/rank context and therefore cannot satisfy constraints that require Guildie, Guild Member Character, or rank-derived capability. This does not make the external Identity invalid. It means the requested operation requires facts that Identity cannot supply.
 
-Guild Operations may retain account-control observations for Characters outside the current guild roster, but those Characters do not become usable or presentable Guildie Characters until Blizzard guild-roster authority also establishes current membership.
+Open or `Any` operations may accept such an Actor without requiring WoW context.
 
-The invariant is:
+> **Identity determines who is an Actor. Subject-guild rank determines when WoW guild authority permits that Actor to act.**
+
+## Identity attributes and representation
+
+Identity attributes describe a stable Identity according to the authority appropriate to each attribute.
+
+Attributes may have different authorities:
+
+- **Guildie** is derived by GO from Blizzard-authoritative Character facts.
+- **Representation** is declarable by the user.
+
+**Representation** answers how an Identity should be presented where GO permits a choice of representation. A selected main Character and a nickname are examples of the same class of work: choosing representation.
+
+Representation does not establish Identity, Character control, Guildie status, rank, capability, or Actor attribution.
+
+A representation may become unavailable when the context supporting it changes without destroying the Identity or rewriting historical actions.
+
+Do not create a second identity layer merely to model representation.
+
+## Participation and Actor resolution
+
+Activity procedures consume Actors; they do not own cross-authority identity resolution.
+
+A Participation Offer represents one Actor. When associated identities are involved, the Offer is keyed to the resolved Actor **subject**, not independently to every Identity that can originate actions for that Actor.
 
 ```text
-at least one controlled roster Character
-    → Guildie has a current participation surface
-
-zero controlled roster Characters
-    → Guildie remains known
-    → no current guild participation surface
-    → no current rank-derived authority
+WoW Identity A ───────────────────┐
+                                  ├─ Actor subject A → one Offer
+associated Discord Identity C ────┘
 ```
 
-This state is derived and non-destructive; it is not a second persisted source of membership truth.
-
-`guildie.joined` means the Guildie transitioned from no current participation surface to having one. It does not mean the Guildie object was created.
-
-`guildie.left` means the Guildie transitioned from having a current participation surface to having none. It is not a closeout, deletion, retirement, or historical rewrite.
-
-A Guildie's current participation surface can appear or disappear because the Blizzard Character roster changed or because Blizzard account reconciliation changed which Characters the Guildie currently controls.
-
-### Durable authority coordinates
-
-Character authority joins by:
+An unassociated external Identity remains independently resolvable:
 
 ```text
-region + realm_id + character_id
-```
-
-Mutable presentation fields such as Character name or realm name are not continuity coordinates.
-
-The configured guild is identified internally by Blizzard's numeric `guild_id`.
-
-The authority invariant is:
-
-> A Guildie's current guild participation and rank-derived authority exist only where Blizzard-demonstrated Character control intersects Blizzard's current guild roster.
-
-Guildie continuity survives changes to that intersection. Current authority does not.
-
-## Guild rank
-
-Blizzard owns the numeric rank attached to each current roster Character. Guild Operations owns what that rank means outside WoW.
-
-A Guildie's effective rank is the highest-authority rank among all currently controlled Characters on the current Character roster. Under Blizzard's current rank ordering, lower numeric rank index means higher authority.
-
-The selected main does not determine authority.
-
-Rank is both an authorization input and a recognition cue. Keep those uses conceptually separate.
-
-## Selected main
-
-The **selected main** is a Guildie presentation preference.
-
-It answers:
-
-> Which eligible guild Character does this Guildie want Guild Operations to present them through?
-
-It does not establish Guildie continuity, Character control, current Guildie organizational participation, or effective rank.
-
-A stored selection may remain recorded after that Character becomes ineligible. Current presentation should simply treat the selection as unavailable until an eligible main is selected again.
-
-## Discord association and server state
-
-A Discord identity is an optional association to an existing Guildie.
-
-Discord never creates the canonical Guildie and grants no guild authority by itself.
-
-```text
-Blizzard account authority ──► Guildie ◄── optional Discord association
-                                │
-                                └── controls Character(s)
-```
-
-Association remains distinct from Discord server membership, roles, and channels.
-
-For an associated Guildie, Guild Operations may directly ask Discord what Discord currently says about that user inside the configured guild server. That server-local observation is a **Discord authority sidecar** to the Guildie, not a second Guildie or alternate membership system.
-
-The authority direction is:
-
-```text
-WoW / Blizzard
+Discord Identity B
     ↓
-Guildie / Guild Operations
+Actor subject B
     ↓
-Discord association
-    ↓
-Discord guild-member observation
-    ↓
-Discord projections / participation convenience
+valid Offer where procedure permits guest / Any participation
 ```
 
-Discord is authoritative for its own mundane current state, such as whether the associated user is presently in the Discord server and which Discord roles that member currently has. Those observations are trustworthy evidence at observation time, but they do not become authority over Blizzard-owned guild membership/rank or Guild Operations-owned capabilities.
+Association is therefore not a prerequisite for participation merely because the interaction originated externally. It matters when WoW-backed context is required or when multiple ingress identities must resolve to one Actor.
 
-Guild Operations may project managed roles into Discord from higher-owned truth. A linked-Guildie role is authored from the Guildie↔Discord association. Rank roles are authored from Blizzard rank as interpreted by Guild Operations. Possessing either role never creates the underlying truth.
+A procedure may constrain Actors by current derived facts or require fulfillment from WoW context. Those constraints answer whether/how an already-recognized Actor may participate; they do not determine whether the Identity is legitimate.
 
-This creates a useful authorization asymmetry:
+## Subject is contextual language
 
-> Projected Discord state may refuse early. It may not approve.
+Guild Operations has no universal persisted domain object called **Subject**.
 
-A missing managed role may produce a false refusal when projection is stale. That inconvenience is acceptable. A present managed role may only justify asking Guild Operations to perform the authoritative capability check; backend authorization remains decisive.
+A subject is contextual language for the object currently designated by a statement, question, event, or operation. Actor `subject` is a specific identity-resolution coordinate within the Actor contract; it does not establish a universal `Subject` domain object.
 
-Current implementation and reconciliation details live in [`../infrastructure/guildie-discord-state.md`](../infrastructure/guildie-discord-state.md).
-
-## Session
-
-The application session resolves to `guildie_id`.
-
-That coordinate establishes which Guildie is operating the interface. Current participation surface, rank-derived authority, capabilities, and presentation are derived from current backend truth rather than embedded permanently in the session.
-
-Signing out ends the session. It does not alter Guildie continuity, Characters, selected main, Discord association, or historical participation.
-
-## Capability
-
-A capability is Guild Operations' translation of current authority into an application-level permission.
-
-Capabilities are not identity objects. Where current guild authority matters, they derive from the Guildie's current participation surface and effective rank rather than the selected main.
-
-## Current mental model
-
-```text
-Blizzard account authority
-        │
-        ▼
-Guildie
-├── guildie_id
-├── controlled Character(s)
-├── selected main
-├── optional Discord association
-│   └── Discord server-local observation / projection sidecar
-├── participation history
-└── current derived capabilities
-
-WoW / Blizzard
-        │
-        ▼
-Character roster
-= current Character membership + rank
-        │
-        └──────────────┐
-                       ▼
-controlled Characters ∩ Character roster
-                       │
-                       ▼
-                  Guildie roster
-             = current organizational participation
-               + effective rank
-```
+Persist and name actual objects and relationships. Do not introduce a generic `subject_id` merely as a shortcut for unrelated domains.
 
 ## Choosing the right coordinate
 
-Use **Guildie** when the fact genuinely belongs to the real-world guild organizational member.
+Use **Identity** for durable recognition and cross-authority association.
 
-Use **Character** when the fact genuinely concerns a specific WoW Character or its participation in Blizzard's guild organization.
+Use **WoW Account Identity** as GO's canonical domain identity and the anchor for every external identity association.
 
-Use current **Character roster** state when Blizzard-owned in-game guild membership matters.
+Use **Actor subject** for the canonical Identity to which an authored action resolves.
 
-Use current **Guildie roster** state when Guild Operations organizational participation or rank-derived authority matters.
+Use **Actor origin** when the ingress identity or provider-specific provenance matters.
 
-Use the controlled-Character ∩ current-roster intersection when deciding which Characters a Guildie may manage or represent as in Guild Operations.
+Use **Character** for a specific WoW Character and Character-level Blizzard facts.
 
-Use selected main for presentation, not identity or authorization.
+Use **Guild Member Character** as the derived classification that a Character currently has a recognized rank in the subject guild.
 
-Use Discord identity to resolve or project an existing Guildie through Discord, not as an alternate owner of guild truth.
+Use **Guildie** as the derived Identity attribute that the Identity controls at least one Guild Member Character.
 
-Use Discord server-local observation for facts Discord owns about that associated user at observation time, not for Guild Operations authorization.
+Use **Representation** for declarable presentation choices, not identity or authorization.
 
-Use capabilities at operation boundaries when a real operation needs authorization.
+Use **capabilities** at operation boundaries when a real operation requires authorization.
 
-Use the word **subject** only contextually when ordinary language requires identifying what a statement or relation is about. Do not turn that contextual role into a generic domain object or persistence coordinate.
+Use **guest** for an Actor whose subject remains an external Identity because no WoW Account association resolves it into GO's domain anchor.
 
-## Guidance, not a finished ontology
+## Doctrine boundary
 
-These distinctions exist because concrete Guild Operations behavior proved they were needed. Do not add another identity-shaped layer merely because one can be imagined.
+These are semantic rules, not a persistence migration plan.
 
-> Use the distinctions we have already earned. Add another only when a real guild activity proves that we need it.
+The current implementation may still use `guildie_id`, Blizzard-principal-rooted ownership, Guildie-scoped sessions, Guildie-scoped authority, or direct Guildie↔Discord associations. Those structures are implementation debt relative to this doctrine and must be audited according to what each persisted coordinate actually means.
+
+Do not mechanically rename every `guildie_id` to `identity_id`. Determine whether each use means Identity, Actor attribution, representation ownership, current derived Guildie state, authority, preference ownership, or a concrete procedure-owned historical fact.
+
+Likewise, this doctrine does not yet prescribe retroactive reconciliation when a previously guest external Identity is later associated with a WoW Account Identity. Historical attribution must remain truthful; reconciliation policy should be earned and specified separately rather than smuggled into the definition of Identity.
+
+> **Stabilize the Identity. Then determine what that Identity is allowed to do.**
