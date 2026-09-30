@@ -45,34 +45,56 @@ async function reconcileIdentityCharacters(
   input: { identityId: string; region: Region; account: BlizzardWowAccount },
 ): Promise<void> {
   await client.query(
-    "UPDATE characters SET currently_controlled = false WHERE identity_id = $1 AND region = $2",
-    [input.identityId, input.region],
+    `UPDATE controlled_character_roster
+        SET currently_controlled = false
+      WHERE identity_id = $1
+        AND currently_controlled = true`,
+    [input.identityId],
   );
 
   for (const character of input.account.characters ?? []) {
-    const result = await client.query(
-      `INSERT INTO characters (
-         identity_id, region, realm_id, character_id, name, realm_name, realm_slug,
-         level, faction, currently_controlled
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,true)
+    const observed = await client.query<{ character_record_id: string }>(
+      `INSERT INTO character_roster (
+         region, realm_id, character_id, name, realm_name, realm_slug, level, faction
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
        ON CONFLICT (region, realm_id, character_id) DO UPDATE SET
-         identity_id = EXCLUDED.identity_id,
          name = EXCLUDED.name,
          realm_name = EXCLUDED.realm_name,
          realm_slug = EXCLUDED.realm_slug,
          level = EXCLUDED.level,
          faction = EXCLUDED.faction,
-         currently_controlled = true,
          last_seen_at = now()
-       WHERE characters.identity_id = EXCLUDED.identity_id
        RETURNING character_record_id`,
       [
-        input.identityId, input.region, String(character.realm.id), String(character.id),
+        input.region, String(character.realm.id), String(character.id),
         character.name, localizedValue(character.realm.name), character.realm.slug ?? null,
         character.level ?? null, factionValue(character.faction),
       ],
     );
-    if (!result.rowCount) throw new Error("Blizzard Character coordinate is already controlled by another Identity");
+    const characterRecordId = observed.rows[0]?.character_record_id;
+    if (!characterRecordId) throw new Error("Observed Blizzard Character was not persisted");
+
+    const controlledElsewhere = await client.query<{ identity_id: string }>(
+      `SELECT identity_id
+         FROM controlled_character_roster
+        WHERE character_record_id = $1
+          AND currently_controlled = true
+          AND identity_id <> $2`,
+      [characterRecordId, input.identityId],
+    );
+    if (controlledElsewhere.rowCount) {
+      throw new Error("Blizzard Character coordinate is already controlled by another Identity");
+    }
+
+    await client.query(
+      `INSERT INTO controlled_character_roster (
+         identity_id, character_record_id, currently_controlled
+       ) VALUES ($1,$2,true)
+       ON CONFLICT (identity_id, character_record_id) DO UPDATE SET
+         currently_controlled = true,
+         last_seen_at = now()`,
+      [input.identityId, characterRecordId],
+    );
   }
 }
 
