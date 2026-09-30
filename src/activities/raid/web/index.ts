@@ -71,10 +71,13 @@ function offeredSpecInput(value:unknown):RaidOfferedSpecInput|null{
   const item=value as Record<string,unknown>;
   if(typeof item.specName!=="string"||!item.specName.trim())return null;
   const character=item.character;
-  if(!character||typeof character!=="object")return null;
-  const coordinate=character as Record<string,unknown>;
-  if(typeof coordinate.region!=="string"||typeof coordinate.realmId!=="string"||typeof coordinate.characterId!=="string")return null;
-  return {character:{region:coordinate.region,realmId:coordinate.realmId,characterId:coordinate.characterId},specName:item.specName.trim()};
+  if(character&&typeof character==="object"){
+    const coordinate=character as Record<string,unknown>;
+    if(typeof coordinate.region!=="string"||typeof coordinate.realmId!=="string"||typeof coordinate.characterId!=="string")return null;
+    return {character:{region:coordinate.region,realmId:coordinate.realmId,characterId:coordinate.characterId},specName:item.specName.trim()};
+  }
+  if(typeof item.className!=="string"||!item.className.trim())return null;
+  return {className:item.className.trim(),specName:item.specName.trim()};
 }
 
 export async function registerRaidParticipationRoutes(app:FastifyInstance,assets:AssetRegistry):Promise<void>{
