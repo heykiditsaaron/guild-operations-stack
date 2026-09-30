@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { SESSION_COOKIE_NAME, authenticatedGuildie } from "../../auth.js";
+import { SESSION_COOKIE_NAME, authenticatedIdentity } from "../../auth.js";
 import { activityOccurrence, activityParticipationOffersForGuildie, activityParticipationProjection, activityParticipationsForGuildie } from "../../core/activity/registry.js";
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage } from "../render.js";
@@ -26,7 +26,7 @@ export async function registerMyParticipationPage(app: FastifyInstance, assets: 
   app.get("/me/participation", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const [guildie, viewer] = await Promise.all([
-      authenticatedGuildie(sessionToken),
+      authenticatedIdentity(sessionToken),
       viewerForRequest(sessionToken),
     ]);
     if (!guildie || !viewer.authenticated) return reply.redirect("/auth/blizzard/start?return_to=%2Fme%2Fparticipation");
