@@ -3,7 +3,6 @@ import { characterMembership } from "./core/guild/character-membership.js";
 import { effectiveGuildAuthority } from "./core/authority/guild-permissions.js";
 import { characterRepresentationForIdentity } from "./core/identity/main-character.js";
 import { identityExists } from "./core/identity/identity.js";
-import { guildCharactersForIdentity } from "./core/guild/guild-characters.js";
 import { requireOperationalInstallationGuildBinding } from "./core/installation/guild-binding.js";
 import { parseRegion } from "./config.js";
 
