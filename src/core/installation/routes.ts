@@ -69,7 +69,7 @@ export async function registerInstallationRoutes(
     return reply.send({
       state: binding?.authorizedAt ? "operational" : binding ? "pending_authorization" : "unbound",
       authenticated: true,
-      guildie_id: identity.identityId,
+      identity_id: identity.identityId,
       binding,
       candidates,
     });
@@ -87,7 +87,7 @@ export async function registerInstallationRoutes(
 
     try {
       const binding = await establishPendingInstallationGuildBinding({
-        guildieId: identity.identityId,
+        identityId: identity.identityId,
         region,
         guildId: body.guild_id.trim(),
       });
