@@ -9,7 +9,8 @@ import {
 } from "./core/guild/guild-character-enrichment.js";
 import { effectiveGuildAuthority } from "./core/authority/guild-permissions.js";
 import { installationGuildBinding, installationOperational, requireOperationalInstallationGuildBinding } from "./core/installation/guild-binding.js";
-import { guildCharactersForIdentity } from "./core/guild/guild-characters.js";
+import { controlledGuildMemberCharacters } from "./core/guild/guild-characters.js";
+import { characterProjections } from "./core/identity/character-projection.js";
 import { characterRepresentationForIdentity, selectCharacterRepresentation } from "./core/identity/main-character.js";
 import { publishOperationalRecord } from "./operational-inspection.js";
 import {
@@ -397,12 +398,18 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
 
     const binding = await installationGuildBinding();
     const operational = binding?.authorizedAt != null;
-    const [guildCharacters, mainCharacter] = operational
+    const [guildMemberCharacters, mainCharacter] = operational
       ? await Promise.all([
-          guildCharactersForIdentity(identity.identityId),
+          controlledGuildMemberCharacters(identity.identityId),
           characterRepresentationForIdentity(identity.identityId),
         ])
       : [[], null];
+    const guildCharacters = await characterProjections(
+      guildMemberCharacters.map((character) => character.characterRecordId),
+    );
+    const guildMembershipByCharacterRecordId = new Map(
+      guildMemberCharacters.map((character) => [character.characterRecordId, character]),
+    );
 
     return reply.send({
       identity_id: identity.identityId,
@@ -426,7 +433,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
           realm_id: character.realmId,
           name: character.name,
           realm_name: character.realmName,
-          rank: character.rankIndex,
+          rank: guildMembershipByCharacterRecordId.get(character.characterRecordId)!.rankIndex,
           level: character.level,
           class_name: character.className,
           race_name: character.raceName,
