@@ -41,7 +41,7 @@ function eligibilityLabel(value: RaidEligibility): string {
 export async function registerRaidDefinitionPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get<{ Params: RaidParams }>("/activities/raid/:raidId/manage/definition", async (request, reply) => {
     const token = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, guildie, raid] = await Promise.all([
+    const [viewer, identity, raid] = await Promise.all([
       viewerForRequest(token),
       authenticatedIdentity(token),
       raidEventFacts(request.params.raidId),
