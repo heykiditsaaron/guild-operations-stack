@@ -33,7 +33,7 @@ export async function controlledCharactersForIdentity(identityId: string): Promi
   }>(
     `SELECT
        c.character_record_id,
-       c.identity_id,
+       ccr.identity_id,
        c.region,
        c.realm_id,
        c.character_id,
@@ -44,13 +44,14 @@ export async function controlledCharactersForIdentity(identityId: string): Promi
        wcp.class_name,
        wcp.active_spec_name,
        wcp.avatar_url
-     FROM characters c
+     FROM controlled_character_roster ccr
+     JOIN character_roster c ON c.character_record_id = ccr.character_record_id
      LEFT JOIN wow_character_profiles wcp
        ON wcp.region = c.region
       AND wcp.realm_id = c.realm_id
       AND wcp.character_id = c.character_id
-     WHERE c.identity_id = $1
-       AND c.currently_controlled = true
+     WHERE ccr.identity_id = $1
+       AND ccr.currently_controlled = true
      ORDER BY character_name, realm_name NULLS LAST`,
     [identityId],
   );
@@ -89,7 +90,7 @@ export async function characterByRecordId(characterRecordId: string): Promise<Co
   }>(
     `SELECT
        c.character_record_id,
-       c.identity_id,
+       ccr.identity_id,
        c.region,
        c.realm_id,
        c.character_id,
