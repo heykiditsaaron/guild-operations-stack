@@ -1,27 +1,27 @@
 import { requireOperationalInstallationGuildBinding } from "../installation/guild-binding.js";
 import { pool } from "../../db.js";
 
-export type GuildieAttribution = {
-  guildieId: string;
+export type IdentityRepresentation = {
+  identityId: string;
   displayName: string;
-  recognitionKind: "main_character" | "guildie";
+  recognitionKind: "main_character" | "identity";
   realmName: string | null;
 };
 
-export async function guildieAttributionsForGuildies(
-  guildieIds: Array<string | null | undefined>,
-): Promise<Map<string, GuildieAttribution>> {
-  const uniqueGuildieIds = [...new Set(guildieIds.filter((guildieId): guildieId is string => Boolean(guildieId)))];
-  if (uniqueGuildieIds.length === 0) return new Map();
+export async function identityRepresentations(
+  identityIds: Array<string | null | undefined>,
+): Promise<Map<string, IdentityRepresentation>> {
+  const uniqueIdentityIds = [...new Set(identityIds.filter((identityId): identityId is string => Boolean(identityId)))];
+  if (uniqueIdentityIds.length === 0) return new Map();
   const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
 
   const result = await pool.query<{
-    guildie_id: string;
+    identity_id: string;
     main_character_name: string | null;
     realm_name: string | null;
   }>(
     `SELECT
-       i.identity_id AS guildie_id,
+       i.identity_id AS identity_id,
        COALESCE(wcp.name, cr.name) AS main_character_name,
        COALESCE(wcp.realm_name, cr.realm_name) AS realm_name
      FROM identities i
@@ -46,18 +46,18 @@ export async function guildieAttributionsForGuildies(
       AND wcp.character_id = cr.character_id
      WHERE i.identity_id = ANY($1::uuid[])
        AND (cr.character_record_id IS NULL OR (ccr.character_record_id IS NOT NULL AND gr.character_record_id IS NOT NULL))`,
-    [uniqueGuildieIds, guildId],
+    [uniqueIdentityIds, guildId],
   );
 
   return new Map(result.rows.map((row) => {
-    const recognitionKind = row.main_character_name ? "main_character" : "guildie";
-    const displayName = row.main_character_name ?? `Guildie ${row.guildie_id.slice(0, 8)}`;
+    const recognitionKind = row.main_character_name ? "main_character" : "identity";
+    const displayName = row.main_character_name ?? `Identity ${row.identity_id.slice(0, 8)}`;
 
-    return [row.guildie_id, {
-      guildieId: row.guildie_id,
+    return [row.identity_id, {
+      identityId: row.identity_id,
       displayName,
       recognitionKind,
       realmName: row.realm_name,
-    } satisfies GuildieAttribution];
+    } satisfies IdentityRepresentation];
   }));
 }
