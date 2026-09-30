@@ -1,15 +1,27 @@
 import type { PoolClient } from "pg";
 import { pool } from "../../db.js";
+import { controlledCharactersForGuildie, controlledGuildCharactersForGuildie } from "../identity/controlled-characters.js";
+import { effectiveGuildAuthority } from "../authority/guild-permissions.js";
+import { specsForClass } from "../../wow-traits/registry.js";
+import type { ActivitySharedValue } from "./registry.js";
 
-export type ActivityParticipationParty =
+export type ActivityParticipationActor =
   | { kind: "guildie"; reference: string }
   | { kind: "external"; reference: string };
+
+export type ActivityParticipationParty = ActivityParticipationActor;
+
+export type ActivityParticipationComponent = {
+  kind: string;
+  value: ActivitySharedValue | readonly ActivitySharedValue[];
+};
 
 export type ActivityParticipationOffer = {
   participationOfferId: string;
   activityKind: string;
   activityId: string;
-  party: ActivityParticipationParty;
+  actor: ActivityParticipationActor;
+  components: readonly ActivityParticipationComponent[];
   procedureReference: string;
   offeredAtUnix: number;
   revokedAtUnix: number | null;
@@ -19,10 +31,57 @@ export type ActivityParticipationOffer = {
 export type OfferActivityParticipationInput = {
   activityKind: string;
   activityId: string;
-  party: ActivityParticipationParty;
+  actor: ActivityParticipationActor;
+  components?: readonly ActivityParticipationComponent[];
   procedureReference: string;
   offeredAtUnix?: number;
 };
+
+export type ActivityParticipationComponentRequest =
+  | {
+      kind: string;
+      type: "integer";
+      greaterThan?: number;
+      greaterThanOrEqual?: number;
+      lessThan?: number;
+      lessThanOrEqual?: number;
+    }
+  | { kind: string; type: "guild_character" }
+  | {
+      kind: string;
+      type: "wow_spec";
+      multiple: true;
+    };
+
+export type ActivityParticipationFulfillmentConstraint =
+  | {
+      component: string;
+      kind: "wow_class_pool";
+      sources: readonly ("controlled_character" | "controlled_guild_character" | "declared")[];
+    };
+
+export type ActivityParticipationActorConstraint =
+  | { kind: "guildie"; currentGuildieIn: string };
+
+
+
+export type ActivityParticipationOfferContract = {
+  actorConstraint?: ActivityParticipationActorConstraint;
+  fulfillment?: readonly ActivityParticipationFulfillmentConstraint[];
+  components: readonly ActivityParticipationComponentRequest[];
+};
+
+export class ActivityParticipationOfferError extends Error {
+  readonly code: string;
+  readonly statusCode: number;
+
+  constructor(code: string, message: string, statusCode: number = 400) {
+    super(message);
+    this.name = "ActivityParticipationOfferError";
+    this.code = code;
+    this.statusCode = statusCode;
+  }
+}
 
 function requiredText(value: string, field: string): string {
   const normalized = value.trim();
@@ -36,6 +95,7 @@ function mapParticipationOffer(row: {
   activity_id: string;
   party_kind: "guildie" | "external";
   party_reference: string;
+  components: unknown;
   procedure_reference: string;
   offered_at_unix: string | number;
   revoked_at_unix: string | number | null;
@@ -45,7 +105,8 @@ function mapParticipationOffer(row: {
     participationOfferId: row.participation_offer_id,
     activityKind: row.activity_kind,
     activityId: row.activity_id,
-    party: { kind: row.party_kind, reference: row.party_reference },
+    actor: { kind: row.party_kind, reference: row.party_reference },
+    components: Array.isArray(row.components) ? row.components as ActivityParticipationComponent[] : [],
     procedureReference: row.procedure_reference,
     offeredAtUnix: Number(row.offered_at_unix),
     revokedAtUnix: row.revoked_at_unix === null ? null : Number(row.revoked_at_unix),
@@ -59,17 +120,18 @@ export async function offerActivityParticipation(
 ): Promise<ActivityParticipationOffer> {
   const activityKind = requiredText(input.activityKind, "Offer kind");
   const activityId = requiredText(input.activityId, "Offer activity id");
-  const partyReference = requiredText(input.party.reference, "Offer party reference");
+  const actorReference = requiredText(input.actor.reference, "Offer actor reference");
   const procedureReference = requiredText(input.procedureReference, "Offer procedure reference");
   const offeredAtUnix = input.offeredAtUnix ?? Math.floor(Date.now() / 1000);
+  const components = input.components ?? [];
 
   const inserted = await client.query<any>(
     `INSERT INTO activity_participation_offers (
-       activity_kind, activity_id, party_kind, party_reference, procedure_reference, offered_at_unix
-     ) VALUES ($1,$2,$3,$4,$5,$6)
+       activity_kind, activity_id, party_kind, party_reference, components, procedure_reference, offered_at_unix
+     ) VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7)
      ON CONFLICT (activity_kind, activity_id, procedure_reference) DO NOTHING
      RETURNING *`,
-    [activityKind, activityId, input.party.kind, partyReference, procedureReference, offeredAtUnix],
+    [activityKind, activityId, input.actor.kind, actorReference, JSON.stringify(components), procedureReference, offeredAtUnix],
   );
 
   if (inserted.rowCount) return mapParticipationOffer(inserted.rows[0]);
@@ -81,13 +143,296 @@ export async function offerActivityParticipation(
   );
   const offer = existing.rows[0];
   if (!offer) throw new Error("Activity Participation Offer could not be reloaded");
-  if (offer.party_kind !== input.party.kind || offer.party_reference !== partyReference) {
-    throw new Error("Activity Participation Offer procedure reference belongs to a different party");
+  if (offer.party_kind !== input.actor.kind || offer.party_reference !== actorReference) {
+    throw new Error("Activity Participation Offer procedure reference belongs to a different actor");
+  }
+  if (JSON.stringify(offer.components ?? []) !== JSON.stringify(components)) {
+    throw new Error("Activity Participation Offer procedure reference belongs to different components");
   }
   if (offer.revoked_at_unix !== null || offer.closed_at_unix !== null) {
     throw new Error("Settled Activity Participation Offer cannot be offered again through the same procedure reference");
   }
   return mapParticipationOffer(offer);
+}
+
+
+function componentKind(value: string): string {
+  return requiredText(value, "Offer component kind");
+}
+
+function requireIntegerComponent(
+  request: Extract<ActivityParticipationComponentRequest, { type: "integer" }>,
+  raw: unknown,
+): ActivityParticipationComponent {
+  if (!Number.isSafeInteger(raw)) {
+    throw new ActivityParticipationOfferError("invalid_integer", `${request.kind} must be an integer`);
+  }
+  const value = raw as number;
+  if (request.greaterThan !== undefined && !(value > request.greaterThan)) {
+    throw new ActivityParticipationOfferError("integer_out_of_range", `${request.kind} must be greater than ${request.greaterThan}`);
+  }
+  if (request.greaterThanOrEqual !== undefined && !(value >= request.greaterThanOrEqual)) {
+    throw new ActivityParticipationOfferError("integer_out_of_range", `${request.kind} must be at least ${request.greaterThanOrEqual}`);
+  }
+  if (request.lessThan !== undefined && !(value < request.lessThan)) {
+    throw new ActivityParticipationOfferError("integer_out_of_range", `${request.kind} must be less than ${request.lessThan}`);
+  }
+  if (request.lessThanOrEqual !== undefined && !(value <= request.lessThanOrEqual)) {
+    throw new ActivityParticipationOfferError("integer_out_of_range", `${request.kind} must be at most ${request.lessThanOrEqual}`);
+  }
+  return { kind: componentKind(request.kind), value: { type: "integer", value } };
+}
+
+function normalizedTexts(values: unknown, field: string): string[] {
+  if (!Array.isArray(values)) throw new ActivityParticipationOfferError("invalid_wow_spec", `${field} must be an array`);
+  const normalized = [...new Set(values.map((value) => typeof value === "string" ? value.trim() : "").filter(Boolean))];
+  if (!normalized.length) throw new ActivityParticipationOfferError("invalid_wow_spec", `${field} requires at least one specialization`);
+  return normalized;
+}
+
+async function requireWowSpecComponents(
+  actor: ActivityParticipationActor,
+  request: Extract<ActivityParticipationComponentRequest, { type: "wow_spec" }>,
+  fulfillment: Extract<ActivityParticipationFulfillmentConstraint, { kind: "wow_class_pool" }> | undefined,
+  raw: unknown,
+): Promise<ActivityParticipationComponent> {
+  if (!Array.isArray(raw) || !raw.length) {
+    throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.kind} requires at least one specialization`);
+  }
+  if (!fulfillment?.sources.length) {
+    throw new Error(`Activity Participation wow_spec component ${request.kind} requires a wow_class_pool fulfillment constraint`);
+  }
+
+  const values = await Promise.all(raw.map(async (item) => {
+    if (typeof item !== "object" || item === null) {
+      throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.kind} contains an invalid specialization choice`);
+    }
+    const candidate = item as {
+      specName?: unknown;
+      character?: { region?: unknown; realmId?: unknown; characterId?: unknown };
+      className?: unknown;
+    };
+    if (typeof candidate.specName !== "string" || !candidate.specName.trim()) {
+      throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.kind} contains an invalid specialization choice`);
+    }
+
+    let className: string;
+    if (candidate.character) {
+      if (actor.kind !== "guildie") {
+        throw new ActivityParticipationOfferError("wow_spec_requires_guildie", `${request.kind} must resolve Character provenance through a Guildie`);
+      }
+      const coordinate = candidate.character;
+      if (typeof coordinate.region !== "string" || typeof coordinate.realmId !== "string" || typeof coordinate.characterId !== "string") {
+        throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.kind} contains an invalid Character reference`);
+      }
+      const source = fulfillment.sources.includes("controlled_guild_character")
+        ? "controlled_guild_character"
+        : fulfillment.sources.includes("controlled_character")
+          ? "controlled_character"
+          : null;
+      if (!source) {
+        throw new ActivityParticipationOfferError("wow_spec_fulfillment_unavailable", `${request.kind} does not permit Character-derived class provenance`, 403);
+      }
+      const characters = source === "controlled_guild_character"
+        ? await controlledGuildCharactersForGuildie(actor.reference)
+        : await controlledCharactersForGuildie(actor.reference);
+      const character = characters.find((value) =>
+        value.region === coordinate.region && value.realmId === coordinate.realmId && value.characterId === coordinate.characterId
+      );
+      if (!character) {
+        throw new ActivityParticipationOfferError(
+          "wow_spec_identity_unavailable",
+          source === "controlled_guild_character"
+            ? `${request.kind} must resolve through currently controlled Characters on the current guild roster`
+            : `${request.kind} must resolve through currently controlled Characters`,
+          403,
+        );
+      }
+      if (!character.className) throw new ActivityParticipationOfferError("wow_spec_class_unavailable", "Character class facts are not available");
+      className = character.className;
+    } else {
+      if (!fulfillment.sources.includes("declared")) {
+        throw new ActivityParticipationOfferError("wow_spec_fulfillment_unavailable", `${request.kind} does not permit declared class provenance`, 403);
+      }
+      if (typeof candidate.className !== "string" || !candidate.className.trim()) {
+        throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.kind} requires a class for each declared specialization`);
+      }
+      className = candidate.className.trim();
+    }
+
+    const specName = candidate.specName.trim();
+    const canonical = specsForClass(className)
+      .find((value) => value.toLocaleLowerCase("en-US") === specName.toLocaleLowerCase("en-US"));
+    if (!canonical) throw new ActivityParticipationOfferError("invalid_wow_spec", `Unknown class/specialization combination: ${className} / ${specName}`);
+    return { type: "wow_spec" as const, value: { className, specName: canonical } };
+  }));
+
+  const unique = values.filter((value, index) =>
+    values.findIndex((candidate) => candidate.value.className === value.value.className && candidate.value.specName === value.value.specName) === index
+  );
+  return { kind: componentKind(request.kind), value: unique };
+}
+
+async function constructParticipationComponent(
+  actor: ActivityParticipationActor,
+  request: ActivityParticipationComponentRequest,
+  fulfillment: ActivityParticipationFulfillmentConstraint | undefined,
+  raw: unknown,
+): Promise<ActivityParticipationComponent> {
+  if (request.type === "integer") return requireIntegerComponent(request, raw);
+  if (request.type === "wow_spec") {
+    if (fulfillment && fulfillment.kind !== "wow_class_pool") {
+      throw new Error(`Activity Participation component ${request.kind} has incompatible fulfillment constraint`);
+    }
+    return requireWowSpecComponents(actor, request, fulfillment, raw);
+  }
+
+  if (actor.kind !== "guildie") {
+    throw new ActivityParticipationOfferError("guild_character_requires_guildie", "A guild Character must be offered by a Guildie");
+  }
+  if (typeof raw !== "object" || raw === null) {
+    throw new ActivityParticipationOfferError("invalid_guild_character", `${request.kind} must identify a guild Character`);
+  }
+  const candidate = raw as { realmId?: unknown; characterId?: unknown };
+  if (typeof candidate.realmId !== "string" || typeof candidate.characterId !== "string") {
+    throw new ActivityParticipationOfferError("invalid_guild_character", `${request.kind} must identify a guild Character`);
+  }
+
+  const character = (await controlledGuildCharactersForGuildie(actor.reference))
+    .find((item) => item.realmId === candidate.realmId && item.characterId === candidate.characterId);
+  if (!character) {
+    throw new ActivityParticipationOfferError(
+      "guild_character_unavailable",
+      `${request.kind} must be a currently controlled Character on the current guild roster`,
+      403,
+    );
+  }
+
+  return {
+    kind: componentKind(request.kind),
+    value: {
+      type: "guild_character",
+      value: {
+        characterRecordId: character.characterRecordId,
+        region: character.region,
+        realmId: character.realmId,
+        characterId: character.characterId,
+        name: character.name,
+      },
+    },
+  };
+}
+
+async function validateParticipationOfferActor(
+  actor: ActivityParticipationActor,
+  contract: ActivityParticipationOfferContract,
+): Promise<void> {
+  const actorConstraint = contract.actorConstraint;
+  if (!actorConstraint) return;
+  if (actor.kind !== actorConstraint.kind) {
+    throw new ActivityParticipationOfferError("actor_ineligible", "Participation Offer actor does not satisfy the procedure", 403);
+  }
+  if (actorConstraint.kind === "guildie" && !await effectiveGuildAuthority(actor.reference, actorConstraint.currentGuildieIn)) {
+    throw new ActivityParticipationOfferError("actor_ineligible", "Participation Offer actor is not a current Guildie", 403);
+  }
+}
+
+async function constructParticipationComponents(
+  actor: ActivityParticipationActor,
+  contract: ActivityParticipationOfferContract,
+  supplied: Readonly<Record<string, unknown>>,
+): Promise<ActivityParticipationComponent[]> {
+  const requests = contract.components;
+  const kinds = requests.map((request) => componentKind(request.kind));
+  if (new Set(kinds).size !== kinds.length) throw new Error("Activity Participation Offer contract component kinds must be unique");
+  const unexpected = Object.keys(supplied).filter((kind) => !kinds.includes(kind));
+  if (unexpected.length) throw new ActivityParticipationOfferError("unexpected_component", `Participation Offer does not accept component ${unexpected[0]}`);
+  const fulfillment = contract.fulfillment ?? [];
+  const fulfillmentComponents = fulfillment.map((constraint) => componentKind(constraint.component));
+  if (new Set(fulfillmentComponents).size !== fulfillmentComponents.length) {
+    throw new Error("Activity Participation Offer fulfillment constraints must target unique components");
+  }
+  const unknownFulfillment = fulfillmentComponents.find((kind) => !kinds.includes(kind));
+  if (unknownFulfillment) throw new Error(`Activity Participation fulfillment targets unknown component ${unknownFulfillment}`);
+  return Promise.all(requests.map(async (request) => {
+    if (!Object.prototype.hasOwnProperty.call(supplied, request.kind)) {
+      throw new ActivityParticipationOfferError("missing_component", `Participation Offer requires component ${request.kind}`);
+    }
+    return constructParticipationComponent(
+      actor,
+      request,
+      fulfillment.find((constraint) => constraint.component === request.kind),
+      supplied[request.kind],
+    );
+  }));
+}
+
+export async function constructActivityParticipationOffer(
+  client: PoolClient,
+  input: {
+    activityKind: string;
+    activityId: string;
+    actor: ActivityParticipationActor;
+    contract: ActivityParticipationOfferContract;
+    components: Readonly<Record<string, unknown>>;
+    procedureReference: string;
+    offeredAtUnix?: number;
+  },
+): Promise<ActivityParticipationOffer> {
+  await validateParticipationOfferActor(input.actor, input.contract);
+  const components = await constructParticipationComponents(input.actor, input.contract, input.components);
+
+  return offerActivityParticipation(client, {
+    activityKind: input.activityKind,
+    activityId: input.activityId,
+    actor: input.actor,
+    components,
+    procedureReference: input.procedureReference,
+    offeredAtUnix: input.offeredAtUnix,
+  });
+}
+
+export async function reviseActivityParticipationOffer(
+  client: PoolClient,
+  input: {
+    activityKind: string;
+    activityId: string;
+    actor: ActivityParticipationActor;
+    contract: ActivityParticipationOfferContract;
+    components: Readonly<Record<string, unknown>>;
+    procedureReference: string;
+  },
+): Promise<ActivityParticipationOffer> {
+  const existing = await activityParticipationOfferByProcedureReference(client, {
+    activityKind: input.activityKind,
+    activityId: input.activityId,
+    procedureReference: input.procedureReference,
+  });
+  if (!existing || existing.revokedAtUnix !== null || existing.closedAtUnix !== null) {
+    throw new Error("Outstanding Activity Participation Offer was not found");
+  }
+  if (existing.actor.kind !== input.actor.kind || existing.actor.reference !== input.actor.reference) {
+    throw new Error("Outstanding Activity Participation Offer was not found for actor");
+  }
+  await validateParticipationOfferActor(input.actor, input.contract);
+  const components = await constructParticipationComponents(input.actor, input.contract, input.components);
+  const result = await client.query<any>(
+    `UPDATE activity_participation_offers offer
+        SET components=$4::jsonb
+      WHERE offer.participation_offer_id=$1
+        AND offer.activity_kind=$2
+        AND offer.activity_id=$3
+        AND offer.revoked_at_unix IS NULL
+        AND offer.closed_at_unix IS NULL
+        AND NOT EXISTS (
+          SELECT 1 FROM activity_participations participation
+           WHERE participation.participation_offer_id=offer.participation_offer_id
+        )
+      RETURNING *`,
+    [existing.participationOfferId, input.activityKind, input.activityId, JSON.stringify(components)],
+  );
+  if (!result.rowCount) throw new Error("Outstanding Activity Participation Offer cannot be revised");
+  return mapParticipationOffer(result.rows[0]);
 }
 
 export type ActivityParticipation = {
@@ -175,7 +520,7 @@ export async function revokeActivityParticipationOffer(
   input: {
     activityKind: string;
     activityId: string;
-    party: ActivityParticipationParty;
+    actor: ActivityParticipationActor;
     procedureReference: string;
     revokedAtUnix?: number;
   },
@@ -198,13 +543,13 @@ export async function revokeActivityParticipationOffer(
     [
       requiredText(input.activityKind, "Offer kind"),
       requiredText(input.activityId, "Offer activity id"),
-      input.party.kind,
-      requiredText(input.party.reference, "Offer party reference"),
+      input.actor.kind,
+      requiredText(input.actor.reference, "Offer actor reference"),
       requiredText(input.procedureReference, "Offer procedure reference"),
       revokedAtUnix,
     ],
   );
-  if (!result.rowCount) throw new Error("Outstanding Activity Participation Offer was not found for party");
+  if (!result.rowCount) throw new Error("Outstanding Activity Participation Offer was not found for actor");
 }
 
 export async function closeActivityParticipationOffer(
@@ -259,6 +604,85 @@ export async function closeOutstandingActivityParticipationOffers(
   );
   return result.rowCount ?? 0;
 }
+export async function outstandingActivityParticipationOffersForActor(
+  client: PoolClient,
+  input: { activityKind: string; activityId: string; actor: ActivityParticipationActor },
+): Promise<ActivityParticipationOffer[]> {
+  const result = await client.query<any>(
+    `SELECT *
+       FROM activity_participation_offers
+      WHERE activity_kind=$1
+        AND activity_id=$2
+        AND party_kind=$3
+        AND party_reference=$4
+        AND revoked_at_unix IS NULL
+        AND closed_at_unix IS NULL
+      ORDER BY offered_at_unix ASC, participation_offer_id ASC
+      FOR UPDATE`,
+    [
+      requiredText(input.activityKind, "Offer kind"),
+      requiredText(input.activityId, "Offer activity id"),
+      input.actor.kind,
+      requiredText(input.actor.reference, "Offer actor reference"),
+    ],
+  );
+  return result.rows.map(mapParticipationOffer);
+}
+
+export async function activityParticipationOfferById(
+  client: PoolClient,
+  input: { activityKind: string; activityId: string; participationOfferId: string },
+): Promise<ActivityParticipationOffer | null> {
+  const result = await client.query<any>(
+    `SELECT *
+       FROM activity_participation_offers
+      WHERE activity_kind=$1 AND activity_id=$2 AND participation_offer_id=$3`,
+    [
+      requiredText(input.activityKind, "Offer kind"),
+      requiredText(input.activityId, "Offer activity id"),
+      requiredText(input.participationOfferId, "Participation Offer id"),
+    ],
+  );
+  return result.rows[0] ? mapParticipationOffer(result.rows[0]) : null;
+}
+
+export async function activityParticipationOfferByProcedureReference(
+  client: PoolClient,
+  input: { activityKind: string; activityId: string; procedureReference: string },
+): Promise<ActivityParticipationOffer | null> {
+  const result = await client.query<any>(
+    `SELECT *
+       FROM activity_participation_offers
+      WHERE activity_kind=$1 AND activity_id=$2 AND procedure_reference=$3`,
+    [
+      requiredText(input.activityKind, "Offer kind"),
+      requiredText(input.activityId, "Offer activity id"),
+      requiredText(input.procedureReference, "Offer procedure reference"),
+    ],
+  );
+  return result.rows[0] ? mapParticipationOffer(result.rows[0]) : null;
+}
+
+export async function activityParticipationOffersForActivity(
+  client: PoolClient,
+  input: { activityKind: string; activityId: string; procedureReferences?: readonly string[] },
+): Promise<ActivityParticipationOffer[]> {
+  const activityKind = requiredText(input.activityKind, "Offer kind");
+  const activityId = requiredText(input.activityId, "Offer activity id");
+  const procedureReferences = input.procedureReferences?.map((reference) => requiredText(reference, "Offer procedure reference"));
+  if (procedureReferences && procedureReferences.length === 0) return [];
+  const result = await client.query<any>(
+    `SELECT *
+       FROM activity_participation_offers
+      WHERE activity_kind=$1
+        AND activity_id=$2
+        ${procedureReferences ? "AND procedure_reference = ANY($3::text[])" : ""}
+      ORDER BY offered_at_unix ASC, participation_offer_id ASC`,
+    procedureReferences ? [activityKind, activityId, procedureReferences] : [activityKind, activityId],
+  );
+  return result.rows.map(mapParticipationOffer);
+}
+
 export async function activityParticipationOffersForGuildie(guildieId: string): Promise<ActivityParticipationOffer[]> {
   const result = await pool.query<any>(
     `SELECT offer.*

@@ -252,6 +252,38 @@ For example, a plugin may declare that its procedure requires a guild Character 
 
 > **Knowing a word is not authority to decide what the speaker means by using it.**
 
+## Actor identity
+
+An **Actor** is an identified party that Activity procedure can durably reference. Identification is constitutive of Actorhood; an unidentified or merely labelled subject is not an Actor in Activity vocabulary.
+
+Actor identity may be established by Guild Operations or by another identity authority available through an integration. The authority may differ without weakening the invariant. A Guildie identifier and a durable externally-authoritative subject identifier can both identify Actors; an unresolvable display name or other ungrounded label cannot.
+
+Activity plugins may constrain which Actors their procedure accepts according to meanings they own, such as organizational eligibility. Those constraints answer whether an already-identified Actor is eligible for the procedure. They do not determine whether the party is an Actor in the first place.
+
+```text
+subject encountered
+      │
+      ▼
+identifier resolved?
+  │           │
+ yes          no
+  │           │
+  ▼           ▼
+Actor      unresolved subject
+  │
+  ▼
+plugin-owned eligibility
+  │
+  ▼
+Activity procedure
+```
+
+This invariant applies to all Activity Participation, including procedures with no explicit Offer. Fulfillment may be discovered rather than consciously offered, but Activity cannot establish a Participation observation until the participating party is an Actor.
+
+> **An Actor has a durable identifier by definition. If a party cannot be resolved to an identifier, Activity cannot establish Participation for that party.**
+
+> **Eligibility constrains Actors; it does not create them.**
+
 ## Participation
 
 Participation is an optional systemic Activity observation: a party participated in an Activity occurrence. An Activity need not produce Participation observations.
@@ -282,6 +314,39 @@ Fulfillment and adjudication remain distinct. Reality may satisfy Conditions bef
 Activity owns the resulting systemic Participation observation so consumers can use it without understanding Raid signup, Raffle claims, achievement scoring, or another plugin's procedure. Procedural references or Offers may be retained as provenance without becoming the meaning of Participation.
 
 > **Procedure establishes why the observation is legitimate. Activity owns what the Participation observation means systemically.**
+
+## Participation fulfillment
+
+Where an Activity procedure accepts an explicit Participation Offer, the contract between plugin procedure and Activity distinguishes three independent concerns:
+
+- **Actor constraints** describe which already-identified Actors may participate.
+- **Offer requirements** describe the semantic values the plugin procedure requires from the Offer.
+- **Fulfillment constraints** describe which authoritative or declarative sources may be used to establish the candidate values from which the participant makes that Offer.
+
+These concerns must not be collapsed into one another. In particular, a shared semantic request such as `wow_spec` describes the value Raid needs; it does not itself prescribe whether that value must be reached through a controlled Character, a guild-roster Character, or a declared class. Likewise, satisfying Actor eligibility does not prove that an offered value was derived through a source permitted by the procedure.
+
+A fulfillment surface may choose how to present the permitted route, but it must preserve the participant's decisions. Earlier choices may establish or narrow the candidate set for later choices; they do not make those later choices on the participant's behalf.
+
+```text
+Actor constraint
+    │ identifies who may proceed
+    ▼
+permitted fulfillment sources
+    │ participant establishes input/provenance
+    ▼
+Core/system authority derives candidate values
+    │ participant chooses from candidates
+    ▼
+Offer requirement satisfied
+```
+
+For example, a Raid may require `wow_spec[]` while permitting a class pool to be established precisely from known controlled Characters or coarsely from declared classes. Character selection and class declaration are therefore alternative resolutions of an upstream fulfillment choice, not different meanings of `wow_spec`. Core may derive the candidate specializations from the resulting class pool, but it may not silently choose the class pool or the offered specializations for the participant.
+
+The Activity boundary validates both the semantic Offer values and, where procedure constrains fulfillment, that their provenance was established through a permitted source. A rendering or transport surface is not trusted to make that guarantee merely by hiding invalid choices.
+
+> **Actor constraints govern who may participate. Offer requirements govern what the procedure needs. Fulfillment constraints govern how candidate values may legitimately be established.**
+
+> **A fulfillment step may constrain the choices available to the next step. It does not make the next choice.**
 
 ## Capability requests and representation
 

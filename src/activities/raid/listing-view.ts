@@ -8,7 +8,7 @@ export async function raidListingParticipationSummary(
   raidId: string,
 ): Promise<RaidListingParticipationSummary> {
   const result = await pool.query<{ signed_up: string }>(
-    `SELECT COUNT(DISTINCT rr.applicant_id)::text AS signed_up
+    `SELECT COUNT(*)::text AS signed_up
        FROM raid_signup_rows rr
       WHERE rr.raid_id = $1
         AND rr.withdrawn_at_unix IS NULL

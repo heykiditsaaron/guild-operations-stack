@@ -28,7 +28,7 @@ import { htmlText, renderOccurrenceOperations, renderPage, type SecondaryNavigat
 import { viewerForRequest } from "../../../web/viewer.js";
 
 type RaidParams = { raidId: string };
-type AssignBody = { signupRowId?: unknown; selectedSpec?: unknown; selectedRole?: unknown };
+type AssignBody = { signupRowId?: unknown; selectedClass?: unknown; selectedSpec?: unknown; selectedRole?: unknown };
 type UnassignBody = { signupRowId?: unknown };
 type AdjudicateBody = { signupRowId?: unknown; fulfilled?: unknown };
 type RaidSignupView = Awaited<ReturnType<typeof raidSignups>>[number];
@@ -62,18 +62,18 @@ function armorLabel(value: WowTrait): string {
   return value.replace("armor.", "").replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
-function specsByRole(className: string, willingSpecs: readonly string[], willingRoles: readonly RaidRole[]): Record<RaidRole, string[]> {
+function specsByRole(row: RaidSignupView): Record<RaidRole, Array<{ className:string; specName:string }>> {
   return {
-    tank: willingRoles.includes("tank") ? willingSpecs.filter((spec) => specHasTrait(className, spec, ROLE_TRAITS.tank)) : [],
-    healer: willingRoles.includes("healer") ? willingSpecs.filter((spec) => specHasTrait(className, spec, ROLE_TRAITS.healer)) : [],
-    damage: willingRoles.includes("damage") ? willingSpecs.filter((spec) => specHasTrait(className, spec, ROLE_TRAITS.damage)) : [],
+    tank: row.offeredSpecs.filter((spec) => specHasTrait(spec.className, spec.specName, ROLE_TRAITS.tank)),
+    healer: row.offeredSpecs.filter((spec) => specHasTrait(spec.className, spec.specName, ROLE_TRAITS.healer)),
+    damage: row.offeredSpecs.filter((spec) => specHasTrait(spec.className, spec.specName, ROLE_TRAITS.damage)),
   };
 }
 
 function coverageCount(rows: readonly RaidSignupView[], trait: WowTrait): number {
   return rows.reduce((count, row) => {
     if (!row.selectedSpec) return count;
-    return traitsForSpec(row.className, row.selectedSpec).includes(trait) ? count + 1 : count;
+    return row.selectedClass && traitsForSpec(row.selectedClass, row.selectedSpec).includes(trait) ? count + 1 : count;
   }, 0);
 }
 
@@ -84,38 +84,38 @@ async function specIcon(className: string, specName: string, classNameValue: str
 }
 
 function offeredRoleIcons(row: RaidSignupView): string {
-  const roleSpecs = specsByRole(row.className, row.willingSpecs, row.willingRoles);
+  const roleSpecs = specsByRole(row);
   const roles = RAID_ROLES.filter((role) => roleSpecs[role].length > 0);
   if (!roles.length) return "";
   return `<div class="raid-participant-roles" aria-label="Offered roles">${roles.map((role) => `<span class="raid-role-icon raid-role-icon-${role}" role="img" aria-label="${htmlText(roleLabel(role))}" title="${htmlText(roleLabel(role))}"></span>`).join("")}</div>`;
 }
 
 async function signupCard(row: RaidSignupView): Promise<string> {
-  const roleSpecs = specsByRole(row.className, row.willingSpecs, row.willingRoles);
+  const roleSpecs = specsByRole(row);
   return `<article class="raid-participant-card" draggable="true" tabindex="0"
     data-raid-participant-card
     data-assigned="false"
     data-signup-row-id="${htmlText(row.signupRowId)}"
     data-role-specs="${htmlText(JSON.stringify(roleSpecs))}">
     <div class="raid-participant-card-copy">
-      <strong>${htmlText(row.characterName ?? row.className)}</strong>
-      <span>${row.realmName ? `${htmlText(row.realmName)} · ` : ""}${htmlText(row.className)}</span>
+      <strong>${htmlText(row.displayName)}</strong>
+      <span>${row.offeredSpecs.map((spec) => htmlText(`${spec.specName} ${spec.className}`)).join(", ")}</span>
     </div>
     ${offeredRoleIcons(row)}
   </article>`;
 }
 
 async function assignedCard(row: RaidSignupView, mutable: boolean): Promise<string> {
-  const roleSpecs = specsByRole(row.className, row.willingSpecs, row.willingRoles);
+  const roleSpecs = specsByRole(row);
   const selectedSpec = row.selectedSpec ?? "";
-  const icon = selectedSpec ? await specIcon(row.className, selectedSpec, row.className) : "";
+  const icon = selectedSpec && row.selectedClass ? await specIcon(row.selectedClass, selectedSpec, row.selectedClass) : "";
   return `<article class="raid-participant-card raid-participant-card-assigned" draggable="${mutable ? "true" : "false"}"${mutable ? ` tabindex="0" data-raid-participant-card` : ""}
     data-assigned="true"
     data-current-role="${htmlText(row.selectedRole ?? "")}" data-current-spec="${htmlText(selectedSpec)}"
     data-signup-row-id="${htmlText(row.signupRowId)}" data-role-specs="${htmlText(JSON.stringify(roleSpecs))}">
     <div class="raid-participant-assigned-icon">${icon}</div>
-    <div class="raid-participant-card-copy"><strong>${htmlText(row.characterName ?? row.className)}</strong><span>${htmlText(selectedSpec)}</span></div>
-    ${mutable ? `<button type="button" class="raid-assignment-remove" data-raid-unassign aria-label="Return ${htmlText(row.characterName ?? row.className)} to available participants" title="Return to available">×</button>` : ""}
+    <div class="raid-participant-card-copy"><strong>${htmlText(row.displayName)}</strong><span>${htmlText(selectedSpec)}${row.selectedClass ? ` ${htmlText(row.selectedClass)}` : ""}</span></div>
+    ${mutable ? `<button type="button" class="raid-assignment-remove" data-raid-unassign aria-label="Return ${htmlText(row.displayName)} to available participants" title="Return to available">×</button>` : ""}
   </article>`;
 }
 
@@ -174,7 +174,7 @@ async function renderRaidOrganizer(request: FastifyRequest<{ Params: RaidParams 
 
   const [rows, diagnostics, adjudications] = await Promise.all([raidSignups(raid.raidId), raidRosterDiagnostics(raid.raidId), raidCommitmentAdjudications(raid.raidId)]);
   const assigned = rows.filter((row) => row.assignmentId !== null);
-  const available = rows.filter((row) => row.assignmentId === null && row.deniedAtUnix === null && !rows.some((candidate) => candidate.applicantId === row.applicantId && candidate.assignmentId !== null));
+  const available = rows.filter((row) => row.assignmentId === null && row.deniedAtUnix === null && !rows.some((candidate) => candidate.actorKind === row.actorKind && candidate.actorReference === row.actorReference && candidate.assignmentId !== null));
   const navigation: SecondaryNavigation = { kind: "breadcrumb", items: [{ label: "Activities", href: "/activities" }, { label: "Raid operations", href: "/activities/raid/manage" }, { label: raid.label }] };
   const raidBuffItems = (await Promise.all(RAID_BUFF_TRAITS.map((trait) => raidBuffDiagnosticItem(trait, assigned)))).join("");
   const utilityItems = UTILITY_TRAITS.map((trait) => textDiagnosticItem(capabilityLabel(trait), coverageCount(assigned, trait))).join("");
@@ -195,7 +195,7 @@ async function renderRaidOrganizer(request: FastifyRequest<{ Params: RaidParams 
   const basePath = operateDestination.href;
   const adjudicationBySignup=new Map(adjudications.map(value=>[value.signupRowId,value.fulfilled]));
   const commitments=rows.filter(row=>row.withdrawnAtUnix===null&&row.deniedAtUnix===null);
-  const closeout=!historical&&canStage?`<section class="raid-workspace"><h2>Close out raid</h2><p>Declare whether each commitment obligation was fulfilled, then conclude the raid.</p><div class="raid-signup-pool">${commitments.map(row=>{const value=adjudicationBySignup.get(row.signupRowId);return `<article class="raid-participant-card"><div class="raid-participant-card-copy"><strong>${htmlText(row.characterName??row.className)}</strong><span>${htmlText(row.className)}</span></div><div><button type="button" class="button-secondary" data-raid-adjudicate="${htmlText(row.signupRowId)}" data-fulfilled="true"${value===true?" disabled":""}>Fulfilled</button> <button type="button" class="button-secondary" data-raid-adjudicate="${htmlText(row.signupRowId)}" data-fulfilled="false"${value===false?" disabled":""}>Not fulfilled</button></div></article>`;}).join("")}</div><p class="raid-board-status" data-raid-closeout-status role="status" aria-live="polite"></p><button type="button" class="button-primary" data-raid-conclude${commitments.some(row=>!adjudicationBySignup.has(row.signupRowId))?" disabled":""}>Conclude raid</button></section>`:"";
+  const closeout=!historical&&canStage?`<section class="raid-workspace"><h2>Close out raid</h2><p>Declare whether each commitment obligation was fulfilled, then conclude the raid.</p><div class="raid-signup-pool">${commitments.map(row=>{const value=adjudicationBySignup.get(row.signupRowId);return `<article class="raid-participant-card"><div class="raid-participant-card-copy"><strong>${htmlText(row.displayName)}</strong><span>${row.offeredSpecs.map((spec)=>htmlText(`${spec.specName} ${spec.className}`)).join(", ")}</span></div><div><button type="button" class="button-secondary" data-raid-adjudicate="${htmlText(row.signupRowId)}" data-fulfilled="true"${value===true?" disabled":""}>Fulfilled</button> <button type="button" class="button-secondary" data-raid-adjudicate="${htmlText(row.signupRowId)}" data-fulfilled="false"${value===false?" disabled":""}>Not fulfilled</button></div></article>`;}).join("")}</div><p class="raid-board-status" data-raid-closeout-status role="status" aria-live="polite"></p><button type="button" class="button-primary" data-raid-conclude${commitments.some(row=>!adjudicationBySignup.has(row.signupRowId))?" disabled":""}>Conclude raid</button></section>`:"";
   const workspace = `${assignmentWorkspace}${closeout}<section class="raid-scoreboard" aria-labelledby="raid-scoreboard-heading"><h2 id="raid-scoreboard-heading">Raid diagnostics</h2>${shelves}</section>${mutableAssignments ? `<dialog class="raid-spec-dialog" data-raid-spec-dialog><form method="dialog"><h2>Choose specialization</h2><p data-raid-spec-dialog-copy></p><div data-raid-spec-options></div><button type="button" class="button-secondary" data-raid-spec-cancel>Cancel</button></form></dialog>` : ""}`;
   const lifecycleActions = canStage && !historical ? `<button type="button" class="button-destructive" data-raid-cancel>Cancel raid</button>` : "";
   const body = renderOccurrenceOperations({ title: raid.label, context: `<time data-unix-time="${raid.occursAt[0]}">${raid.occursAt[0]}</time> · ${htmlText(difficultyLabel(raid.difficulty))}${historical ? " · Historical" : ""}`, publicAction: publicDestination ? { label: publicDestination.label, href: publicDestination.href } : undefined, modes: [{ label: "Assign", href: basePath, current: true }, ...(canModify || canStage ? [{ label: "Edit", href: `${basePath}/definition` }] : [])], lifecycleActions, workspace });
@@ -209,9 +209,9 @@ async function assignParticipant(request: FastifyRequest<{ Params: RaidParams; B
   const guildie = await authenticatedGuildie(request.cookies[SESSION_COOKIE_NAME]);
   if (!guildie) return reply.code(401).send({ error: "Authentication required" });
   const body = request.body ?? {};
-  if (typeof body.signupRowId !== "string" || typeof body.selectedSpec !== "string" || (body.selectedRole !== "tank" && body.selectedRole !== "healer" && body.selectedRole !== "damage")) return reply.code(400).send({ error: "Assignment is incomplete" });
+  if (typeof body.signupRowId !== "string" || typeof body.selectedClass !== "string" || typeof body.selectedSpec !== "string" || (body.selectedRole !== "tank" && body.selectedRole !== "healer" && body.selectedRole !== "damage")) return reply.code(400).send({ error: "Assignment is incomplete" });
   try {
-    const assignment = await setRaidAssignment(guildie.guildieId, { raidId: request.params.raidId, signupRowId: body.signupRowId, selectedSpec: body.selectedSpec, selectedRole: body.selectedRole });
+    const assignment = await setRaidAssignment(guildie.guildieId, { raidId: request.params.raidId, signupRowId: body.signupRowId, selectedClass: body.selectedClass, selectedSpec: body.selectedSpec, selectedRole: body.selectedRole });
     return reply.code(assignment.established ? 201 : 200).send({ assignmentId: assignment.assignmentId });
   } catch (error) {
     return reply.code(raidActionStatusCode(error)).send({ error: error instanceof Error ? error.message : "Participant could not be assigned" });

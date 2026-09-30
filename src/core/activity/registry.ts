@@ -1,7 +1,9 @@
+import { activityRecord, activityRecords } from "./records.js";
 import { activityParticipationOffersForGuildie as participationOffersForGuildie, activityParticipationsForGuildie as participationsForGuildie } from "./participation.js";
 import { knownActivityPlugin, knownActivityPlugins } from "./plugin-control.js";
 import { knownActivityCapabilityDeclarations } from "./plugin-administration.js";
 import { registerGuildCapabilityDefinitions, type GuildCapabilityDefinition } from "../authority/guild-capability-policy.js";
+import type { ActivityWorkspace, ActivityWorkspaceCapability } from "./presentation.js";
 
 export type ActivityTemporalCoordinate = {
   start: number | null;
@@ -16,19 +18,33 @@ export type ActivityTemporalProjection = {
   occursAt: ActivityCalendarCoordinate | null;
 };
 
-export type ActivityAttributeValue =
-  | { kind: "text"; value: string }
-  | { kind: "number"; value: number }
-  | { kind: "quantity"; value: string; unit: string };
+export type ActivitySharedValue =
+  | { type: "string"; value: string }
+  | { type: "integer"; value: number }
+  | { type: "bigint"; value: string; unit?: string }
+  | { type: "guildie"; value: string }
+  | { type: "guild_character"; value: { characterRecordId: string; region: string; realmId: string; characterId: string; name: string } }
+  | { type: "wow_class"; value: string }
+  | { type: "wow_spec"; value: { className: string; specName: string } }
+  | { type: "wow_role"; value: "tank" | "healer" | "damage" }
+  | { type: "participation_offer"; value: string };
 
 export type ActivityOccurrenceAttribute = {
-  key: string;
+  kind: string;
   label: string;
   provenance: "declared" | "derived";
-  value: ActivityAttributeValue;
+  value: ActivitySharedValue | readonly ActivitySharedValue[];
 };
 
 export type ActivityInteractionKind = "participate" | "operate";
+
+export type ActivityKindInteractionKind = "establish";
+
+export type ActivityKindInteractionCapability = {
+  label(kind: ActivityKindInteractionKind): string;
+  destination(kind: ActivityKindInteractionKind): string | null;
+  availableTo?(kind: ActivityKindInteractionKind, guildieId: string | null): boolean | Promise<boolean>;
+};
 
 export type ActivityInteractionRequest = {
   kind: ActivityInteractionKind;
@@ -54,6 +70,7 @@ export type ActivityRenderAction = {
 
 export type ActivityOccurrenceCapability = {
   resolve(activityId: string): Promise<Omit<ActivityOccurrence, "activityKind" | "activityId"> | null>;
+  list?(): Promise<readonly string[]>;
 };
 
 export type ActivityTemporalCapability = {
@@ -64,10 +81,30 @@ export type ActivityParticipationOfferReference = {
   activityKind: string;
   activityId: string;
   participationOfferId: string;
+  procedureReference: string;
+};
+
+export type ActivityParticipationProjection = {
+  title: string;
+  attributes: readonly ActivityOccurrenceAttribute[];
+};
+
+export type ActivityParticipationCapability = {
+  project(activityId: string, procedureReference: string): Promise<ActivityParticipationProjection | null>;
+};
+
+export type ActivityAssignment = {
+  participationOfferId: string;
+  attributes: readonly ActivityOccurrenceAttribute[];
+};
+
+export type ActivityAssignmentCapability = {
+  project(activityId: string): Promise<readonly ActivityAssignment[]>;
 };
 
 export type ActivityInteractionCapability = {
   destination(kind: ActivityInteractionKind, activityId: string): string | null;
+  availableTo?(kind: ActivityInteractionKind, activityId: string, guildieId: string | null): boolean | Promise<boolean>;
 };
 
 export type ActivityDiscovery = {
@@ -85,8 +122,11 @@ export type ActivityRegistration = {
   discovery?: ActivityDiscovery;
   administration?: ActivityAdministration;
   occurrence?: ActivityOccurrenceCapability;
-  temporal?: ActivityTemporalCapability;
   interaction?: ActivityInteractionCapability;
+  kindInteraction?: ActivityKindInteractionCapability;
+  participation?: ActivityParticipationCapability;
+  assignment?: ActivityAssignmentCapability;
+  workspace?: ActivityWorkspaceCapability;
 };
 
 export type ActivityActivationGate = {
@@ -175,27 +215,72 @@ async function activeActivity(activityKind: string): Promise<ActivityRegistratio
 export async function activityOccurrence(activityKind: string, activityId: string): Promise<ActivityOccurrence | null> {
   const kind = requiredText(activityKind, "kind");
   const id = requiredText(activityId, "id");
+  const record = await activityRecord(kind, id);
+  if (record) return record.occurrence;
   const activity = await activeActivity(kind);
   if (!activity?.occurrence) return null;
   const occurrence = await activity.occurrence.resolve(id);
   return occurrence ? { activityKind: kind, activityId: id, ...occurrence } : null;
 }
 
+export async function activityOccurrences(activityKind: string): Promise<readonly ActivityOccurrence[]> {
+  const kind = requiredText(activityKind, "kind");
+  const activity = await activeActivity(kind);
+  if (!activity?.occurrence?.list) return [];
+
+  const [liveIds, records] = await Promise.all([
+    activity.occurrence.list(),
+    activityRecords(kind),
+  ]);
+  const recordIds = new Set(records.map((record) => record.activityId));
+  const liveOccurrences = await Promise.all(
+    liveIds.filter((activityId) => !recordIds.has(activityId)).map((activityId) => activityOccurrence(kind, activityId)),
+  );
+  return [
+    ...liveOccurrences.filter((occurrence): occurrence is ActivityOccurrence => occurrence !== null),
+    ...records.map((record) => record.occurrence),
+  ];
+}
+
+export async function activityKindRenderActions(
+  activityKind: string,
+  guildieId: string | null = null,
+): Promise<readonly ActivityRenderAction[]> {
+  const activity = await activeActivity(requiredText(activityKind, "kind"));
+  if (!activity?.kindInteraction) return [];
+  const kind: ActivityKindInteractionKind = "establish";
+  const available = activity.kindInteraction.availableTo
+    ? await activity.kindInteraction.availableTo(kind, guildieId)
+    : true;
+  if (!available) return [];
+  const href = activity.kindInteraction.destination(kind);
+  if (!href) return [];
+  return [{ label: requiredText(activity.kindInteraction.label(kind), "kind interaction label"), href, kind: "primary" }];
+}
+
 export async function activityOccurrenceRenderActions(
   occurrence: ActivityOccurrence,
+  guildieId: string | null = null,
 ): Promise<readonly ActivityRenderAction[]> {
   const activity = await activeActivity(occurrence.activityKind);
   if (!activity?.interaction) return [];
 
-  return (occurrence.interactions ?? []).flatMap((request) => {
+  const actions = await Promise.all((occurrence.interactions ?? []).map(async (request) => {
+    const available = activity.interaction?.availableTo
+      ? await activity.interaction.availableTo(request.kind, occurrence.activityId, guildieId)
+      : true;
+    if (!available) return null;
+
     const href = activity.interaction?.destination(request.kind, occurrence.activityId);
-    if (!href) return [];
-    return [{
+    if (!href) return null;
+    return {
       label: requiredText(request.label, "interaction label"),
       href,
       kind: request.kind === "participate" ? "primary" as const : "secondary" as const,
-    }];
-  });
+    };
+  }));
+
+  return actions.filter((action): action is ActivityRenderAction => action !== null);
 }
 
 function calendarCoordinate(coordinate: ActivityTemporalCoordinate | null): ActivityCalendarCoordinate | null {
@@ -216,21 +301,52 @@ export async function activityTemporalProjection(
   activityId: string,
 ): Promise<ActivityTemporalProjection | null> {
   const kind = requiredText(activityKind, "kind");
-  const activity = await activeActivity(kind);
-  if (!activity?.temporal) return null;
-
   const normalizedActivityId = requiredText(activityId, "id");
+  const occurrence = await activityOccurrence(kind, normalizedActivityId);
+  if (!occurrence) return null;
+
   return {
     activityKind: kind,
     activityId: normalizedActivityId,
-    occursAt: calendarCoordinate(await activity.temporal.relevance(normalizedActivityId)),
+    occursAt: calendarCoordinate(occurrence.occursAt),
   };
 }
 
 
+export async function activityAssignments(
+  activityKind: string,
+  activityId: string,
+): Promise<readonly ActivityAssignment[]> {
+  const activity = await activeActivity(requiredText(activityKind, "kind"));
+  if (!activity?.assignment) return [];
+  return activity.assignment.project(requiredText(activityId, "Assignment activity id"));
+}
+
+export async function activityWorkspace(
+  activityKind: string,
+  activityId: string,
+): Promise<ActivityWorkspace | null> {
+  const activity = await activeActivity(requiredText(activityKind, "kind"));
+  if (!activity?.workspace) return null;
+  return activity.workspace.project(requiredText(activityId, "Workspace activity id"));
+}
+
+export async function activityParticipationProjection(
+  activityKind: string,
+  activityId: string,
+  procedureReference: string,
+): Promise<ActivityParticipationProjection | null> {
+  const activity = await activeActivity(requiredText(activityKind, "kind"));
+  if (!activity?.participation) return null;
+  return activity.participation.project(
+    requiredText(activityId, "Participation activity id"),
+    requiredText(procedureReference, "Participation procedure reference"),
+  );
+}
+
 export async function activityParticipationOffersForGuildie(
   guildieId: string,
-): Promise<Array<ActivityParticipationOfferReference & { destination: string }>> {
+): Promise<Array<ActivityParticipationOfferReference & { procedureReference: string; destination: string }>> {
   const relationships = await participationOffersForGuildie(requiredText(guildieId, "participation Guildie id"));
 
   const resolved = await Promise.all(relationships.map(async (relationship) => {
@@ -241,20 +357,22 @@ export async function activityParticipationOffersForGuildie(
       activityKind: relationship.activityKind,
       activityId: relationship.activityId,
       participationOfferId: relationship.participationOfferId,
+      procedureReference: relationship.procedureReference,
     };
     return {
       ...reference,
+      procedureReference: relationship.procedureReference,
       destination: `/activities/${encodeURIComponent(reference.activityKind)}/${encodeURIComponent(reference.activityId)}`,
     };
   }));
 
-  return resolved.filter((reference): reference is ActivityParticipationOfferReference & { destination: string } => reference !== null);
+  return resolved.filter((reference): reference is ActivityParticipationOfferReference & { procedureReference: string; destination: string } => reference !== null);
 }
 
 
 export async function activityParticipationsForGuildie(
   guildieId: string,
-): Promise<Array<{ participationId: string; activityKind: string; activityId: string; establishedAtUnix: number; destination: string }>> {
+): Promise<Array<{ participationId: string; activityKind: string; activityId: string; procedureReference: string; establishedAtUnix: number; destination: string }>> {
   const relationships = await participationsForGuildie(requiredText(guildieId, "Participation Guildie id"));
 
   const resolved = await Promise.all(relationships.map(async (relationship) => {
@@ -264,6 +382,7 @@ export async function activityParticipationsForGuildie(
       participationId: relationship.participationId,
       activityKind: relationship.activityKind,
       activityId: relationship.activityId,
+      procedureReference: relationship.procedureReference,
       establishedAtUnix: relationship.establishedAtUnix,
       destination: `/activities/${encodeURIComponent(relationship.activityKind)}/${encodeURIComponent(relationship.activityId)}`,
     };

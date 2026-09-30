@@ -6,24 +6,6 @@ for (const element of document.querySelectorAll("[data-unix-time]")) {
   if (element instanceof HTMLTimeElement) element.dateTime = date.toISOString();
 }
 
-function decodedList(value) {
-  try {
-    const parsed = JSON.parse(decodeURIComponent(value ?? ""));
-    return Array.isArray(parsed) ? parsed.filter((item) => typeof item === "string") : [];
-  } catch {
-    return [];
-  }
-}
-
-function decodedRecord(value) {
-  try {
-    const parsed = JSON.parse(decodeURIComponent(value ?? ""));
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
 function raidMutationBase() {
   const suffix = "/participation";
   return window.location.pathname.endsWith(suffix)
@@ -31,103 +13,81 @@ function raidMutationBase() {
     : window.location.pathname;
 }
 
-function renderSpecChoices(container, values, icons) {
-  container.replaceChildren();
-  for (const value of values) {
-    const label = document.createElement("label");
-    label.className = "raid-spec-choice";
-
-    const input = document.createElement("input");
-    input.type = "checkbox";
-    input.name = "spec";
-    input.value = value;
-
-    const iconUrl = typeof icons[value] === "string" ? icons[value] : null;
-    if (iconUrl) {
-      const icon = document.createElement("img");
-      icon.src = iconUrl;
-      icon.alt = "";
-      icon.loading = "lazy";
-      label.append(icon);
-    }
-
-    const text = document.createElement("span");
-    text.textContent = value;
-    label.append(input, text);
-    container.append(label);
-  }
-}
-
 for (const form of document.querySelectorAll("[data-raid-signup-form]")) {
   if (!(form instanceof HTMLFormElement)) continue;
-
-  const selector = form.querySelector("[data-raid-participation-choice]");
-  const editor = form.querySelector("[data-raid-offer-editor]");
-  const identity = form.querySelector("[data-raid-offer-identity]");
-  const specChoices = form.querySelector("[data-raid-spec-choices]");
   const status = form.querySelector("[data-raid-signup-status]");
+  const empty = form.querySelector("[data-raid-specs-empty]");
+  if (!(status instanceof HTMLElement)) continue;
 
-  if (
-    !(selector instanceof HTMLSelectElement)
-    || !(editor instanceof HTMLElement)
-    || !(identity instanceof HTMLElement)
-    || !(specChoices instanceof HTMLElement)
-    || !(status instanceof HTMLElement)
-  ) continue;
+  const poolInputs = [...form.querySelectorAll('input[name="pool-character"], input[name="pool-class"]')]
+    .filter((input) => input instanceof HTMLInputElement);
+  const specChoices = [...form.querySelectorAll("[data-raid-spec-choice]")]
+    .filter((choice) => choice instanceof HTMLElement);
 
-  const refreshEditor = () => {
-    const option = selector.selectedOptions[0];
-    if (!(option instanceof HTMLOptionElement) || !option.value) {
-      editor.hidden = true;
-      return;
+  function selectedPool() {
+    const characters = poolInputs
+      .filter((input) => input.name === "pool-character" && input.checked)
+      .map((input) => ({
+        className: input.dataset.className,
+        character: {
+          region: input.dataset.region,
+          realmId: input.dataset.realmId,
+          characterId: input.dataset.characterId,
+        },
+      }));
+    const declaredClasses = poolInputs
+      .filter((input) => input.name === "pool-class" && input.checked)
+      .map((input) => input.value);
+    return { characters, declaredClasses };
+  }
+
+  function refreshSpecs() {
+    const { characters, declaredClasses } = selectedPool();
+    const classes = new Set([
+      ...characters.map((value) => value.className),
+      ...declaredClasses,
+    ]);
+    for (const choice of specChoices) {
+      const visible = classes.has(choice.dataset.className);
+      choice.hidden = !visible;
+      const input = choice.querySelector('input[name="spec"]');
+      if (!visible && input instanceof HTMLInputElement) input.checked = false;
     }
+    if (empty instanceof HTMLElement) empty.hidden = classes.size > 0;
+  }
 
-    const displayName = option.dataset.displayName ?? option.dataset.className ?? "Raid signup";
-    const realmName = option.dataset.realmName;
-    const className = option.dataset.className;
-    identity.textContent = [displayName, realmName, className && className !== displayName ? className : null].filter(Boolean).join(" · ");
-    renderSpecChoices(specChoices, decodedList(option.dataset.specs), decodedRecord(option.dataset.specIcons));
-    status.textContent = "";
-    editor.hidden = false;
-  };
-
-  selector.addEventListener("change", refreshEditor);
+  for (const input of poolInputs) input.addEventListener("change", refreshSpecs);
+  refreshSpecs();
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const option = selector.selectedOptions[0];
-    if (!(option instanceof HTMLOptionElement) || !option.value) {
-      status.textContent = "Choose a character or class first.";
+    const { characters, declaredClasses } = selectedPool();
+    const selectedSpecs = [...form.querySelectorAll('input[name="spec"]:checked')]
+      .filter((input) => input instanceof HTMLInputElement);
+
+    if (characters.length === 0 && declaredClasses.length === 0) {
+      status.textContent = "Choose at least one character or class.";
       return;
     }
-
-    const specs = [...form.querySelectorAll('input[name="spec"]:checked')]
-      .filter((input) => input instanceof HTMLInputElement)
-      .map((input) => input.value);
-
-    if (specs.length === 0) {
+    if (selectedSpecs.length === 0) {
       status.textContent = "Choose at least one specialization.";
       return;
     }
 
-    const body = { willingSpecs: specs };
+    const offeredSpecs = selectedSpecs.map((input) => {
+      const className = input.dataset.className;
+      const character = characters.find((value) => value.className === className);
+      return character
+        ? { character: character.character, specName: input.value }
+        : { className, specName: input.value };
+    });
 
-    if (option.dataset.kind === "class") {
-      body.declaredClass = option.dataset.className;
-    } else {
-      body.character = {
-        region: option.dataset.region,
-        realmId: option.dataset.realmId,
-        characterId: option.dataset.characterId,
-      };
-    }
-
-    status.textContent = "Submitting signup…";
+    status.textContent = "Submitting offer…";
     try {
       const response = await fetch(`${raidMutationBase()}/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ offeredSpecs }),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error ?? "Signup could not be submitted");
@@ -137,7 +97,6 @@ for (const form of document.querySelectorAll("[data-raid-signup-form]")) {
     }
   });
 }
-
 for (const button of document.querySelectorAll("[data-raid-revoke-signup]")) {
   if (!(button instanceof HTMLButtonElement)) continue;
   button.addEventListener("click", async () => {

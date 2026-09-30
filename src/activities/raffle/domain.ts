@@ -1,8 +1,18 @@
-import { randomInt } from "node:crypto";
+import type { ActivitySharedValue } from "../../core/activity/registry.js";
+import { randomInt, randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
-import { closeActivityParticipationOffer, closeOutstandingActivityParticipationOffers, establishActivityParticipation, offerActivityParticipation, revokeActivityParticipationOffer } from "../../core/activity/participation.js";
+import {
+  activityParticipationOfferByProcedureReference,
+  activityParticipationOffersForActivity,
+  closeActivityParticipationOffer,
+  closeOutstandingActivityParticipationOffers,
+  constructActivityParticipationOffer,
+  establishActivityParticipation,
+  revokeActivityParticipationOffer,
+  type ActivityParticipationOfferContract,
+} from "../../core/activity/participation.js";
 import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
-import { controlledGuildCharactersForGuildie } from "../../core/identity/controlled-characters.js";
+import { characterByRecordId } from "../../core/identity/controlled-characters.js";
 import { pool, withTransaction } from "../../db.js";
 
 export const RAFFLE_OPERATIONAL_BUFFER_SECONDS = 60 * 60;
@@ -44,7 +54,7 @@ export type Raffle = {
   concludedAtUnix: number | null;
   totalEntries: number | null;
   selectedIndex: number | null;
-  winningClaimId: string | null;
+  winningParticipationOfferId: string | null;
 };
 
 export type RaffleClaim = {
@@ -166,32 +176,10 @@ function mapRaffle(row: Record<string, unknown>): Raffle {
     concludedAtUnix: nullableNumber(row.concluded_at_unix),
     totalEntries: nullableNumber(row.total_entries),
     selectedIndex: nullableNumber(row.selected_index),
-    winningClaimId: nullableString(row.winning_claim_id),
+    winningParticipationOfferId: nullableString(row.winning_participation_offer_id),
   };
 }
 
-function mapClaim(row: Record<string, unknown>): RaffleClaim {
-  return {
-    claimId: String(row.claim_id),
-    raffleId: String(row.raffle_id),
-    claimantGuildieId: String(row.claimant_guildie_id),
-    characterRecordId: String(row.character_record_id),
-    characterId: String(row.character_id),
-    realmId: String(row.realm_id),
-    characterName: String(row.character_name),
-    requestedEntryCount: Number(row.requested_entry_count),
-    promisedGoldValue: String(row.promised_gold_value),
-    createdAtUnix: Number(row.created_at_unix),
-    resolutionKind: row.resolution_kind as RaffleClaimResolution,
-    approvedByGuildieId: nullableString(row.approved_by_guildie_id),
-    approvedAtUnix: nullableNumber(row.approved_at_unix),
-    deniedByGuildieId: nullableString(row.denied_by_guildie_id),
-    deniedAtUnix: nullableNumber(row.denied_at_unix),
-    denialReason: nullableString(row.denial_reason),
-    revokedByGuildieId: nullableString(row.revoked_by_guildie_id),
-    revokedAtUnix: nullableNumber(row.revoked_at_unix),
-  };
-}
 
 async function lockedRaffle(client: PoolClient, raffleId: string): Promise<Record<string, unknown>> {
   const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
@@ -317,59 +305,91 @@ export async function cancelRaffle(actorGuildieId: string, raffleId: string, cli
   });
 }
 
-export async function establishRaffleClaim(claimantGuildieId: string, raffleId: string, realmId: string, characterId: string, requestedEntryCount: number): Promise<RaffleClaim> {
-  if (!Number.isInteger(requestedEntryCount) || requestedEntryCount <= 0) {
-    throw new RaffleRuleError("invalid_entry_count", "Requested entry count must be a positive integer", 400);
-  }
+const raffleClaimOfferContract: ActivityParticipationOfferContract = {
+  components: [
+    { kind: "character", type: "guild_character" },
+    { kind: "claim", type: "integer", greaterThan: 0 },
+  ],
+};
 
+export async function establishRaffleClaim(claimantGuildieId: string, raffleId: string, realmId: string, characterId: string, requestedEntryCount: number): Promise<RaffleClaim> {
   return withTransaction(async (client) => {
     const raffleRow = await lockedRaffle(client, raffleId);
     const raffle = mapRaffle(raffleRow);
     if (!raffleParticipationIsOpen(raffle)) throw new RaffleRuleError("participation_closed", "Raffle participation is closed");
 
-    const character = (await controlledGuildCharactersForGuildie(claimantGuildieId))
-      .find((candidate) => candidate.realmId === realmId && candidate.characterId === characterId);
-    if (!character) {
-      throw new RaffleRuleError("character_not_eligible", "Claim character must be a currently controlled character on the current guild roster", 403);
-    }
-
-    const characterRecord = await client.query<{ character_record_id: string }>(
-      `SELECT character_record_id
-         FROM characters
-        WHERE guildie_id=$1 AND currently_controlled=true AND realm_id=$2 AND character_id=$3`,
-      [claimantGuildieId, realmId, characterId],
-    );
-    if (!characterRecord.rowCount) throw new RaffleRuleError("character_not_eligible", "Claim character identity is unavailable", 403);
-    const characterRecordId = characterRecord.rows[0].character_record_id;
-    const promisedGoldValue = BigInt(String(raffleRow.entry_price_gold)) * BigInt(requestedEntryCount);
-    const insert = await client.query(
-      `INSERT INTO raffle_claims (raffle_id, claimant_guildie_id, character_record_id, requested_entry_count, promised_gold_value, created_at_unix)
-       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [raffleId, claimantGuildieId, characterRecordId, requestedEntryCount, promisedGoldValue.toString(), unixNow()],
-    );
-    const claim = mapClaim({
-      ...insert.rows[0] as Record<string, unknown>,
-      character_id: character.characterId,
-      realm_id: character.realmId,
-      character_name: character.name,
-    });
-
-    await offerActivityParticipation(client, {
+    const claimId = randomUUID();
+    const offeredAtUnix = unixNow();
+    const offer = await constructActivityParticipationOffer(client, {
       activityKind: "raffle",
       activityId: raffleId,
-      party: { kind: "guildie", reference: claimantGuildieId },
-      procedureReference: claim.claimId,
-      offeredAtUnix: claim.createdAtUnix,
+      actor: { kind: "guildie", reference: claimantGuildieId },
+      contract: raffleClaimOfferContract,
+      components: {
+        character: { realmId, characterId },
+        claim: requestedEntryCount,
+      },
+      procedureReference: claimId,
+      offeredAtUnix,
     });
 
-    return claim;
+    const characterComponent = offer.components.find((component) => component.kind === "character");
+    const claimComponent = offer.components.find((component) => component.kind === "claim");
+    const characterValue = characterComponent?.value;
+    const claimValue = claimComponent?.value;
+    if (!characterValue || !claimValue || Array.isArray(characterValue) || Array.isArray(claimValue)) {
+      throw new Error("Constructed Raffle Participation Offer does not satisfy its declared contract");
+    }
+    const singularCharacterValue = characterValue as ActivitySharedValue;
+    const singularClaimValue = claimValue as ActivitySharedValue;
+    if (singularCharacterValue.type !== "guild_character" || singularClaimValue.type !== "integer") {
+      throw new Error("Constructed Raffle Participation Offer does not satisfy its declared contract");
+    }
+
+    const character = singularCharacterValue.value;
+    const entryCount = singularClaimValue.value;
+    const promisedGoldValue = BigInt(String(raffleRow.entry_price_gold)) * BigInt(entryCount);
+    await client.query(
+      `INSERT INTO raffle_claims (
+         claim_id, raffle_id, promised_gold_value, created_at_unix, participation_offer_id
+       ) VALUES ($1,$2,$3,$4,$5)`,
+      [claimId, raffleId, promisedGoldValue.toString(), offeredAtUnix, offer.participationOfferId],
+    );
+
+    return {
+      claimId,
+      raffleId,
+      claimantGuildieId: offer.actor.reference,
+      characterRecordId: character.characterRecordId,
+      characterId: character.characterId,
+      realmId: character.realmId,
+      characterName: character.name,
+      requestedEntryCount: entryCount,
+      promisedGoldValue: promisedGoldValue.toString(),
+      createdAtUnix: offeredAtUnix,
+      resolutionKind: null,
+      approvedByGuildieId: null,
+      approvedAtUnix: null,
+      deniedByGuildieId: null,
+      deniedAtUnix: null,
+      denialReason: null,
+      revokedByGuildieId: null,
+      revokedAtUnix: null,
+    };
   });
 }
 
 export async function revokeRaffleClaim(claimantGuildieId: string, claimId: string): Promise<void> {
   await withTransaction(async (client) => {
     const claim = await lockedClaim(client, claimId);
-    if (claim.claimant_guildie_id !== claimantGuildieId) throw new RaffleRuleError("claim_not_owned", "A member may only revoke their own Raffle claim", 403);
+    const offer = await activityParticipationOfferByProcedureReference(client, {
+      activityKind: "raffle",
+      activityId: String(claim.raffle_id),
+      procedureReference: claimId,
+    });
+    if (!offer || offer.actor.kind !== "guildie" || offer.actor.reference !== claimantGuildieId) {
+      throw new RaffleRuleError("claim_not_owned", "A member may only revoke their own Raffle claim", 403);
+    }
     if (claim.raffle_conclusion !== null) throw new RaffleRuleError("raffle_concluded", "Claims cannot be revoked after the Raffle concludes");
     if (claim.resolution_kind !== null) throw new RaffleRuleError("claim_already_resolved", "Only an unresolved claim can be revoked");
 
@@ -381,7 +401,7 @@ export async function revokeRaffleClaim(claimantGuildieId: string, claimId: stri
     await revokeActivityParticipationOffer(client, {
       activityKind: "raffle",
       activityId: String(claim.raffle_id),
-      party: { kind: "guildie", reference: claimantGuildieId },
+      actor: { kind: "guildie", reference: claimantGuildieId },
       procedureReference: claimId,
       revokedAtUnix,
     });
@@ -395,17 +415,18 @@ export async function approveRaffleClaim(actorGuildieId:string, claimId:string):
     if(claim.resolution_kind!==null) throw new RaffleRuleError("claim_already_resolved","Only an unresolved claim can be approved");
     const approvedAtUnix=unixNow();
     await client.query("UPDATE raffle_claims SET resolution_kind='approved', approved_by_guildie_id=$2, approved_at_unix=$3 WHERE claim_id=$1",[claimId,actorGuildieId,approvedAtUnix]);
-    const offer=await client.query<{participation_offer_id:string}>(
-      "SELECT participation_offer_id FROM activity_participation_offers WHERE activity_kind='raffle' AND activity_id=$1 AND procedure_reference=$2",
-      [String(claim.raffle_id),claimId],
-    );
-    if(!offer.rowCount) throw new Error("Raffle claim Participation Offer was not found");
+    const offer=await activityParticipationOfferByProcedureReference(client,{
+      activityKind:"raffle",
+      activityId:String(claim.raffle_id),
+      procedureReference:claimId,
+    });
+    if(!offer) throw new Error("Raffle claim Participation Offer was not found");
     await establishActivityParticipation(client,{
       activityKind:"raffle",
       activityId:String(claim.raffle_id),
-      party:{kind:"guildie",reference:String(claim.claimant_guildie_id)},
+      party:offer.actor,
       procedureReference:claimId,
-      participationOfferId:offer.rows[0].participation_offer_id,
+      participationOfferId:offer.participationOfferId,
       establishedAtUnix:approvedAtUnix,
     });
   });
@@ -429,6 +450,27 @@ export async function denyRaffleClaim(actorGuildieId:string, claimId:string, rea
   });
 }
 
+export async function approvedRaffleEntryCount(client: PoolClient, raffleId: string): Promise<number> {
+  const approved = await client.query<{ claim_id: string }>(
+    "SELECT claim_id FROM raffle_claims WHERE raffle_id=$1 AND resolution_kind='approved'",
+    [raffleId],
+  );
+  const offers = await activityParticipationOffersForActivity(client, {
+    activityKind: "raffle",
+    activityId: raffleId,
+    procedureReferences: approved.rows.map((row) => String(row.claim_id)),
+  });
+  let count = 0;
+  for (const offer of offers) {
+    const component = offer.components.find((candidate) => candidate.kind === "claim")?.value;
+    if (Array.isArray(component)) throw new Error("Raffle claim Participation Offer does not satisfy its declared contract");
+    const value = component as ActivitySharedValue | undefined;
+    if (!value || value.type !== "integer") throw new Error("Raffle claim Participation Offer does not satisfy its declared contract");
+    count += value.value;
+  }
+  return count;
+}
+
 export async function drawRaffle(actorGuildieId:string, raffleId:string, client:PoolClient|null=null):Promise<Raffle> {
   return withOptionalTransaction(client,async(transactionClient)=>{
     const raffle=await lockedRaffle(transactionClient,raffleId);
@@ -440,10 +482,25 @@ export async function drawRaffle(actorGuildieId:string, raffleId:string, client:
     const pending=await transactionClient.query<{count:string}>("SELECT count(*)::text AS count FROM raffle_claims WHERE raffle_id=$1 AND resolution_kind IS NULL",[raffleId]);
     if(Number(pending.rows[0].count)>0) throw new RaffleRuleError("unresolved_claims","All claims must be approved, denied, or revoked before the Raffle can be drawn");
 
-    const approved=await transactionClient.query<{claim_id:string;requested_entry_count:number}>(
-      "SELECT claim_id, requested_entry_count FROM raffle_claims WHERE raffle_id=$1 AND resolution_kind='approved' ORDER BY created_at_unix ASC, claim_id ASC",[raffleId]);
+    const approved=await transactionClient.query<{claim_id:string}>(
+      "SELECT claim_id FROM raffle_claims WHERE raffle_id=$1 AND resolution_kind='approved' ORDER BY created_at_unix ASC, claim_id ASC",[raffleId]);
     const population:string[]=[];
-    for(const claim of approved.rows) for(let index=0;index<claim.requested_entry_count;index+=1) population.push(claim.claim_id);
+    for(const claim of approved.rows) {
+      const offer=await activityParticipationOfferByProcedureReference(transactionClient,{
+        activityKind:"raffle",
+        activityId:raffleId,
+        procedureReference:claim.claim_id,
+      });
+      if(!offer) throw new Error("Approved Raffle claim Participation Offer was not found");
+      const claimComponent=offer.components.find((component)=>component.kind==="claim");
+      const claimValue=claimComponent?.value;
+      if(Array.isArray(claimValue)) throw new Error("Raffle claim Participation Offer does not satisfy its declared contract");
+      const singularClaimValue=claimValue as ActivitySharedValue|undefined;
+      if(!singularClaimValue || singularClaimValue.type!=="integer") {
+        throw new Error("Raffle claim Participation Offer does not satisfy its declared contract");
+      }
+      for(let index=0;index<singularClaimValue.value;index+=1) population.push(offer.participationOfferId);
+    }
 
     if(population.length===0){
       const result=await transactionClient.query(
@@ -452,11 +509,11 @@ export async function drawRaffle(actorGuildieId:string, raffleId:string, client:
       return mapRaffle(result.rows[0] as Record<string,unknown>);
     }
     const selectedIndex=randomInt(population.length);
-    const winningClaimId=population[selectedIndex];
+    const winningParticipationOfferId=population[selectedIndex];
     const result=await transactionClient.query(
       `UPDATE raffles SET conclusion='drawn', concluded_by_guildie_id=$2, concluded_at_unix=$3,
-       total_entries=$4, selected_index=$5, winning_claim_id=$6 WHERE raffle_id=$1 RETURNING *`,
-      [raffleId,actorGuildieId,now,population.length,selectedIndex,winningClaimId]);
+       total_entries=$4, selected_index=$5, winning_participation_offer_id=$6 WHERE raffle_id=$1 RETURNING *`,
+      [raffleId,actorGuildieId,now,population.length,selectedIndex,winningParticipationOfferId]);
     return mapRaffle(result.rows[0] as Record<string,unknown>);
   });
 }
@@ -469,13 +526,63 @@ export async function raffle(raffleId:string):Promise<Raffle|null> {
 
 export async function raffleClaims(raffleId:string):Promise<RaffleClaim[]> {
   const guildId=(await requireOperationalInstallationGuildBinding()).guildId;
-  const result=await pool.query(
-    `SELECT rc.*, c.character_id, c.realm_id, COALESCE(grm.character_name,c.name) AS character_name
+  const result=await pool.query<Record<string,unknown>>(
+    `SELECT rc.claim_id,rc.raffle_id,rc.promised_gold_value,rc.created_at_unix,
+       rc.resolution_kind,rc.approved_by_guildie_id,rc.approved_at_unix,
+       rc.denied_by_guildie_id,rc.denied_at_unix,rc.denial_reason,
+       rc.revoked_by_guildie_id,rc.revoked_at_unix
        FROM raffle_claims rc
        JOIN raffles r ON r.raffle_id=rc.raffle_id AND r.guild_id=$2
-       JOIN characters c ON c.character_record_id=rc.character_record_id
-       LEFT JOIN guild_roster_memberships grm ON grm.guild_id=r.guild_id AND grm.region=c.region AND grm.realm_id=c.realm_id AND grm.character_id=c.character_id
-      WHERE rc.raffle_id=$1 ORDER BY rc.created_at_unix ASC, rc.claim_id ASC`,
-    [raffleId,guildId]);
-  return result.rows.map(row=>mapClaim(row as Record<string,unknown>));
+      WHERE rc.raffle_id=$1 ORDER BY rc.created_at_unix ASC,rc.claim_id ASC`,
+    [raffleId,guildId],
+  );
+  if(result.rows.length===0) return [];
+
+  const client=await pool.connect();
+  try {
+    const claimIds=result.rows.map((row)=>String(row.claim_id));
+    const offers=await activityParticipationOffersForActivity(client,{
+      activityKind:"raffle",
+      activityId:raffleId,
+      procedureReferences:claimIds,
+    });
+    const offersByClaimId=new Map(offers.map((offer)=>[offer.procedureReference,offer]));
+    const claims:RaffleClaim[]=[];
+    for(const row of result.rows){
+      const claimId=String(row.claim_id);
+      const offer=offersByClaimId.get(claimId);
+      if(!offer || offer.actor.kind!=="guildie") throw new Error(`Raffle claim ${claimId} is missing its Participation Offer`);
+      const characterValue=offer.components.find((component)=>component.kind==="character")?.value;
+      const claimValue=offer.components.find((component)=>component.kind==="claim")?.value;
+      if(Array.isArray(characterValue)||Array.isArray(claimValue)) throw new Error(`Raffle claim ${claimId} Participation Offer does not satisfy its declared contract`);
+      const characterComponent=characterValue as ActivitySharedValue|undefined;
+      const claimComponent=claimValue as ActivitySharedValue|undefined;
+      if(characterComponent?.type!=="guild_character"||claimComponent?.type!=="integer") throw new Error(`Raffle claim ${claimId} Participation Offer does not satisfy its declared contract`);
+      const character=characterComponent.value;
+      const recognizedCharacter=await characterByRecordId(character.characterRecordId);
+      claims.push({
+        claimId,
+        raffleId:String(row.raffle_id),
+        claimantGuildieId:offer.actor.reference,
+        characterRecordId:character.characterRecordId,
+        characterId:character.characterId,
+        realmId:character.realmId,
+        characterName:recognizedCharacter?.name ?? character.name,
+        requestedEntryCount:claimComponent.value,
+        promisedGoldValue:String(row.promised_gold_value),
+        createdAtUnix:Number(row.created_at_unix),
+        resolutionKind:row.resolution_kind as RaffleClaimResolution,
+        approvedByGuildieId:nullableString(row.approved_by_guildie_id),
+        approvedAtUnix:nullableNumber(row.approved_at_unix),
+        deniedByGuildieId:nullableString(row.denied_by_guildie_id),
+        deniedAtUnix:nullableNumber(row.denied_at_unix),
+        denialReason:nullableString(row.denial_reason),
+        revokedByGuildieId:nullableString(row.revoked_by_guildie_id),
+        revokedAtUnix:nullableNumber(row.revoked_at_unix),
+      });
+    }
+    return claims;
+  } finally {
+    client.release();
+  }
 }

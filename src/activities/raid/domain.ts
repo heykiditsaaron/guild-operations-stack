@@ -23,9 +23,14 @@ export type RaidCharacterReference = {
   characterId: string;
 };
 
-export type RaidParticipationKey =
-  | { character: RaidCharacterReference }
-  | { declaredClass: string };
+export type RaidOfferedSpec = {
+  className: string;
+  specName: string;
+};
+
+export type RaidOfferedSpecInput =
+  | { character: RaidCharacterReference; specName: string }
+  | { className: string; specName: string };
 
 export type EstablishRaidInput = {
   label: string;
@@ -49,8 +54,7 @@ export type ModifyRaidInput = {
 export type EstablishRaidSignupInput = {
   raidId: string;
   applicantAnchor: RaidApplicantAnchor;
-  participationKey: RaidParticipationKey;
-  willingSpecs: readonly string[];
+  offeredSpecs: readonly RaidOfferedSpecInput[];
 };
 
 export type RevokeRaidSignupInput = {
@@ -62,6 +66,7 @@ export type RevokeRaidSignupInput = {
 export type EstablishRaidAssignmentInput = {
   raidId: string;
   signupRowId: string;
+  selectedClass: string;
   selectedSpec: string;
   selectedRole: RaidRole;
 };
@@ -121,36 +126,38 @@ export function validateModifyRaidInput(input: ModifyRaidInput): void {
   if (input.requirements !== undefined) validateRequirements(input.requirements);
 }
 
-export function rolesForParticipationSpecs(className: string, specs: readonly string[]): RaidRole[] {
-  const normalizedSpecs = normalizedStrings(specs);
-  if (!normalizedSpecs.length) throw new Error("At least one willing specialization is required");
-
-  for (const spec of normalizedSpecs) {
-    const traits = traitsForSpec(className, spec);
-    if (!traits.length) throw new Error(`Unknown class/specialization combination: ${className} / ${spec}`);
-  }
-
+export function rolesForParticipationSpecs(specs: readonly RaidOfferedSpec[]): RaidRole[] {
+  if (!specs.length) throw new Error("At least one willing specialization is required");
   const roleTrait: Record<RaidRole, WowTrait> = {
     tank: "role.tank",
     healer: "role.healer",
     damage: "role.damage",
   };
+  for (const spec of specs) {
+    if (!traitsForSpec(spec.className, spec.specName).length) {
+      throw new Error(`Unknown class/specialization combination: ${spec.className} / ${spec.specName}`);
+    }
+  }
   return (["tank", "healer", "damage"] as const).filter((role) =>
-    normalizedSpecs.some((spec) => specHasTrait(className, spec, roleTrait[role])),
+    specs.some((spec) => specHasTrait(spec.className, spec.specName, roleTrait[role])),
   );
 }
 
-export function validateParticipationWillingness(className: string, specs: readonly string[]): void {
-  rolesForParticipationSpecs(className, specs);
-}
-
 export function validateSelectedConfiguration(
-  className: string,
-  willingSpecs: readonly string[],
+  offeredSpecs: readonly RaidOfferedSpec[],
+  selectedClass: string,
   selectedSpec: string,
   selectedRole: RaidRole,
 ): void {
-  if (!willingSpecs.includes(selectedSpec)) throw new Error("Selected specialization was not offered by the applicant");
-  const selectedRoles = rolesForParticipationSpecs(className, [selectedSpec]);
-  if (!selectedRoles.includes(selectedRole)) throw new Error("Selected role is not supported by the selected specialization");
+  if (!offeredSpecs.some((spec) => spec.className === selectedClass && spec.specName === selectedSpec)) {
+    throw new Error("Selected specialization was not offered by the applicant");
+  }
+  const roleTrait: Record<RaidRole, WowTrait> = {
+    tank: "role.tank",
+    healer: "role.healer",
+    damage: "role.damage",
+  };
+  if (!specHasTrait(selectedClass, selectedSpec, roleTrait[selectedRole])) {
+    throw new Error("Selected role is not supported by the selected specialization");
+  }
 }

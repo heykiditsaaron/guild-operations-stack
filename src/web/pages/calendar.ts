@@ -3,9 +3,10 @@ import { guildState } from "../../core/guild/guild-state.js";
 import { authenticatedGuildie, SESSION_COOKIE_NAME } from "../../auth.js";
 import { calendarViewForGuildie, isCalendarViewMode, setCalendarViewForGuildie, type CalendarViewMode } from "../../core/calendar/preference.js";
 import { discoverableGuildCalendarPoints, type GuildCalendarOccursAt, type GuildCalendarPoint } from "../../core/calendar/registry.js";
-import { activityOccurrence, type ActivityOccurrence } from "../../core/activity/registry.js";
+import { activityKindRenderActions, activityOccurrence, discoverableActivities, type ActivityOccurrence } from "../../core/activity/registry.js";
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage } from "../render.js";
+import { renderActivitySharedValues } from "../activity-values.js";
 import { viewerForRequest } from "../viewer.js";
 
 type CalendarOccurrence = {
@@ -55,13 +56,6 @@ function isHappeningNow(occurrence: GuildCalendarOccursAt, nowUnix: number): boo
   return start <= nowUnix && nowUnix <= end;
 }
 
-function renderAttributeValue(attribute: ActivityOccurrence["attributes"][number]): string {
-  if (attribute.value.kind === "quantity") {
-    return `${htmlText(attribute.value.value)} ${htmlText(attribute.value.unit)}`;
-  }
-  return htmlText(String(attribute.value.value));
-}
-
 function renderEventItem(item: CalendarOccurrence, _canOperate: boolean): string {
   const { occurrence, occursAt } = item;
   const title = htmlText(occurrence.title);
@@ -71,7 +65,7 @@ function renderEventItem(item: CalendarOccurrence, _canOperate: boolean): string
     : "";
   const attributes = occurrence.attributes.slice(0, 3);
   const facts = attributes.length
-    ? `<div class="facts">${attributes.map((attribute) => `<div class="fact"><span class="fact-label">${htmlText(attribute.label)}</span><strong class="fact-value">${renderAttributeValue(attribute)}</strong></div>`).join("")}</div>`
+    ? `<div class="facts">${attributes.map((attribute) => `<div class="fact"><span class="fact-label">${htmlText(attribute.label)}</span><strong class="fact-value">${renderActivitySharedValues(attribute.value)}</strong></div>`).join("")}</div>`
     : "";
 
   return `
@@ -185,7 +179,13 @@ export async function registerCalendarPage(app: FastifyInstance, assets: AssetRe
       guildState(),
     ]);
     const selectedView = guildie ? await calendarViewForGuildie(guildie.guildieId) : "agenda";
-    const createEvent = "";
+    const activityKinds = await discoverableActivities();
+    const establishmentActions = (await Promise.all(activityKinds.map((activity) =>
+      activityKindRenderActions(activity.kind, guildie?.guildieId ?? null)
+    ))).flat();
+    const createEvent = establishmentActions.length
+      ? `<details class="menu-surface"><summary class="button-primary">Create New</summary><div class="menu-panel">${establishmentActions.map((action) => `<a href="${htmlText(action.href)}">${htmlText(action.label)}</a>`).join("")}</div></details>`
+      : "";
 
     const occurrences = await calendarOccurrences(calendarPoints);
     const relevant = occurrences.filter((event) => occursThrough(event.occursAt) >= nowUnix);

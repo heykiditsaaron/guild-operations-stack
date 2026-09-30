@@ -1,7 +1,6 @@
 import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import { installationAbsoluteUrl } from "../../core/installation/public-origin.js";
 import { pool } from "../../db.js";
-import { packagedCapabilityEnabled } from "../../packaged-capability-lifecycle.js";
 import { decryptSecret, encryptSecret } from "./secrets.js";
 
 export type DiscordPluginConfiguration = {
@@ -80,13 +79,10 @@ export async function discordPluginConfiguration(
   guildId?: string,
 ): Promise<DiscordPluginConfiguration> {
   const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
-  const [current, enabled] = await Promise.all([
-    row(resolvedGuildId),
-    packagedCapabilityEnabled("discord", resolvedGuildId),
-  ]);
+  const current = await row(resolvedGuildId);
   return {
     guildId: resolvedGuildId,
-    enabled,
+    enabled: false,
     clientId: current?.client_id ?? null,
     clientSecretConfigured: Boolean(current?.client_secret_ciphertext),
     discordGuildId: current?.discord_guild_id ?? null,
@@ -99,13 +95,10 @@ export async function discordPluginRuntimeConfiguration(
   guildId?: string,
 ): Promise<DiscordPluginRuntimeConfiguration> {
   const resolvedGuildId = guildId ?? (await requireOperationalInstallationGuildBinding()).guildId;
-  const [current, enabled] = await Promise.all([
-    row(resolvedGuildId),
-    packagedCapabilityEnabled("discord", resolvedGuildId),
-  ]);
+  const current = await row(resolvedGuildId);
   return {
     guildId: resolvedGuildId,
-    enabled,
+    enabled: false,
     clientId: current?.client_id ?? null,
     clientSecretConfigured: Boolean(current?.client_secret_ciphertext),
     clientSecret: current?.client_secret_ciphertext ? decryptSecret(current.client_secret_ciphertext) : null,

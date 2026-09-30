@@ -1,10 +1,12 @@
 import { withTransaction } from "../../db.js";
 import { deliverEmission, publishEmission } from "../../emissions/registry.js";
 import { publishActivityDeclaration } from "../../core/activity/declarations.js";
+import { freezeActivityOccurrence } from "../../core/activity/records.js";
 import { requireGuildCapabilityOrOperator } from "../../core/authority/guild-permissions.js";
 import { RAFFLE_CLAIMS_CAPABILITY, RAFFLE_DRAW_CAPABILITY, RAFFLE_MODIFY_CAPABILITY, RAFFLE_STAGE_CAPABILITY } from "./permissions.js";
 import {
   RaffleRuleError,
+  approvedRaffleEntryCount,
   approveRaffleClaim as approveRaffleClaimDomain,
   cancelRaffle as cancelRaffleDomain,
   pauseRaffleParticipation as pauseRaffleParticipationDomain,
@@ -28,6 +30,7 @@ import {
 } from "./domain.js";
 import { publishRaffleOperationalException } from "./operational-exceptions.js";
 import { raffleOperationDestination, raffleParticipationDestination, rafflePublicDestination } from "./destinations.js";
+import { raffleOccurrenceProjection } from "./occurrence.js";
 
 export {
   RaffleRuleError,
@@ -89,6 +92,12 @@ export async function cancelRaffle(actorGuildieId: string, raffleId: string): Pr
   await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_STAGE_CAPABILITY);
   const persisted = await withTransaction(async (client) => {
     const raffle = await cancelRaffleDomain(actorGuildieId, raffleId, client);
+    const approvedEntryCount = await approvedRaffleEntryCount(client, raffle.raffleId);
+    await freezeActivityOccurrence(client, {
+      activityKind: "raffle",
+      activityId: raffle.raffleId,
+      ...raffleOccurrenceProjection(raffle, approvedEntryCount, false),
+    }, raffle.concludedAtUnix!);
     const publication = await publishEmission(client, { code: "raffle.cancelled", subject: raffle.raffleId });
     const activityDeclaration = await publishActivityDeclaration(client, { kind: "temporal-relevance-changed", activityKind: "raffle", activityId: raffle.raffleId });
     return { raffle, publication, activityDeclaration };
@@ -126,16 +135,22 @@ export async function drawRaffle(actorGuildieId: string, raffleId: string): Prom
   await requireGuildCapabilityOrOperator(actorGuildieId, RAFFLE_DRAW_CAPABILITY);
   const persisted = await withTransaction(async (client) => {
     const raffle = await drawRaffleDomain(actorGuildieId, raffleId, client);
+    const approvedEntryCount = await approvedRaffleEntryCount(client, raffle.raffleId);
+    await freezeActivityOccurrence(client, {
+      activityKind: "raffle",
+      activityId: raffle.raffleId,
+      ...raffleOccurrenceProjection(raffle, approvedEntryCount, false),
+    }, raffle.concludedAtUnix!);
     const publication = await publishEmission(client, { code: "raffle.concluded", subject: raffle.raffleId });
     return { raffle, publication };
   });
   const concluded = persisted.raffle;
-  if (concluded.conclusion === "drawn" && !concluded.winningClaimId) {
-    console.error(`[raffle] drawn Raffle ${concluded.raffleId} is missing its winning claim`);
+  if (concluded.conclusion === "drawn" && !concluded.winningParticipationOfferId) {
+    console.error(`[raffle] drawn Raffle ${concluded.raffleId} is missing its winning Participation Offer`);
     await publishRaffleOperationalException({
       operation: "raffle.draw",
       actorGuildieId,
-      summary: "Drawn Raffle is missing its winning claim.",
+      summary: "Drawn Raffle is missing its winning Participation Offer.",
       details: { raffle_id: concluded.raffleId, conclusion: concluded.conclusion },
     });
   }

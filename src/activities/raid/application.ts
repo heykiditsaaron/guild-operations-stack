@@ -1,7 +1,8 @@
+import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import { controlledCharactersForGuildie, controlledGuildCharactersForGuildie } from "../../core/identity/controlled-characters.js";
-import { closeActivityParticipationOffer, closeOutstandingActivityParticipationOffers, establishActivityParticipation, offerActivityParticipation, revokeActivityParticipationOffer } from "../../core/activity/participation.js";
+import { activityParticipationOfferByProcedureReference, closeActivityParticipationOffer, closeOutstandingActivityParticipationOffers, constructActivityParticipationOffer, establishActivityParticipation, outstandingActivityParticipationOffersForActor, reviseActivityParticipationOffer, revokeActivityParticipationOffer, type ActivityParticipationOffer, type ActivityParticipationOfferContract } from "../../core/activity/participation.js";
 import { pool, withTransaction } from "../../db.js";
 import { deliverEmission, publishEmission } from "../../emissions/registry.js";
 import { publishActivityDeclaration } from "../../core/activity/declarations.js";
@@ -26,6 +27,7 @@ import {
   type RaidEligibility,
   type RaidRequirement,
   type RaidRole,
+  type RaidOfferedSpec,
   type EstablishRaidSignupInput,
   type RevokeRaidSignupInput,
 } from "./domain.js";
@@ -71,8 +73,6 @@ async function replaceRaidRequirements(client:PoolClient,raidId:string,requireme
     await client.query("INSERT INTO raid_requirements (raid_id,position,label,value) VALUES ($1,$2,$3,$4)",[raidId,position,requirement.label,requirement.value]);
   }
 }
-async function resolveApplicantGuildie(anchor:RaidApplicantAnchor):Promise<string|null>{ if(anchor.kind!=="guildie")return null; const r=await pool.query<{guildie_id:string}>("SELECT guildie_id FROM guildies WHERE guildie_id = $1",[anchor.value]); return r.rows[0]?.guildie_id??null; }
-
 async function loadRaidEventFacts(raidId:string, client:PoolClient|null, includeCancelled:boolean):Promise<RaidEventFacts|null>{
   const db=client??pool;
   const r=await db.query<any>(`SELECT raid_id,guild_id,label,description,occurs_start_unix,occurs_end_unix,tags,eligibility,difficulty,cancelled_at_unix,cancelled_by_guildie_id,concluded_at_unix,concluded_by_guildie_id FROM raid_events WHERE raid_id=$1 AND ($2::boolean OR cancelled_at_unix IS NULL)`,[raidId,includeCancelled]);
@@ -128,55 +128,74 @@ export async function cancelRaid(actorGuildieId:string,raidId:string):Promise<vo
   await deliverEmission(persisted.activityDeclaration);
 }
 
-async function assertApplicantEligible(raid:RaidEventFacts,guildieId:string|null):Promise<void>{if(raid.eligibility==="anyone")return;if(!guildieId)throw new Error("Raid eligibility requires a Guildie");if(!await effectiveGuildAuthority(guildieId,raid.guildId))throw new Error("Applicant is not a current Guildie");}
-async function participationClass(raid:RaidEventFacts,guildieId:string|null,input:EstablishRaidSignupInput):Promise<{className:string;character:{region:string;realmId:string;characterId:string}|null}>{if("declaredClass" in input.participationKey){if(raid.eligibility!=="anyone")throw new Error("Declared-class rows are only valid for anyone eligibility");const className=input.participationKey.declaredClass.trim();if(!className)throw new Error("Declared class is required");return{className,character:null};}if(!guildieId)throw new Error("Character rows require a resolved Guildie");const coordinate=input.participationKey.character;const characters=raid.eligibility==="guild_character_member"?await controlledGuildCharactersForGuildie(guildieId):await controlledCharactersForGuildie(guildieId);const character=characters.find(c=>c.region===coordinate.region&&c.realmId===coordinate.realmId&&c.characterId===coordinate.characterId);if(!character)throw new Error(raid.eligibility==="guild_character_member"?"Character is not a current Guild Character controlled by the applicant":"Character is not currently controlled by the applicant");if(!character.className)throw new Error("Character class facts are not available");return{className:character.className,character:{region:character.region,realmId:character.realmId,characterId:character.characterId}};}
+function raidSignupOfferContract(raid: RaidEventFacts, actor: RaidApplicantAnchor): ActivityParticipationOfferContract {
+  const sources = actor.kind === "external"
+    ? ["declared"] as const
+    : raid.eligibility === "guild_character_member"
+      ? ["controlled_guild_character"] as const
+      : raid.eligibility === "guildie"
+        ? ["controlled_character"] as const
+        : ["controlled_character", "declared"] as const;
+  return {
+    ...(raid.eligibility === "anyone" ? {} : { actorConstraint: { kind: "guildie" as const, currentGuildieIn: raid.guildId } }),
+    fulfillment: [{ component: "specs", kind: "wow_class_pool", sources }],
+    components: [{ kind: "specs", type: "wow_spec", multiple: true }],
+  };
+}
+
+function raidOfferedSpecs(offer: ActivityParticipationOffer): RaidOfferedSpec[] {
+  const component = offer.components.find((value) => value.kind === "specs");
+  if (!Array.isArray(component?.value) || !component.value.length || component.value.some((value) => value.type !== "wow_spec")) {
+    throw new Error("Raid Participation Offer does not contain valid specialization choices");
+  }
+  return component.value.flatMap((value) =>
+    value.type === "wow_spec" ? [{ className: value.value.className, specName: value.value.specName }] : []
+  );
+}
+
 export async function establishRaidSignup(input: EstablishRaidSignupInput): Promise<string> {
   const raid = await raidEventFacts(input.raidId);
   if (!raid) throw new Error("Raid not found");
   requireActiveRaid(raid);
-  const gid = await resolveApplicantGuildie(input.applicantAnchor);
-  await assertApplicantEligible(raid, gid);
-  const participation = await participationClass(raid, gid, input);
-  const specs = normalizedStrings(input.willingSpecs);
-  const roles = rolesForParticipationSpecs(participation.className, specs);
+  if (input.applicantAnchor.kind === "external" && raid.eligibility !== "anyone") {
+    throw new Error("External applicants are only valid for anyone eligibility");
+  }
+  if (!input.offeredSpecs.length) throw new Error("At least one specialization is required");
 
   const persisted = await withTransaction(async (client) => {
-    const applicant = await client.query<{ applicant_id: string }>(
-      `INSERT INTO raid_applicants (raid_id,anchor_kind,anchor_value,resolved_guildie_id)
-       VALUES ($1,$2,$3,$4)
-       ON CONFLICT (raid_id,anchor_kind,anchor_value) DO UPDATE
-         SET resolved_guildie_id=COALESCE(EXCLUDED.resolved_guildie_id,raid_applicants.resolved_guildie_id)
-       RETURNING applicant_id`,
-      [input.raidId, input.applicantAnchor.kind, input.applicantAnchor.value, gid],
-    );
-    const applicantId = applicant.rows[0].applicant_id;
-    const signup = participation.character
-      ? await client.query<{ signup_row_id: string }>(
-          `INSERT INTO raid_signup_rows (raid_id,applicant_id,character_region,character_realm_id,character_id,declared_class,willing_specs,willing_roles)
-           VALUES ($1,$2,$3,$4,$5,NULL,$6,$7)
-           ON CONFLICT (raid_id,applicant_id,character_region,character_realm_id,character_id)
-             WHERE withdrawn_at_unix IS NULL AND character_id IS NOT NULL
-           DO UPDATE SET willing_specs=EXCLUDED.willing_specs,willing_roles=EXCLUDED.willing_roles,updated_at_unix=extract(epoch FROM now())::bigint
-           RETURNING signup_row_id`,
-          [input.raidId, applicantId, participation.character.region, participation.character.realmId, participation.character.characterId, specs, roles],
-        )
-      : await client.query<{ signup_row_id: string }>(
-          `INSERT INTO raid_signup_rows (raid_id,applicant_id,character_region,character_realm_id,character_id,declared_class,willing_specs,willing_roles)
-           VALUES ($1,$2,NULL,NULL,NULL,$3,$4,$5)
-           ON CONFLICT (raid_id,applicant_id,declared_class)
-             WHERE withdrawn_at_unix IS NULL AND declared_class IS NOT NULL
-           DO UPDATE SET willing_specs=EXCLUDED.willing_specs,willing_roles=EXCLUDED.willing_roles,updated_at_unix=extract(epoch FROM now())::bigint
-           RETURNING signup_row_id`,
-          [input.raidId, applicantId, participation.className, specs, roles],
-        );
-    const signupRowId = signup.rows[0].signup_row_id;
-
-    await offerActivityParticipation(client, {
+    const existingOffers = await outstandingActivityParticipationOffersForActor(client, {
       activityKind: "raid",
       activityId: input.raidId,
-      party: { kind: input.applicantAnchor.kind, reference: input.applicantAnchor.value },
-      procedureReference: signupRowId,
+      actor: { kind: input.applicantAnchor.kind, reference: input.applicantAnchor.value },
     });
+    if (existingOffers.length > 1) throw new Error("Raid actor has multiple outstanding Participation Offers");
+    const existingOffer = existingOffers[0] ?? null;
+    const signupRowId = existingOffer?.procedureReference ?? randomUUID();
+    const offerInput = {
+      activityKind: "raid",
+      activityId: input.raidId,
+      actor: { kind: input.applicantAnchor.kind, reference: input.applicantAnchor.value } as const,
+      contract: raidSignupOfferContract(raid, input.applicantAnchor),
+      components: { specs: input.offeredSpecs },
+      procedureReference: signupRowId,
+    };
+    const offer = existingOffer
+      ? await reviseActivityParticipationOffer(client, offerInput)
+      : await constructActivityParticipationOffer(client, offerInput);
+    raidOfferedSpecs(offer);
+
+    if (!existingOffer) {
+      await client.query(
+        `INSERT INTO raid_signup_rows (signup_row_id,raid_id) VALUES ($1,$2)`,
+        [signupRowId, input.raidId],
+      );
+    } else {
+      await client.query(
+        "UPDATE raid_signup_rows SET updated_at_unix=extract(epoch FROM now())::bigint WHERE raid_id=$1 AND signup_row_id=$2",
+        [input.raidId, signupRowId],
+      );
+      await client.query("DELETE FROM raid_assignments WHERE raid_id=$1 AND signup_row_id=$2", [input.raidId, signupRowId]);
+    }
 
     const publication = await publishEmission(client, { code: "raid.signup.established", subject: input.raidId });
     return { signupRowId, publication };
@@ -193,16 +212,27 @@ export async function revokeRaidSignup(input: RevokeRaidSignupInput): Promise<vo
     const row = await client.query<{ signup_row_id: string }>(
       `SELECT rr.signup_row_id
          FROM raid_signup_rows rr
-         JOIN raid_applicants ra ON ra.applicant_id=rr.applicant_id
         WHERE rr.raid_id=$1
           AND rr.signup_row_id=$2
-          AND ra.anchor_kind=$3
-          AND ra.anchor_value=$4
           AND rr.withdrawn_at_unix IS NULL
         FOR UPDATE OF rr`,
-      [input.raidId, input.signupRowId, input.applicantAnchor.kind, input.applicantAnchor.value],
+      [input.raidId, input.signupRowId],
     );
     if (!row.rowCount) throw new Error("Active Raid signup not found for applicant");
+    const offer = await activityParticipationOfferByProcedureReference(client, {
+      activityKind: "raid",
+      activityId: input.raidId,
+      procedureReference: input.signupRowId,
+    });
+    if (
+      !offer
+      || offer.revokedAtUnix !== null
+      || offer.closedAtUnix !== null
+      || offer.actor.kind !== input.applicantAnchor.kind
+      || offer.actor.reference !== input.applicantAnchor.value
+    ) {
+      throw new Error("Active Raid signup not found for applicant");
+    }
 
     await client.query("DELETE FROM raid_assignments WHERE raid_id=$1 AND signup_row_id=$2", [input.raidId, input.signupRowId]);
     await client.query(
@@ -212,7 +242,7 @@ export async function revokeRaidSignup(input: RevokeRaidSignupInput): Promise<vo
     await revokeActivityParticipationOffer(client, {
       activityKind: "raid",
       activityId: input.raidId,
-      party: { kind: input.applicantAnchor.kind, reference: input.applicantAnchor.value },
+      actor: { kind: input.applicantAnchor.kind, reference: input.applicantAnchor.value },
       procedureReference: input.signupRowId,
     });
     return publishEmission(client, { code: "raid.signup.revoked", subject: input.raidId });
@@ -220,26 +250,28 @@ export async function revokeRaidSignup(input: RevokeRaidSignupInput): Promise<vo
   await deliverEmission(publication);
 }
 
-async function raidAssignmentCandidate(client:PoolClient,raidId:string,signupRowId:string):Promise<any>{
-  const rr=await client.query<any>(`SELECT rr.applicant_id,rr.willing_specs,rr.declared_class,wcp.class_name
+async function raidAssignmentCandidate(client:PoolClient,raidId:string,signupRowId:string):Promise<{offeredSpecs:RaidOfferedSpec[]}>{
+  const rr=await client.query<{signup_row_id:string}>(`SELECT rr.signup_row_id
     FROM raid_signup_rows rr
-    LEFT JOIN wow_character_profiles wcp ON wcp.region=rr.character_region AND wcp.realm_id=rr.character_realm_id AND wcp.character_id=rr.character_id
     LEFT JOIN raid_signup_denials rsd ON rsd.raid_id=rr.raid_id AND rsd.signup_row_id=rr.signup_row_id
     WHERE rr.raid_id=$1 AND rr.signup_row_id=$2 AND rr.withdrawn_at_unix IS NULL AND rsd.signup_row_id IS NULL`,[raidId,signupRowId]);
-  const row=rr.rows[0];if(!row)throw new Error("Raid signup is not available for assignment");return row;
+  const row=rr.rows[0];if(!row)throw new Error("Raid signup is not available for assignment");
+  const offer=await activityParticipationOfferByProcedureReference(client,{activityKind:"raid",activityId:raidId,procedureReference:signupRowId});
+  if(!offer || offer.revokedAtUnix!==null || offer.closedAtUnix!==null)throw new Error("Raid signup Participation Offer is not available for assignment");
+  return {offeredSpecs:raidOfferedSpecs(offer)};
 }
 export async function setRaidAssignment(actorGuildieId:string,input:EstablishRaidAssignmentInput):Promise<{ assignmentId:string; established:boolean }>{
   await requireGuildCapabilityOrOperator(actorGuildieId,RAID_ASSIGN_CAPABILITY);
   const persisted=await withTransaction(async client=>{
     const raid=await raidEventFacts(input.raidId,client);if(!raid)throw new Error("Raid not found");requireActiveRaid(raid);
-    const row=await raidAssignmentCandidate(client,input.raidId,input.signupRowId);const cls=row.class_name??row.declared_class;if(!cls)throw new Error("Raid signup class facts are unavailable");validateSelectedConfiguration(cls,row.willing_specs,input.selectedSpec,input.selectedRole);
+    const row=await raidAssignmentCandidate(client,input.raidId,input.signupRowId);validateSelectedConfiguration(row.offeredSpecs,input.selectedClass,input.selectedSpec,input.selectedRole);
     const existing=await client.query<{assignment_id:string}>(`SELECT assignment_id FROM raid_assignments WHERE raid_id=$1 AND signup_row_id=$2 FOR UPDATE`,[input.raidId,input.signupRowId]);
-    if(existing.rowCount){await client.query(`UPDATE raid_assignments SET selected_spec=$3,selected_role=$4,assigned_by_guildie_id=$5,assigned_at_unix=extract(epoch FROM now())::bigint WHERE raid_id=$1 AND signup_row_id=$2`,[input.raidId,input.signupRowId,input.selectedSpec,input.selectedRole,actorGuildieId]);await recordRaidAction(client,input.raidId,"assignment_modified",actorGuildieId);return{result:{assignmentId:existing.rows[0].assignment_id,established:false},publication:await publishEmission(client,{code:"raid.assignment.modified",subject:input.raidId})};}
-    const r=await client.query<{assignment_id:string}>(`INSERT INTO raid_assignments (raid_id,applicant_id,signup_row_id,selected_spec,selected_role,assigned_by_guildie_id) VALUES ($1,$2,$3,$4,$5,$6) RETURNING assignment_id`,[input.raidId,row.applicant_id,input.signupRowId,input.selectedSpec,input.selectedRole,actorGuildieId]);await recordRaidAction(client,input.raidId,"assignment_established",actorGuildieId);return{result:{assignmentId:r.rows[0].assignment_id,established:true},publication:await publishEmission(client,{code:"raid.assignment.established",subject:input.raidId})};
+    if(existing.rowCount){await client.query(`UPDATE raid_assignments SET selected_class=$3,selected_spec=$4,selected_role=$5,assigned_by_guildie_id=$6,assigned_at_unix=extract(epoch FROM now())::bigint WHERE raid_id=$1 AND signup_row_id=$2`,[input.raidId,input.signupRowId,input.selectedClass,input.selectedSpec,input.selectedRole,actorGuildieId]);await recordRaidAction(client,input.raidId,"assignment_modified",actorGuildieId);return{result:{assignmentId:existing.rows[0].assignment_id,established:false},publication:await publishEmission(client,{code:"raid.assignment.modified",subject:input.raidId})};}
+    const r=await client.query<{assignment_id:string}>(`INSERT INTO raid_assignments (raid_id,signup_row_id,selected_class,selected_spec,selected_role,assigned_by_guildie_id) VALUES ($1,$2,$3,$4,$5,$6) RETURNING assignment_id`,[input.raidId,input.signupRowId,input.selectedClass,input.selectedSpec,input.selectedRole,actorGuildieId]);await recordRaidAction(client,input.raidId,"assignment_established",actorGuildieId);return{result:{assignmentId:r.rows[0].assignment_id,established:true},publication:await publishEmission(client,{code:"raid.assignment.established",subject:input.raidId})};
   });await deliverEmission(persisted.publication);return persisted.result;
 }
-export async function establishRaidAssignment(actorGuildieId:string,input:EstablishRaidAssignmentInput):Promise<string>{await requireGuildCapabilityOrOperator(actorGuildieId,RAID_ASSIGN_CAPABILITY);const persisted=await withTransaction(async client=>{const raid=await raidEventFacts(input.raidId,client);if(!raid)throw new Error("Raid not found");requireActiveRaid(raid);const row=await raidAssignmentCandidate(client,input.raidId,input.signupRowId);const cls=row.class_name??row.declared_class;if(!cls)throw new Error("Raid signup class facts are unavailable");validateSelectedConfiguration(cls,row.willing_specs,input.selectedSpec,input.selectedRole);const r=await client.query<{assignment_id:string}>(`INSERT INTO raid_assignments (raid_id,applicant_id,signup_row_id,selected_spec,selected_role,assigned_by_guildie_id) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (raid_id,signup_row_id) DO NOTHING RETURNING assignment_id`,[input.raidId,row.applicant_id,input.signupRowId,input.selectedSpec,input.selectedRole,actorGuildieId]);if(!r.rowCount)throw new Error("Raid assignment already exists");await recordRaidAction(client,input.raidId,"assignment_established",actorGuildieId);return{assignmentId:r.rows[0].assignment_id,publication:await publishEmission(client,{code:"raid.assignment.established",subject:input.raidId})};});await deliverEmission(persisted.publication);return persisted.assignmentId;}
-export async function modifyRaidAssignment(actorGuildieId:string,input:ModifyRaidAssignmentInput):Promise<void>{await requireGuildCapabilityOrOperator(actorGuildieId,RAID_ASSIGN_CAPABILITY);const publication=await withTransaction(async client=>{const raid=await raidEventFacts(input.raidId,client);if(!raid)throw new Error("Raid not found");requireActiveRaid(raid);const row=await raidAssignmentCandidate(client,input.raidId,input.signupRowId);const cls=row.class_name??row.declared_class;if(!cls)throw new Error("Raid signup class facts are unavailable");validateSelectedConfiguration(cls,row.willing_specs,input.selectedSpec,input.selectedRole);const r=await client.query(`UPDATE raid_assignments SET selected_spec=$3,selected_role=$4,assigned_by_guildie_id=$5,assigned_at_unix=extract(epoch FROM now())::bigint WHERE raid_id=$1 AND signup_row_id=$2`,[input.raidId,input.signupRowId,input.selectedSpec,input.selectedRole,actorGuildieId]);if(!r.rowCount)throw new Error("Raid assignment not found");await recordRaidAction(client,input.raidId,"assignment_modified",actorGuildieId);return publishEmission(client,{code:"raid.assignment.modified",subject:input.raidId});});await deliverEmission(publication);}
+export async function establishRaidAssignment(actorGuildieId:string,input:EstablishRaidAssignmentInput):Promise<string>{await requireGuildCapabilityOrOperator(actorGuildieId,RAID_ASSIGN_CAPABILITY);const persisted=await withTransaction(async client=>{const raid=await raidEventFacts(input.raidId,client);if(!raid)throw new Error("Raid not found");requireActiveRaid(raid);const row=await raidAssignmentCandidate(client,input.raidId,input.signupRowId);validateSelectedConfiguration(row.offeredSpecs,input.selectedClass,input.selectedSpec,input.selectedRole);const r=await client.query<{assignment_id:string}>(`INSERT INTO raid_assignments (raid_id,signup_row_id,selected_class,selected_spec,selected_role,assigned_by_guildie_id) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT (raid_id,signup_row_id) DO NOTHING RETURNING assignment_id`,[input.raidId,input.signupRowId,input.selectedClass,input.selectedSpec,input.selectedRole,actorGuildieId]);if(!r.rowCount)throw new Error("Raid assignment already exists");await recordRaidAction(client,input.raidId,"assignment_established",actorGuildieId);return{assignmentId:r.rows[0].assignment_id,publication:await publishEmission(client,{code:"raid.assignment.established",subject:input.raidId})};});await deliverEmission(persisted.publication);return persisted.assignmentId;}
+export async function modifyRaidAssignment(actorGuildieId:string,input:ModifyRaidAssignmentInput):Promise<void>{await requireGuildCapabilityOrOperator(actorGuildieId,RAID_ASSIGN_CAPABILITY);const publication=await withTransaction(async client=>{const raid=await raidEventFacts(input.raidId,client);if(!raid)throw new Error("Raid not found");requireActiveRaid(raid);const row=await raidAssignmentCandidate(client,input.raidId,input.signupRowId);validateSelectedConfiguration(row.offeredSpecs,input.selectedClass,input.selectedSpec,input.selectedRole);const r=await client.query(`UPDATE raid_assignments SET selected_class=$3,selected_spec=$4,selected_role=$5,assigned_by_guildie_id=$6,assigned_at_unix=extract(epoch FROM now())::bigint WHERE raid_id=$1 AND signup_row_id=$2`,[input.raidId,input.signupRowId,input.selectedClass,input.selectedSpec,input.selectedRole,actorGuildieId]);if(!r.rowCount)throw new Error("Raid assignment not found");await recordRaidAction(client,input.raidId,"assignment_modified",actorGuildieId);return publishEmission(client,{code:"raid.assignment.modified",subject:input.raidId});});await deliverEmission(publication);}
 export async function withdrawRaidAssignment(actorGuildieId:string,raidId:string,signupRowId:string):Promise<void>{await requireGuildCapabilityOrOperator(actorGuildieId,RAID_ASSIGN_CAPABILITY);const publication=await withTransaction(async client=>{const raid=await raidEventFacts(raidId,client);if(!raid)throw new Error("Raid not found");requireActiveRaid(raid);const r=await client.query("DELETE FROM raid_assignments WHERE raid_id=$1 AND signup_row_id=$2",[raidId,signupRowId]);if(!r.rowCount)throw new Error("Raid assignment not found");await recordRaidAction(client,raidId,"assignment_withdrawn",actorGuildieId);return publishEmission(client,{code:"raid.assignment.withdrawn",subject:raidId});});await deliverEmission(publication);}
 export async function denyRaidSignup(actorGuildieId:string,input:DenyRaidSignupInput):Promise<void>{await requireGuildCapabilityOrOperator(actorGuildieId,RAID_ASSIGN_CAPABILITY);const publication=await withTransaction(async client=>{const raid=await raidEventFacts(input.raidId,client);if(!raid)throw new Error("Raid not found");requireActiveRaid(raid);const signup=await client.query(`SELECT 1 FROM raid_signup_rows WHERE raid_id=$1 AND signup_row_id=$2 AND withdrawn_at_unix IS NULL`,[input.raidId,input.signupRowId]);if(!signup.rowCount)throw new Error("Raid signup not found");const assigned=await client.query(`SELECT 1 FROM raid_assignments WHERE raid_id=$1 AND signup_row_id=$2`,[input.raidId,input.signupRowId]);if(assigned.rowCount)throw new Error("Assigned Raid signup cannot be denied");const r=await client.query(`INSERT INTO raid_signup_denials (raid_id,signup_row_id,denied_by_guildie_id) VALUES ($1,$2,$3) ON CONFLICT (raid_id,signup_row_id) DO NOTHING RETURNING signup_row_id`,[input.raidId,input.signupRowId,actorGuildieId]);if(!r.rowCount)throw new Error("Raid signup is already denied");await closeActivityParticipationOffer(client,{activityKind:"raid",activityId:input.raidId,procedureReference:input.signupRowId});await recordRaidAction(client,input.raidId,"signup_denied",actorGuildieId);return publishEmission(client,{code:"raid.signup.denied",subject:input.raidId});});await deliverEmission(publication);}
 export type RaidCommitmentAdjudication = { signupRowId:string; fulfilled:boolean; adjudicatedByGuildieId:string; adjudicatedAtUnix:number };
@@ -265,14 +297,19 @@ export async function concludeRaid(actorGuildieId:string,raidId:string):Promise<
   await requireGuildCapabilityOrOperator(actorGuildieId,RAID_STAGE_CAPABILITY);
   const persisted=await withTransaction(async client=>{
     const raid=await raidEventFacts(raidId,client);if(!raid)throw new Error("Raid not found");requireActiveRaid(raid);
-    const commitments=await client.query<any>(`SELECT rr.signup_row_id,ra.anchor_kind,ra.anchor_value,apo.participation_offer_id,rca.fulfilled FROM raid_signup_rows rr JOIN raid_applicants ra ON ra.applicant_id=rr.applicant_id LEFT JOIN raid_signup_denials rsd ON rsd.raid_id=rr.raid_id AND rsd.signup_row_id=rr.signup_row_id LEFT JOIN raid_commitment_adjudications rca ON rca.raid_id=rr.raid_id AND rca.signup_row_id=rr.signup_row_id LEFT JOIN activity_participation_offers apo ON apo.activity_kind='raid' AND apo.activity_id=rr.raid_id AND apo.procedure_reference=rr.signup_row_id WHERE rr.raid_id=$1 AND rr.withdrawn_at_unix IS NULL AND rsd.signup_row_id IS NULL FOR UPDATE OF rr`,[raidId]);
+    const commitments=await client.query<any>(`SELECT rr.signup_row_id,rca.fulfilled FROM raid_signup_rows rr LEFT JOIN raid_signup_denials rsd ON rsd.raid_id=rr.raid_id AND rsd.signup_row_id=rr.signup_row_id LEFT JOIN raid_commitment_adjudications rca ON rca.raid_id=rr.raid_id AND rca.signup_row_id=rr.signup_row_id WHERE rr.raid_id=$1 AND rr.withdrawn_at_unix IS NULL AND rsd.signup_row_id IS NULL FOR UPDATE OF rr`,[raidId]);
     const unresolved=commitments.rows.filter((row:any)=>row.fulfilled===null);if(unresolved.length)throw new Error("Every active Raid commitment must be adjudicated before conclusion");
-    for(const row of commitments.rows){if(row.fulfilled){await establishActivityParticipation(client,{activityKind:"raid",activityId:raidId,party:{kind:row.anchor_kind,reference:row.anchor_value},procedureReference:row.signup_row_id,participationOfferId:row.participation_offer_id});}else{await closeActivityParticipationOffer(client,{activityKind:"raid",activityId:raidId,procedureReference:row.signup_row_id});}}
+    for(const row of commitments.rows){
+      const offer=await activityParticipationOfferByProcedureReference(client,{activityKind:"raid",activityId:raidId,procedureReference:row.signup_row_id});
+      if(!offer)throw new Error("Raid commitment Participation Offer not found");
+      if(row.fulfilled){await establishActivityParticipation(client,{activityKind:"raid",activityId:raidId,party:offer.actor,procedureReference:row.signup_row_id,participationOfferId:offer.participationOfferId});}
+      else{await closeActivityParticipationOffer(client,{activityKind:"raid",activityId:raidId,procedureReference:row.signup_row_id});}
+    }
     await client.query(`UPDATE raid_events SET concluded_at_unix=extract(epoch FROM now())::bigint,concluded_by_guildie_id=$2,updated_at_unix=extract(epoch FROM now())::bigint WHERE raid_id=$1`,[raidId,actorGuildieId]);
     return publishEmission(client,{code:"raid.concluded",subject:raidId});
   });
   await deliverEmission(persisted);
 }
 
-export async function raidRosterDiagnostics(raidId:string):Promise<RaidRosterDiagnostics>{const r=await pool.query<any>(`SELECT ra.selected_role,ra.selected_spec,rr.declared_class,wcp.class_name FROM raid_assignments ra JOIN raid_signup_rows rr ON rr.signup_row_id=ra.signup_row_id LEFT JOIN wow_character_profiles wcp ON wcp.region=rr.character_region AND wcp.realm_id=rr.character_realm_id AND wcp.character_id=rr.character_id WHERE ra.raid_id=$1 AND rr.withdrawn_at_unix IS NULL`,[raidId]);return r.rows.reduce((d:RaidRosterDiagnostics,row:any)=>{d.assigned++;if(row.selected_role==="tank")d.tanks++;if(row.selected_role==="healer")d.healers++;if(row.selected_role==="damage"){d.damage++;const c=row.class_name??row.declared_class,p=c?positionForSpec(c,row.selected_spec):null;if(p==="melee")d.melee++;if(p==="ranged")d.ranged++;}return d;},{assigned:0,tanks:0,healers:0,damage:0,melee:0,ranged:0});}
-export async function assignedRaidCapabilities(raidId:string):Promise<readonly WowTrait[]>{const r=await pool.query<any>(`SELECT ra.selected_spec,rr.declared_class,wcp.class_name FROM raid_assignments ra JOIN raid_signup_rows rr ON rr.signup_row_id=ra.signup_row_id LEFT JOIN wow_character_profiles wcp ON wcp.region=rr.character_region AND wcp.realm_id=rr.character_realm_id AND wcp.character_id=rr.character_id WHERE ra.raid_id=$1 AND rr.withdrawn_at_unix IS NULL ORDER BY ra.assigned_at_unix,ra.assignment_id`,[raidId]);return [...new Set<WowTrait>(r.rows.flatMap((row:any)=>{const c=row.class_name??row.declared_class;return c?traitsForSpec(c,row.selected_spec):[]}))].sort();}
+export async function raidRosterDiagnostics(raidId:string):Promise<RaidRosterDiagnostics>{const r=await pool.query<any>(`SELECT ra.selected_role,ra.selected_class,ra.selected_spec FROM raid_assignments ra JOIN raid_signup_rows rr ON rr.signup_row_id=ra.signup_row_id WHERE ra.raid_id=$1 AND rr.withdrawn_at_unix IS NULL`,[raidId]);return r.rows.reduce((d:RaidRosterDiagnostics,row:any)=>{d.assigned++;if(row.selected_role==="tank")d.tanks++;if(row.selected_role==="healer")d.healers++;if(row.selected_role==="damage"){d.damage++;const p=positionForSpec(row.selected_class,row.selected_spec);if(p==="melee")d.melee++;if(p==="ranged")d.ranged++;}return d;},{assigned:0,tanks:0,healers:0,damage:0,melee:0,ranged:0});}
+export async function assignedRaidCapabilities(raidId:string):Promise<readonly WowTrait[]>{const r=await pool.query<any>(`SELECT ra.selected_class,ra.selected_spec FROM raid_assignments ra JOIN raid_signup_rows rr ON rr.signup_row_id=ra.signup_row_id WHERE ra.raid_id=$1 AND rr.withdrawn_at_unix IS NULL ORDER BY ra.assigned_at_unix,ra.assignment_id`,[raidId]);return [...new Set<WowTrait>(r.rows.flatMap((row:any)=>traitsForSpec(row.selected_class,row.selected_spec)))].sort();}
