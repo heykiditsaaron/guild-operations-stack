@@ -167,7 +167,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       operation: "enablement",
       kind: "result",
       result: "success",
-      actorGuildieId: identity.identityId,
+      actorIdentityId: identity.identityId,
       summary: `Activity plugin ${params.activityKind} was ${body.enabled ? "enabled" : "disabled"}.`,
       details: { activityKind: params.activityKind, enabled: body.enabled },
     });
