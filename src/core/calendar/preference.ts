@@ -7,16 +7,16 @@ export function isCalendarViewMode(value: unknown): value is CalendarViewMode {
   return typeof value === "string" && CALENDAR_VIEW_MODES.includes(value as CalendarViewMode);
 }
 
-export async function calendarViewForGuildie(guildieId: string): Promise<CalendarViewMode> {
+export async function calendarViewForIdentity(identityId: string): Promise<CalendarViewMode> {
   const result = await pool.query<{ view_mode: CalendarViewMode }>(
     "SELECT view_mode FROM identity_calendar_preferences WHERE identity_id = $1",
-    [guildieId],
+    [identityId],
   );
   return result.rows[0]?.view_mode ?? "agenda";
 }
 
-export async function setCalendarViewForGuildie(
-  guildieId: string,
+export async function setCalendarViewForIdentity(
+  identityId: string,
   viewMode: CalendarViewMode,
 ): Promise<void> {
   await pool.query(
@@ -25,6 +25,6 @@ export async function setCalendarViewForGuildie(
      ON CONFLICT (guildie_id) DO UPDATE SET
        view_mode = EXCLUDED.view_mode,
        updated_at = now()`,
-    [guildieId, viewMode],
+    [identityId, viewMode],
   );
 }
