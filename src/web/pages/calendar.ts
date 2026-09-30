@@ -172,7 +172,7 @@ export async function registerCalendarPage(app: FastifyInstance, assets: AssetRe
   app.get("/calendar", async (request, reply) => {
     const nowUnix = Math.floor(Date.now() / 1000);
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, guildie, calendarPoints, guild] = await Promise.all([
+    const [viewer, identity, calendarPoints, guild] = await Promise.all([
       viewerForRequest(sessionToken),
       authenticatedIdentity(sessionToken),
       discoverableGuildCalendarPoints(),
@@ -181,7 +181,7 @@ export async function registerCalendarPage(app: FastifyInstance, assets: AssetRe
     const selectedView = identity ? await calendarViewForIdentity(identity.identityId) : "agenda";
     const activityKinds = await discoverableActivities();
     const establishmentActions = (await Promise.all(activityKinds.map((activity) =>
-      activityKindRenderActions(activity.kind, guildie?.guildieId ?? null)
+      activityKindRenderActions(activity.kind, identity?.identityId ?? null)
     ))).flat();
     const createEvent = establishmentActions.length
       ? `<details class="menu-surface"><summary class="button-primary">Create New</summary><div class="menu-panel">${establishmentActions.map((action) => `<a href="${htmlText(action.href)}">${htmlText(action.label)}</a>`).join("")}</div></details>`
