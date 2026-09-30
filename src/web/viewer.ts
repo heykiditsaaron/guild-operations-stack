@@ -1,5 +1,6 @@
 import { controlledGuildMemberCharacters } from "../core/guild/guild-characters.js";
 import { characterRepresentationForIdentity } from "../core/identity/main-character.js";
+import { characterProjections } from "../core/identity/character-projection.js";
 import { authenticatedIdentity } from "../auth.js";
 import { guildTheme } from "../core/presentation/guild-theme.js";
 import { guildPresentation } from "../core/presentation/guild-presentation.js";
@@ -24,7 +25,7 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
     };
   }
 
-  const [characters, selectedMain, administration, canRefreshGuild, canInspectOperations, presentationContributions] = await Promise.all([
+  const [guildMemberCharacters, selectedMain, administration, canRefreshGuild, canInspectOperations, presentationContributions] = await Promise.all([
     controlledGuildMemberCharacters(identity.identityId),
     characterRepresentationForIdentity(identity.identityId),
     administrationAvailabilityForIdentity(identity.identityId),
@@ -32,6 +33,9 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
     identityHasGuildCapability(identity.identityId, OPERATIONS_INSPECT_CAPABILITY),
     webPresentationContributionsForGuildie(identity.identityId),
   ]);
+
+  const characters = await characterProjections(guildMemberCharacters.map((character) => character.characterRecordId));
+  const guildMembershipByCharacterRecordId = new Map(guildMemberCharacters.map((character) => [character.characterRecordId, character]));
 
   return {
     authenticated: true,
@@ -61,7 +65,7 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
       realmId: character.realmId,
       name: character.name,
       realmName: character.realmName,
-      rankIndex: character.rankIndex,
+      rankIndex: guildMembershipByCharacterRecordId.get(character.characterRecordId)?.rankIndex ?? 0,
       level: character.level,
       className: character.className,
       raceName: character.raceName,
