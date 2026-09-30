@@ -58,7 +58,7 @@ function mapRecord(row: {
   operation: string;
   kind: OperationalRecordKind;
   result: OperationalResult | null;
-  actor_guildie_id: string | null;
+  actor_identity_id: string | null;
   summary: string;
   details: Record<string, unknown> | null;
 }): OperationalRecord {
@@ -69,7 +69,7 @@ function mapRecord(row: {
     operation: row.operation,
     kind: row.kind,
     result: row.result,
-    actorGuildieId: row.actor_guildie_id,
+    actorGuildieId: row.actor_identity_id,
     summary: row.summary,
     details: row.details,
   };
@@ -88,7 +88,7 @@ export async function publishOperationalRecord(
     operation: string;
     kind: OperationalRecordKind;
     result: OperationalResult | null;
-    actor_guildie_id: string | null;
+    actor_identity_id: string | null;
     summary: string;
     details: Record<string, unknown> | null;
   }>(
@@ -98,12 +98,12 @@ export async function publishOperationalRecord(
        operation,
        kind,
        result,
-       actor_guildie_id,
+       actor_identity_id,
        summary,
        details
      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
      RETURNING operational_record_id, occurred_at_unix, source, operation, kind,
-               result, actor_guildie_id, summary, details`,
+               result, actor_identity_id, summary, details`,
     [
       occurredAtUnix,
       input.source.trim(),
@@ -147,12 +147,12 @@ export async function listOperationalRecords(
     operation: string;
     kind: OperationalRecordKind;
     result: OperationalResult | null;
-    actor_guildie_id: string | null;
+    actor_identity_id: string | null;
     summary: string;
     details: Record<string, unknown> | null;
   }>(
     `SELECT operational_record_id, occurred_at_unix, source, operation, kind,
-            result, actor_guildie_id, summary, details
+            result, actor_identity_id, summary, details
        FROM operational_records
        ${conditions.length ? `WHERE ${conditions.join(" AND ")}` : ""}
       ORDER BY occurred_at_unix DESC, operational_record_id DESC
