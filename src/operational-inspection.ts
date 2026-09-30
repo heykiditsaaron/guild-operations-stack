@@ -10,7 +10,7 @@ export type OperationalRecord = {
   operation: string;
   kind: OperationalRecordKind;
   result: OperationalResult | null;
-  actorGuildieId: string | null;
+  actorIdentityId: string | null;
   summary: string;
   details: Record<string, unknown> | null;
 };
@@ -20,7 +20,7 @@ export type PublishOperationalRecordInput = {
   operation: string;
   kind: OperationalRecordKind;
   result?: OperationalResult;
-  actorGuildieId?: string | null;
+  actorIdentityId?: string | null;
   summary: string;
   details?: Record<string, unknown> | null;
 };
@@ -69,7 +69,7 @@ function mapRecord(row: {
     operation: row.operation,
     kind: row.kind,
     result: row.result,
-    actorGuildieId: row.actor_identity_id,
+    actorIdentityId: row.actor_identity_id,
     summary: row.summary,
     details: row.details,
   };
@@ -110,7 +110,7 @@ export async function publishOperationalRecord(
       input.operation.trim(),
       input.kind,
       input.result ?? null,
-      input.actorGuildieId ?? null,
+      input.actorIdentityId ?? null,
       input.summary.trim(),
       input.details ?? null,
     ],
