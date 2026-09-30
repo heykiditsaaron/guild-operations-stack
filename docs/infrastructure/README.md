@@ -11,7 +11,6 @@ Use these documents when implementing against an existing facility, operating it
 - [`guild-refresh.md`](guild-refresh.md) — roster reconciliation, manual/CLI/automatic invocation, scheduling, and follow-up acquisition.
 - [`character-presentation-acquisition.md`](character-presentation-acquisition.md) — shared Blizzard Character profile/media acquisition facility.
 - [`guild-permissioning.md`](guild-permissioning.md) — rank-definition and global capability machinery.
-- [`guildie-discord-state.md`](guildie-discord-state.md) — Discord-authoritative Guildie sidecar observation, managed role projection, reconciliation, and inspection.
 
 ## Shared participation infrastructure
 
