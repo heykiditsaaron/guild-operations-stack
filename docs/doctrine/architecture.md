@@ -103,13 +103,29 @@ Transport does not require every emission to have a consumer, and consumer usefu
 
 Do not introduce a generic event domain, notification domain, audience framework, or scheduler merely to implement transport. Production, transport, and consumption remain distinct responsibilities even when their first implementation is small.
 
-## Member and authority model
+## Identity and authority model
 
-Guild Operations deliberately distinguishes durable Guildie continuity from Blizzard account authority, WoW accounts, Characters, current roster observations, selected-main presentation, optional Discord association, and derived capabilities.
+Identity is the stable recognition layer beneath attributes, authority, capabilities, and actions.
 
-These concepts must not be collapsed merely because they currently describe the same human.
+Guild Operations is a World of Warcraft guild product, so a GO-recognized WoW Account Identity is its canonical domain identity and richest desired form of identification. Blizzard authentication authority above that boundary may discover multiple WoW Account Identities without merging them. External identities may also be established and may act independently where procedure permits.
 
-The canonical member and organizational-authority model lives in [`member-objects.md`](member-objects.md).
+Cross-authority association exists only between Identities and is always anchored directly to a GO-recognized WoW Account Identity. Association lets an external ingress Identity resolve to the canonical WoW-backed Actor subject while preserving the external Identity as the action origin.
+
+Characters are controlled context beneath WoW Account Identity. Subject-guild Character rank is Blizzard-authoritative. Guild Member Character and Guildie are derived classifications rather than independently authored identity objects. Representation is a declarable Identity attribute and does not determine authority.
+
+The dependency direction is:
+
+```text
+Identity
+   ↓
+attributes / controlled context
+   ↓
+authority / capabilities
+   ↓
+actions
+```
+
+The canonical identity, member, Actor-resolution, and organizational-authority model lives in [`member-objects.md`](member-objects.md).
 
 ## Subject is contextual language
 
@@ -139,7 +155,7 @@ Legacy timestamp columns predating this rule are conformity debt. They do not we
 
 Guild Operations distinguishes systemic ownership from concrete procedure and from distribution.
 
-**Core** owns the shared truths, language, capabilities, and machinery required for Guild Operations to remain coherent. Current Core concerns include member and guild identity, authority and permissioning, Activity, Calendar, presentation, administration and operations, and the shared application infrastructure that supports them. Core remains coherent when no Activity plugins are installed.
+**Core** owns the shared truths, language, capabilities, and machinery required for Guild Operations to remain coherent. Current Core concerns include identity and guild context, authority and permissioning, Activity, Calendar, presentation, administration and operations, and the shared application infrastructure that supports them. Core remains coherent when no Activity plugins are installed.
 
 **Activity** is a first-class Core primitive and the translation boundary for concrete guild procedures that produce Activity occurrences. Activity owns systemic Activity identity and lifecycle meaning, Participation as a systemic observation, plugin registration and activation, and translation into Core capabilities such as Calendar, authority, administration, discovery, navigation, and rendering. Activity does not own or reproduce concrete procedure.
 
@@ -155,7 +171,7 @@ Activity plugin procedure
  Core capabilities / systemic consumers
 ```
 
-Shared vocabulary does not imply shared authority. Core may know what a Guildie, Character, Role, Spec, rank, temporal coordinate, or capability means while an Activity plugin decides why that concept matters to its procedure. The provider owns what a primitive means and how it is resolved; the requester owns why its procedure requires it.
+Shared vocabulary does not imply shared authority. Core may know what an Identity, Actor, derived Guildie attribute, Character, Role, Spec, rank, temporal coordinate, or capability means while an Activity plugin decides why that concept matters to its procedure. The provider owns what a primitive means and how it is resolved; the requester owns why its procedure requires it.
 
 External integrations and other packaged capabilities are separate concerns. Their architecture should be established from their own concrete pressure rather than forcing Activity plugins and external-system integrations into one extension model. Distribution properties such as required, bundled, optional, or entitled likewise do not determine semantic ownership.
 
