@@ -29,11 +29,11 @@ export async function registerMyParticipationPage(app: FastifyInstance, assets: 
       authenticatedIdentity(sessionToken),
       viewerForRequest(sessionToken),
     ]);
-    if (!guildie || !viewer.authenticated) return reply.redirect("/auth/blizzard/start?return_to=%2Fme%2Fparticipation");
+    if (!identity || !viewer.authenticated) return reply.redirect("/auth/blizzard/start?return_to=%2Fme%2Fparticipation");
 
     const [participations, participationOffers] = await Promise.all([
-      activityParticipationsForGuildie(guildie.guildieId),
-      activityParticipationOffersForGuildie(guildie.guildieId),
+      activityParticipationsForGuildie(identity.identityId),
+      activityParticipationOffersForGuildie(identity.identityId),
     ]);
     const cards = await Promise.all([
       ...participations.map(async (reference) => {
