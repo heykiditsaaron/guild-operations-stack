@@ -42,7 +42,7 @@ export async function effectiveGuildAuthority(
     `SELECT capability FROM guild_rank_capabilities WHERE guild_id = $1 AND rank_index = $2 ORDER BY capability`,
     [resolvedGuildId, highestAuthorityCharacter.rankIndex],
   );
-  return { identityId, guildId: resolvedGuildId, rankIndex: highestAuthorityCharacter.rankIndex, rankDisplayName: rank.display_name ?? `Rank ${highestAuthorityCharacter.rankIndex}`, capabilities: capabilityResult.rows.map((row) => row.capability), developmentGuildMasterAuthority: hasDevelopmentGuildMasterAuthority(identityId) };
+  return { identityId, guildId: resolvedGuildId, rankIndex: highestAuthorityCharacter.rankIndex, rankDisplayName, capabilities: capabilityResult.rows.map((row) => row.capability), developmentGuildMasterAuthority: hasDevelopmentGuildMasterAuthority(identityId) };
 }
 
 function hasInherentGuildCapability(authority: EffectiveGuildAuthority | null, identityId: string): boolean {
