@@ -2,7 +2,7 @@ import { publishOperationalRecord } from "../../operational-inspection.js";
 
 export type RaffleOperationalExceptionInput = {
   operation: string;
-  actorGuildieId?: string | null;
+  actorIdentityId?: string | null;
   summary: string;
   details?: Record<string, unknown> | null;
 };
@@ -15,7 +15,7 @@ export async function publishRaffleOperationalException(
       source: "raffle",
       operation: input.operation,
       kind: "exception",
-      actorGuildieId: input.actorGuildieId ?? null,
+      actorIdentityId: input.actorIdentityId ?? null,
       summary: input.summary,
       details: input.details ?? null,
     });
