@@ -136,7 +136,7 @@ function raidSignupOfferContract(raid: RaidEventFacts, actor: RaidApplicantAncho
         ? ["controlled_character"] as const
         : ["controlled_character", "declared"] as const;
   return {
-    ...(raid.eligibility === "anyone" ? {} : { actorConstraint: { kind: "guildie" as const, currentGuildieIn: raid.guildId } }),
+    ...(raid.eligibility === "anyone" ? {} : { actorConstraint: { kind: "native" as const, currentGuildieIn: raid.guildId } }),
     fulfillment: [{ component: "specs", kind: "wow_class_pool", sources }],
     components: [{ kind: "specs", type: "wow_spec", multiple: true }],
   };
