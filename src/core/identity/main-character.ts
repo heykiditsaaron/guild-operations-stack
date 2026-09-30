@@ -31,28 +31,27 @@ export async function selectCharacterRepresentation(
     avatar_url: string | null;
   }>(
     `SELECT
-       grm.guild_id,
-       grm.character_id,
-       grm.realm_id,
-       grm.character_name,
-       grm.realm_name,
-       grm.rank_index,
+       gr.guild_id,
+       cr.character_id,
+       cr.realm_id,
+       cr.name AS character_name,
+       cr.realm_name,
+       gr.rank_index,
        wcp.avatar_url
-     FROM characters c
-     JOIN guild_roster_memberships grm
-       ON grm.region = c.region
-      AND grm.realm_id = c.realm_id
-      AND grm.character_id = c.character_id
-      AND grm.currently_present = true
+     FROM controlled_character_roster ccr
+     JOIN character_roster cr ON cr.character_record_id = ccr.character_record_id
+     JOIN guild_roster gr
+       ON gr.character_record_id = cr.character_record_id
+      AND gr.currently_present = true
      LEFT JOIN wow_character_profiles wcp
-       ON wcp.region = c.region
-      AND wcp.realm_id = c.realm_id
-      AND wcp.character_id = c.character_id
-     WHERE c.identity_id = $1
-       AND c.currently_controlled = true
-       AND grm.guild_id = $2
-       AND c.realm_id = $3
-       AND c.character_id = $4`,
+       ON wcp.region = cr.region
+      AND wcp.realm_id = cr.realm_id
+      AND wcp.character_id = cr.character_id
+     WHERE ccr.identity_id = $1
+       AND ccr.currently_controlled = true
+       AND gr.guild_id = $2
+       AND cr.realm_id = $3
+       AND cr.character_id = $4`,
     [identityId, binding.guildId, realmId, characterId],
   );
 
@@ -111,26 +110,26 @@ export async function characterRepresentationForIdentity(identityId: string): Pr
        gmc.guild_id,
        gmc.character_id,
        gmc.realm_id,
-       c.name,
-       c.realm_name,
-       CASE WHEN grm.currently_present IS TRUE THEN grm.rank_index ELSE NULL END AS rank_index,
-       (c.currently_controlled IS TRUE AND grm.currently_present IS TRUE) AS currently_eligible,
+       cr.name,
+       cr.realm_name,
+       CASE WHEN gr.currently_present IS TRUE THEN gr.rank_index ELSE NULL END AS rank_index,
+       (ccr.currently_controlled IS TRUE AND gr.currently_present IS TRUE) AS currently_eligible,
        wcp.avatar_url
      FROM identity_character_representations gmc
-     JOIN characters c
-       ON c.identity_id = gmc.identity_id
-      AND c.region = gmc.region
-      AND c.realm_id = gmc.realm_id
-      AND c.character_id = gmc.character_id
-     LEFT JOIN guild_roster_memberships grm
-       ON grm.guild_id = gmc.guild_id
-      AND grm.region = gmc.region
-      AND grm.realm_id = gmc.realm_id
-      AND grm.character_id = gmc.character_id
+     JOIN character_roster cr
+       ON cr.region = gmc.region
+      AND cr.realm_id = gmc.realm_id
+      AND cr.character_id = gmc.character_id
+     LEFT JOIN controlled_character_roster ccr
+       ON ccr.identity_id = gmc.identity_id
+      AND ccr.character_record_id = cr.character_record_id
+     LEFT JOIN guild_roster gr
+       ON gr.guild_id = gmc.guild_id
+      AND gr.character_record_id = cr.character_record_id
      LEFT JOIN wow_character_profiles wcp
-       ON wcp.region = gmc.region
-      AND wcp.realm_id = gmc.realm_id
-      AND wcp.character_id = gmc.character_id
+       ON wcp.region = cr.region
+      AND wcp.realm_id = cr.realm_id
+      AND wcp.character_id = cr.character_id
      WHERE gmc.identity_id = $1
        AND gmc.guild_id = $2`,
     [identityId, binding.guildId],
