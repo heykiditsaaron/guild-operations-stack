@@ -101,7 +101,10 @@ export async function characterByRecordId(characterRecordId: string): Promise<Co
        wcp.class_name,
        wcp.active_spec_name,
        wcp.avatar_url
-     FROM characters c
+     FROM character_roster c
+     JOIN controlled_character_roster ccr
+       ON ccr.character_record_id = c.character_record_id
+      AND ccr.currently_controlled = true
      LEFT JOIN wow_character_profiles wcp
        ON wcp.region = c.region
       AND wcp.realm_id = c.realm_id
