@@ -41,6 +41,15 @@ function safeReturnTo(value: unknown): string | null {
   return value;
 }
 
+function escapeHtml(value: unknown): string {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 function withQueryValue(path: string, key: string, value: string): string {
   const url = new URL(path, "http://guild-operations.local");
   url.searchParams.set(key, value);
@@ -350,9 +359,10 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
         [sha256(selectionToken), attempt.region, authority.principalId, authority.profile, returnTo, config.authAttemptTtlMinutes],
       );
       const options = accounts.map((account) => {
-        const names = (account.characters ?? []).map((character) => character.name).slice(0, 4).join(", ");
+        const names = (account.characters ?? []).map((character) => escapeHtml(character.name)).slice(0, 4).join(", ");
+        const accountId = escapeHtml(account.wowAccountId);
         const detail = names ? ` — ${names}` : "";
-        return `<label><input type="radio" name="wow_account_id" value="${account.wowAccountId}" required> WoW Account ${account.wowAccountId}${detail}</label>`;
+        return `<label><input type="radio" name="wow_account_id" value="${accountId}" required> WoW Account ${accountId}${detail}</label>`;
       }).join("<br>");
       return reply.type("text/html; charset=utf-8").send(`<!doctype html><html><head><meta charset="utf-8"><title>Choose WoW Account</title></head><body><main><h1>Choose your WoW Account</h1><p>Select the WoW Account you want to use for this Guild Operations session.</p><form method="post" action="/auth/blizzard/select-account"><input type="hidden" name="selection_token" value="${selectionToken}">${options}<p><button type="submit">Continue</button></p></form></main></body></html>`);
     } catch (error) {
