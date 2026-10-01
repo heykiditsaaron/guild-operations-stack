@@ -3,6 +3,13 @@ document.addEventListener("click", (event) => {
   if (!(target instanceof Node)) return;
 
   document.querySelectorAll("details.menu-surface[open]").forEach((details) => {
+    const summary = details.querySelector(":scope > summary");
+    if (summary?.contains(target)) {
+      event.preventDefault();
+      details.removeAttribute("open");
+      return;
+    }
+
     if (!details.contains(target)) details.removeAttribute("open");
   });
 });
