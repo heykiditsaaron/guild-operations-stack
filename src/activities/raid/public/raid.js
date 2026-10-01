@@ -25,35 +25,31 @@ for (const form of document.querySelectorAll("[data-raid-signup-form]")) {
     .filter((choice) => choice instanceof HTMLElement);
 
   function selectedPool() {
-    const characters = poolInputs
-      .filter((input) => input.name === "pool-character" && input.checked)
-      .map((input) => ({
-        className: input.dataset.className,
-        character: {
-          region: input.dataset.region,
-          realmId: input.dataset.realmId,
-          characterId: input.dataset.characterId,
-        },
-      }));
-    const declaredClasses = poolInputs
-      .filter((input) => input.name === "pool-class" && input.checked)
-      .map((input) => input.value);
-    return { characters, declaredClasses };
+    const characterInput = poolInputs.find((input) => input.name === "pool-character" && input.checked);
+    const classInput = poolInputs.find((input) => input.name === "pool-class" && input.checked);
+    const character = characterInput
+      ? {
+          className: characterInput.dataset.className,
+          character: {
+            region: characterInput.dataset.region,
+            realmId: characterInput.dataset.realmId,
+            characterId: characterInput.dataset.characterId,
+          },
+        }
+      : null;
+    return { character, declaredClass: classInput?.value ?? null };
   }
 
   function refreshSpecs() {
-    const { characters, declaredClasses } = selectedPool();
-    const classes = new Set([
-      ...characters.map((value) => value.className),
-      ...declaredClasses,
-    ]);
+    const { character, declaredClass } = selectedPool();
+    const className = character?.className ?? declaredClass;
     for (const choice of specChoices) {
-      const visible = classes.has(choice.dataset.className);
+      const visible = Boolean(className) && choice.dataset.className === className;
       choice.hidden = !visible;
       const input = choice.querySelector('input[name="spec"]');
       if (!visible && input instanceof HTMLInputElement) input.checked = false;
     }
-    if (empty instanceof HTMLElement) empty.hidden = classes.size > 0;
+    if (empty instanceof HTMLElement) empty.hidden = Boolean(className);
   }
 
   for (const input of poolInputs) input.addEventListener("change", refreshSpecs);
@@ -61,12 +57,12 @@ for (const form of document.querySelectorAll("[data-raid-signup-form]")) {
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const { characters, declaredClasses } = selectedPool();
+    const { character, declaredClass } = selectedPool();
     const selectedSpecs = [...form.querySelectorAll('input[name="spec"]:checked')]
       .filter((input) => input instanceof HTMLInputElement);
 
-    if (characters.length === 0 && declaredClasses.length === 0) {
-      status.textContent = "Choose at least one character or class.";
+    if (!character && !declaredClass) {
+      status.textContent = "Choose a character or class.";
       return;
     }
     if (selectedSpecs.length === 0) {
@@ -76,7 +72,6 @@ for (const form of document.querySelectorAll("[data-raid-signup-form]")) {
 
     const offeredSpecs = selectedSpecs.map((input) => {
       const className = input.dataset.className;
-      const character = characters.find((value) => value.className === className);
       return character
         ? { character: character.character, specName: input.value }
         : { className, specName: input.value };
