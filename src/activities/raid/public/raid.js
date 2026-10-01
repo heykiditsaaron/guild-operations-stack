@@ -16,67 +16,137 @@ function raidMutationBase() {
 for (const form of document.querySelectorAll("[data-raid-signup-form]")) {
   if (!(form instanceof HTMLFormElement)) continue;
   const status = form.querySelector("[data-raid-signup-status]");
-  const empty = form.querySelector("[data-raid-specs-empty]");
-  if (!(status instanceof HTMLElement)) continue;
+  const acquisition = form.querySelector("[data-raid-acquisition]");
+  const sourceChoices = form.querySelector("[data-raid-source-choices]");
+  const specStage = form.querySelector("[data-raid-spec-stage]");
+  const sourceHeading = form.querySelector("[data-raid-source-heading]");
+  const classHeading = form.querySelector("[data-raid-class-heading]");
+  const contributionsElement = form.querySelector("[data-raid-offer-contributions]");
+  const actions = form.querySelector("[data-raid-offer-actions]");
+  if (!(status instanceof HTMLElement) || !(acquisition instanceof HTMLElement) || !(sourceChoices instanceof HTMLElement) || !(specStage instanceof HTMLElement) || !(contributionsElement instanceof HTMLElement) || !(actions instanceof HTMLElement)) continue;
 
-  const poolInputs = [...form.querySelectorAll('input[name="pool-character"], input[name="pool-class"]')]
-    .filter((input) => input instanceof HTMLInputElement);
-  const specChoices = [...form.querySelectorAll("[data-raid-spec-choice]")]
-    .filter((choice) => choice instanceof HTMLElement);
-
-  function selectedPool() {
-    const characterInput = poolInputs.find((input) => input.name === "pool-character" && input.checked);
-    const classInput = poolInputs.find((input) => input.name === "pool-class" && input.checked);
-    const character = characterInput
-      ? {
-          className: characterInput.dataset.className,
-          character: {
-            region: characterInput.dataset.region,
-            realmId: characterInput.dataset.realmId,
-            characterId: characterInput.dataset.characterId,
-          },
-        }
-      : null;
-    return { character, declaredClass: classInput?.value ?? null };
+  let pendingSource = null;
+  const contributions = [];
+  const existingSpecs = JSON.parse(form.dataset.existingSpecs || "[]");
+  const existingByClass = new Map();
+  for (const coordinate of existingSpecs) {
+    const [className, specName] = coordinate.split("\\u0000");
+    if (!className || !specName) continue;
+    if (!existingByClass.has(className)) existingByClass.set(className, []);
+    existingByClass.get(className).push(specName);
+  }
+  for (const [className, specs] of existingByClass) {
+    contributions.push({ kind: "class", className, label: className, specs });
   }
 
-  function refreshSpecs() {
-    const { character, declaredClass } = selectedPool();
-    const className = character?.className ?? declaredClass;
-    for (const choice of specChoices) {
-      const visible = Boolean(className) && choice.dataset.className === className;
-      choice.hidden = !visible;
-      const input = choice.querySelector('input[name="spec"]');
-      if (!visible && input instanceof HTMLInputElement) input.checked = false;
-    }
-    if (empty instanceof HTMLElement) empty.hidden = Boolean(className);
+  function renderContributions() {
+    contributionsElement.replaceChildren();
+    contributions.forEach((contribution, index) => {
+      const card = document.createElement("article");
+      card.className = "raid-contribution-card";
+      const heading = document.createElement("div");
+      heading.className = "raid-contribution-heading";
+      const identity = document.createElement("div");
+      const strong = document.createElement("strong");
+      strong.textContent = contribution.label;
+      const small = document.createElement("small");
+      small.textContent = contribution.className;
+      identity.append(strong, small);
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "button-secondary";
+      remove.textContent = "Remove";
+      remove.addEventListener("click", () => {
+        contributions.splice(index, 1);
+        renderContributions();
+        if (!contributions.length) showAcquisition();
+      });
+      heading.append(identity, remove);
+      const specs = document.createElement("div");
+      specs.className = "raid-contribution-specs";
+      for (const specName of contribution.specs) {
+        const pill = document.createElement("span");
+        pill.textContent = `${specName} ${contribution.className}`;
+        specs.append(pill);
+      }
+      card.append(heading, specs);
+      contributionsElement.append(card);
+    });
+    actions.hidden = contributions.length === 0;
   }
 
-  for (const input of poolInputs) input.addEventListener("change", refreshSpecs);
-  refreshSpecs();
-
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const { character, declaredClass } = selectedPool();
-    const selectedSpecs = [...form.querySelectorAll('input[name="spec"]:checked')]
-      .filter((input) => input instanceof HTMLInputElement);
-
-    if (!character && !declaredClass) {
-      status.textContent = "Choose a character or class.";
-      return;
+  function resetSpecStage() {
+    pendingSource = null;
+    specStage.hidden = true;
+    sourceChoices.hidden = false;
+    for (const template of form.querySelectorAll("[data-raid-spec-template]")) {
+      if (!(template instanceof HTMLElement)) continue;
+      template.hidden = true;
+      const input = template.querySelector("input");
+      if (input instanceof HTMLInputElement) input.checked = false;
     }
-    if (selectedSpecs.length === 0) {
+  }
+
+  function showAcquisition() {
+    acquisition.hidden = false;
+    resetSpecStage();
+  }
+
+  for (const button of form.querySelectorAll("[data-raid-source-choice]")) {
+    if (!(button instanceof HTMLButtonElement)) continue;
+    button.addEventListener("click", () => {
+      pendingSource = {
+        kind: button.dataset.sourceKind,
+        className: button.dataset.className,
+        label: button.dataset.sourceLabel,
+        character: button.dataset.sourceKind === "character" ? {
+          region: button.dataset.region,
+          realmId: button.dataset.realmId,
+          characterId: button.dataset.characterId,
+        } : null,
+      };
+      sourceChoices.hidden = true;
+      specStage.hidden = false;
+      if (sourceHeading instanceof HTMLElement) sourceHeading.textContent = pendingSource.label || "";
+      if (classHeading instanceof HTMLElement) classHeading.textContent = pendingSource.className || "";
+      for (const template of form.querySelectorAll("[data-raid-spec-template]")) {
+        if (!(template instanceof HTMLElement)) continue;
+        template.hidden = template.dataset.className !== pendingSource.className;
+      }
+    });
+  }
+
+  form.querySelector("[data-raid-change-source]")?.addEventListener("click", resetSpecStage);
+  form.querySelector("[data-raid-add-another]")?.addEventListener("click", showAcquisition);
+  form.querySelector("[data-raid-add-contribution]")?.addEventListener("click", () => {
+    if (!pendingSource?.className) return;
+    const specs = [...form.querySelectorAll("[data-raid-spec-template] input:checked")]
+      .filter((input) => input instanceof HTMLInputElement)
+      .map((input) => input.value);
+    if (!specs.length) {
       status.textContent = "Choose at least one specialization.";
       return;
     }
+    contributions.push({ ...pendingSource, specs });
+    status.textContent = "";
+    renderContributions();
+    acquisition.hidden = true;
+  });
 
-    const offeredSpecs = selectedSpecs.map((input) => {
-      const className = input.dataset.className;
-      return character
-        ? { character: character.character, specName: input.value }
-        : { className, specName: input.value };
-    });
+  renderContributions();
+  if (contributions.length) acquisition.hidden = true;
 
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const offeredSpecs = contributions.flatMap((contribution) =>
+      contribution.specs.map((specName) => contribution.kind === "character"
+        ? { character: contribution.character, specName }
+        : { className: contribution.className, specName })
+    );
+    if (!offeredSpecs.length) {
+      status.textContent = "Add at least one specialization to your offer.";
+      return;
+    }
     status.textContent = "Submitting offer…";
     try {
       const response = await fetch(`${raidMutationBase()}/signup`, {
