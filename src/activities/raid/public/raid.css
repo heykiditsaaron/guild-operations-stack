@@ -160,6 +160,51 @@
   margin: 0;
 }
 
+.raid-pool-section,
+.raid-pool-choices {
+  display: grid;
+  gap: .65rem;
+}
+
+.raid-pool-choices {
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+}
+
+.raid-pool-choice {
+  position: relative;
+  display: grid;
+  min-height: 3.75rem;
+  padding: .7rem .85rem;
+  border: 1px solid var(--border-subtle, #2a2a2f);
+  border-radius: .75rem;
+  cursor: pointer;
+}
+
+.raid-pool-choice:has(input:checked) {
+  border-color: currentColor;
+  background: var(--surface-raised, #141419);
+}
+
+.raid-pool-choice input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.raid-pool-choice span {
+  display: grid;
+  gap: .15rem;
+  align-content: center;
+}
+
+.raid-pool-choice small {
+  color: var(--theme-text-muted);
+}
+
 .raid-spec-choices {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
@@ -247,6 +292,7 @@
     align-items: baseline;
   }
 
+  .raid-pool-choices,
   .raid-spec-choices {
     grid-template-columns: 1fr;
   }
