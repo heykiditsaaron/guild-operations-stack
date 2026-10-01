@@ -1,5 +1,6 @@
 import type { ActivityOccurrence, ActivitySharedValue } from "../core/activity/registry.js";
 import { activityParticipationOfferById } from "../core/activity/participation.js";
+import { identityRepresentations } from "../core/identity/guildie-attribution.js";
 import { pool } from "../db.js";
 import { htmlText } from "./render.js";
 
@@ -27,12 +28,10 @@ async function renderParticipationOffer(
     });
     if (!offer) return "Participation offer unavailable";
 
-    const character = offer.components
-      .flatMap((component) => Array.isArray(component.value) ? component.value : [component.value])
-      .find((value) => value.type === "guild_character");
-    return character?.type === "guild_character"
-      ? htmlText(character.value.name)
-      : "Participation offer";
+    if (offer.actor.kind === "external") return htmlText(offer.actor.reference);
+
+    const representation = (await identityRepresentations([offer.actor.reference])).get(offer.actor.reference);
+    return htmlText(representation?.displayName ?? `Identity ${offer.actor.reference.slice(0, 8)}`);
   } finally {
     client.release();
   }
