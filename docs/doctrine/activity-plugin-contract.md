@@ -345,6 +345,53 @@ Activity owns the resulting systemic Participation observation so consumers can 
 
 > **Procedure establishes why the observation is legitimate. Activity owns what the Participation observation means systemically.**
 
+## Participation Offers and occurrence relationships
+
+A **Participation Offer** is a Guild Operations-owned systemic object. It belongs to its Actor and points to the Activity occurrence whose procedure invited or accepts the Offer. The Activity plugin owns that occurrence's procedure; it does not own the Offer merely because the Offer points to its occurrence.
+
+Likewise, Guild Operations does not acquire authority over plugin procedure merely because a Core-owned Offer points to the occurrence.
+
+Conceptually:
+
+```text
+Actor
+  │
+  │ owns / authors
+  ▼
+Participation Offer ───── points to ─────► Activity occurrence
+      Core-owned                            plugin procedure
+```
+
+The occurrence-side collection of Offers may be derived from the persisted Offer-to-occurrence relationships rather than separately persisted. What matters to the contract is that the relationship is traversable: given an occurrence, Guild Operations can resolve the Participation Offers pointing to it and, through those Offers, their Actors.
+
+This relationship deliberately preserves enough systemic meaning for future change-transfer machinery without prescribing that machinery now. In particular, the model must be capable of expressing both directions:
+
+```text
+occurrence changed
+    ↓
+Offers pointing to occurrence
+    ↓
+Actors belonging to those Offers
+```
+
+and:
+
+```text
+Participation Offer changed
+    ↓
+occurrence the Offer points to
+    ↓
+Activity plugin responsible for that occurrence's procedure
+```
+
+A future transport, event, emission, or other transfer mechanism may use these relationships to inform affected identities when an occurrence changes, or to inform the responsible procedure when an Offer changes. The Activity/Participation contract does not define that future transfer API or claim that such propagation is currently implemented.
+
+The important invariant is authority preservation. Being able to identify, traverse to, or inform the other side of the Activity boundary does not confer ownership of that side's meaning. Guild Operations remains authoritative for the Offer and Actor relationship. The Activity plugin remains authoritative for its occurrence procedure and for the procedural consequences of an Offer change.
+
+> **Participation Offers belong to Actors, are owned systemically by Guild Operations, and point to Activity occurrences whose procedure remains plugin-owned.**
+
+> **The Offer/occurrence relationship is traversable in both directions without transferring authority across the Activity boundary.**
+
 ## Participation fulfillment
 
 Where an Activity procedure accepts an explicit Participation Offer, the contract between plugin procedure and Activity distinguishes three independent concerns:
