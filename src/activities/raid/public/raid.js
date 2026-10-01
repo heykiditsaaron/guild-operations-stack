@@ -17,13 +17,12 @@ for (const form of document.querySelectorAll("[data-raid-signup-form]")) {
   if (!(form instanceof HTMLFormElement)) continue;
   const status = form.querySelector("[data-raid-signup-status]");
   const acquisition = form.querySelector("[data-raid-acquisition]");
-  const sourceChoices = form.querySelector("[data-raid-source-choices]");
   const specStage = form.querySelector("[data-raid-spec-stage]");
   const sourceHeading = form.querySelector("[data-raid-source-heading]");
   const classHeading = form.querySelector("[data-raid-class-heading]");
   const contributionsElement = form.querySelector("[data-raid-offer-contributions]");
   const actions = form.querySelector("[data-raid-offer-actions]");
-  if (!(status instanceof HTMLElement) || !(acquisition instanceof HTMLElement) || !(sourceChoices instanceof HTMLElement) || !(specStage instanceof HTMLElement) || !(contributionsElement instanceof HTMLElement) || !(actions instanceof HTMLElement)) continue;
+  if (!(status instanceof HTMLElement) || !(acquisition instanceof HTMLElement) || !(specStage instanceof HTMLElement) || !(contributionsElement instanceof HTMLElement) || !(actions instanceof HTMLElement)) continue;
 
   let pendingSource = null;
   const contributions = [];
