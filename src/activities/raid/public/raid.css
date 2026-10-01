@@ -398,3 +398,34 @@
     min-width: 0;
   }
 }
+
+
+.raid-source-mode {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .65rem;
+}
+
+.raid-source-select {
+  display: grid;
+  gap: .4rem;
+}
+
+.raid-source-select span {
+  font-weight: 700;
+}
+
+.raid-source-select select {
+  width: 100%;
+  min-height: 3rem;
+  padding: .65rem .75rem;
+  color: inherit;
+  border: 1px solid var(--border-subtle, #2a2a2f);
+  border-radius: .75rem;
+  background: var(--surface-raised, #141419);
+}
+
+.raid-source-mode[hidden],
+.raid-source-select[hidden] {
+  display: none;
+}
