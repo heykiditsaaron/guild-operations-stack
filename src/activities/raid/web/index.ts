@@ -27,13 +27,21 @@ async function participationEditor(
   existing: RaidSignupView | null,
 ): Promise<string> {
   const existingSpecs = new Set((existing?.offeredSpecs ?? []).map((spec) => `${spec.className}\u0000${spec.specName}`));
-  const knownClasses = [...new Set(characters.map((character) => character.className))];
   const classes = allWowClassTraitDefinitions().map((definition) => definition.className);
+  const existingClasses = [...new Set((existing?.offeredSpecs ?? []).map((spec) => spec.className))];
+  const preselectedCharacterIndex = existingClasses.length === 1
+    ? (() => {
+        const matches = characters
+          .map((character, index) => ({ character, index }))
+          .filter(({ character }) => character.className === existingClasses[0]);
+        return matches.length === 1 ? matches[0].index : null;
+      })()
+    : null;
   const characterChoices = characters.map((character, index) =>
-    `<label class="raid-pool-choice"><input type="checkbox" name="pool-character" value="${index}" data-class-name="${htmlText(character.className)}" data-region="${htmlText(character.region)}" data-realm-id="${htmlText(character.realmId)}" data-character-id="${htmlText(character.characterId)}"><span><strong>${htmlText(character.name)}</strong><small>${htmlText(character.className)}${character.realmName ? ` · ${htmlText(character.realmName)}` : ""}</small></span></label>`
+    `<label class="raid-pool-choice"><input type="radio" name="pool-character" value="${index}" data-class-name="${htmlText(character.className)}" data-region="${htmlText(character.region)}" data-realm-id="${htmlText(character.realmId)}" data-character-id="${htmlText(character.characterId)}"${preselectedCharacterIndex === index ? " checked" : ""}><span><strong>${htmlText(character.name)}</strong><small>${htmlText(character.className)}${character.realmName ? ` · ${htmlText(character.realmName)}` : ""}</small></span></label>`
   ).join("");
   const declaredChoices = allowDeclaredClasses ? classes.map((className) =>
-    `<label class="raid-pool-choice"><input type="checkbox" name="pool-class" value="${htmlText(className)}"><span><strong>${htmlText(className)}</strong><small>Declare class</small></span></label>`
+    `<label class="raid-pool-choice"><input type="radio" name="pool-class" value="${htmlText(className)}"${existingClasses.length === 1 && existingClasses[0] === className ? " checked" : ""}><span><strong>${htmlText(className)}</strong></span></label>`
   ).join("") : "";
   const specs = await Promise.all(classes.flatMap((className) =>
     specsForClass(className).map(async (specName) => {
@@ -42,23 +50,23 @@ async function participationEditor(
     })
   ));
   const sourceHint = allowDeclaredClasses
-    ? "Choose any characters you want to bring into the pool, or declare classes directly. You can choose more than one."
-    : "Choose the characters you are willing to bring into the pool. You can choose more than one.";
+    ? "Guild Operations could not resolve a controlled character for this offer. Choose the class you are willing to play."
+    : "Choose the character you are willing to bring. Guild Operations will use its class to offer the specializations you can choose from.";
   return `<section class="raid-participation participation-workspace" aria-labelledby="raid-signup-heading">
     <div class="participation-workspace-header">
       <h2 id="raid-signup-heading">${existing ? "Revise your offer" : "Sign up"}</h2>
-      <p>Build the pool first. Guild Operations will use it to show the specializations you can offer; you still choose which of those you are willing to play.</p>
+      <p>Guild Operations will establish the class context for your offer, then you choose the specializations you are willing to play.</p>
     </div>
     <form class="raid-offer-form" data-raid-signup-form>
       <fieldset data-raid-class-pool>
-        <legend>1. What are you willing to bring?</legend>
+        <legend>1. ${allowDeclaredClasses ? "Choose your class" : "Choose your character"}</legend>
         <p>${sourceHint}</p>
-        ${characters.length ? `<div class="raid-pool-section"><h3>Your characters</h3><div class="raid-pool-choices">${characterChoices}</div></div>` : ""}
-        ${allowDeclaredClasses ? `<div class="raid-pool-section"><h3>Classes</h3><div class="raid-pool-choices">${declaredChoices}</div></div>` : ""}
+        ${characters.length ? `<div class="raid-pool-section"><div class="raid-pool-choices">${characterChoices}</div></div>` : ""}
+        ${allowDeclaredClasses ? `<div class="raid-pool-section"><div class="raid-pool-choices">${declaredChoices}</div></div>` : ""}
       </fieldset>
       <fieldset data-raid-specs>
         <legend>2. Which specializations are you willing to play?</legend>
-        <p data-raid-specs-empty>Choose at least one character${allowDeclaredClasses ? " or class" : ""} above to see specializations.</p>
+        <p data-raid-specs-empty>Choose ${allowDeclaredClasses ? "a class" : "a character"} above to see specializations.</p>
         <div class="raid-spec-choices" data-raid-spec-choices>${specs.join("")}</div>
       </fieldset>
       <button type="submit" class="button-primary">${existing ? "Update offer" : "Sign up"}</button>
@@ -82,7 +90,7 @@ function offeredSpecInput(value:unknown):RaidOfferedSpecInput|null{
 
 export async function registerRaidParticipationRoutes(app:FastifyInstance,assets:AssetRegistry):Promise<void>{
   app.get<{Params:RaidParams}>("/activities/raid/:raidId/participation",async(request,reply)=>{const sessionToken=request.cookies[SESSION_COOKIE_NAME];const [viewer,identity,raid]=await Promise.all([viewerForRequest(sessionToken),authenticatedIdentity(sessionToken),raidEventFacts(request.params.raidId)]);if(!raid)return reply.code(404).send({error:"Raid not found"});const historical=raid.concludedAtUnix!==null,signupsOpen=!historical,publicDestination=raidOccurrenceDestinations(raid.raidId).find(value=>value.kind==="public");let intake="",ownRows="";let existing:RaidSignupView|null=null;if(identity){try{const rows=await raidSignupsForGuildie(raid.raidId,identity.identityId);existing=rows.find(row=>row.withdrawnAtUnix===null&&row.deniedAtUnix===null)??null;ownRows=ownSignupsView(rows,signupsOpen);}catch{ownRows="";}}
-    if(historical){intake=`<section class="raid-signup-state"><h2>Raid record</h2><p>This raid is concluded. Its commitments, assignments, adjudications, and established Participation are preserved as history.</p></section>`;}else if(!identity){intake=`<section class="raid-signup-state"><h2>Sign in to participate</h2><p>This web signup surface currently accepts Guild Operations members. External intake will use its own producer when that integration exists.</p></section>`;}else{try{const {characters}=await raidParticipationCharacters(raid.raidId,identity.identityId);const allowDeclaredClasses=raid.eligibility==="anyone";intake=characters.length||allowDeclaredClasses?await participationEditor(characters,allowDeclaredClasses,existing):`<section class="raid-signup-state"><h2>No eligible characters</h2><p>No currently controlled character is eligible for this raid.</p></section>`;}catch(error){intake=`<section class="raid-signup-state"><h2>Not eligible</h2><p>${htmlText(error instanceof Error?error.message:"You are not eligible to participate in this raid.")}</p></section>`;}}
+    if(historical){intake=`<section class="raid-signup-state"><h2>Raid record</h2><p>This raid is concluded. Its commitments, assignments, adjudications, and established Participation are preserved as history.</p></section>`;}else if(!identity){intake=`<section class="raid-signup-state"><h2>Sign in to participate</h2><p>This web signup surface currently accepts Guild Operations members. External intake will use its own producer when that integration exists.</p></section>`;}else{try{const {characters}=await raidParticipationCharacters(raid.raidId,identity.identityId);const allowDeclaredClasses=raid.eligibility==="anyone"&&characters.length===0;intake=characters.length||allowDeclaredClasses?await participationEditor(characters,allowDeclaredClasses,existing):`<section class="raid-signup-state"><h2>No eligible characters</h2><p>No currently controlled character is eligible for this raid.</p></section>`;}catch(error){intake=`<section class="raid-signup-state"><h2>Not eligible</h2><p>${htmlText(error instanceof Error?error.message:"You are not eligible to participate in this raid.")}</p></section>`;}}
     const html=renderPage(assets,{pathname:request.url,title:`Participation · ${raid.label} · ${viewer.guildPresentation.guildName} Guild Operations`,description:`Participation for ${raid.label}.`,viewer,stylesheets:["raid.css"],scripts:["raid.js"],secondaryNavigation:publicDestination?{kind:"back",label:raid.label,href:publicDestination.href}:{kind:"back",label:"Activities",href:"/activities"},header:"",body:renderOccurrenceParticipation({activity:"Raid",title:raid.label,context:`${localTime(raid.occursAt[0])} · ${htmlText(difficultyLabel(raid.difficulty))}${historical?" · Historical":""}`,existingParticipation:ownRows||undefined,intake})});return reply.header("Cache-Control","no-cache").type("text/html; charset=utf-8").send(html);});
 
   app.post<{Params:RaidParams;Body:SignupBody}>("/activities/raid/:raidId/signup",async(request,reply)=>{const identity=await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);if(!identity)return reply.code(401).send({error:"Authentication required"});const raw=request.body?.offeredSpecs;if(!Array.isArray(raw)||!raw.length)return reply.code(400).send({error:"At least one specialization is required"});const offeredSpecs=raw.map(offeredSpecInput);if(offeredSpecs.some(value=>value===null))return reply.code(400).send({error:"Specialization offer is invalid"});try{const signupRowId=await establishRaidSignup({raidId:request.params.raidId,applicantAnchor:{kind:"native",value:identity.identityId},offeredSpecs:offeredSpecs as RaidOfferedSpecInput[]});return reply.code(201).send({signupRowId});}catch(error){return reply.code(400).send({error:error instanceof Error?error.message:"Signup could not be submitted"});}});
