@@ -26,50 +26,42 @@ async function participationEditor(
   allowDeclaredClasses: boolean,
   existing: RaidSignupView | null,
 ): Promise<string> {
-  const existingSpecs = new Set((existing?.offeredSpecs ?? []).map((spec) => `${spec.className}\u0000${spec.specName}`));
   const classes = allWowClassTraitDefinitions().map((definition) => definition.className);
-  const existingClasses = [...new Set((existing?.offeredSpecs ?? []).map((spec) => spec.className))];
-  const preselectedCharacterIndex = existingClasses.length === 1
-    ? (() => {
-        const matches = characters
-          .map((character, index) => ({ character, index }))
-          .filter(({ character }) => character.className === existingClasses[0]);
-        return matches.length === 1 ? matches[0].index : null;
-      })()
-    : null;
   const characterChoices = characters.map((character, index) =>
-    `<label class="raid-pool-choice"><input type="radio" name="pool-character" value="${index}" data-class-name="${htmlText(character.className)}" data-region="${htmlText(character.region)}" data-realm-id="${htmlText(character.realmId)}" data-character-id="${htmlText(character.characterId)}"${preselectedCharacterIndex === index ? " checked" : ""}><span><strong>${htmlText(character.name)}</strong><small>${htmlText(character.className)}${character.realmName ? ` · ${htmlText(character.realmName)}` : ""}</small></span></label>`
+    `<button type="button" class="raid-source-choice" data-raid-source-choice data-source-kind="character" data-source-index="${index}" data-class-name="${htmlText(character.className)}" data-region="${htmlText(character.region)}" data-realm-id="${htmlText(character.realmId)}" data-character-id="${htmlText(character.characterId)}" data-source-label="${htmlText(character.name)}"><strong>${htmlText(character.name)}</strong><small>${htmlText(character.className)}${character.realmName ? ` · ${htmlText(character.realmName)}` : ""}</small></button>`
   ).join("");
   const declaredChoices = allowDeclaredClasses ? classes.map((className) =>
-    `<label class="raid-pool-choice"><input type="radio" name="pool-class" value="${htmlText(className)}"${existingClasses.length === 1 && existingClasses[0] === className ? " checked" : ""}><span><strong>${htmlText(className)}</strong></span></label>`
+    `<button type="button" class="raid-source-choice" data-raid-source-choice data-source-kind="class" data-class-name="${htmlText(className)}" data-source-label="${htmlText(className)}"><strong>${htmlText(className)}</strong></button>`
   ).join("") : "";
-  const specs = await Promise.all(classes.flatMap((className) =>
+  const specTemplates = await Promise.all(classes.flatMap((className) =>
     specsForClass(className).map(async (specName) => {
       const icon = await specializationIconUrl(className, specName);
-      return `<label class="raid-spec-choice" data-raid-spec-choice data-class-name="${htmlText(className)}" hidden><input type="checkbox" name="spec" value="${htmlText(specName)}" data-class-name="${htmlText(className)}"${existingSpecs.has(`${className}\u0000${specName}`) ? " checked" : ""}>${icon ? `<img src="${htmlText(icon)}" alt="" loading="lazy">` : ""}<span>${htmlText(specName)} ${htmlText(className)}</span></label>`;
+      return `<label class="raid-spec-choice" data-raid-spec-template data-class-name="${htmlText(className)}" data-spec-name="${htmlText(specName)}" hidden><input type="checkbox" value="${htmlText(specName)}">${icon ? `<img src="${htmlText(icon)}" alt="" loading="lazy">` : ""}<span>${htmlText(specName)}</span></label>`;
     })
   ));
-  const sourceHint = allowDeclaredClasses
-    ? "Guild Operations could not resolve a controlled character for this offer. Choose the class you are willing to play."
-    : "Choose the character you are willing to bring. Guild Operations will use its class to offer the specializations you can choose from.";
+  const existingSpecs = (existing?.offeredSpecs ?? []).map((spec) => `${spec.className}\u0000${spec.specName}`);
   return `<section class="raid-participation participation-workspace" aria-labelledby="raid-signup-heading">
     <div class="participation-workspace-header">
       <h2 id="raid-signup-heading">${existing ? "Revise your offer" : "Sign up"}</h2>
-      <p>Guild Operations will establish the class context for your offer, then you choose the specializations you are willing to play.</p>
+      <p>Build your offer from the classes and specializations you are willing to play.</p>
     </div>
-    <form class="raid-offer-form" data-raid-signup-form>
-      <fieldset data-raid-class-pool>
-        <legend>1. ${allowDeclaredClasses ? "Choose your class" : "Choose your character"}</legend>
-        <p>${sourceHint}</p>
-        ${characters.length ? `<div class="raid-pool-section"><div class="raid-pool-choices">${characterChoices}</div></div>` : ""}
-        ${allowDeclaredClasses ? `<div class="raid-pool-section"><div class="raid-pool-choices">${declaredChoices}</div></div>` : ""}
-      </fieldset>
-      <fieldset data-raid-specs>
-        <legend>2. Which specializations are you willing to play?</legend>
-        <p data-raid-specs-empty>Choose ${allowDeclaredClasses ? "a class" : "a character"} above to see specializations.</p>
-        <div class="raid-spec-choices" data-raid-spec-choices>${specs.join("")}</div>
-      </fieldset>
-      <button type="submit" class="button-primary">${existing ? "Update offer" : "Sign up"}</button>
+    <form class="raid-offer-form" data-raid-signup-form data-existing-specs="${htmlText(JSON.stringify(existingSpecs))}">
+      <div class="raid-offer-contributions" data-raid-offer-contributions></div>
+      <section class="raid-acquisition" data-raid-acquisition>
+        <h3>${existing ? "Add another" : "Choose " + (allowDeclaredClasses ? "a class" : "a character")}</h3>
+        <p>${allowDeclaredClasses ? "Choose a class to establish the specializations you can offer." : "Choose a character. Guild Operations will use its class to establish the specializations you can offer."}</p>
+        <div class="raid-source-choices" data-raid-source-choices>${characterChoices}${declaredChoices}</div>
+        <div class="raid-spec-stage" data-raid-spec-stage hidden>
+          <div class="raid-spec-stage-heading"><button type="button" class="button-secondary" data-raid-change-source>Back</button><div><strong data-raid-source-heading></strong><small data-raid-class-heading></small></div></div>
+          <p>Select one or more specializations.</p>
+          <div class="raid-spec-choices" data-raid-spec-choices>${specTemplates.join("")}</div>
+          <button type="button" class="button-primary" data-raid-add-contribution>Add to offer</button>
+        </div>
+      </section>
+      <div class="raid-offer-actions" data-raid-offer-actions hidden>
+        <button type="submit" class="button-primary">${existing ? "Update offer" : "Confirm signup"}</button>
+        <button type="button" class="button-secondary" data-raid-add-another>+ Add another</button>
+      </div>
       <p data-raid-signup-status role="status" aria-live="polite"></p>
     </form>
   </section>`;
