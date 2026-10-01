@@ -78,7 +78,10 @@ for (const form of document.querySelectorAll("[data-raid-signup-form]")) {
   function resetSpecStage() {
     pendingSource = null;
     specStage.hidden = true;
-    sourceChoices.hidden = false;
+    const mode = form.querySelector("[data-raid-source-mode]");
+    if (mode instanceof HTMLElement) mode.hidden = false;
+    if (characterSelect instanceof HTMLElement) characterSelect.hidden = true;
+    if (classSelect instanceof HTMLElement) classSelect.hidden = true;
     for (const template of form.querySelectorAll("[data-raid-spec-template]")) {
       if (!(template instanceof HTMLElement)) continue;
       template.hidden = true;
@@ -92,29 +95,50 @@ for (const form of document.querySelectorAll("[data-raid-signup-form]")) {
     resetSpecStage();
   }
 
-  for (const button of form.querySelectorAll("[data-raid-source-choice]")) {
+  const characterSelect = form.querySelector("[data-raid-character-select]");
+  const classSelect = form.querySelector("[data-raid-class-select]");
+
+  function chooseSource(source) {
+    pendingSource = source;
+    if (!pendingSource?.className) return;
+    if (characterSelect instanceof HTMLElement) characterSelect.hidden = true;
+    if (classSelect instanceof HTMLElement) classSelect.hidden = true;
+    const mode = form.querySelector("[data-raid-source-mode]");
+    if (mode instanceof HTMLElement) mode.hidden = true;
+    specStage.hidden = false;
+    if (sourceHeading instanceof HTMLElement) sourceHeading.textContent = pendingSource.label || "";
+    if (classHeading instanceof HTMLElement) classHeading.textContent = pendingSource.className || "";
+    for (const template of form.querySelectorAll("[data-raid-spec-template]")) {
+      if (!(template instanceof HTMLElement)) continue;
+      template.hidden = template.dataset.className !== pendingSource.className;
+    }
+  }
+
+  for (const button of form.querySelectorAll("[data-raid-source-mode-choice]")) {
     if (!(button instanceof HTMLButtonElement)) continue;
     button.addEventListener("click", () => {
-      pendingSource = {
-        kind: button.dataset.sourceKind,
-        className: button.dataset.className,
-        label: button.dataset.sourceLabel,
-        character: button.dataset.sourceKind === "character" ? {
-          region: button.dataset.region,
-          realmId: button.dataset.realmId,
-          characterId: button.dataset.characterId,
-        } : null,
-      };
-      sourceChoices.hidden = true;
-      specStage.hidden = false;
-      if (sourceHeading instanceof HTMLElement) sourceHeading.textContent = pendingSource.label || "";
-      if (classHeading instanceof HTMLElement) classHeading.textContent = pendingSource.className || "";
-      for (const template of form.querySelectorAll("[data-raid-spec-template]")) {
-        if (!(template instanceof HTMLElement)) continue;
-        template.hidden = template.dataset.className !== pendingSource.className;
-      }
+      if (characterSelect instanceof HTMLElement) characterSelect.hidden = button.dataset.raidSourceModeChoice !== "character";
+      if (classSelect instanceof HTMLElement) classSelect.hidden = button.dataset.raidSourceModeChoice !== "class";
     });
   }
+
+  const characterControl = characterSelect?.querySelector("select");
+  if (characterControl instanceof HTMLSelectElement) characterControl.addEventListener("change", () => {
+    const option = characterControl.selectedOptions[0];
+    if (!option?.value) return;
+    chooseSource({
+      kind: "character",
+      className: option.dataset.className,
+      label: option.textContent?.split(" · ")[0] || "",
+      character: { region: option.dataset.region, realmId: option.dataset.realmId, characterId: option.dataset.characterId },
+    });
+  });
+
+  const classControl = classSelect?.querySelector("select");
+  if (classControl instanceof HTMLSelectElement) classControl.addEventListener("change", () => {
+    if (!classControl.value) return;
+    chooseSource({ kind: "class", className: classControl.value, label: classControl.value, character: null });
+  });
 
   form.querySelector("[data-raid-change-source]")?.addEventListener("click", resetSpecStage);
   form.querySelector("[data-raid-add-another]")?.addEventListener("click", showAcquisition);
