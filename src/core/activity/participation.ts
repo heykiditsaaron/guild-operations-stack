@@ -690,23 +690,6 @@ export async function activityParticipationOffersForActivity(
   return result.rows.map(mapParticipationOffer);
 }
 
-export async function activityParticipationOffersById(
-  participationOfferIds: readonly string[],
-): Promise<Map<string, ActivityParticipationOffer>> {
-  const ids = [...new Set(participationOfferIds.map((id) => requiredText(id, "Offer id")))];
-  if (ids.length === 0) return new Map();
-  const result = await pool.query<any>(
-    `SELECT *
-       FROM activity_participation_offers
-      WHERE participation_offer_id = ANY($1::uuid[])`,
-    [ids],
-  );
-  return new Map(result.rows.map((row) => {
-    const offer = mapParticipationOffer(row);
-    return [offer.participationOfferId, offer];
-  }));
-}
-
 export async function activityParticipationOffersForIdentity(identityId: string): Promise<ActivityParticipationOffer[]> {
   const result = await pool.query<any>(
     `SELECT offer.*
