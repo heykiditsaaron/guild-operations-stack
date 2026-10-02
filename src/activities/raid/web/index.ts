@@ -7,7 +7,8 @@ import { specializationIconUrl } from "../../../wow-iconography.js";
 import { allWowClassTraitDefinitions, specsForClass } from "../../../wow-traits/registry.js";
 import type { AssetRegistry } from "../../../web/assets.js";
 import { htmlText, renderOccurrenceParticipation, renderPage } from "../../../web/render.js";
-import { viewerForRequest } from "../../../web/viewer.js";\nimport { renderParticipationOfferWorkspace } from "../../../web/participation-offer-workspace.js";
+import { viewerForRequest } from "../../../web/viewer.js";
+import { renderParticipationOfferWorkspace } from "../../../web/participation-offer-workspace.js";
 
 type RaidParams = { raidId: string };
 type WithdrawParams = RaidParams & { signupRowId: string };
