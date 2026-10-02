@@ -7,7 +7,9 @@ for (const form of document.querySelectorAll("[data-participation-offer-form]"))
     const character = request.querySelector("[data-participation-guild-character]");
     const currentCharacter = request.querySelector("[data-participation-current-character]");
     if (character instanceof HTMLSelectElement && currentCharacter instanceof HTMLScriptElement) {
-      character.value = JSON.stringify(JSON.parse(currentCharacter.textContent || "{}"));
+      const current = JSON.parse(currentCharacter.textContent || "{}");
+      character.value = JSON.stringify(current.value ?? {});
+      character.dataset.participationRetainedValue = JSON.stringify(current);
     }
 
     const specWorkspace = request.querySelector("[data-participation-wow-spec]");
@@ -94,15 +96,26 @@ for (const form of document.querySelectorAll("[data-participation-offer-form]"))
         if (kind === "integer") {
           const input = request.querySelector("[data-participation-integer]");
           if (!(input instanceof HTMLInputElement) || !input.value) throw new Error(`${name} is required.`);
-          value = Number(input.value);
+          const numberValue = Number(input.value);
+          value = input.dataset.participationRetainedValue === input.value ? { retain: 0 } : numberValue;
         } else if (kind === "guild_character") {
           const input = request.querySelector("[data-participation-guild-character]");
           if (!(input instanceof HTMLSelectElement) || !input.value) throw new Error(`${name} is required.`);
-          value = JSON.parse(input.value);
+          const selected = JSON.parse(input.value);
+          const retained = input.dataset.participationRetainedValue
+            ? JSON.parse(input.dataset.participationRetainedValue)
+            : null;
+          value = retained && JSON.stringify(retained.value) === JSON.stringify(selected)
+            ? { retain: retained.retain }
+            : selected;
         } else if (kind === "wow_spec") {
           const workspace = request.querySelector("[data-participation-wow-spec]");
           value = workspace?._participationValues ?? [];
-          value = value.map(({ className, specName, character }) => character ? { character, specName } : { className, specName });
+          value = value.map(({ className, specName, character, retain }) =>
+            Number.isSafeInteger(retain)
+              ? { retain }
+              : character ? { character, specName } : { className, specName }
+          );
         }
         if (allowMultiple) {
           if (!Array.isArray(value) || value.length === 0) throw new Error(`${name} requires at least one value.`);
