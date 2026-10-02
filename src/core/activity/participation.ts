@@ -42,19 +42,15 @@ export type OfferActivityParticipationInput = {
 export type ActivityParticipationContextRequest =
   | {
       name: string;
-      type: "integer";
-      cardinality: "single";
+      kind: "integer";
+      allowMultiple: boolean;
       greaterThan?: number;
       greaterThanOrEqual?: number;
       lessThan?: number;
       lessThanOrEqual?: number;
     }
-  | { name: string; type: "guild_character"; cardinality: "single" }
-  | {
-      name: string;
-      type: "wow_spec";
-      cardinality: "many";
-    };
+  | { name: string; kind: "guild_character"; allowMultiple: boolean }
+  | { name: string; kind: "wow_spec"; allowMultiple: boolean };
 
 export type ActivityParticipationEligibility =
   | { kind: "any" }
@@ -154,10 +150,10 @@ function contextName(value: string): string {
   return requiredText(value, "Offer context name");
 }
 
-function requireIntegerContext(
-  request: Extract<ActivityParticipationContextRequest, { type: "integer" }>,
+function requireIntegerContextValue(
+  request: Extract<ActivityParticipationContextRequest, { kind: "integer" }>,
   raw: unknown,
-): ActivityParticipationContextItem {
+): ActivitySharedValue {
   if (!Number.isSafeInteger(raw)) {
     throw new ActivityParticipationOfferError("invalid_integer", `${request.name} must be an integer`);
   }
@@ -174,25 +170,15 @@ function requireIntegerContext(
   if (request.lessThanOrEqual !== undefined && !(value <= request.lessThanOrEqual)) {
     throw new ActivityParticipationOfferError("integer_out_of_range", `${request.name} must be at most ${request.lessThanOrEqual}`);
   }
-  return { name: contextName(request.name), value: { type: "integer", value } };
+  return { type: "integer", value };
 }
 
-function normalizedTexts(values: unknown, field: string): string[] {
-  if (!Array.isArray(values)) throw new ActivityParticipationOfferError("invalid_wow_spec", `${field} must be an array`);
-  const normalized = [...new Set(values.map((value) => typeof value === "string" ? value.trim() : "").filter(Boolean))];
-  if (!normalized.length) throw new ActivityParticipationOfferError("invalid_wow_spec", `${field} requires at least one specialization`);
-  return normalized;
-}
-
-async function requireWowSpecContext(
+async function requireWowSpecContextValue(
   actor: ActivityParticipationActor,
   eligibility: ActivityParticipationEligibility,
-  request: Extract<ActivityParticipationContextRequest, { type: "wow_spec" }>,
+  request: Extract<ActivityParticipationContextRequest, { kind: "wow_spec" }>,
   raw: unknown,
-): Promise<ActivityParticipationContextItem> {
-  if (!Array.isArray(raw) || !raw.length) {
-    throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.name} requires at least one specialization`);
-  }
+): Promise<ActivitySharedValue> {
   const sources: readonly ("controlled_character" | "controlled_guild_character" | "declared")[] =
     actor.kind === "external"
       ? eligibility.kind === "any" ? ["declared"] : []
@@ -202,88 +188,77 @@ async function requireWowSpecContext(
           ? ["controlled_character"]
           : ["controlled_character", "declared"];
 
-  const values = await Promise.all(raw.map(async (item) => {
-    if (typeof item !== "object" || item === null) {
-      throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.name} contains an invalid specialization choice`);
-    }
-    const candidate = item as {
-      specName?: unknown;
-      character?: { region?: unknown; realmId?: unknown; characterId?: unknown };
-      className?: unknown;
-    };
-    if (typeof candidate.specName !== "string" || !candidate.specName.trim()) {
-      throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.name} contains an invalid specialization choice`);
-    }
+  if (typeof raw !== "object" || raw === null) {
+    throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.name} contains an invalid specialization choice`);
+  }
+  const candidate = raw as {
+    specName?: unknown;
+    character?: { region?: unknown; realmId?: unknown; characterId?: unknown };
+    className?: unknown;
+  };
+  if (typeof candidate.specName !== "string" || !candidate.specName.trim()) {
+    throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.name} contains an invalid specialization choice`);
+  }
 
-    let className: string;
-    if (candidate.character) {
-      if (actor.kind !== "native") {
-        throw new ActivityParticipationOfferError("wow_spec_requires_native_identity", `${request.name} must resolve Character provenance through a native identity`);
-      }
-      const coordinate = candidate.character;
-      if (typeof coordinate.region !== "string" || typeof coordinate.realmId !== "string" || typeof coordinate.characterId !== "string") {
-        throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.name} contains an invalid Character reference`);
-      }
-      const source = sources.includes("controlled_guild_character")
-        ? "controlled_guild_character"
-        : sources.includes("controlled_character")
-          ? "controlled_character"
-          : null;
-      if (!source) {
-        throw new ActivityParticipationOfferError("wow_spec_fulfillment_unavailable", `${request.name} does not permit Character-derived class provenance`, 403);
-      }
-      const characters = source === "controlled_guild_character"
-        ? await characterProjections(
-            (await controlledGuildMemberCharacters(actor.reference))
-              .map((character) => character.characterRecordId),
-          )
-        : await characterProjections(await controlledCharacterRecordIdsForIdentity(actor.reference));
-      const character = characters.find((value) =>
-        value.region === coordinate.region && value.realmId === coordinate.realmId && value.characterId === coordinate.characterId
+  let className: string;
+  if (candidate.character) {
+    if (actor.kind !== "native") {
+      throw new ActivityParticipationOfferError("wow_spec_requires_native_identity", `${request.name} must resolve Character provenance through a native identity`);
+    }
+    const coordinate = candidate.character;
+    if (typeof coordinate.region !== "string" || typeof coordinate.realmId !== "string" || typeof coordinate.characterId !== "string") {
+      throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.name} contains an invalid Character reference`);
+    }
+    const source = sources.includes("controlled_guild_character")
+      ? "controlled_guild_character"
+      : sources.includes("controlled_character")
+        ? "controlled_character"
+        : null;
+    if (!source) {
+      throw new ActivityParticipationOfferError("wow_spec_fulfillment_unavailable", `${request.name} does not permit Character-derived class provenance`, 403);
+    }
+    const characters = source === "controlled_guild_character"
+      ? await characterProjections(
+          (await controlledGuildMemberCharacters(actor.reference))
+            .map((character) => character.characterRecordId),
+        )
+      : await characterProjections(await controlledCharacterRecordIdsForIdentity(actor.reference));
+    const character = characters.find((value) =>
+      value.region === coordinate.region && value.realmId === coordinate.realmId && value.characterId === coordinate.characterId
+    );
+    if (!character) {
+      throw new ActivityParticipationOfferError(
+        "wow_spec_identity_unavailable",
+        source === "controlled_guild_character"
+          ? `${request.name} must resolve through currently controlled Characters on the current guild roster`
+          : `${request.name} must resolve through currently controlled Characters`,
+        403,
       );
-      if (!character) {
-        throw new ActivityParticipationOfferError(
-          "wow_spec_identity_unavailable",
-          source === "controlled_guild_character"
-            ? `${request.name} must resolve through currently controlled Characters on the current guild roster`
-            : `${request.name} must resolve through currently controlled Characters`,
-          403,
-        );
-      }
-      if (!character.className) throw new ActivityParticipationOfferError("wow_spec_class_unavailable", "Character class facts are not available");
-      className = character.className;
-    } else {
-      if (!sources.includes("declared")) {
-        throw new ActivityParticipationOfferError("wow_spec_fulfillment_unavailable", `${request.name} does not permit declared class provenance`, 403);
-      }
-      if (typeof candidate.className !== "string" || !candidate.className.trim()) {
-        throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.name} requires a class for each declared specialization`);
-      }
-      className = candidate.className.trim();
     }
+    if (!character.className) throw new ActivityParticipationOfferError("wow_spec_class_unavailable", "Character class facts are not available");
+    className = character.className;
+  } else {
+    if (!sources.includes("declared")) {
+      throw new ActivityParticipationOfferError("wow_spec_fulfillment_unavailable", `${request.name} does not permit declared class provenance`, 403);
+    }
+    if (typeof candidate.className !== "string" || !candidate.className.trim()) {
+      throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.name} requires a class for each declared specialization`);
+    }
+    className = candidate.className.trim();
+  }
 
-    const specName = candidate.specName.trim();
-    const canonical = specsForClass(className)
-      .find((value) => value.toLocaleLowerCase("en-US") === specName.toLocaleLowerCase("en-US"));
-    if (!canonical) throw new ActivityParticipationOfferError("invalid_wow_spec", `Unknown class/specialization combination: ${className} / ${specName}`);
-    return { type: "wow_spec" as const, value: { className, specName: canonical } };
-  }));
-
-  const unique = values.filter((value, index) =>
-    values.findIndex((candidate) => candidate.value.className === value.value.className && candidate.value.specName === value.value.specName) === index
-  );
-  return { name: contextName(request.name), value: unique };
+  const specName = candidate.specName.trim();
+  const canonical = specsForClass(className)
+    .find((value) => value.toLocaleLowerCase("en-US") === specName.toLocaleLowerCase("en-US"));
+  if (!canonical) throw new ActivityParticipationOfferError("invalid_wow_spec", `Unknown class/specialization combination: ${className} / ${specName}`);
+  return { type: "wow_spec", value: { className, specName: canonical } };
 }
 
-async function constructParticipationContextItem(
+async function requireGuildCharacterContextValue(
   actor: ActivityParticipationActor,
-  eligibility: ActivityParticipationEligibility,
-  request: ActivityParticipationContextRequest,
+  request: Extract<ActivityParticipationContextRequest, { kind: "guild_character" }>,
   raw: unknown,
-): Promise<ActivityParticipationContextItem> {
-  if (request.type === "integer") return requireIntegerContext(request, raw);
-  if (request.type === "wow_spec") return requireWowSpecContext(actor, eligibility, request, raw);
-
+): Promise<ActivitySharedValue> {
   if (actor.kind !== "native") {
     throw new ActivityParticipationOfferError("guild_character_requires_native_identity", "A guild Character must be offered by a native identity");
   }
@@ -308,18 +283,49 @@ async function constructParticipationContextItem(
   }
 
   return {
-    name: contextName(request.name),
+    type: "guild_character",
     value: {
-      type: "guild_character",
-      value: {
-        characterRecordId: character.characterRecordId,
-        region: character.region,
-        realmId: character.realmId,
-        characterId: character.characterId,
-        name: character.name,
-      },
+      characterRecordId: character.characterRecordId,
+      region: character.region,
+      realmId: character.realmId,
+      characterId: character.characterId,
+      name: character.name,
     },
   };
+}
+
+async function constructParticipationContextValue(
+  actor: ActivityParticipationActor,
+  eligibility: ActivityParticipationEligibility,
+  request: ActivityParticipationContextRequest,
+  raw: unknown,
+): Promise<ActivitySharedValue> {
+  if (request.kind === "integer") return requireIntegerContextValue(request, raw);
+  if (request.kind === "wow_spec") return requireWowSpecContextValue(actor, eligibility, request, raw);
+  return requireGuildCharacterContextValue(actor, request, raw);
+}
+
+async function constructParticipationContextItem(
+  actor: ActivityParticipationActor,
+  eligibility: ActivityParticipationEligibility,
+  request: ActivityParticipationContextRequest,
+  raw: unknown,
+): Promise<ActivityParticipationContextItem> {
+  const name = contextName(request.name);
+  if (!request.allowMultiple) {
+    if (Array.isArray(raw)) {
+      throw new ActivityParticipationOfferError("invalid_context_multiplicity", `${name} accepts exactly one value`);
+    }
+    return { name, value: await constructParticipationContextValue(actor, eligibility, request, raw) };
+  }
+
+  if (!Array.isArray(raw) || !raw.length) {
+    throw new ActivityParticipationOfferError("invalid_context_multiplicity", `${name} requires one or more values`);
+  }
+  const values = await Promise.all(raw.map((value) =>
+    constructParticipationContextValue(actor, eligibility, request, value)
+  ));
+  return { name, value: values };
 }
 
 async function validateParticipationOfferActor(
