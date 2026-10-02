@@ -307,8 +307,8 @@ export async function cancelRaffle(actorGuildieId: string, raffleId: string, cli
 
 const raffleClaimOfferContract: ActivityParticipationOfferContract = {
   context: [
-    { name: "character", type: "guild_character", cardinality: "single" },
-    { name: "claim", type: "integer", cardinality: "single", greaterThan: 0 },
+    { name: "character", kind: "guild_character", allowMultiple: false },
+    { name: "claim", kind: "integer", allowMultiple: false, greaterThan: 0 },
   ],
 };
 
