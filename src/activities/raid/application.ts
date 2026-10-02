@@ -171,20 +171,24 @@ function raidOfferedSpecs(offer: ActivityParticipationOffer): RaidOfferedSpec[] 
   );
 }
 
-export async function establishRaidSignup(input: EstablishRaidSignupInput): Promise<string> {
+async function establishRaidSignupWithContext(input: {
+  raidId: string;
+  applicantAnchor: RaidApplicantAnchor;
+  context: Readonly<Record<string, unknown>>;
+}): Promise<string> {
   const raid = await raidEventFacts(input.raidId);
   if (!raid) throw new Error("Raid not found");
   requireActiveRaid(raid);
   if (input.applicantAnchor.kind === "external" && raid.eligibility !== "anyone") {
     throw new Error("External applicants are only valid for anyone eligibility");
   }
-  if (!input.offeredSpecs.length) throw new Error("At least one specialization is required");
 
   const persisted = await withTransaction(async (client) => {
+    const actor = { kind: input.applicantAnchor.kind, reference: input.applicantAnchor.value } as const;
     const existingOffers = await outstandingActivityParticipationOffersForActor(client, {
       activityKind: "raid",
       activityId: input.raidId,
-      actor: { kind: input.applicantAnchor.kind, reference: input.applicantAnchor.value },
+      actor,
     });
     if (existingOffers.length > 1) throw new Error("Raid actor has multiple outstanding Participation Offers");
     const existingOffer = existingOffers[0] ?? null;
@@ -192,10 +196,10 @@ export async function establishRaidSignup(input: EstablishRaidSignupInput): Prom
     const offerInput = {
       activityKind: "raid",
       activityId: input.raidId,
-      actor: { kind: input.applicantAnchor.kind, reference: input.applicantAnchor.value } as const,
+      actor,
       eligibility: raidParticipationEligibility(raid),
       contract: raidSignupOfferContract(),
-      context: { offered_specs: input.offeredSpecs },
+      context: input.context,
       procedureReference: signupRowId,
     };
     const offer = existingOffer
@@ -221,6 +225,23 @@ export async function establishRaidSignup(input: EstablishRaidSignupInput): Prom
   });
   await deliverEmission(persisted.publication);
   return persisted.signupRowId;
+}
+
+export async function establishRaidSignup(input: EstablishRaidSignupInput): Promise<string> {
+  if (!input.offeredSpecs.length) throw new Error("At least one specialization is required");
+  return establishRaidSignupWithContext({
+    raidId: input.raidId,
+    applicantAnchor: input.applicantAnchor,
+    context: { offered_specs: input.offeredSpecs },
+  });
+}
+
+export async function establishRaidSignupFromParticipationContext(input: {
+  raidId: string;
+  applicantAnchor: RaidApplicantAnchor;
+  context: Readonly<Record<string, unknown>>;
+}): Promise<string> {
+  return establishRaidSignupWithContext(input);
 }
 
 export async function revokeRaidSignup(input: RevokeRaidSignupInput): Promise<void> {
