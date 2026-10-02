@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedIdentity, SESSION_COOKIE_NAME } from "../../../auth.js";
-import { raidEventFacts, raidOccurrenceDestinations, raidParticipationOfferWorkspace, establishRaidSignup, revokeRaidSignup } from "../application.js";
+import { raidEventFacts, raidOccurrenceDestinations, raidParticipationOfferWorkspace, establishRaidSignup, establishRaidSignupFromParticipationContext, revokeRaidSignup } from "../application.js";
 import { raidParticipationCharacters, raidSignupsForGuildie, type RaidParticipationCharacter, type RaidSignupView } from "../participation-view.js";
 import type { RaidDifficulty, RaidOfferedSpecInput, RaidRole } from "../domain.js";
 import { specializationIconUrl } from "../../../wow-iconography.js";
@@ -87,9 +87,35 @@ function offeredSpecInput(value:unknown):RaidOfferedSpecInput|null{
 
 export async function registerRaidParticipationRoutes(app:FastifyInstance,assets:AssetRegistry):Promise<void>{
   app.get<{Params:RaidParams}>("/activities/raid/:raidId/participation",async(request,reply)=>{const sessionToken=request.cookies[SESSION_COOKIE_NAME];const [viewer,identity,raid]=await Promise.all([viewerForRequest(sessionToken),authenticatedIdentity(sessionToken),raidEventFacts(request.params.raidId)]);if(!raid)return reply.code(404).send({error:"Raid not found"});const historical=raid.concludedAtUnix!==null,signupsOpen=!historical,publicDestination=raidOccurrenceDestinations(raid.raidId).find(value=>value.kind==="public");let intake="",ownRows="";let existing:RaidSignupView|null=null;if(identity){try{const rows=await raidSignupsForGuildie(raid.raidId,identity.identityId);existing=rows.find(row=>row.withdrawnAtUnix===null&&row.deniedAtUnix===null)??null;ownRows=ownSignupsView(rows,signupsOpen);}catch{ownRows="";}}
-    if(historical){intake=`<section class="raid-signup-state"><h2>Raid record</h2><p>This raid is concluded. Its commitments, assignments, adjudications, and established Participation are preserved as history.</p></section>`;}else if(!identity){intake=`<section class="raid-signup-state"><h2>Sign in to participate</h2><p>This web signup surface currently accepts Guild Operations members. External intake will use its own producer when that integration exists.</p></section>`;}else{try{const {characters}=await raidParticipationCharacters(raid.raidId,identity.identityId);const allowDeclaredClasses=raid.eligibility==="anyone";if(existing){intake=await participationEditor(characters,allowDeclaredClasses,existing);}else{const workspace=await raidParticipationOfferWorkspace(raid,{kind:"native",reference:identity.identityId});intake=renderParticipationOfferWorkspace(workspace,{action:`/activities/raid/${encodeURIComponent(raid.raidId)}/signup`});}}catch(error){intake=`<section class="raid-signup-state"><h2>Not eligible</h2><p>${htmlText(error instanceof Error?error.message:"You are not eligible to participate in this raid.")}</p></section>`;}}
+    if(historical){intake=`<section class="raid-signup-state"><h2>Raid record</h2><p>This raid is concluded. Its commitments, assignments, adjudications, and established Participation are preserved as history.</p></section>`;}else if(!identity){intake=`<section class="raid-signup-state"><h2>Sign in to participate</h2><p>This web signup surface currently accepts Guild Operations members. External intake will use its own producer when that integration exists.</p></section>`;}else{try{const workspace=await raidParticipationOfferWorkspace(raid,{kind:"native",reference:identity.identityId});intake=renderParticipationOfferWorkspace(workspace,{action:`/activities/raid/${encodeURIComponent(raid.raidId)}/signup`});}catch(error){intake=`<section class="raid-signup-state"><h2>Not eligible</h2><p>${htmlText(error instanceof Error?error.message:"You are not eligible to participate in this raid.")}</p></section>`;}}
     const html=renderPage(assets,{pathname:request.url,title:`Participation · ${raid.label} · ${viewer.guildPresentation.guildName} Guild Operations`,description:`Participation for ${raid.label}.`,viewer,stylesheets:["raid.css"],scripts:["participation-offer-workspace.js","raid.js"],secondaryNavigation:publicDestination?{kind:"back",label:raid.label,href:publicDestination.href}:{kind:"back",label:"Activities",href:"/activities"},header:"",body:renderOccurrenceParticipation({activity:"Raid",title:raid.label,context:`${localTime(raid.occursAt[0])} · ${htmlText(difficultyLabel(raid.difficulty))}${historical?" · Historical":""}`,existingParticipation:ownRows||undefined,intake})});return reply.header("Cache-Control","no-cache").type("text/html; charset=utf-8").send(html);});
 
-  app.post<{Params:RaidParams;Body:SignupBody}>("/activities/raid/:raidId/signup",async(request,reply)=>{const identity=await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);if(!identity)return reply.code(401).send({error:"Authentication required"});const suppliedContext=request.body?.context;const raw=suppliedContext&&typeof suppliedContext==="object"&&!Array.isArray(suppliedContext)?(suppliedContext as Record<string,unknown>).offered_specs:request.body?.offeredSpecs;if(!Array.isArray(raw)||!raw.length)return reply.code(400).send({error:"At least one specialization is required"});const offeredSpecs=raw.map(offeredSpecInput);if(offeredSpecs.some(value=>value===null))return reply.code(400).send({error:"Specialization offer is invalid"});try{const signupRowId=await establishRaidSignup({raidId:request.params.raidId,applicantAnchor:{kind:"native",value:identity.identityId},offeredSpecs:offeredSpecs as RaidOfferedSpecInput[]});return reply.code(201).send({signupRowId});}catch(error){return reply.code(400).send({error:error instanceof Error?error.message:"Signup could not be submitted"});}});
+  app.post<{Params:RaidParams;Body:SignupBody}>("/activities/raid/:raidId/signup",async(request,reply)=>{
+    const identity=await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if(!identity)return reply.code(401).send({error:"Authentication required"});
+    try{
+      const suppliedContext=request.body?.context;
+      if(suppliedContext&&typeof suppliedContext==="object"&&!Array.isArray(suppliedContext)){
+        const signupRowId=await establishRaidSignupFromParticipationContext({
+          raidId:request.params.raidId,
+          applicantAnchor:{kind:"native",value:identity.identityId},
+          context:suppliedContext as Record<string,unknown>,
+        });
+        return reply.code(201).send({signupRowId});
+      }
+      const raw=request.body?.offeredSpecs;
+      if(!Array.isArray(raw)||!raw.length)return reply.code(400).send({error:"At least one specialization is required"});
+      const offeredSpecs=raw.map(offeredSpecInput);
+      if(offeredSpecs.some(value=>value===null))return reply.code(400).send({error:"Specialization offer is invalid"});
+      const signupRowId=await establishRaidSignup({
+        raidId:request.params.raidId,
+        applicantAnchor:{kind:"native",value:identity.identityId},
+        offeredSpecs:offeredSpecs as RaidOfferedSpecInput[],
+      });
+      return reply.code(201).send({signupRowId});
+    }catch(error){
+      return reply.code(400).send({error:error instanceof Error?error.message:"Signup could not be submitted"});
+    }
+  });
   app.post<{Params:WithdrawParams}>("/activities/raid/:raidId/signup/:signupRowId/withdraw",async(request,reply)=>{const identity=await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);if(!identity)return reply.code(401).send({error:"Authentication required"});try{await revokeRaidSignup({raidId:request.params.raidId,signupRowId:request.params.signupRowId,applicantAnchor:{kind:"native",value:identity.identityId}});return reply.code(204).send();}catch(error){return reply.code(400).send({error:error instanceof Error?error.message:"Signup could not be withdrawn"});}});
 }
