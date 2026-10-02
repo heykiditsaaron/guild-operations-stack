@@ -27,7 +27,7 @@ function integerRequest(request: ParticipationOfferWorkspaceRequest): string {
   const current = request.currentValue && isSharedValue(request.currentValue) && request.currentValue.type === "integer"
     ? request.currentValue.value
     : "";
-  return `<label class="participation-offer-workspace-field"><span>${htmlText(requestLabel(constraints.name))}</span><input type="number" step="1" data-participation-integer${minimum !== undefined ? ` min="${minimum}"` : ""}${maximum !== undefined ? ` max="${maximum}"` : ""}${current !== "" ? ` value="${current}"` : ""}></label>`;
+  return `<label class="participation-offer-workspace-field"><span>${htmlText(requestLabel(constraints.name))}</span><input type="number" step="1" data-participation-integer${minimum !== undefined ? ` min="${minimum}"` : ""}${maximum !== undefined ? ` max="${maximum}"` : ""}${current !== "" ? ` value="${current}" data-participation-retained-value="${current}"` : ""}></label>`;
 }
 
 function characterOptions(request: ParticipationOfferWorkspaceRequest): string {
@@ -42,7 +42,7 @@ function guildCharacterRequest(request: ParticipationOfferWorkspaceRequest): str
   const current = request.currentValue && isSharedValue(request.currentValue) && request.currentValue.type === "guild_character"
     ? JSON.stringify({ realmId: request.currentValue.value.realmId, characterId: request.currentValue.value.characterId })
     : "";
-  return `<label class="participation-offer-workspace-field"><span>${htmlText(requestLabel(request.request.name))}</span><select data-participation-guild-character><option value="">Select a character…</option>${characterOptions(request)}</select></label>${current ? `<script type="application/json" data-participation-current-character>${jsonScript(JSON.parse(current))}</script>` : ""}`;
+  return `<label class="participation-offer-workspace-field"><span>${htmlText(requestLabel(request.request.name))}</span><select data-participation-guild-character><option value="">Select a character…</option>${characterOptions(request)}</select></label>${current ? `<script type="application/json" data-participation-current-character>${jsonScript({ value: JSON.parse(current), retain: 0 })}</script>` : ""}`;
 }
 
 function wowSpecRequest(request: ParticipationOfferWorkspaceRequest): string {
@@ -60,7 +60,9 @@ function wowSpecRequest(request: ParticipationOfferWorkspaceRequest): string {
   const current = request.currentValue === null
     ? []
     : Array.isArray(request.currentValue) ? request.currentValue : [request.currentValue];
-  const currentSpecs = current.flatMap((value) => value.type === "wow_spec" ? [value.value] : []);
+  const currentSpecs = current.flatMap((value, index) =>
+    value.type === "wow_spec" ? [{ ...value.value, retain: index }] : []
+  );
 
   return `<div class="participation-offer-workspace-field" data-participation-wow-spec>
     <span>${htmlText(requestLabel(request.request.name))}</span>
