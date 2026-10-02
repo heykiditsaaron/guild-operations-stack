@@ -1,4 +1,4 @@
-import type { ParticipationOfferWorkspace, ParticipationOfferWorkspaceRequest } from "../core/activity/participation.js";
+import type { ParticipationOfferWorkspace, ParticipationOfferWorkspaceRequest } from "../core/activity/participation.js";\nimport type { ActivitySharedValue } from "../core/activity/registry.js";
 import { allWowClassTraitDefinitions, specsForClass } from "../wow-traits/registry.js";
 import { htmlText } from "./render.js";
 
@@ -6,7 +6,7 @@ function jsonScript(value: unknown): string {
   return JSON.stringify(value).replaceAll("<", "\\u003c");
 }
 
-function requestLabel(name: string): string {
+function isSharedValue(value: ActivitySharedValue | readonly ActivitySharedValue[]): value is ActivitySharedValue {\n  return !Array.isArray(value);\n}\n\nfunction requestLabel(name: string): string {
   return name.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
@@ -19,7 +19,7 @@ function integerRequest(request: ParticipationOfferWorkspaceRequest): string {
   const maximum = constraints.lessThan !== undefined
     ? constraints.lessThan - 1
     : constraints.lessThanOrEqual;
-  const current = request.currentValue && !Array.isArray(request.currentValue) && request.currentValue.type === "integer"
+  const current = request.currentValue && isSharedValue(request.currentValue) && request.currentValue.type === "integer"
     ? request.currentValue.value
     : "";
   return `<label class="participation-offer-workspace-field"><span>${htmlText(requestLabel(constraints.name))}</span><input type="number" step="1" data-participation-integer${minimum !== undefined ? ` min="${minimum}"` : ""}${maximum !== undefined ? ` max="${maximum}"` : ""}${current !== "" ? ` value="${current}"` : ""}></label>`;
@@ -34,7 +34,7 @@ function characterOptions(request: ParticipationOfferWorkspaceRequest): string {
 
 function guildCharacterRequest(request: ParticipationOfferWorkspaceRequest): string {
   if (request.request.kind !== "guild_character" || request.acquisition.kind !== "guild_character") return "";
-  const current = request.currentValue && !Array.isArray(request.currentValue) && request.currentValue.type === "guild_character"
+  const current = request.currentValue && isSharedValue(request.currentValue) && request.currentValue.type === "guild_character"
     ? JSON.stringify({ realmId: request.currentValue.value.realmId, characterId: request.currentValue.value.characterId })
     : "";
   return `<label class="participation-offer-workspace-field"><span>${htmlText(requestLabel(request.request.name))}</span><select data-participation-guild-character><option value="">Select a character…</option>${characterOptions(request)}</select></label>${current ? `<script type="application/json" data-participation-current-character>${jsonScript(JSON.parse(current))}</script>` : ""}`;
