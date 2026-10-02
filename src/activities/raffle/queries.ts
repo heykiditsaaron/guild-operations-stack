@@ -80,7 +80,7 @@ export async function raffleClaimMetrics(raffleId: string): Promise<RaffleClaimM
       procedureReferences: approvedClaimIds,
     });
     for (const offer of offers) {
-      const component = offer.components.find((candidate) => candidate.kind === "claim")?.value;
+      const component = offer.context.find((candidate) => candidate.name === "claim")?.value;
       if (Array.isArray(component)) continue;
       const value = component as ActivitySharedValue | undefined;
       if (value?.type === "integer") approvedEntryCount += value.value;
@@ -106,7 +106,7 @@ async function raffleWinnerFacts(raffle: Raffle): Promise<RaffleWinnerFacts | nu
       activityId:raffle.raffleId,
       participationOfferId:raffle.winningParticipationOfferId,
     });
-    const characterComponent=offer?.components.find((component)=>component.kind==="character")?.value;
+    const characterComponent=offer?.context.find((item)=>item.name==="character")?.value;
     if(!offer||Array.isArray(characterComponent)) return null;
     const characterValue=characterComponent as ActivitySharedValue|undefined;
     if(characterValue?.type!=="guild_character") return null;
@@ -160,8 +160,8 @@ export async function getRaffleClaim(claimId:string):Promise<RaffleClaimFacts|nu
     });
     const offer=offers[0];
     if(!offer || offer.actor.kind!=="native") return null;
-    const characterComponent=offer.components.find((component)=>component.kind==="character")?.value;
-    const claimComponent=offer.components.find((component)=>component.kind==="claim")?.value;
+    const characterComponent=offer.context.find((item)=>item.name==="character")?.value;
+    const claimComponent=offer.context.find((item)=>item.name==="claim")?.value;
     if(Array.isArray(characterComponent)||Array.isArray(claimComponent)) return null;
     const characterValue=characterComponent as ActivitySharedValue|undefined;
     const claimValue=claimComponent as ActivitySharedValue|undefined;
