@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
-import { activityParticipationOfferByProcedureReference, closeActivityParticipationOffer, closeOutstandingActivityParticipationOffers, constructActivityParticipationOffer, establishActivityParticipation, outstandingActivityParticipationOffersForActor, reviseActivityParticipationOffer, revokeActivityParticipationOffer, type ActivityParticipationOffer, type ActivityParticipationOfferContract } from "../../core/activity/participation.js";
+import { activityParticipationOfferByProcedureReference, closeActivityParticipationOffer, closeOutstandingActivityParticipationOffers, constructActivityParticipationOffer, establishActivityParticipation, outstandingActivityParticipationOffersForActor, participationOfferWorkspace, reviseActivityParticipationOffer, revokeActivityParticipationOffer, type ActivityParticipationActor, type ActivityParticipationOffer, type ActivityParticipationOfferContract, type ParticipationOfferWorkspace } from "../../core/activity/participation.js";
 import { pool, withTransaction } from "../../db.js";
 import { deliverEmission, publishEmission } from "../../emissions/registry.js";
 import { publishActivityDeclaration } from "../../core/activity/declarations.js";
@@ -139,6 +139,24 @@ function raidParticipationEligibility(raid: RaidEventFacts) {
     : raid.eligibility === "guild_character_member"
       ? { kind: "guild_member_character" as const, guildId: raid.guildId }
       : { kind: "guildie" as const, guildId: raid.guildId };
+}
+
+export async function raidParticipationOfferWorkspace(
+  raid: RaidEventFacts,
+  actor: ActivityParticipationActor,
+): Promise<ParticipationOfferWorkspace> {
+  const existingOffers = await outstandingActivityParticipationOffersForActor(pool, {
+    activityKind: "raid",
+    activityId: raid.raidId,
+    actor,
+  });
+  if (existingOffers.length > 1) throw new Error("Raid actor has multiple outstanding Participation Offers");
+  return participationOfferWorkspace({
+    actor,
+    eligibility: raidParticipationEligibility(raid),
+    contract: raidSignupOfferContract(),
+    existingOffer: existingOffers[0] ?? null,
+  });
 }
 
 function raidOfferedSpecs(offer: ActivityParticipationOffer): RaidOfferedSpec[] {
