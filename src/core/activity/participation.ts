@@ -193,13 +193,14 @@ async function requireWowSpecContext(
   if (!Array.isArray(raw) || !raw.length) {
     throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.name} requires at least one specialization`);
   }
-  const sources = actor.kind === "external"
-    ? eligibility.kind === "any" ? ["declared"] as const : []
-    : eligibility.kind === "guild_member_character"
-      ? ["controlled_guild_character"] as const
-      : eligibility.kind === "guildie"
-        ? ["controlled_character"] as const
-        : ["controlled_character", "declared"] as const;
+  const sources: readonly ("controlled_character" | "controlled_guild_character" | "declared")[] =
+    actor.kind === "external"
+      ? eligibility.kind === "any" ? ["declared"] : []
+      : eligibility.kind === "guild_member_character"
+        ? ["controlled_guild_character"]
+        : eligibility.kind === "guildie"
+          ? ["controlled_character"]
+          : ["controlled_character", "declared"];
 
   const values = await Promise.all(raw.map(async (item) => {
     if (typeof item !== "object" || item === null) {
