@@ -290,8 +290,8 @@ CREATE TABLE activity_participation_offers (
   offered_at_unix bigint NOT NULL CHECK (offered_at_unix >= 0),
   revoked_at_unix bigint CHECK (revoked_at_unix IS NULL OR revoked_at_unix >= offered_at_unix),
   closed_at_unix bigint,
-  components jsonb NOT NULL DEFAULT '[]'::jsonb,
-  CONSTRAINT activity_participation_offer_components_array CHECK (jsonb_typeof(components) = 'array'),
+  context jsonb NOT NULL DEFAULT '[]'::jsonb,
+  CONSTRAINT activity_participation_offer_context_array CHECK (jsonb_typeof(context) = 'array'),
   UNIQUE (activity_kind, activity_id, procedure_reference)
 );
 
