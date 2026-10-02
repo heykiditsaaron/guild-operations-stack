@@ -324,6 +324,7 @@ export async function establishRaffleClaim(claimantGuildieId: string, raffleId: 
       activityKind: "raffle",
       activityId: raffleId,
       actor: { kind: "native", reference: claimantGuildieId },
+      eligibility: { kind: "guild_member_character", guildId: raffle.guildId },
       contract: raffleClaimOfferContract,
       context: {
         character: { realmId, characterId },
