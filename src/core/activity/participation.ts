@@ -359,6 +359,70 @@ async function constructParticipationContextItem(
   return { name, value: values };
 }
 
+function retainedParticipationContextValue(
+  request: ActivityParticipationContextRequest,
+  existing: ActivityParticipationContextItem | undefined,
+  index: number,
+): ActivitySharedValue {
+  const values = existing === undefined
+    ? []
+    : Array.isArray(existing.value) ? existing.value : [existing.value];
+  const value = values[index];
+  if (!value) {
+    throw new ActivityParticipationOfferError("invalid_retained_context", `${request.name} no longer contains that established value`);
+  }
+  if (request.kind === "integer") {
+    if (value.type !== "integer") throw new ActivityParticipationOfferError("invalid_retained_context", `${request.name} contains an invalid established value`);
+    return requireIntegerContextValue(request, value.value);
+  }
+  if (request.kind === "guild_character") {
+    if (value.type !== "guild_character") throw new ActivityParticipationOfferError("invalid_retained_context", `${request.name} contains an invalid established value`);
+    return value;
+  }
+  if (value.type !== "wow_spec") {
+    throw new ActivityParticipationOfferError("invalid_retained_context", `${request.name} contains an invalid established value`);
+  }
+  const canonical = specsForClass(value.value.className)
+    .find((specName) => specName.toLocaleLowerCase("en-US") === value.value.specName.toLocaleLowerCase("en-US"));
+  if (!canonical) throw new ActivityParticipationOfferError("invalid_retained_context", `${request.name} contains an unknown established specialization`);
+  return { type: "wow_spec", value: { className: value.value.className, specName: canonical } };
+}
+
+function retainedContextIndex(raw: unknown): number | null {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return null;
+  const candidate = raw as { retain?: unknown };
+  return Number.isSafeInteger(candidate.retain) && (candidate.retain as number) >= 0
+    ? candidate.retain as number
+    : null;
+}
+
+async function constructParticipationRevisionContextItem(
+  actor: ActivityParticipationActor,
+  eligibility: ActivityParticipationEligibility,
+  request: ActivityParticipationContextRequest,
+  existing: ActivityParticipationContextItem | undefined,
+  raw: unknown,
+): Promise<ActivityParticipationContextItem> {
+  const name = contextName(request.name);
+  const constructValue = async (candidate: unknown): Promise<ActivitySharedValue> => {
+    const retainedIndex = retainedContextIndex(candidate);
+    return retainedIndex === null
+      ? constructParticipationContextValue(actor, eligibility, request, candidate)
+      : retainedParticipationContextValue(request, existing, retainedIndex);
+  };
+
+  if (!request.allowMultiple) {
+    if (Array.isArray(raw)) {
+      throw new ActivityParticipationOfferError("invalid_context_multiplicity", `${name} accepts exactly one value`);
+    }
+    return { name, value: await constructValue(raw) };
+  }
+  if (!Array.isArray(raw) || !raw.length) {
+    throw new ActivityParticipationOfferError("invalid_context_multiplicity", `${name} requires one or more values`);
+  }
+  return { name, value: await Promise.all(raw.map(constructValue)) };
+}
+
 async function validateParticipationOfferActor(
   actor: ActivityParticipationActor,
   eligibility: ActivityParticipationEligibility,
@@ -528,7 +592,23 @@ export async function reviseActivityParticipationOffer(
     throw new Error("Outstanding Activity Participation Offer was not found for actor");
   }
   await validateParticipationOfferActor(input.actor, input.eligibility);
-  const context = await constructParticipationContext(input.actor, input.eligibility, input.contract, input.context);
+  const names = input.contract.context.map((request) => contextName(request.name));
+  if (new Set(names).size !== names.length) throw new Error("Activity Participation Offer context names must be unique");
+  const unexpected = Object.keys(input.context).filter((name) => !names.includes(name));
+  if (unexpected.length) throw new ActivityParticipationOfferError("unexpected_context", `Participation Offer does not accept context ${unexpected[0]}`);
+  const existingByName = new Map(existing.context.map((item) => [item.name, item] as const));
+  const context = await Promise.all(input.contract.context.map(async (request) => {
+    if (!Object.prototype.hasOwnProperty.call(input.context, request.name)) {
+      throw new ActivityParticipationOfferError("missing_context", `Participation Offer requires context ${request.name}`);
+    }
+    return constructParticipationRevisionContextItem(
+      input.actor,
+      input.eligibility,
+      request,
+      existingByName.get(request.name),
+      input.context[request.name],
+    );
+  }));
   const result = await client.query<any>(
     `UPDATE activity_participation_offers offer
         SET context=$4::jsonb
