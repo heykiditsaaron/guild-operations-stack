@@ -131,7 +131,7 @@ async function raidSignupRows(raidId: string, includeWithdrawn: boolean): Promis
   return result.rows.map((row) => {
     const offer = offerByReference.get(row.signup_row_id);
     if (!offer) throw new Error("Raid signup Participation Offer not found");
-    const component = offer.components.find((value) => value.kind === "specs");
+    const component = offer.context.find((value) => value.name === "offered_specs");
     if (!Array.isArray(component?.value) || !component.value.length || component.value.some((value) => value.type !== "wow_spec")) {
       throw new Error("Raid signup Participation Offer does not contain valid specialization choices");
     }
