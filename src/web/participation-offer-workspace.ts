@@ -1,4 +1,5 @@
-import type { ParticipationOfferWorkspace, ParticipationOfferWorkspaceRequest } from "../core/activity/participation.js";\nimport type { ActivitySharedValue } from "../core/activity/registry.js";
+import type { ParticipationOfferWorkspace, ParticipationOfferWorkspaceRequest } from "../core/activity/participation.js";
+import type { ActivitySharedValue } from "../core/activity/registry.js";
 import { allWowClassTraitDefinitions, specsForClass } from "../wow-traits/registry.js";
 import { htmlText } from "./render.js";
 
@@ -6,7 +7,11 @@ function jsonScript(value: unknown): string {
   return JSON.stringify(value).replaceAll("<", "\\u003c");
 }
 
-function isSharedValue(value: ActivitySharedValue | readonly ActivitySharedValue[]): value is ActivitySharedValue {\n  return !Array.isArray(value);\n}\n\nfunction requestLabel(name: string): string {
+function isSharedValue(value: ActivitySharedValue | readonly ActivitySharedValue[]): value is ActivitySharedValue {
+  return !Array.isArray(value);
+}
+
+function requestLabel(name: string): string {
   return name.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
