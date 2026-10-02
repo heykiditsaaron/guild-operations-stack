@@ -127,19 +127,18 @@ export async function cancelRaid(actorGuildieId:string,raidId:string):Promise<vo
   await deliverEmission(persisted.activityDeclaration);
 }
 
-function raidSignupOfferContract(raid: RaidEventFacts, actor: RaidApplicantAnchor): ActivityParticipationOfferContract {
-  const sources = actor.kind === "external"
-    ? ["declared"] as const
-    : raid.eligibility === "guild_character_member"
-      ? ["controlled_guild_character"] as const
-      : raid.eligibility === "guildie"
-        ? ["controlled_character"] as const
-        : ["controlled_character", "declared"] as const;
+function raidSignupOfferContract(): ActivityParticipationOfferContract {
   return {
-    ...(raid.eligibility === "anyone" ? {} : { actorConstraint: { kind: "native" as const, currentGuildieIn: raid.guildId } }),
-    fulfillment: [{ component: "offered_specs", kind: "wow_class_pool", sources }],
     context: [{ name: "offered_specs", type: "wow_spec", cardinality: "many" }],
   };
+}
+
+function raidParticipationEligibility(raid: RaidEventFacts) {
+  return raid.eligibility === "anyone"
+    ? { kind: "any" as const }
+    : raid.eligibility === "guild_character_member"
+      ? { kind: "guild_member_character" as const, guildId: raid.guildId }
+      : { kind: "guildie" as const, guildId: raid.guildId };
 }
 
 function raidOfferedSpecs(offer: ActivityParticipationOffer): RaidOfferedSpec[] {
@@ -174,7 +173,8 @@ export async function establishRaidSignup(input: EstablishRaidSignupInput): Prom
       activityKind: "raid",
       activityId: input.raidId,
       actor: { kind: input.applicantAnchor.kind, reference: input.applicantAnchor.value } as const,
-      contract: raidSignupOfferContract(raid, input.applicantAnchor),
+      eligibility: raidParticipationEligibility(raid),
+      contract: raidSignupOfferContract(),
       context: { offered_specs: input.offeredSpecs },
       procedureReference: signupRowId,
     };
