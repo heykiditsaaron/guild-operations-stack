@@ -2,7 +2,11 @@ import type { ParticipationOfferWorkspace, ParticipationOfferWorkspaceRequest } 
 import { allWowClassTraitDefinitions, specsForClass } from "../wow-traits/registry.js";
 import { htmlText } from "./render.js";
 
-function jsonScript(value: unknown): string {\n  return JSON.stringify(value).replaceAll("<", "\\u003c");\n}\n\nfunction requestLabel(name: string): string {
+function jsonScript(value: unknown): string {
+  return JSON.stringify(value).replaceAll("<", "\\u003c");
+}
+
+function requestLabel(name: string): string {
   return name.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
