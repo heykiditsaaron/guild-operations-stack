@@ -14,7 +14,7 @@ export type ActivityParticipationActor =
 export type ActivityParticipationParty = ActivityParticipationActor;
 
 export type ActivityParticipationContextItem = {
-  kind: string;
+  name: string;
   value: ActivitySharedValue | readonly ActivitySharedValue[];
 };
 
@@ -183,7 +183,7 @@ function requireIntegerContext(
   if (request.lessThanOrEqual !== undefined && !(value <= request.lessThanOrEqual)) {
     throw new ActivityParticipationOfferError("integer_out_of_range", `${request.name} must be at most ${request.lessThanOrEqual}`);
   }
-  return { kind: contextName(request.name), value: { type: "integer", value } };
+  return { name: contextName(request.name), value: { type: "integer", value } };
 }
 
 function normalizedTexts(values: unknown, field: string): string[] {
@@ -276,7 +276,7 @@ async function requireWowSpecContext(
   const unique = values.filter((value, index) =>
     values.findIndex((candidate) => candidate.value.className === value.value.className && candidate.value.specName === value.value.specName) === index
   );
-  return { kind: contextName(request.name), value: unique };
+  return { name: contextName(request.name), value: unique };
 }
 
 async function constructParticipationContextItem(
@@ -382,7 +382,7 @@ export async function constructActivityParticipationOffer(
     activityId: string;
     actor: ActivityParticipationActor;
     contract: ActivityParticipationOfferContract;
-    components: Readonly<Record<string, unknown>>;
+    context: Readonly<Record<string, unknown>>;
     procedureReference: string;
     offeredAtUnix?: number;
   },
@@ -407,7 +407,7 @@ export async function reviseActivityParticipationOffer(
     activityId: string;
     actor: ActivityParticipationActor;
     contract: ActivityParticipationOfferContract;
-    components: Readonly<Record<string, unknown>>;
+    context: Readonly<Record<string, unknown>>;
     procedureReference: string;
   },
 ): Promise<ActivityParticipationOffer> {
