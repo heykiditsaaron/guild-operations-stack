@@ -2,7 +2,7 @@ import type { ParticipationOfferWorkspace, ParticipationOfferWorkspaceRequest } 
 import { allWowClassTraitDefinitions, specsForClass } from "../wow-traits/registry.js";
 import { htmlText } from "./render.js";
 
-function requestLabel(name: string): string {
+function jsonScript(value: unknown): string {\n  return JSON.stringify(value).replaceAll("<", "\\u003c");\n}\n\nfunction requestLabel(name: string): string {
   return name.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
@@ -33,7 +33,7 @@ function guildCharacterRequest(request: ParticipationOfferWorkspaceRequest): str
   const current = request.currentValue && !Array.isArray(request.currentValue) && request.currentValue.type === "guild_character"
     ? JSON.stringify({ realmId: request.currentValue.value.realmId, characterId: request.currentValue.value.characterId })
     : "";
-  return `<label class="participation-offer-workspace-field"><span>${htmlText(requestLabel(request.request.name))}</span><select data-participation-guild-character><option value="">Select a character…</option>${characterOptions(request)}</select></label>${current ? `<script type="application/json" data-participation-current-character>${htmlText(current)}</script>` : ""}`;
+  return `<label class="participation-offer-workspace-field"><span>${htmlText(requestLabel(request.request.name))}</span><select data-participation-guild-character><option value="">Select a character…</option>${characterOptions(request)}</select></label>${current ? `<script type="application/json" data-participation-current-character>${jsonScript(JSON.parse(current))}</script>` : ""}`;
 }
 
 function wowSpecRequest(request: ParticipationOfferWorkspaceRequest): string {
@@ -62,7 +62,7 @@ function wowSpecRequest(request: ParticipationOfferWorkspaceRequest): string {
       <label><span>Specialization</span><select data-participation-spec-name disabled><option value="">Select a specialization…</option>${specs}</select></label>
       <button type="button" class="button-secondary" data-participation-add-value>Add</button>
     </div>
-    <script type="application/json" data-participation-current-values>${htmlText(JSON.stringify(currentSpecs))}</script>
+    <script type="application/json" data-participation-current-values>${jsonScript(currentSpecs)}</script>
   </div>`;
 }
 
