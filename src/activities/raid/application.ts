@@ -137,17 +137,17 @@ function raidSignupOfferContract(raid: RaidEventFacts, actor: RaidApplicantAncho
         : ["controlled_character", "declared"] as const;
   return {
     ...(raid.eligibility === "anyone" ? {} : { actorConstraint: { kind: "native" as const, currentGuildieIn: raid.guildId } }),
-    fulfillment: [{ component: "specs", kind: "wow_class_pool", sources }],
-    components: [{ kind: "specs", type: "wow_spec", multiple: true }],
+    fulfillment: [{ component: "offered_specs", kind: "wow_class_pool", sources }],
+    context: [{ name: "offered_specs", type: "wow_spec", cardinality: "many" }],
   };
 }
 
 function raidOfferedSpecs(offer: ActivityParticipationOffer): RaidOfferedSpec[] {
-  const component = offer.components.find((value) => value.kind === "specs");
-  if (!Array.isArray(component?.value) || !component.value.length || component.value.some((value) => value.type !== "wow_spec")) {
+  const offeredSpecs = offer.context.find((value) => value.name === "offered_specs");
+  if (!Array.isArray(offeredSpecs?.value) || !offeredSpecs.value.length || offeredSpecs.value.some((value) => value.type !== "wow_spec")) {
     throw new Error("Raid Participation Offer does not contain valid specialization choices");
   }
-  return component.value.flatMap((value) =>
+  return offeredSpecs.value.flatMap((value) =>
     value.type === "wow_spec" ? [{ className: value.value.className, specName: value.value.specName }] : []
   );
 }
@@ -175,7 +175,7 @@ export async function establishRaidSignup(input: EstablishRaidSignupInput): Prom
       activityId: input.raidId,
       actor: { kind: input.applicantAnchor.kind, reference: input.applicantAnchor.value } as const,
       contract: raidSignupOfferContract(raid, input.applicantAnchor),
-      components: { specs: input.offeredSpecs },
+      context: { offered_specs: input.offeredSpecs },
       procedureReference: signupRowId,
     };
     const offer = existingOffer
