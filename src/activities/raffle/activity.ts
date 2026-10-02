@@ -48,11 +48,11 @@ export function registerRaffleActivityIntegration(): void {
             procedureReference,
           });
           if (!participationOffer) return null;
-          const characterComponent = participationOffer.components.find((component) => component.kind === "character")?.value;
-          const claimComponent = participationOffer.components.find((component) => component.kind === "claim")?.value;
-          if (Array.isArray(characterComponent) || Array.isArray(claimComponent)) return null;
-          const characterValue = characterComponent as ActivitySharedValue | undefined;
-          const claimValue = claimComponent as ActivitySharedValue | undefined;
+          const characterContext = participationOffer.context.find((item) => item.name === "character")?.value;
+          const claimContext = participationOffer.context.find((item) => item.name === "claim")?.value;
+          if (Array.isArray(characterContext) || Array.isArray(claimContext)) return null;
+          const characterValue = characterContext as ActivitySharedValue | undefined;
+          const claimValue = claimContext as ActivitySharedValue | undefined;
           if (characterValue?.type !== "guild_character" || claimValue?.type !== "integer") return null;
           return {
             title: characterValue.value.name,
