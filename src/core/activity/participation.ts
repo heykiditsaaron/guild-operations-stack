@@ -61,6 +61,37 @@ export type ActivityParticipationOfferContract = {
   context: readonly ActivityParticipationContextRequest[];
 };
 
+export type ParticipationOfferWorkspaceCharacter = {
+  characterRecordId: string;
+  region: string;
+  realmId: string;
+  characterId: string;
+  name: string;
+  realmName: string | null;
+  className: string | null;
+};
+
+export type ParticipationOfferWorkspaceAcquisition =
+  | { kind: "integer" }
+  | { kind: "guild_character"; characters: readonly ParticipationOfferWorkspaceCharacter[] }
+  | {
+      kind: "wow_spec";
+      characters: readonly ParticipationOfferWorkspaceCharacter[];
+      allowDeclaredClass: boolean;
+    };
+
+export type ParticipationOfferWorkspaceRequest = {
+  request: ActivityParticipationContextRequest;
+  currentValue: ActivitySharedValue | readonly ActivitySharedValue[] | null;
+  acquisition: ParticipationOfferWorkspaceAcquisition;
+};
+
+export type ParticipationOfferWorkspace = {
+  actor: ActivityParticipationActor;
+  requests: readonly ParticipationOfferWorkspaceRequest[];
+  complete: boolean;
+};
+
 export class ActivityParticipationOfferError extends Error {
   readonly code: string;
   readonly statusCode: number;
@@ -358,6 +389,93 @@ async function constructParticipationContext(
     }
     return constructParticipationContextItem(actor, eligibility, request, supplied[request.name]);
   }));
+}
+
+function participationOfferWorkspaceCharacter(character: Awaited<ReturnType<typeof characterProjections>>[number]): ParticipationOfferWorkspaceCharacter {
+  return {
+    characterRecordId: character.characterRecordId,
+    region: character.region,
+    realmId: character.realmId,
+    characterId: character.characterId,
+    name: character.name,
+    realmName: character.realmName,
+    className: character.className,
+  };
+}
+
+async function participationOfferWorkspaceAcquisition(
+  actor: ActivityParticipationActor,
+  eligibility: ActivityParticipationEligibility,
+  request: ActivityParticipationContextRequest,
+): Promise<ParticipationOfferWorkspaceAcquisition> {
+  if (request.kind === "integer") return { kind: "integer" };
+
+  if (request.kind === "guild_character") {
+    const characters = actor.kind === "native"
+      ? await characterProjections(
+          (await controlledGuildMemberCharacters(actor.reference))
+            .map((character) => character.characterRecordId),
+        )
+      : [];
+    return { kind: "guild_character", characters: characters.map(participationOfferWorkspaceCharacter) };
+  }
+
+  if (actor.kind === "external") {
+    return { kind: "wow_spec", characters: [], allowDeclaredClass: eligibility.kind === "any" };
+  }
+
+  const characterRecordIds = eligibility.kind === "guild_member_character"
+    ? (await controlledGuildMemberCharacters(actor.reference)).map((character) => character.characterRecordId)
+    : await controlledCharacterRecordIdsForIdentity(actor.reference);
+  const characters = await characterProjections(characterRecordIds);
+  return {
+    kind: "wow_spec",
+    characters: characters.map(participationOfferWorkspaceCharacter),
+    allowDeclaredClass: eligibility.kind === "any",
+  };
+}
+
+export async function participationOfferWorkspace(input: {
+  actor: ActivityParticipationActor;
+  eligibility: ActivityParticipationEligibility;
+  contract: ActivityParticipationOfferContract;
+  existingOffer?: ActivityParticipationOffer | null;
+}): Promise<ParticipationOfferWorkspace> {
+  await validateParticipationOfferActor(input.actor, input.eligibility);
+
+  if (input.existingOffer && (
+    input.existingOffer.actor.kind !== input.actor.kind
+    || input.existingOffer.actor.reference !== input.actor.reference
+  )) {
+    throw new ActivityParticipationOfferError(
+      "offer_actor_mismatch",
+      "Participation Offer workspace cannot hydrate an Offer belonging to another actor",
+      403,
+    );
+  }
+
+  const currentByName = new Map(
+    (input.existingOffer?.context ?? []).map((item) => [item.name, item.value] as const),
+  );
+  const names = input.contract.context.map((request) => contextName(request.name));
+  if (new Set(names).size !== names.length) {
+    throw new Error("Activity Participation Offer context names must be unique");
+  }
+
+  const requests = await Promise.all(input.contract.context.map(async (request) => ({
+    request,
+    currentValue: currentByName.get(request.name) ?? null,
+    acquisition: await participationOfferWorkspaceAcquisition(input.actor, input.eligibility, request),
+  })));
+
+  return {
+    actor: input.actor,
+    requests,
+    complete: requests.every(({ request, currentValue }) =>
+      currentValue !== null
+      && (request.allowMultiple ? Array.isArray(currentValue) && currentValue.length > 0 : !Array.isArray(currentValue))
+    ),
+  };
 }
 
 export async function constructActivityParticipationOffer(
