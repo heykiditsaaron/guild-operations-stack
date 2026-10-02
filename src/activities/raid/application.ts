@@ -129,7 +129,7 @@ export async function cancelRaid(actorGuildieId:string,raidId:string):Promise<vo
 
 function raidSignupOfferContract(): ActivityParticipationOfferContract {
   return {
-    context: [{ name: "offered_specs", type: "wow_spec", cardinality: "many" }],
+    context: [{ name: "offered_specs", kind: "wow_spec", allowMultiple: true }],
   };
 }
 
