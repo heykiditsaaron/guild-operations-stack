@@ -56,21 +56,12 @@ export type ActivityParticipationContextRequest =
       cardinality: "many";
     };
 
-export type ActivityParticipationFulfillmentConstraint =
-  | {
-      component: string;
-      kind: "wow_class_pool";
-      sources: readonly ("controlled_character" | "controlled_guild_character" | "declared")[];
-    };
-
-export type ActivityParticipationActorConstraint =
-  | { kind: "native"; currentGuildieIn: string };
-
-
+export type ActivityParticipationEligibility =
+  | { kind: "any" }
+  | { kind: "guildie"; guildId: string }
+  | { kind: "guild_member_character"; guildId: string };
 
 export type ActivityParticipationOfferContract = {
-  actorConstraint?: ActivityParticipationActorConstraint;
-  fulfillment?: readonly ActivityParticipationFulfillmentConstraint[];
   context: readonly ActivityParticipationContextRequest[];
 };
 
@@ -195,16 +186,20 @@ function normalizedTexts(values: unknown, field: string): string[] {
 
 async function requireWowSpecContext(
   actor: ActivityParticipationActor,
+  eligibility: ActivityParticipationEligibility,
   request: Extract<ActivityParticipationContextRequest, { type: "wow_spec" }>,
-  fulfillment: Extract<ActivityParticipationFulfillmentConstraint, { kind: "wow_class_pool" }> | undefined,
   raw: unknown,
 ): Promise<ActivityParticipationContextItem> {
   if (!Array.isArray(raw) || !raw.length) {
     throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.name} requires at least one specialization`);
   }
-  if (!fulfillment?.sources.length) {
-    throw new Error(`Activity Participation wow_spec context ${request.name} requires a wow_class_pool fulfillment constraint`);
-  }
+  const sources = actor.kind === "external"
+    ? eligibility.kind === "any" ? ["declared"] as const : []
+    : eligibility.kind === "guild_member_character"
+      ? ["controlled_guild_character"] as const
+      : eligibility.kind === "guildie"
+        ? ["controlled_character"] as const
+        : ["controlled_character", "declared"] as const;
 
   const values = await Promise.all(raw.map(async (item) => {
     if (typeof item !== "object" || item === null) {
@@ -228,9 +223,9 @@ async function requireWowSpecContext(
       if (typeof coordinate.region !== "string" || typeof coordinate.realmId !== "string" || typeof coordinate.characterId !== "string") {
         throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.name} contains an invalid Character reference`);
       }
-      const source = fulfillment.sources.includes("controlled_guild_character")
+      const source = sources.includes("controlled_guild_character")
         ? "controlled_guild_character"
-        : fulfillment.sources.includes("controlled_character")
+        : sources.includes("controlled_character")
           ? "controlled_character"
           : null;
       if (!source) {
@@ -257,7 +252,7 @@ async function requireWowSpecContext(
       if (!character.className) throw new ActivityParticipationOfferError("wow_spec_class_unavailable", "Character class facts are not available");
       className = character.className;
     } else {
-      if (!fulfillment.sources.includes("declared")) {
+      if (!sources.includes("declared")) {
         throw new ActivityParticipationOfferError("wow_spec_fulfillment_unavailable", `${request.name} does not permit declared class provenance`, 403);
       }
       if (typeof candidate.className !== "string" || !candidate.className.trim()) {
@@ -281,17 +276,12 @@ async function requireWowSpecContext(
 
 async function constructParticipationContextItem(
   actor: ActivityParticipationActor,
+  eligibility: ActivityParticipationEligibility,
   request: ActivityParticipationContextRequest,
-  fulfillment: ActivityParticipationFulfillmentConstraint | undefined,
   raw: unknown,
 ): Promise<ActivityParticipationContextItem> {
   if (request.type === "integer") return requireIntegerContext(request, raw);
-  if (request.type === "wow_spec") {
-    if (fulfillment && fulfillment.kind !== "wow_class_pool") {
-      throw new Error(`Activity Participation context ${request.name} has incompatible fulfillment constraint`);
-    }
-    return requireWowSpecContext(actor, request, fulfillment, raw);
-  }
+  if (request.type === "wow_spec") return requireWowSpecContext(actor, eligibility, request, raw);
 
   if (actor.kind !== "native") {
     throw new ActivityParticipationOfferError("guild_character_requires_native_identity", "A guild Character must be offered by a native identity");
@@ -317,7 +307,7 @@ async function constructParticipationContextItem(
   }
 
   return {
-    kind: contextName(request.name),
+    name: contextName(request.name),
     value: {
       type: "guild_character",
       value: {
@@ -333,45 +323,33 @@ async function constructParticipationContextItem(
 
 async function validateParticipationOfferActor(
   actor: ActivityParticipationActor,
-  contract: ActivityParticipationOfferContract,
+  eligibility: ActivityParticipationEligibility,
 ): Promise<void> {
-  const actorConstraint = contract.actorConstraint;
-  if (!actorConstraint) return;
-  if (actor.kind !== actorConstraint.kind) {
-    throw new ActivityParticipationOfferError("actor_ineligible", "Participation Offer actor does not satisfy the procedure", 403);
+  if (eligibility.kind === "any") return;
+  if (actor.kind !== "native") {
+    throw new ActivityParticipationOfferError("actor_ineligible", "Participation Offer actor does not satisfy occurrence eligibility", 403);
   }
-  if (actorConstraint.kind === "native" && !await effectiveGuildAuthority(actor.reference, actorConstraint.currentGuildieIn)) {
+  if (!await effectiveGuildAuthority(actor.reference, eligibility.guildId)) {
     throw new ActivityParticipationOfferError("actor_ineligible", "Participation Offer actor is not a current Guildie", 403);
   }
 }
 
 async function constructParticipationContext(
   actor: ActivityParticipationActor,
+  eligibility: ActivityParticipationEligibility,
   contract: ActivityParticipationOfferContract,
   supplied: Readonly<Record<string, unknown>>,
 ): Promise<ActivityParticipationContextItem[]> {
   const requests = contract.context;
-  const kinds = requests.map((request) => contextName(request.name));
-  if (new Set(kinds).size !== kinds.length) throw new Error("Activity Participation Offer context names must be unique");
-  const unexpected = Object.keys(supplied).filter((kind) => !kinds.includes(kind));
+  const names = requests.map((request) => contextName(request.name));
+  if (new Set(names).size !== names.length) throw new Error("Activity Participation Offer context names must be unique");
+  const unexpected = Object.keys(supplied).filter((name) => !names.includes(name));
   if (unexpected.length) throw new ActivityParticipationOfferError("unexpected_context", `Participation Offer does not accept context ${unexpected[0]}`);
-  const fulfillment = contract.fulfillment ?? [];
-  const fulfillmentComponents = fulfillment.map((constraint) => contextName(constraint.component));
-  if (new Set(fulfillmentComponents).size !== fulfillmentComponents.length) {
-    throw new Error("Activity Participation Offer fulfillment constraints must target unique components");
-  }
-  const unknownFulfillment = fulfillmentComponents.find((kind) => !kinds.includes(kind));
-  if (unknownFulfillment) throw new Error(`Activity Participation fulfillment targets unknown component ${unknownFulfillment}`);
   return Promise.all(requests.map(async (request) => {
     if (!Object.prototype.hasOwnProperty.call(supplied, request.name)) {
       throw new ActivityParticipationOfferError("missing_context", `Participation Offer requires context ${request.name}`);
     }
-    return constructParticipationContextItem(
-      actor,
-      request,
-      fulfillment.find((constraint) => constraint.component === request.name),
-      supplied[request.name],
-    );
+    return constructParticipationContextItem(actor, eligibility, request, supplied[request.name]);
   }));
 }
 
@@ -381,14 +359,15 @@ export async function constructActivityParticipationOffer(
     activityKind: string;
     activityId: string;
     actor: ActivityParticipationActor;
+    eligibility: ActivityParticipationEligibility;
     contract: ActivityParticipationOfferContract;
     context: Readonly<Record<string, unknown>>;
     procedureReference: string;
     offeredAtUnix?: number;
   },
 ): Promise<ActivityParticipationOffer> {
-  await validateParticipationOfferActor(input.actor, input.contract);
-  const context = await constructParticipationContext(input.actor, input.contract, input.context);
+  await validateParticipationOfferActor(input.actor, input.eligibility);
+  const context = await constructParticipationContext(input.actor, input.eligibility, input.contract, input.context);
 
   return offerActivityParticipation(client, {
     activityKind: input.activityKind,
@@ -406,6 +385,7 @@ export async function reviseActivityParticipationOffer(
     activityKind: string;
     activityId: string;
     actor: ActivityParticipationActor;
+    eligibility: ActivityParticipationEligibility;
     contract: ActivityParticipationOfferContract;
     context: Readonly<Record<string, unknown>>;
     procedureReference: string;
@@ -422,8 +402,8 @@ export async function reviseActivityParticipationOffer(
   if (existing.actor.kind !== input.actor.kind || existing.actor.reference !== input.actor.reference) {
     throw new Error("Outstanding Activity Participation Offer was not found for actor");
   }
-  await validateParticipationOfferActor(input.actor, input.contract);
-  const context = await constructParticipationContext(input.actor, input.contract, input.context);
+  await validateParticipationOfferActor(input.actor, input.eligibility);
+  const context = await constructParticipationContext(input.actor, input.eligibility, input.contract, input.context);
   const result = await client.query<any>(
     `UPDATE activity_participation_offers offer
         SET context=$4::jsonb
