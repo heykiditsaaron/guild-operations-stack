@@ -306,9 +306,9 @@ export async function cancelRaffle(actorGuildieId: string, raffleId: string, cli
 }
 
 const raffleClaimOfferContract: ActivityParticipationOfferContract = {
-  components: [
-    { kind: "character", type: "guild_character" },
-    { kind: "claim", type: "integer", greaterThan: 0 },
+  context: [
+    { name: "character", type: "guild_character", cardinality: "single" },
+    { name: "claim", type: "integer", cardinality: "single", greaterThan: 0 },
   ],
 };
 
@@ -325,7 +325,7 @@ export async function establishRaffleClaim(claimantGuildieId: string, raffleId: 
       activityId: raffleId,
       actor: { kind: "native", reference: claimantGuildieId },
       contract: raffleClaimOfferContract,
-      components: {
+      context: {
         character: { realmId, characterId },
         claim: requestedEntryCount,
       },
@@ -333,8 +333,8 @@ export async function establishRaffleClaim(claimantGuildieId: string, raffleId: 
       offeredAtUnix,
     });
 
-    const characterComponent = offer.components.find((component) => component.kind === "character");
-    const claimComponent = offer.components.find((component) => component.kind === "claim");
+    const characterComponent = offer.context.find((item) => item.name === "character");
+    const claimComponent = offer.context.find((item) => item.name === "claim");
     const characterValue = characterComponent?.value;
     const claimValue = claimComponent?.value;
     if (!characterValue || !claimValue || Array.isArray(characterValue) || Array.isArray(claimValue)) {
@@ -462,7 +462,7 @@ export async function approvedRaffleEntryCount(client: PoolClient, raffleId: str
   });
   let count = 0;
   for (const offer of offers) {
-    const component = offer.components.find((candidate) => candidate.kind === "claim")?.value;
+    const component = offer.context.find((candidate) => candidate.name === "claim")?.value;
     if (Array.isArray(component)) throw new Error("Raffle claim Participation Offer does not satisfy its declared contract");
     const value = component as ActivitySharedValue | undefined;
     if (!value || value.type !== "integer") throw new Error("Raffle claim Participation Offer does not satisfy its declared contract");
@@ -492,7 +492,7 @@ export async function drawRaffle(actorGuildieId:string, raffleId:string, client:
         procedureReference:claim.claim_id,
       });
       if(!offer) throw new Error("Approved Raffle claim Participation Offer was not found");
-      const claimComponent=offer.components.find((component)=>component.kind==="claim");
+      const claimComponent=offer.context.find((item)=>item.name==="claim");
       const claimValue=claimComponent?.value;
       if(Array.isArray(claimValue)) throw new Error("Raffle claim Participation Offer does not satisfy its declared contract");
       const singularClaimValue=claimValue as ActivitySharedValue|undefined;
@@ -552,8 +552,8 @@ export async function raffleClaims(raffleId:string):Promise<RaffleClaim[]> {
       const claimId=String(row.claim_id);
       const offer=offersByClaimId.get(claimId);
       if(!offer || offer.actor.kind!=="native") throw new Error(`Raffle claim ${claimId} is missing its Participation Offer`);
-      const characterValue=offer.components.find((component)=>component.kind==="character")?.value;
-      const claimValue=offer.components.find((component)=>component.kind==="claim")?.value;
+      const characterValue=offer.context.find((item)=>item.name==="character")?.value;
+      const claimValue=offer.context.find((item)=>item.name==="claim")?.value;
       if(Array.isArray(characterValue)||Array.isArray(claimValue)) throw new Error(`Raffle claim ${claimId} Participation Offer does not satisfy its declared contract`);
       const characterComponent=characterValue as ActivitySharedValue|undefined;
       const claimComponent=claimValue as ActivitySharedValue|undefined;
