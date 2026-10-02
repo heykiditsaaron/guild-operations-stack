@@ -145,17 +145,19 @@ export async function raidParticipationOfferWorkspace(
   raid: RaidEventFacts,
   actor: ActivityParticipationActor,
 ): Promise<ParticipationOfferWorkspace> {
-  const existingOffers = await outstandingActivityParticipationOffersForActor(pool, {
-    activityKind: "raid",
-    activityId: raid.raidId,
-    actor,
-  });
-  if (existingOffers.length > 1) throw new Error("Raid actor has multiple outstanding Participation Offers");
-  return participationOfferWorkspace({
-    actor,
-    eligibility: raidParticipationEligibility(raid),
-    contract: raidSignupOfferContract(),
-    existingOffer: existingOffers[0] ?? null,
+  return withTransaction(async (client) => {
+    const existingOffers = await outstandingActivityParticipationOffersForActor(client, {
+      activityKind: "raid",
+      activityId: raid.raidId,
+      actor,
+    });
+    if (existingOffers.length > 1) throw new Error("Raid actor has multiple outstanding Participation Offers");
+    return participationOfferWorkspace({
+      actor,
+      eligibility: raidParticipationEligibility(raid),
+      contract: raidSignupOfferContract(),
+      existingOffer: existingOffers[0] ?? null,
+    });
   });
 }
 
