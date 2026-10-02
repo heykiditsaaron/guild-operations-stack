@@ -13,7 +13,7 @@ export type ActivityParticipationActor =
 
 export type ActivityParticipationParty = ActivityParticipationActor;
 
-export type ActivityParticipationComponent = {
+export type ActivityParticipationContextItem = {
   kind: string;
   value: ActivitySharedValue | readonly ActivitySharedValue[];
 };
@@ -23,7 +23,7 @@ export type ActivityParticipationOffer = {
   activityKind: string;
   activityId: string;
   actor: ActivityParticipationActor;
-  components: readonly ActivityParticipationComponent[];
+  context: readonly ActivityParticipationContextItem[];
   procedureReference: string;
   offeredAtUnix: number;
   revokedAtUnix: number | null;
@@ -34,25 +34,26 @@ export type OfferActivityParticipationInput = {
   activityKind: string;
   activityId: string;
   actor: ActivityParticipationActor;
-  components?: readonly ActivityParticipationComponent[];
+  context?: readonly ActivityParticipationContextItem[];
   procedureReference: string;
   offeredAtUnix?: number;
 };
 
-export type ActivityParticipationComponentRequest =
+export type ActivityParticipationContextRequest =
   | {
-      kind: string;
+      name: string;
       type: "integer";
+      cardinality: "single";
       greaterThan?: number;
       greaterThanOrEqual?: number;
       lessThan?: number;
       lessThanOrEqual?: number;
     }
-  | { kind: string; type: "guild_character" }
+  | { name: string; type: "guild_character"; cardinality: "single" }
   | {
-      kind: string;
+      name: string;
       type: "wow_spec";
-      multiple: true;
+      cardinality: "many";
     };
 
 export type ActivityParticipationFulfillmentConstraint =
@@ -70,7 +71,7 @@ export type ActivityParticipationActorConstraint =
 export type ActivityParticipationOfferContract = {
   actorConstraint?: ActivityParticipationActorConstraint;
   fulfillment?: readonly ActivityParticipationFulfillmentConstraint[];
-  components: readonly ActivityParticipationComponentRequest[];
+  context: readonly ActivityParticipationContextRequest[];
 };
 
 export class ActivityParticipationOfferError extends Error {
@@ -97,7 +98,7 @@ function mapParticipationOffer(row: {
   activity_id: string;
   party_kind: "native" | "external";
   party_reference: string;
-  components: unknown;
+  context: unknown;
   procedure_reference: string;
   offered_at_unix: string | number;
   revoked_at_unix: string | number | null;
@@ -108,7 +109,7 @@ function mapParticipationOffer(row: {
     activityKind: row.activity_kind,
     activityId: row.activity_id,
     actor: { kind: row.party_kind, reference: row.party_reference },
-    components: Array.isArray(row.components) ? row.components as ActivityParticipationComponent[] : [],
+    context: Array.isArray(row.context) ? row.context as ActivityParticipationContextItem[] : [],
     procedureReference: row.procedure_reference,
     offeredAtUnix: Number(row.offered_at_unix),
     revokedAtUnix: row.revoked_at_unix === null ? null : Number(row.revoked_at_unix),
@@ -125,15 +126,15 @@ export async function offerActivityParticipation(
   const actorReference = requiredText(input.actor.reference, "Offer actor reference");
   const procedureReference = requiredText(input.procedureReference, "Offer procedure reference");
   const offeredAtUnix = input.offeredAtUnix ?? Math.floor(Date.now() / 1000);
-  const components = input.components ?? [];
+  const context = input.context ?? [];
 
   const inserted = await client.query<any>(
     `INSERT INTO activity_participation_offers (
-       activity_kind, activity_id, party_kind, party_reference, components, procedure_reference, offered_at_unix
+       activity_kind, activity_id, party_kind, party_reference, context, procedure_reference, offered_at_unix
      ) VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7)
      ON CONFLICT (activity_kind, activity_id, procedure_reference) DO NOTHING
      RETURNING *`,
-    [activityKind, activityId, input.actor.kind, actorReference, JSON.stringify(components), procedureReference, offeredAtUnix],
+    [activityKind, activityId, input.actor.kind, actorReference, JSON.stringify(context), procedureReference, offeredAtUnix],
   );
 
   if (inserted.rowCount) return mapParticipationOffer(inserted.rows[0]);
@@ -148,8 +149,8 @@ export async function offerActivityParticipation(
   if (offer.party_kind !== input.actor.kind || offer.party_reference !== actorReference) {
     throw new Error("Activity Participation Offer procedure reference belongs to a different actor");
   }
-  if (JSON.stringify(offer.components ?? []) !== JSON.stringify(components)) {
-    throw new Error("Activity Participation Offer procedure reference belongs to different components");
+  if (JSON.stringify(offer.context ?? []) !== JSON.stringify(context)) {
+    throw new Error("Activity Participation Offer procedure reference belongs to different procedure context");
   }
   if (offer.revoked_at_unix !== null || offer.closed_at_unix !== null) {
     throw new Error("Settled Activity Participation Offer cannot be offered again through the same procedure reference");
@@ -158,31 +159,31 @@ export async function offerActivityParticipation(
 }
 
 
-function componentKind(value: string): string {
-  return requiredText(value, "Offer component kind");
+function contextName(value: string): string {
+  return requiredText(value, "Offer context name");
 }
 
-function requireIntegerComponent(
-  request: Extract<ActivityParticipationComponentRequest, { type: "integer" }>,
+function requireIntegerContext(
+  request: Extract<ActivityParticipationContextRequest, { type: "integer" }>,
   raw: unknown,
-): ActivityParticipationComponent {
+): ActivityParticipationContextItem {
   if (!Number.isSafeInteger(raw)) {
-    throw new ActivityParticipationOfferError("invalid_integer", `${request.kind} must be an integer`);
+    throw new ActivityParticipationOfferError("invalid_integer", `${request.name} must be an integer`);
   }
   const value = raw as number;
   if (request.greaterThan !== undefined && !(value > request.greaterThan)) {
-    throw new ActivityParticipationOfferError("integer_out_of_range", `${request.kind} must be greater than ${request.greaterThan}`);
+    throw new ActivityParticipationOfferError("integer_out_of_range", `${request.name} must be greater than ${request.greaterThan}`);
   }
   if (request.greaterThanOrEqual !== undefined && !(value >= request.greaterThanOrEqual)) {
-    throw new ActivityParticipationOfferError("integer_out_of_range", `${request.kind} must be at least ${request.greaterThanOrEqual}`);
+    throw new ActivityParticipationOfferError("integer_out_of_range", `${request.name} must be at least ${request.greaterThanOrEqual}`);
   }
   if (request.lessThan !== undefined && !(value < request.lessThan)) {
-    throw new ActivityParticipationOfferError("integer_out_of_range", `${request.kind} must be less than ${request.lessThan}`);
+    throw new ActivityParticipationOfferError("integer_out_of_range", `${request.name} must be less than ${request.lessThan}`);
   }
   if (request.lessThanOrEqual !== undefined && !(value <= request.lessThanOrEqual)) {
-    throw new ActivityParticipationOfferError("integer_out_of_range", `${request.kind} must be at most ${request.lessThanOrEqual}`);
+    throw new ActivityParticipationOfferError("integer_out_of_range", `${request.name} must be at most ${request.lessThanOrEqual}`);
   }
-  return { kind: componentKind(request.kind), value: { type: "integer", value } };
+  return { kind: contextName(request.name), value: { type: "integer", value } };
 }
 
 function normalizedTexts(values: unknown, field: string): string[] {
@@ -192,22 +193,22 @@ function normalizedTexts(values: unknown, field: string): string[] {
   return normalized;
 }
 
-async function requireWowSpecComponents(
+async function requireWowSpecContext(
   actor: ActivityParticipationActor,
-  request: Extract<ActivityParticipationComponentRequest, { type: "wow_spec" }>,
+  request: Extract<ActivityParticipationContextRequest, { type: "wow_spec" }>,
   fulfillment: Extract<ActivityParticipationFulfillmentConstraint, { kind: "wow_class_pool" }> | undefined,
   raw: unknown,
-): Promise<ActivityParticipationComponent> {
+): Promise<ActivityParticipationContextItem> {
   if (!Array.isArray(raw) || !raw.length) {
-    throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.kind} requires at least one specialization`);
+    throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.name} requires at least one specialization`);
   }
   if (!fulfillment?.sources.length) {
-    throw new Error(`Activity Participation wow_spec component ${request.kind} requires a wow_class_pool fulfillment constraint`);
+    throw new Error(`Activity Participation wow_spec context ${request.name} requires a wow_class_pool fulfillment constraint`);
   }
 
   const values = await Promise.all(raw.map(async (item) => {
     if (typeof item !== "object" || item === null) {
-      throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.kind} contains an invalid specialization choice`);
+      throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.name} contains an invalid specialization choice`);
     }
     const candidate = item as {
       specName?: unknown;
@@ -215,17 +216,17 @@ async function requireWowSpecComponents(
       className?: unknown;
     };
     if (typeof candidate.specName !== "string" || !candidate.specName.trim()) {
-      throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.kind} contains an invalid specialization choice`);
+      throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.name} contains an invalid specialization choice`);
     }
 
     let className: string;
     if (candidate.character) {
       if (actor.kind !== "native") {
-        throw new ActivityParticipationOfferError("wow_spec_requires_native_identity", `${request.kind} must resolve Character provenance through a native identity`);
+        throw new ActivityParticipationOfferError("wow_spec_requires_native_identity", `${request.name} must resolve Character provenance through a native identity`);
       }
       const coordinate = candidate.character;
       if (typeof coordinate.region !== "string" || typeof coordinate.realmId !== "string" || typeof coordinate.characterId !== "string") {
-        throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.kind} contains an invalid Character reference`);
+        throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.name} contains an invalid Character reference`);
       }
       const source = fulfillment.sources.includes("controlled_guild_character")
         ? "controlled_guild_character"
@@ -233,7 +234,7 @@ async function requireWowSpecComponents(
           ? "controlled_character"
           : null;
       if (!source) {
-        throw new ActivityParticipationOfferError("wow_spec_fulfillment_unavailable", `${request.kind} does not permit Character-derived class provenance`, 403);
+        throw new ActivityParticipationOfferError("wow_spec_fulfillment_unavailable", `${request.name} does not permit Character-derived class provenance`, 403);
       }
       const characters = source === "controlled_guild_character"
         ? await characterProjections(
@@ -248,8 +249,8 @@ async function requireWowSpecComponents(
         throw new ActivityParticipationOfferError(
           "wow_spec_identity_unavailable",
           source === "controlled_guild_character"
-            ? `${request.kind} must resolve through currently controlled Characters on the current guild roster`
-            : `${request.kind} must resolve through currently controlled Characters`,
+            ? `${request.name} must resolve through currently controlled Characters on the current guild roster`
+            : `${request.name} must resolve through currently controlled Characters`,
           403,
         );
       }
@@ -257,10 +258,10 @@ async function requireWowSpecComponents(
       className = character.className;
     } else {
       if (!fulfillment.sources.includes("declared")) {
-        throw new ActivityParticipationOfferError("wow_spec_fulfillment_unavailable", `${request.kind} does not permit declared class provenance`, 403);
+        throw new ActivityParticipationOfferError("wow_spec_fulfillment_unavailable", `${request.name} does not permit declared class provenance`, 403);
       }
       if (typeof candidate.className !== "string" || !candidate.className.trim()) {
-        throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.kind} requires a class for each declared specialization`);
+        throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.name} requires a class for each declared specialization`);
       }
       className = candidate.className.trim();
     }
@@ -275,32 +276,32 @@ async function requireWowSpecComponents(
   const unique = values.filter((value, index) =>
     values.findIndex((candidate) => candidate.value.className === value.value.className && candidate.value.specName === value.value.specName) === index
   );
-  return { kind: componentKind(request.kind), value: unique };
+  return { kind: contextName(request.name), value: unique };
 }
 
-async function constructParticipationComponent(
+async function constructParticipationContextItem(
   actor: ActivityParticipationActor,
-  request: ActivityParticipationComponentRequest,
+  request: ActivityParticipationContextRequest,
   fulfillment: ActivityParticipationFulfillmentConstraint | undefined,
   raw: unknown,
-): Promise<ActivityParticipationComponent> {
-  if (request.type === "integer") return requireIntegerComponent(request, raw);
+): Promise<ActivityParticipationContextItem> {
+  if (request.type === "integer") return requireIntegerContext(request, raw);
   if (request.type === "wow_spec") {
     if (fulfillment && fulfillment.kind !== "wow_class_pool") {
-      throw new Error(`Activity Participation component ${request.kind} has incompatible fulfillment constraint`);
+      throw new Error(`Activity Participation context ${request.name} has incompatible fulfillment constraint`);
     }
-    return requireWowSpecComponents(actor, request, fulfillment, raw);
+    return requireWowSpecContext(actor, request, fulfillment, raw);
   }
 
   if (actor.kind !== "native") {
     throw new ActivityParticipationOfferError("guild_character_requires_native_identity", "A guild Character must be offered by a native identity");
   }
   if (typeof raw !== "object" || raw === null) {
-    throw new ActivityParticipationOfferError("invalid_guild_character", `${request.kind} must identify a guild Character`);
+    throw new ActivityParticipationOfferError("invalid_guild_character", `${request.name} must identify a guild Character`);
   }
   const candidate = raw as { realmId?: unknown; characterId?: unknown };
   if (typeof candidate.realmId !== "string" || typeof candidate.characterId !== "string") {
-    throw new ActivityParticipationOfferError("invalid_guild_character", `${request.kind} must identify a guild Character`);
+    throw new ActivityParticipationOfferError("invalid_guild_character", `${request.name} must identify a guild Character`);
   }
 
   const guildMemberCharacters = await controlledGuildMemberCharacters(actor.reference);
@@ -310,13 +311,13 @@ async function constructParticipationComponent(
   if (!character) {
     throw new ActivityParticipationOfferError(
       "guild_character_unavailable",
-      `${request.kind} must be a currently controlled Character on the current guild roster`,
+      `${request.name} must be a currently controlled Character on the current guild roster`,
       403,
     );
   }
 
   return {
-    kind: componentKind(request.kind),
+    kind: contextName(request.name),
     value: {
       type: "guild_character",
       value: {
@@ -344,32 +345,32 @@ async function validateParticipationOfferActor(
   }
 }
 
-async function constructParticipationComponents(
+async function constructParticipationContext(
   actor: ActivityParticipationActor,
   contract: ActivityParticipationOfferContract,
   supplied: Readonly<Record<string, unknown>>,
-): Promise<ActivityParticipationComponent[]> {
-  const requests = contract.components;
-  const kinds = requests.map((request) => componentKind(request.kind));
-  if (new Set(kinds).size !== kinds.length) throw new Error("Activity Participation Offer contract component kinds must be unique");
+): Promise<ActivityParticipationContextItem[]> {
+  const requests = contract.context;
+  const kinds = requests.map((request) => contextName(request.name));
+  if (new Set(kinds).size !== kinds.length) throw new Error("Activity Participation Offer context names must be unique");
   const unexpected = Object.keys(supplied).filter((kind) => !kinds.includes(kind));
-  if (unexpected.length) throw new ActivityParticipationOfferError("unexpected_component", `Participation Offer does not accept component ${unexpected[0]}`);
+  if (unexpected.length) throw new ActivityParticipationOfferError("unexpected_context", `Participation Offer does not accept context ${unexpected[0]}`);
   const fulfillment = contract.fulfillment ?? [];
-  const fulfillmentComponents = fulfillment.map((constraint) => componentKind(constraint.component));
+  const fulfillmentComponents = fulfillment.map((constraint) => contextName(constraint.component));
   if (new Set(fulfillmentComponents).size !== fulfillmentComponents.length) {
     throw new Error("Activity Participation Offer fulfillment constraints must target unique components");
   }
   const unknownFulfillment = fulfillmentComponents.find((kind) => !kinds.includes(kind));
   if (unknownFulfillment) throw new Error(`Activity Participation fulfillment targets unknown component ${unknownFulfillment}`);
   return Promise.all(requests.map(async (request) => {
-    if (!Object.prototype.hasOwnProperty.call(supplied, request.kind)) {
-      throw new ActivityParticipationOfferError("missing_component", `Participation Offer requires component ${request.kind}`);
+    if (!Object.prototype.hasOwnProperty.call(supplied, request.name)) {
+      throw new ActivityParticipationOfferError("missing_context", `Participation Offer requires context ${request.name}`);
     }
-    return constructParticipationComponent(
+    return constructParticipationContextItem(
       actor,
       request,
-      fulfillment.find((constraint) => constraint.component === request.kind),
-      supplied[request.kind],
+      fulfillment.find((constraint) => constraint.component === request.name),
+      supplied[request.name],
     );
   }));
 }
@@ -387,13 +388,13 @@ export async function constructActivityParticipationOffer(
   },
 ): Promise<ActivityParticipationOffer> {
   await validateParticipationOfferActor(input.actor, input.contract);
-  const components = await constructParticipationComponents(input.actor, input.contract, input.components);
+  const context = await constructParticipationContext(input.actor, input.contract, input.context);
 
   return offerActivityParticipation(client, {
     activityKind: input.activityKind,
     activityId: input.activityId,
     actor: input.actor,
-    components,
+    context,
     procedureReference: input.procedureReference,
     offeredAtUnix: input.offeredAtUnix,
   });
@@ -422,10 +423,10 @@ export async function reviseActivityParticipationOffer(
     throw new Error("Outstanding Activity Participation Offer was not found for actor");
   }
   await validateParticipationOfferActor(input.actor, input.contract);
-  const components = await constructParticipationComponents(input.actor, input.contract, input.components);
+  const context = await constructParticipationContext(input.actor, input.contract, input.context);
   const result = await client.query<any>(
     `UPDATE activity_participation_offers offer
-        SET components=$4::jsonb
+        SET context=$4::jsonb
       WHERE offer.participation_offer_id=$1
         AND offer.activity_kind=$2
         AND offer.activity_id=$3
@@ -436,7 +437,7 @@ export async function reviseActivityParticipationOffer(
            WHERE participation.participation_offer_id=offer.participation_offer_id
         )
       RETURNING *`,
-    [existing.participationOfferId, input.activityKind, input.activityId, JSON.stringify(components)],
+    [existing.participationOfferId, input.activityKind, input.activityId, JSON.stringify(context)],
   );
   if (!result.rowCount) throw new Error("Outstanding Activity Participation Offer cannot be revised");
   return mapParticipationOffer(result.rows[0]);
