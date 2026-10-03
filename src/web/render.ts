@@ -56,17 +56,21 @@ export type SecondaryNavigation =
   | { kind: "back"; label: string; href: string }
   | { kind: "breadcrumb"; items: readonly { label: string; href?: string }[] };
 
-export type RenderPageInput = {
+type RenderPageBaseInput = {
   pathname: string;
   title: string;
   description?: string;
   header: string;
   body: string;
-  viewer: WebViewer;
   secondaryNavigation?: SecondaryNavigation;
   stylesheets?: AssetName[];
   scripts?: AssetName[];
 };
+
+export type RenderPageInput = RenderPageBaseInput & (
+  | { viewer: WebViewer; preOperational?: false }
+  | { preOperational: true; viewer?: never }
+);
 
 function userGlyph(): string {
   return `<svg class="account-glyph" viewBox="0 0 24 24" aria-hidden="true">
@@ -288,14 +292,15 @@ export function renderOccurrenceOperations(input: OccurrenceOperationsFrame): st
 }
 
 export function renderPage(assets: AssetRegistry, input: RenderPageInput): string {
-  const theme = input.viewer.theme;
+  const viewer = input.preOperational ? null : input.viewer;
+  const theme = viewer?.theme ?? "default";
   const title = escapeHtml(input.title);
-  const description = escapeHtml(input.description ?? input.viewer.guildPresentation.guildName);
+  const description = escapeHtml(input.description ?? viewer?.guildPresentation.guildName ?? "Guild Operations");
   const canonicalUrl = input.pathname;
   const stylesheets = (input.stylesheets ?? []).map((name) => `  <link rel="stylesheet" href="${assetUrl(assets, name)}">`).join("\n");
   const scripts = (input.scripts ?? []).map((name) => `  <script src="${assetUrl(assets, name)}" defer></script>`).join("\n");
-  const utilityBar = renderUtilityBar(input.viewer, input.pathname);
-  const administrationNavigation = renderAdministrationNavigation(input.viewer, input.pathname);
+  const utilityBar = viewer ? renderUtilityBar(viewer, input.pathname) : "";
+  const administrationNavigation = viewer ? renderAdministrationNavigation(viewer, input.pathname) : "";
   const secondaryNavigation = renderSecondaryNavigation(input.secondaryNavigation);
   return `<!doctype html>
 <html lang="en" data-theme="${theme}">
@@ -313,14 +318,14 @@ ${stylesheets ? `${stylesheets}\n` : ""}  <title>${title}</title>
 <body>
   <div class="app-shell">
     ${utilityBar}
-    ${renderActionBar(input.viewer, input.pathname)}
+    ${viewer ? renderActionBar(viewer, input.pathname) : ""}
     ${administrationNavigation ? `<div class="administration-navigation-zone">${administrationNavigation}</div>` : ""}
     ${secondaryNavigation ? `<div class="secondary-navigation-zone">${secondaryNavigation}</div>` : ""}
     <header class="page-header${secondaryNavigation ? " page-header-after-secondary-navigation" : ""}">${input.header}</header>
     <main class="app-main">${input.body}</main>
-    ${renderFooter(input.viewer)}
+    ${viewer ? renderFooter(viewer) : ""}
   </div>
-  ${renderMainPicker(input.viewer)}
+  ${viewer ? renderMainPicker(viewer) : ""}
   <script src="${assetUrl(assets, "app.js")}" defer></script>
   <script src="${assetUrl(assets, "navigation-shelves.js")}" defer></script>
 ${scripts ? `${scripts}\n` : ""}</body>
