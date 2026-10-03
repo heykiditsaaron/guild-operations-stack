@@ -204,20 +204,45 @@ function requireIntegerContextValue(
   return { type: "integer", value };
 }
 
+type WowSpecParticipationAcquisition = {
+  characters: readonly ParticipationOfferWorkspaceCharacter[];
+  allowDeclaredClass: boolean;
+  characterSource: "controlled_character" | "controlled_guild_character" | null;
+};
+
+async function wowSpecParticipationAcquisition(
+  actor: ActivityParticipationActor,
+  eligibility: ActivityParticipationEligibility,
+): Promise<WowSpecParticipationAcquisition> {
+  if (actor.kind === "external") {
+    return {
+      characters: [],
+      allowDeclaredClass: eligibility.kind === "any",
+      characterSource: null,
+    };
+  }
+
+  const characterSource = eligibility.kind === "guild_member_character"
+    ? "controlled_guild_character" as const
+    : "controlled_character" as const;
+  const characterRecordIds = characterSource === "controlled_guild_character"
+    ? (await controlledGuildMemberCharacters(actor.reference)).map((character) => character.characterRecordId)
+    : await controlledCharacterRecordIdsForIdentity(actor.reference);
+  const characters = await characterProjections(characterRecordIds);
+  return {
+    characters: characters.map(participationOfferWorkspaceCharacter),
+    allowDeclaredClass: eligibility.kind === "any",
+    characterSource,
+  };
+}
+
 async function requireWowSpecContextValue(
   actor: ActivityParticipationActor,
   eligibility: ActivityParticipationEligibility,
   request: Extract<ActivityParticipationContextRequest, { kind: "wow_spec" }>,
   raw: unknown,
 ): Promise<ActivitySharedValue> {
-  const sources: readonly ("controlled_character" | "controlled_guild_character" | "declared")[] =
-    actor.kind === "external"
-      ? eligibility.kind === "any" ? ["declared"] : []
-      : eligibility.kind === "guild_member_character"
-        ? ["controlled_guild_character"]
-        : eligibility.kind === "guildie"
-          ? ["controlled_character"]
-          : ["controlled_character", "declared"];
+  const acquisition = await wowSpecParticipationAcquisition(actor, eligibility);
 
   if (typeof raw !== "object" || raw === null) {
     throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.name} contains an invalid specialization choice`);
@@ -240,21 +265,11 @@ async function requireWowSpecContextValue(
     if (typeof coordinate.region !== "string" || typeof coordinate.realmId !== "string" || typeof coordinate.characterId !== "string") {
       throw new ActivityParticipationOfferError("invalid_wow_spec", `${request.name} contains an invalid Character reference`);
     }
-    const source = sources.includes("controlled_guild_character")
-      ? "controlled_guild_character"
-      : sources.includes("controlled_character")
-        ? "controlled_character"
-        : null;
+    const source = acquisition.characterSource;
     if (!source) {
       throw new ActivityParticipationOfferError("wow_spec_fulfillment_unavailable", `${request.name} does not permit Character-derived class provenance`, 403);
     }
-    const characters = source === "controlled_guild_character"
-      ? await characterProjections(
-          (await controlledGuildMemberCharacters(actor.reference))
-            .map((character) => character.characterRecordId),
-        )
-      : await characterProjections(await controlledCharacterRecordIdsForIdentity(actor.reference));
-    const character = characters.find((value) =>
+    const character = acquisition.characters.find((value) =>
       value.region === coordinate.region && value.realmId === coordinate.realmId && value.characterId === coordinate.characterId
     );
     if (!character) {
@@ -269,7 +284,7 @@ async function requireWowSpecContextValue(
     if (!character.className) throw new ActivityParticipationOfferError("wow_spec_class_unavailable", "Character class facts are not available");
     className = character.className;
   } else {
-    if (!sources.includes("declared")) {
+    if (!acquisition.allowDeclaredClass) {
       throw new ActivityParticipationOfferError("wow_spec_fulfillment_unavailable", `${request.name} does not permit declared class provenance`, 403);
     }
     if (typeof candidate.className !== "string" || !candidate.className.trim()) {
@@ -484,18 +499,11 @@ async function participationOfferWorkspaceAcquisition(
     return { kind: "guild_character", characters: characters.map(participationOfferWorkspaceCharacter) };
   }
 
-  if (actor.kind === "external") {
-    return { kind: "wow_spec", characters: [], allowDeclaredClass: eligibility.kind === "any" };
-  }
-
-  const characterRecordIds = eligibility.kind === "guild_member_character"
-    ? (await controlledGuildMemberCharacters(actor.reference)).map((character) => character.characterRecordId)
-    : await controlledCharacterRecordIdsForIdentity(actor.reference);
-  const characters = await characterProjections(characterRecordIds);
+  const acquisition = await wowSpecParticipationAcquisition(actor, eligibility);
   return {
     kind: "wow_spec",
-    characters: characters.map(participationOfferWorkspaceCharacter),
-    allowDeclaredClass: eligibility.kind === "any",
+    characters: acquisition.characters,
+    allowDeclaredClass: acquisition.allowDeclaredClass,
   };
 }
 
