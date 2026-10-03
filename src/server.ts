@@ -54,7 +54,7 @@ app.get("/events", async (_request, reply) => reply.redirect("/activities"));
 app.get<{ Params: { "*": string } }>("/events/*", async (request, reply) => reply.redirect(`/activities/${request.params["*"]}`));
 await registerAdminPage(app, webAssets);
 await registerOperationsAdminPage(app, webAssets);
-await registerAuthRoutes(app);
+await registerAuthRoutes(app, webAssets);
 
 let stopGuildRefreshScheduler: (() => void) | null = null;
 let stopEmissionRecovery: (() => void) | null = null;
