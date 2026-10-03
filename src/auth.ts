@@ -1,5 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
 import type { FastifyInstance, FastifyReply } from "fastify";
+import type { AssetRegistry } from "./web/assets.js";
+import { htmlText, renderPage } from "./web/render.js";
+import { viewerForRequest } from "./web/viewer.js";
 import { acquireAuthority, authorizationUrl, exchangeAuthorizationCode, type BlizzardWowProfile } from "./blizzard.js";
 import { config, parseRegion, type Region } from "./config.js";
 import { pool } from "./db.js";
@@ -196,7 +199,7 @@ async function publishSelfRefreshRecord(
   }
 }
 
-export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
+export async function registerAuthRoutes(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   if (!app.hasContentTypeParser("application/x-www-form-urlencoded")) {
     app.addContentTypeParser("application/x-www-form-urlencoded", { parseAs: "string" }, (_request, body, done) => {
       const params = new URLSearchParams(typeof body === "string" ? body : body.toString("utf8"));
@@ -359,12 +362,20 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
         [sha256(selectionToken), attempt.region, authority.principalId, authority.profile, returnTo, config.authAttemptTtlMinutes],
       );
       const options = accounts.map((account) => {
-        const names = (account.characters ?? []).map((character) => escapeHtml(character.name)).slice(0, 4).join(", ");
-        const accountId = escapeHtml(account.wowAccountId);
+        const names = (account.characters ?? []).map((character) => htmlText(character.name)).slice(0, 4).join(", ");
+        const accountId = htmlText(account.wowAccountId);
         const detail = names ? ` — ${names}` : "";
         return `<label><input type="radio" name="wow_account_id" value="${accountId}" required> WoW Account ${accountId}${detail}</label>`;
       }).join("<br>");
-      return reply.type("text/html; charset=utf-8").send(`<!doctype html><html><head><meta charset="utf-8"><title>Choose WoW Account</title></head><body><main><h1>Choose your WoW Account</h1><p>Select the WoW Account you want to use for this Guild Operations session.</p><form method="post" action="/auth/blizzard/select-account"><input type="hidden" name="selection_token" value="${selectionToken}">${options}<p><button type="submit">Continue</button></p></form></main></body></html>`);
+      const viewer = await viewerForRequest(request.cookies[SESSION_COOKIE_NAME]);
+      return reply.type("text/html; charset=utf-8").send(renderPage(assets, {
+        pathname: "/auth/blizzard/callback",
+        title: `Choose WoW Account · ${viewer.guildPresentation.guildName} Guild Operations`,
+        description: "Choose the World of Warcraft account to use for this Guild Operations session.",
+        viewer,
+        header: '<div><p class="eyebrow">Identity</p><h1 id="page-title">Choose your WoW Account</h1></div>',
+        body: `<section><p>Select the WoW Account you want to use for this Guild Operations session.</p><form method="post" action="/auth/blizzard/select-account"><input type="hidden" name="selection_token" value="${htmlText(selectionToken)}">${options}<p><button class="button-primary" type="submit">Continue</button></p></form></section>`,
+      }));
     } catch (error) {
       request.log.error({ err: error }, "Blizzard authentication ceremony failed");
       if (attempt.purpose === "self_refresh") {
