@@ -15,12 +15,14 @@ import {
   drawRaffle as drawRaffleDomain,
   establishRaffle as establishRaffleDomain,
   establishRaffleClaim as establishRaffleClaimDomain,
+  establishRaffleClaimFromParticipationContext as establishRaffleClaimFromParticipationContextDomain,
   modifyRaffle as modifyRaffleDomain,
   openRaffleParticipation as openRaffleParticipationDomain,
   raffle as raffleDomain,
   raffleClaims as raffleClaimsDomain,
   raffleParticipationCutoffUnix,
   raffleParticipationIsOpen,
+  raffleParticipationOfferWorkspace as raffleParticipationOfferWorkspaceDomain,
   revokeRaffleClaim as revokeRaffleClaimDomain,
   type Raffle,
   type RaffleClaim,
@@ -105,6 +107,18 @@ export async function cancelRaffle(actorIdentityId: string, raffleId: string): P
   await deliverEmission(persisted.publication);
   await deliverEmission(persisted.activityDeclaration);
   return persisted.raffle;
+}
+
+export async function raffleParticipationOfferWorkspace(raffle: Raffle, actorIdentityId: string) {
+  return raffleParticipationOfferWorkspaceDomain(raffle, { kind: "native", reference: actorIdentityId });
+}
+
+export async function establishRaffleClaimFromParticipationContext(
+  claimantGuildieId: string,
+  raffleId: string,
+  context: Readonly<Record<string, unknown>>,
+): Promise<RaffleClaim> {
+  return establishRaffleClaimFromParticipationContextDomain(claimantGuildieId, raffleId, context);
 }
 
 export async function establishRaffleClaim(
