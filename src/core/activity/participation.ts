@@ -300,6 +300,16 @@ async function requireWowSpecContextValue(
   return { type: "wow_spec", value: { className, specName: canonical } };
 }
 
+async function guildCharacterParticipationAcquisition(
+  actor: ActivityParticipationActor,
+): Promise<readonly ParticipationOfferWorkspaceCharacter[]> {
+  if (actor.kind !== "native") return [];
+  const characterRecordIds = (await controlledGuildMemberCharacters(actor.reference))
+    .map((character) => character.characterRecordId);
+  return (await characterProjections(characterRecordIds))
+    .map(participationOfferWorkspaceCharacter);
+}
+
 async function requireGuildCharacterContextValue(
   actor: ActivityParticipationActor,
   request: Extract<ActivityParticipationContextRequest, { kind: "guild_character" }>,
@@ -316,10 +326,8 @@ async function requireGuildCharacterContextValue(
     throw new ActivityParticipationOfferError("invalid_guild_character", `${request.name} must identify a guild Character`);
   }
 
-  const guildMemberCharacters = await controlledGuildMemberCharacters(actor.reference);
-  const character = (await characterProjections(
-    guildMemberCharacters.map((item) => item.characterRecordId),
-  )).find((item) => item.realmId === candidate.realmId && item.characterId === candidate.characterId);
+  const character = (await guildCharacterParticipationAcquisition(actor))
+    .find((item) => item.realmId === candidate.realmId && item.characterId === candidate.characterId);
   if (!character) {
     throw new ActivityParticipationOfferError(
       "guild_character_unavailable",
@@ -490,13 +498,7 @@ async function participationOfferWorkspaceAcquisition(
   if (request.kind === "integer") return { kind: "integer" };
 
   if (request.kind === "guild_character") {
-    const characters = actor.kind === "native"
-      ? await characterProjections(
-          (await controlledGuildMemberCharacters(actor.reference))
-            .map((character) => character.characterRecordId),
-        )
-      : [];
-    return { kind: "guild_character", characters: characters.map(participationOfferWorkspaceCharacter) };
+    return { kind: "guild_character", characters: await guildCharacterParticipationAcquisition(actor) };
   }
 
   const acquisition = await wowSpecParticipationAcquisition(actor, eligibility);
