@@ -1,9 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import type { AssetRegistry } from "./web/assets.js";
-import { htmlText, renderPage, type WebViewer } from "./web/render.js";
+import { htmlText, renderPage } from "./web/render.js";
 import { viewerForRequest } from "./web/viewer.js";
-import { webPresentationContributionsForIdentity } from "./web/presentation-contributions.js";
 import { acquireAuthority, authorizationUrl, exchangeAuthorizationCode, type BlizzardWowProfile } from "./blizzard.js";
 import { config, parseRegion, type Region } from "./config.js";
 import { pool } from "./db.js";
@@ -368,17 +367,10 @@ export async function registerAuthRoutes(app: FastifyInstance, assets: AssetRegi
         const detail = names ? ` — ${names}` : "";
         return `<label><input type="radio" name="wow_account_id" value="${accountId}" required> WoW Account ${accountId}${detail}</label>`;
       }).join("<br>");
-      const viewer: WebViewer = await installationOperational()
-        ? await viewerForRequest(request.cookies[SESSION_COOKIE_NAME])
-        : {
-            authenticated: false,
-            theme: "default",
-            guildPresentation: { guildName: "Guild Operations" },
-            presentationContributions: await webPresentationContributionsForIdentity(null),
-          };
       return reply.type("text/html; charset=utf-8").send(renderPage(assets, {
         pathname: "/auth/blizzard/callback",
-        title: `Choose WoW Account · ${viewer.guildPresentation.guildName} Guild Operations`,
+        preOperational: true,
+        title: "Choose WoW Account · Guild Operations",
         description: "Choose the World of Warcraft account to use for this Guild Operations session.",
         viewer,
         header: '<div><p class="eyebrow">Identity</p><h1 id="page-title">Choose your WoW Account</h1></div>',
