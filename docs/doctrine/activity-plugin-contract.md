@@ -392,38 +392,103 @@ The important invariant is authority preservation. Being able to identify, trave
 
 > **The Offer/occurrence relationship is traversable in both directions without transferring authority across the Activity boundary.**
 
-## Participation fulfillment
+## Participation Offer requests and fulfillment
 
-Where an Activity procedure accepts an explicit Participation Offer, the contract between plugin procedure and Activity distinguishes three independent concerns:
+Where an Activity procedure accepts explicit Participation Offers, the plugin declares the Participation request under which those Offers may be constructed.
 
-- **Actor constraints** describe which already-identified Actors may participate.
-- **Offer requirements** describe the semantic values the plugin procedure requires from the Offer.
-- **Fulfillment constraints** describe which authoritative or declarative sources may be used to establish the candidate values from which the participant makes that Offer.
+The declaration has two dimensions:
 
-These concerns must not be collapsed into one another. In particular, a shared semantic request such as `wow_spec` describes the value Raid needs; it does not itself prescribe whether that value must be reached through a controlled Character, a guild-roster Character, or a declared class. Likewise, satisfying Actor eligibility does not prove that an offered value was derived through a source permitted by the procedure.
+- **eligibility** describes the population of Actors from which Participation Offers may be constructed for the occurrence;
+- **context** describes the appropriately typed information each resulting Offer must carry for the requesting procedure.
 
-A fulfillment surface may choose how to present the permitted route, but it must preserve the participant's decisions. Earlier choices may establish or narrow the candidate set for later choices; they do not make those later choices on the participant's behalf.
+Eligibility does not establish Actorhood. Core resolves the Actor first; the occurrence's Participation eligibility then determines whether that Actor may construct an Offer.
+
+A context request describes one procedurally significant fact of one system-recognized kind. The plugin gives that fact its procedure-local name, declares the recognized kind, may apply constraints supported by that kind, and declares whether multiple values are permitted. The plugin owns why the named fact matters to its procedure. The authority that owns the shared kind remains authoritative for what values of that kind mean and how they may be established.
+
+Conceptually:
 
 ```text
-Actor constraint
-    │ identifies who may proceed
-    ▼
-permitted fulfillment sources
-    │ participant establishes input/provenance
-    ▼
-Core/system authority derives candidate values
-    │ participant chooses from candidates
-    ▼
-Offer requirement satisfied
+Participation request
+│
+├── eligibility
+│   └── eligible population
+│
+└── context[]
+    ├── declared name
+    ├── recognized kind
+    ├── allow multiple
+    └── constraints supported by that kind
 ```
 
-For example, a Raid may require `wow_spec[]` while permitting a class pool to be established precisely from known controlled Characters or coarsely from declared classes. Character selection and class declaration are therefore alternative resolutions of an upstream fulfillment choice, not different meanings of `wow_spec`. Core may derive the candidate specializations from the resulting class pool, but it may not silently choose the class pool or the offered specializations for the participant.
+The request describes required Offer meaning, not acquisition or rendering instructions. It does not prescribe selectors, callbacks, source lists, layouts, controls, or plugin-specific payloads. Core owns how satisfying values are acquired, validated, composed, represented, and persisted.
 
-The Activity boundary validates both the semantic Offer values and, where procedure constrains fulfillment, that their provenance was established through a permitted source. A rendering or transport surface is not trusted to make that guarantee merely by hiding invalid choices.
+Every Participation Offer is Actor-bound even when the plugin requests no additional context. An empty context declaration therefore remains meaningful: the procedure needs an Offer from an eligible Actor but requires no additional Offer context. Plugin procedure references the Offer, not the Actor directly.
 
-> **Actor constraints govern who may participate. Offer requirements govern what the procedure needs. Fulfillment constraints govern how candidate values may legitimately be established.**
+For each named context request, `allowMultiple: false` requires exactly one value of the declared kind. `allowMultiple: true` permits one or more values and Core represents the fulfilled context as a non-empty homogeneous array of that declared kind. Multiplicity does not change the kind itself. If a procedure needs facts of different kinds, it requests multiple named context entries.
 
-> **A fulfillment step may constrain the choices available to the next step. It does not make the next choice.**
+```text
+{ name: "character", kind: "guild_character", allowMultiple: false }
+    ↓
+exactly one guild_character
+
+{ name: "offered_specs", kind: "wow_spec", allowMultiple: true }
+    ↓
+one or more wow_spec values
+    ↓
+non-empty wow_spec[]
+```
+
+Appropriate kinds are Guild Operations or shared domain vocabulary that Core can authoritatively understand, validate, acquire, and persist. A plugin-specific procedural concept does not become Participation context merely because the plugin would find it convenient to attach to an Offer. Richer Offer context is composed from multiple appropriate named requests rather than an opaque procedural payload.
+
+> **Eligibility declares the population from which Participation Offers may be constructed. Context declares what appropriately typed information those Offers must carry for the requesting procedure.**
+
+> **Plugins request. Core fulfills under the authority of the domain that owns the requested meaning.**
+
+### Participation Offer construction
+
+Core renders and operates the **Participation Offer workspace** from the Participation request. The workspace is a consequence of the request and Core's knowledge of recognized kinds, not a second presentation contract authored by the plugin.
+
+A recognized kind owns acquisition and validation of one canonical value. The named context request owns composition: exactly one value when multiple values are not permitted, or one or more values when they are. Multiple named requests compose independently into the Offer context.
+
+```text
+eligible Actor
+   +
+Participation request
+   ↓
+Participation Offer workspace
+   ↓
+Core acquires / validates requested values
+   ↓
+all requested context satisfied
+   ↓
+Participation Offer established
+```
+
+The browser surface and server-side constructor are two expressions of the same Participation semantics. A browser may help an Actor choose valid candidates, but the server independently establishes and validates the submitted values. Rendering is never the authority boundary.
+
+During construction there may be incomplete workspace state that is not yet a Participation Offer. A persisted Offer is established only when its Actor and all requested context satisfy the request. Participation does not require durable draft Offers merely to represent incomplete construction.
+
+### Revision and request replacement
+
+An outstanding Participation Offer may be revised while the Participation request under which it was constructed remains the same. Existing context values are already-established canonical values under that request. Retaining them does not require reacquisition. Newly supplied values require acquisition and validation; removed values cease to be part of the revised Offer. The resulting context must still satisfy the same multiplicity and kind constraints.
+
+A change to the Participation request is different from revision of an Offer. The request is the contract under which its outstanding Offers were constituted. Changing that contract establishes a new Participation request and makes outstanding Offers under the previous request null and void. Participants begin again under the new request. Ordinary occurrence changes that leave the Participation request unchanged do not invalidate outstanding Offers.
+
+This is a semantic invariant, not a requirement for speculative request-version persistence. Concrete replacement machinery should be introduced when an Activity exposes a real mutable Participation-request path.
+
+> **An Offer may be revised under the request that constituted it. It is not reinterpreted under a different request.**
+
+> **Changing the Participation request establishes a new request and invalidates outstanding Offers constituted under the previous request.**
+
+### Accessibility and procedural dependency
+
+Participation Offers are Core-owned application objects and are not hidden from Activity plugins. A plugin may query a full Participation Offer through the ordinary application contract.
+
+Accessibility does not imply procedural dependency. The plugin's participation procedure operates on the Offer reference and the procedure context it requested. Other Core-owned Offer facts remain available where legitimately useful without becoming additional undeclared inputs to the participation procedure.
+
+Nothing is sent to a plugin for opaque processing. Core constructs and owns the Offer; plugin procedure reads the Offer reference and the requested context relevant to that procedure.
+
+> **A full Participation Offer may be queried through the application contract, while the requesting procedure depends on the Offer reference and the context it requested.**
 
 ## Capability requests and representation
 
