@@ -121,6 +121,50 @@ async function renderRaidOccurrence(occurrence: ActivityOccurrence, actions: rea
   </article>`;
 }
 
+function raffleConclusionLabel(conclusion: string | null): string {
+  if (conclusion === "drawn") return "Drawn";
+  if (conclusion === "operator_cancelled") return "Cancelled";
+  return "Open";
+}
+
+async function renderRaffleOccurrence(occurrence: ActivityOccurrence, actions: readonly ActivityRenderAction[]): Promise<string> {
+  const entryPrice = scalarAttribute(occurrence, "entry_price");
+  const entries = integerAttribute(occurrence, "approved_entries");
+  const prize = scalarAttribute(occurrence, "prize");
+  const currentPrize = scalarAttribute(occurrence, "current_prize");
+  const conclusion = stringAttribute(occurrence, "conclusion");
+  const winner = scalarAttribute(occurrence, "winner");
+  const drawingAt = occurrence.occursAt?.end ?? null;
+  const actionLinks = actions.map((action) => `<a class="button-${action.kind}" href="${htmlText(action.href)}">${htmlText(action.label)}</a>`).join("");
+
+  const prizeValue = currentPrize ?? prize;
+  const renderedPrize = prizeValue ? await renderActivityOccurrenceSharedValues(occurrence, prizeValue) : "Prize to be announced";
+  const renderedEntryPrice = entryPrice ? await renderActivityOccurrenceSharedValues(occurrence, entryPrice) : "—";
+  const renderedWinner = winner ? await renderActivityOccurrenceSharedValues(occurrence, winner) : null;
+
+  return `<article class="public-occurrence raffle-occurrence">
+    <header class="raffle-occurrence-hero">
+      <div class="raffle-occurrence-heading">
+        <p class="raffle-occurrence-kicker">${occurrence.phase === "record" ? "Raffle record" : "Guild raffle"}</p>
+        <h1>${htmlText(occurrence.title)}</h1>
+        ${occurrence.description ? `<p class="raffle-occurrence-description">${htmlText(occurrence.description)}</p>` : ""}
+      </div>
+      <div class="raffle-occurrence-prize" aria-label="Raffle prize">
+        <span>${currentPrize ? (occurrence.phase === "record" ? "Prize value" : "Current prize") : "Prize"}</span>
+        <strong>${renderedPrize}</strong>
+      </div>
+    </header>
+    <section class="raffle-occurrence-summary" aria-label="Raffle details">
+      ${drawingAt === null ? "" : `<div class="raffle-occurrence-draw"><span>${occurrence.phase === "record" ? "Drawing time" : "Draws"}</span><strong>${localTime(drawingAt)}</strong></div>`}
+      <div class="raffle-occurrence-metric"><span>Entry price</span><strong>${renderedEntryPrice}</strong></div>
+      <div class="raffle-occurrence-metric"><span>Approved entries</span><strong>${entries}</strong></div>
+      <div class="raffle-occurrence-metric"><span>Status</span><strong>${raffleConclusionLabel(conclusion)}</strong></div>
+    </section>
+    ${renderedWinner ? `<section class="raffle-occurrence-winner" aria-label="Raffle winner"><span>Winner</span><strong>${renderedWinner}</strong></section>` : ""}
+    ${actionLinks ? `<nav class="public-occurrence-actions raffle-occurrence-actions" aria-label="Raffle actions">${actionLinks}</nav>` : ""}
+  </article>`;
+}
+
 export async function registerActivityBoundaryRoutes(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get<{ Params: { kind: string; activityId: string } }>("/activities/:kind/:activityId", async (request, reply) => {
     const occurrence = await activityOccurrence(request.params.kind, request.params.activityId);
@@ -151,6 +195,21 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
           secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Activities", href: "/activities" }, { label }] },
           header: "",
           body: await renderRaidOccurrence(occurrence, actions, assignments),
+        }));
+    }
+
+    if (occurrence.activityKind === "raffle") {
+      return reply
+        .header("Cache-Control", "no-cache")
+        .type("text/html; charset=utf-8")
+        .send(renderPage(assets, {
+          pathname: request.url,
+          title: `${occurrence.title} · ${label} · ${viewer.guildPresentation.guildName} Guild Operations`,
+          description: occurrence.description ?? `${label} activity occurrence.`,
+          viewer,
+          secondaryNavigation: { kind: "breadcrumb", items: [{ label: "Activities", href: "/activities" }, { label }] },
+          header: "",
+          body: await renderRaffleOccurrence(occurrence, actions),
         }));
     }
 
@@ -200,6 +259,28 @@ export async function registerActivityBoundaryRoutes(app: FastifyInstance, asset
     const cards = await Promise.all(occurrences.map(async (occurrence) => {
       const actions = await activityOccurrenceRenderActions(occurrence, identity?.identityId ?? null);
       const actionLinks = actions.map((action) => `<a class="button-${action.kind}" href="${htmlText(action.href)}">${htmlText(action.label)}</a>`).join("");
+
+      if (occurrence.activityKind === "raffle") {
+        const entryPrice = scalarAttribute(occurrence, "entry_price");
+        const entries = integerAttribute(occurrence, "approved_entries");
+        const prize = scalarAttribute(occurrence, "current_prize") ?? scalarAttribute(occurrence, "prize");
+        const drawingAt = occurrence.occursAt?.end ?? null;
+        const renderedPrize = prize ? await renderActivityOccurrenceSharedValues(occurrence, prize) : "Prize to be announced";
+        const renderedEntryPrice = entryPrice ? await renderActivityOccurrenceSharedValues(occurrence, entryPrice) : "—";
+        return `<article class="activity-card raffle-listing-card">
+          <div class="raffle-listing-identity">
+            <p class="raffle-listing-kicker">${occurrence.phase === "record" ? "Raffle record" : "Guild raffle"}</p>
+            <h2 class="activity-card-title"><a href="/activities/${encodeURIComponent(occurrence.activityKind)}/${encodeURIComponent(occurrence.activityId)}">${htmlText(occurrence.title)}</a></h2>
+            ${occurrence.description ? `<p class="raffle-listing-description">${htmlText(occurrence.description)}</p>` : ""}
+          </div>
+          <div class="raffle-listing-prize"><span>${occurrence.phase === "record" ? "Prize" : "Current prize"}</span><strong>${renderedPrize}</strong></div>
+          <div class="raffle-listing-summary">
+            ${drawingAt === null ? "" : `<div class="raffle-listing-draw"><span>Draws</span><strong>${localTime(drawingAt)}</strong></div>`}
+            <div class="raffle-listing-stats"><span><strong>${renderedEntryPrice}</strong> per entry</span><span><strong>${entries}</strong> approved</span></div>
+          </div>
+          ${actionLinks ? `<nav class="activity-card-actions raffle-listing-actions" aria-label="${htmlText(occurrence.title)} actions">${actionLinks}</nav>` : ""}
+        </article>`;
+      }
 
       if (occurrence.activityKind === "raid") {
         const difficulty = stringAttribute(occurrence, "difficulty") ?? "Raid";
