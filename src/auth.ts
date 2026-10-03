@@ -1,7 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import type { AssetRegistry } from "./web/assets.js";
-import { htmlText, renderPage } from "./web/render.js";
+import { htmlText } from "./web/render.js";
+import { renderSetupDocument } from "./web/pages/setup.js";
 import { viewerForRequest } from "./web/viewer.js";
 import { acquireAuthority, authorizationUrl, exchangeAuthorizationCode, type BlizzardWowProfile } from "./blizzard.js";
 import { config, parseRegion, type Region } from "./config.js";
@@ -367,15 +368,10 @@ export async function registerAuthRoutes(app: FastifyInstance, assets: AssetRegi
         const detail = names ? ` — ${names}` : "";
         return `<label><input type="radio" name="wow_account_id" value="${accountId}" required> WoW Account ${accountId}${detail}</label>`;
       }).join("<br>");
-      return reply.type("text/html; charset=utf-8").send(renderPage(assets, {
-        pathname: "/auth/blizzard/callback",
-        preOperational: true,
-        title: "Choose WoW Account · Guild Operations",
-        description: "Choose the World of Warcraft account to use for this Guild Operations session.",
-        viewer,
-        header: '<div><p class="eyebrow">Identity</p><h1 id="page-title">Choose your WoW Account</h1></div>',
-        body: `<section><p>Select the WoW Account you want to use for this Guild Operations session.</p><form method="post" action="/auth/blizzard/select-account"><input type="hidden" name="selection_token" value="${htmlText(selectionToken)}">${options}<p><button class="button-primary" type="submit">Continue</button></p></form></section>`,
-      }));
+      return reply.type("text/html; charset=utf-8").send(renderSetupDocument(
+        assets,
+        `<p>Select the WoW Account you want to use for this Guild Operations session.</p><form method="post" action="/auth/blizzard/select-account"><input type="hidden" name="selection_token" value="${htmlText(selectionToken)}">${options}<p><button class="button-primary setup-action" type="submit">Continue</button></p></form>`,
+      ));
     } catch (error) {
       request.log.error({ err: error }, "Blizzard authentication ceremony failed");
       if (attempt.purpose === "self_refresh") {
