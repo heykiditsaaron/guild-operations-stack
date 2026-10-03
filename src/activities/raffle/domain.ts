@@ -7,9 +7,12 @@ import {
   closeActivityParticipationOffer,
   closeOutstandingActivityParticipationOffers,
   constructActivityParticipationOffer,
+  participationOfferWorkspace,
   establishActivityParticipation,
   revokeActivityParticipationOffer,
+  type ActivityParticipationActor,
   type ActivityParticipationOfferContract,
+  type ParticipationOfferWorkspace,
 } from "../../core/activity/participation.js";
 import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import { characterByRecordId } from "../../core/identity/controlled-characters.js";
@@ -311,6 +314,86 @@ const raffleClaimOfferContract: ActivityParticipationOfferContract = {
     { name: "claim", kind: "integer", allowMultiple: false, greaterThan: 0 },
   ],
 };
+
+export async function raffleParticipationOfferWorkspace(
+  raffle: Raffle,
+  actor: ActivityParticipationActor,
+): Promise<ParticipationOfferWorkspace> {
+  return participationOfferWorkspace({
+    actor,
+    eligibility: { kind: "guild_member_character", guildId: raffle.guildId },
+    contract: raffleClaimOfferContract,
+  });
+}
+
+export async function establishRaffleClaimFromParticipationContext(
+  claimantGuildieId: string,
+  raffleId: string,
+  context: Readonly<Record<string, unknown>>,
+): Promise<RaffleClaim> {
+  return withTransaction(async (client) => {
+    const raffleRow = await lockedRaffle(client, raffleId);
+    const raffle = mapRaffle(raffleRow);
+    if (!raffleParticipationIsOpen(raffle)) throw new RaffleRuleError("participation_closed", "Raffle participation is closed");
+
+    const claimId = randomUUID();
+    const offeredAtUnix = unixNow();
+    const offer = await constructActivityParticipationOffer(client, {
+      activityKind: "raffle",
+      activityId: raffleId,
+      actor: { kind: "native", reference: claimantGuildieId },
+      eligibility: { kind: "guild_member_character", guildId: raffle.guildId },
+      contract: raffleClaimOfferContract,
+      context,
+      procedureReference: claimId,
+      offeredAtUnix,
+    });
+
+    const characterComponent = offer.context.find((item) => item.name === "character");
+    const claimComponent = offer.context.find((item) => item.name === "claim");
+    const characterValue = characterComponent?.value;
+    const claimValue = claimComponent?.value;
+    if (!characterValue || !claimValue || Array.isArray(characterValue) || Array.isArray(claimValue)) {
+      throw new Error("Constructed Raffle Participation Offer does not satisfy its declared contract");
+    }
+    const singularCharacterValue = characterValue as ActivitySharedValue;
+    const singularClaimValue = claimValue as ActivitySharedValue;
+    if (singularCharacterValue.type !== "guild_character" || singularClaimValue.type !== "integer") {
+      throw new Error("Constructed Raffle Participation Offer does not satisfy its declared contract");
+    }
+
+    const character = singularCharacterValue.value;
+    const entryCount = singularClaimValue.value;
+    const promisedGoldValue = BigInt(String(raffleRow.entry_price_gold)) * BigInt(entryCount);
+    await client.query(
+      `INSERT INTO raffle_claims (
+         claim_id, raffle_id, promised_gold_value, created_at_unix, participation_offer_id
+       ) VALUES ($1,$2,$3,$4,$5)`,
+      [claimId, raffleId, promisedGoldValue.toString(), offeredAtUnix, offer.participationOfferId],
+    );
+
+    return {
+      claimId,
+      raffleId,
+      claimantGuildieId: offer.actor.reference,
+      characterRecordId: character.characterRecordId,
+      characterId: character.characterId,
+      realmId: character.realmId,
+      characterName: character.name,
+      requestedEntryCount: entryCount,
+      promisedGoldValue: promisedGoldValue.toString(),
+      createdAtUnix: offeredAtUnix,
+      resolutionKind: null,
+      approvedByGuildieId: null,
+      approvedAtUnix: null,
+      deniedByGuildieId: null,
+      deniedAtUnix: null,
+      denialReason: null,
+      revokedByGuildieId: null,
+      revokedAtUnix: null,
+    };
+  });
+}
 
 export async function establishRaffleClaim(claimantGuildieId: string, raffleId: string, realmId: string, characterId: string, requestedEntryCount: number): Promise<RaffleClaim> {
   return withTransaction(async (client) => {
