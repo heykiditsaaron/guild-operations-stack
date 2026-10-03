@@ -124,7 +124,7 @@ async function renderRaidOccurrence(occurrence: ActivityOccurrence, actions: rea
 function raffleConclusionLabel(conclusion: string | null): string {
   if (conclusion === "drawn") return "Drawn";
   if (conclusion === "operator_cancelled") return "Cancelled";
-  return "Open";
+  return "Active";
 }
 
 async function renderRaffleOccurrence(occurrence: ActivityOccurrence, actions: readonly ActivityRenderAction[]): Promise<string> {
