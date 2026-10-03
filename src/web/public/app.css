@@ -1827,3 +1827,228 @@ h1 {
     gap: 0.65rem;
   }
 }
+
+
+/* Raffle occurrence: Core gives projected Raffle meaning a deliberate public hierarchy. */
+.raffle-occurrence {
+  gap: clamp(1.5rem, 4vw, 2.5rem);
+  width: min(100%, 58rem);
+}
+
+.raffle-occurrence-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(12rem, auto);
+  align-items: end;
+  gap: clamp(1.5rem, 5vw, 3rem);
+  padding: clamp(1.2rem, 4vw, 2rem) 0 clamp(1.6rem, 5vw, 2.6rem);
+  border-bottom: 1px solid var(--theme-accent-border);
+}
+
+.raffle-occurrence-heading {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.raffle-occurrence-kicker,
+.raffle-listing-kicker {
+  margin: 0;
+  color: var(--theme-accent);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.raffle-occurrence-heading h1 {
+  max-width: 42rem;
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.5rem, 8vw, 4.6rem);
+  line-height: 0.96;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+}
+
+.raffle-occurrence-description,
+.raffle-listing-description {
+  margin: 0;
+  color: var(--theme-text-secondary);
+  line-height: 1.55;
+}
+
+.raffle-occurrence-prize {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 12rem;
+  padding-left: 1.25rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.raffle-occurrence-prize span,
+.raffle-occurrence-summary span,
+.raffle-occurrence-winner span,
+.raffle-listing-prize span,
+.raffle-listing-draw span {
+  color: var(--theme-text-muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.raffle-occurrence-prize strong {
+  color: var(--theme-accent-strong);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.7rem, 5vw, 2.6rem);
+  line-height: 1;
+}
+
+.raffle-occurrence-summary {
+  display: grid;
+  grid-template-columns: minmax(13rem, 1.5fr) repeat(3, minmax(7rem, 1fr));
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 1rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.018));
+}
+
+.raffle-occurrence-summary > div {
+  display: grid;
+  align-content: center;
+  gap: 0.3rem;
+  min-width: 0;
+  padding: 1rem;
+}
+
+.raffle-occurrence-summary > div + div {
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.raffle-occurrence-summary strong {
+  font-size: 1.05rem;
+  line-height: 1.25;
+}
+
+.raffle-occurrence-draw strong {
+  color: var(--theme-accent);
+}
+
+.raffle-occurrence-winner {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1.15rem 1.25rem;
+  border: 1px solid var(--theme-accent-border);
+  border-radius: 1rem;
+  background: var(--theme-accent-soft);
+}
+
+.raffle-occurrence-winner strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.45rem, 4vw, 2rem);
+}
+
+.raffle-occurrence-actions .button-participate {
+  min-width: 10rem;
+}
+
+.raffle-listing-card {
+  display: grid;
+  gap: 1.15rem;
+}
+
+.raffle-listing-identity {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.raffle-listing-identity .activity-card-title {
+  font-size: clamp(1.35rem, 4vw, 1.85rem);
+}
+
+.raffle-listing-prize {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.9rem 0;
+  border-block: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.raffle-listing-prize strong {
+  color: var(--theme-accent-strong);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.35rem, 4vw, 1.8rem);
+}
+
+.raffle-listing-summary {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.raffle-listing-draw {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.raffle-listing-draw strong {
+  color: var(--theme-accent);
+  font-size: 0.95rem;
+}
+
+.raffle-listing-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.35rem 0.9rem;
+  color: var(--theme-text-muted);
+  font-size: 0.78rem;
+}
+
+.raffle-listing-stats strong {
+  color: var(--theme-text);
+}
+
+.raffle-listing-actions {
+  margin-top: 0.1rem;
+}
+
+.raffle-listing-actions .button-participate {
+  flex: 1 1 auto;
+}
+
+@media (max-width: 42rem) {
+  .raffle-occurrence-hero {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .raffle-occurrence-prize {
+    padding: 1rem 0 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-left: 0;
+  }
+
+  .raffle-occurrence-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .raffle-occurrence-summary > div:nth-child(3) {
+    border-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .raffle-occurrence-summary > div:nth-child(4) {
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+  }
+}
+
+@media (max-width: 30rem) {
+  .raffle-listing-summary {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .raffle-listing-stats {
+    justify-content: flex-start;
+  }
+}
