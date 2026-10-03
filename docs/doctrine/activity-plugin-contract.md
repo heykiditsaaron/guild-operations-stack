@@ -318,7 +318,7 @@ This permits guest participation without requiring association first. An unassoc
 
 Participation is an optional systemic Activity observation: a party participated in an Activity occurrence. An Activity need not produce Participation observations.
 
-Participation is not itself procedure. A plugin owns whatever procedure gives it authority to establish that observation. One maximally expressed participation-related procedure is:
+Participation is not itself procedure. A plugin owns whatever procedure gives it authority to establish that observation. Where explicit offering is part of that procedure, the Offer itself is nevertheless Core-owned Participation machinery rather than plugin-owned procedure. One maximally expressed participation-related procedure is:
 
 ```text
 Terms → Offer → Conditions → Fulfillment → Adjudication → Participation
@@ -327,13 +327,13 @@ Terms → Offer → Conditions → Fulfillment → Adjudication → Participatio
 This is semantic structure, not six mandatory persisted states, objects, interactions, or transitions.
 
 - **Terms** define the standing proposition of the Activity procedure.
-- **Offer** is a participant declaration accepting applicable Terms and supplying whatever choices the procedure permits.
+- **Offer** is the Core-owned Actor-bound declaration constructed under the occurrence's Participation request, carrying the procedure context that request requires.
 - **Conditions** define what must be true for the relevant participation to be considered fulfilled.
 - **Fulfillment** is the reality that may satisfy those Conditions.
 - **Adjudication** is successful procedure declaring whether the relevant fulfillment counts.
 - **Participation** is the resulting systemic observation recognized by Activity.
 
-An Activity plugin owns this procedure and its expression. These stages are not an Activity-owned lifecycle or required ceremony. They may be explicit, richly negotiated, mechanically evaluated, human-evaluated, inherent, or absent as separately expressed artifacts when the procedure does not require them.
+An Activity plugin owns the procedure around these meanings; Core owns the systemic Participation machinery it provides, including explicit Participation Offers. These stages are not a mandatory Activity lifecycle or required ceremony. They may be explicit, richly negotiated, mechanically evaluated, human-evaluated, inherent, or absent as separately expressed artifacts when the procedure does not require them.
 
 Participation does not require conscious enrollment or negotiation. A procedure may discover fulfillment and adjudicate Participation for an actor who made no explicit Offer, such as an achievement- or activity-scoring procedure. An explicit Offer is therefore an optional ceremonial artifact, not a universal prerequisite for Participation.
 
