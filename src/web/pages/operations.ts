@@ -82,7 +82,7 @@ function renderInspection(
   </form>`;
 
   return `<section class="operations-inspection admin-section" aria-labelledby="operations-records-heading">
-    <h2 id="operations-records-heading">Operational history</h2>
+    <h2 id="operations-records-heading">Operational logs</h2>
     <p class="admin-section-note">Review recorded operational results and exceptions.</p>
     ${filters}
     <div class="operations-records-heading">
@@ -123,12 +123,12 @@ export async function registerOperationsAdminPage(
 
     const body = sections
       ? `<div class="admin-sections">${sections}</div>`
-      : `<section class="admin-unavailable"><h2>History is not available for this account.</h2></section>`;
+      : `<section class="admin-unavailable"><h2>Logs are not available for this account.</h2></section>`;
 
     const html = renderPage(assets, {
       pathname: "/admin/history",
-      title: `History · ${viewer.guildPresentation.guildName} Guild Operations`,
-      description: "Inspect recorded Guild Operations history.",
+      title: `Logs · ${viewer.guildPresentation.guildName} Guild Operations`,
+      description: "Inspect recorded Guild Operations logs.",
       viewer,
       stylesheets: ["admin.css"],
       scripts: ["operations.js"],
