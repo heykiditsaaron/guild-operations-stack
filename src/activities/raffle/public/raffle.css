@@ -361,3 +361,19 @@
     gap: 0.15rem;
   }
 }
+
+
+/* Participation page composition */
+.occurrence-participation-intake .raffle-workspace.participation-workspace {
+  gap: 1rem;
+  padding-top: 1.4rem;
+}
+
+.occurrence-participation-intake .raffle-workspace .participation-workspace-header p {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.occurrence-participation-intake .raffle-workspace .participation-offer-workspace {
+  gap: 1rem;
+}
