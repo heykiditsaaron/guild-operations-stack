@@ -1398,6 +1398,137 @@ h1 {
   line-height: 1.55;
 }
 
+
+/* Participation offer workspace: translate procedural requests into a consistent human-facing form rhythm. */
+.participation-offer-workspace {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.participation-offer-workspace-header h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.55rem, 5vw, 2.15rem);
+  line-height: 1.05;
+}
+
+.participation-offer-workspace form {
+  display: grid;
+  gap: 1.25rem;
+  width: min(100%, 34rem);
+}
+
+.participation-offer-workspace-request,
+.participation-offer-workspace-field,
+.participation-offer-workspace-acquisition,
+.participation-offer-workspace-acquisition label {
+  min-width: 0;
+}
+
+.participation-offer-workspace-field {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.participation-offer-workspace-field > span,
+.participation-offer-workspace-acquisition label > span {
+  color: var(--theme-text-secondary);
+  font-size: 0.82rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+}
+
+.participation-offer-workspace-field > [data-participation-values] {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.participation-offer-workspace-value {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.participation-offer-workspace-value > span {
+  min-width: 0;
+  font-weight: 650;
+}
+
+.participation-offer-workspace-value .button-secondary {
+  min-height: 2.25rem;
+  flex: 0 0 auto;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.82rem;
+}
+
+.participation-offer-workspace-acquisition {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.participation-offer-workspace-acquisition label {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.participation-offer-workspace-acquisition select,
+.participation-offer-workspace-field > select,
+.participation-offer-workspace-field > input {
+  width: 100%;
+}
+
+.participation-offer-workspace-acquisition [data-participation-spec-character] {
+  grid-column: 1 / -1;
+}
+
+.participation-offer-workspace-acquisition .button-secondary {
+  align-self: end;
+}
+
+.participation-offer-workspace-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.participation-offer-workspace-actions .button-primary {
+  min-height: 2.8rem;
+}
+
+[data-participation-offer-status] {
+  min-height: 1.25rem;
+  margin: -0.45rem 0 0;
+  color: var(--theme-text-muted);
+  font-size: 0.86rem;
+}
+
+@media (max-width: 34rem) {
+  .occurrence-participation-frame {
+    gap: 1.6rem;
+  }
+
+  .participation-offer-workspace-acquisition {
+    grid-template-columns: 1fr;
+  }
+
+  .participation-offer-workspace-acquisition [data-participation-spec-character] {
+    grid-column: auto;
+  }
+
+  .participation-offer-workspace-acquisition .button-secondary,
+  .participation-offer-workspace-actions .button-primary {
+    width: 100%;
+  }
+}
+
 .utility-dimension-swap-orientation {
   font-weight: 800;
 }
