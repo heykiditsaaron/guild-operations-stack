@@ -429,3 +429,28 @@
 .raid-source-select[hidden] {
   display: none;
 }
+
+
+/* Participation page composition */
+.occurrence-participation-existing .raid-my-offers {
+  gap: 0.75rem;
+}
+
+.occurrence-participation-existing .raid-my-offers h2 {
+  margin: 0;
+  font-size: clamp(1.2rem, 4vw, 1.45rem);
+}
+
+.occurrence-participation-existing .raid-my-offers article {
+  gap: 0.35rem;
+  padding: 0.9rem 1rem;
+}
+
+.occurrence-participation-existing .raid-my-offers article .button-secondary {
+  margin-top: 0.35rem;
+}
+
+.occurrence-participation-intake .participation-offer-workspace {
+  padding-top: 1.4rem;
+  border-top: 1px solid rgba(238, 201, 124, 0.18);
+}
