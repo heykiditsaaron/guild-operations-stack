@@ -302,6 +302,56 @@ button:disabled,
   }
 }
 
+.activity-card-list {
+  display: grid;
+  gap: 1rem;
+  width: min(100%, 52rem);
+}
+
+.activity-discovery-card {
+  display: grid;
+  gap: 0.7rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.activity-discovery-card:hover,
+.activity-discovery-card:focus-visible {
+  border-color: var(--theme-accent-border);
+  background: rgba(232, 201, 134, 0.055);
+  outline: none;
+}
+
+.activity-discovery-card:focus-visible {
+  box-shadow: 0 0 0 2px var(--theme-accent);
+}
+
+.activity-discovery-kicker,
+.activity-discovery-title,
+.activity-discovery-tagline {
+  margin: 0;
+}
+
+.activity-discovery-title {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.55rem, 5vw, 2.15rem);
+  line-height: 1.05;
+}
+
+.activity-discovery-tagline {
+  max-width: 38rem;
+  color: var(--theme-text-secondary);
+  line-height: 1.55;
+}
+
+.activity-discovery-action {
+  width: fit-content;
+  margin-top: 0.35rem;
+  color: var(--theme-accent-strong);
+  font-size: 0.9rem;
+  font-weight: 750;
+}
+
 .activity-card {
   min-width: 0;
   padding: clamp(1.2rem, 4vw, 1.6rem);
