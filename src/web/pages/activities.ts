@@ -11,11 +11,11 @@ export async function registerActivitiesPage(app: FastifyInstance, assets: Asset
     const activities = await discoverableActivities();
     const body = activities.length
       ? `<div class="activity-card-list">${activities.map((activity) => `
-          <a class="activity-card" href="${htmlText(activity.destination)}">
-            <p class="eyebrow">Guild activity</p>
-            <h2>${htmlText(activity.title)}</h2>
-            <p>${htmlText(activity.tagline)}</p>
-            <span>Explore activity <span aria-hidden="true">→</span></span>
+          <a class="activity-card activity-discovery-card" href="${htmlText(activity.destination)}">
+            <p class="eyebrow activity-discovery-kicker">Guild activity</p>
+            <h2 class="activity-discovery-title">${htmlText(activity.title)}</h2>
+            <p class="activity-discovery-tagline">${htmlText(activity.tagline)}</p>
+            <span class="activity-discovery-action">Explore activity <span aria-hidden="true">→</span></span>
           </a>`).join("\n")}</div>`
       : `<section><h2>No activities available</h2><p>Guild activities will appear here when they are available.</p></section>`;
 
