@@ -23,7 +23,8 @@ for (const form of document.querySelectorAll("[data-permission-form]")) {
       if (!response.ok) throw new Error(body.error ?? "Permission could not be saved");
       if (summary) {
         const names = selected.map((input) => input.closest("label")?.querySelector("strong")?.textContent ?? `Rank ${input.value}`);
-        summary.textContent = names.length === 0 ? "No guild ranks" : names.length <= 3 ? names.join(", ") : `${names.slice(0, 2).join(", ")} + ${names.length - 2} more`;
+        const effectiveNames = ["Guild Master", ...names];
+        summary.textContent = effectiveNames.length <= 3 ? effectiveNames.join(", ") : `${effectiveNames.slice(0, 2).join(", ")} + ${effectiveNames.length - 2} more`;
       }
       if (status) status.textContent = "Saved.";
     } catch (error) {
