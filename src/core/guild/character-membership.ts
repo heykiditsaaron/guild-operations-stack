@@ -24,13 +24,15 @@ export async function characterMembership(
     realm_name: string | null;
     realm_slug: string | null;
   }>(
-    `SELECT rank_index, character_name, realm_name, realm_slug
-       FROM guild_roster_memberships
-      WHERE guild_id = $1
-        AND region = $2
-        AND realm_id = $3
-        AND character_id = $4
-        AND currently_present = true`,
+    `SELECT gr.rank_index, cr.name AS character_name, cr.realm_name, cr.realm_slug
+       FROM guild_roster gr
+       JOIN character_roster cr
+         ON cr.character_record_id = gr.character_record_id
+      WHERE gr.guild_id = $1
+        AND cr.region = $2
+        AND cr.realm_id = $3
+        AND cr.character_id = $4
+        AND gr.currently_present = true`,
     [coordinate.guildId, coordinate.region, coordinate.realmId, coordinate.characterId],
   );
 
