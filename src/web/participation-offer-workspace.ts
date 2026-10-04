@@ -77,24 +77,25 @@ function wowSpecRequest(request: ParticipationOfferWorkspaceRequest): string {
   </div>`;
 }
 
-function renderRequest(request: ParticipationOfferWorkspaceRequest): string {
+function renderRequest(request: ParticipationOfferWorkspaceRequest, label?: string): string {
   const body = request.request.kind === "integer"
     ? integerRequest(request)
     : request.request.kind === "guild_character"
       ? guildCharacterRequest(request)
       : wowSpecRequest(request);
-  return `<section class="participation-offer-workspace-request" data-participation-request data-name="${htmlText(request.request.name)}" data-kind="${htmlText(request.request.kind)}" data-allow-multiple="${request.request.allowMultiple ? "true" : "false"}">${body}</section>`;
+  const rendered = label ? body.replace(`<span>${htmlText(requestLabel(request.request.name))}</span>`, `<span>${htmlText(label)}</span>`) : body;
+  return `<section class="participation-offer-workspace-request" data-participation-request data-name="${htmlText(request.request.name)}" data-kind="${htmlText(request.request.kind)}" data-allow-multiple="${request.request.allowMultiple ? "true" : "false"}">${rendered}</section>`;
 }
 
 export function renderParticipationOfferWorkspace(
   workspace: ParticipationOfferWorkspace,
-  input: { action: string },
+  input: { action: string; labels?: Readonly<Record<string, string>> },
 ): string {
   const revising = workspace.requests.some((request) => request.currentValue !== null);
   return `<section class="participation-offer-workspace" data-participation-offer-workspace>
     <header class="participation-offer-workspace-header"><h2>${revising ? "Revise participation offer" : "Offer participation"}</h2></header>
     <form data-participation-offer-form data-action="${htmlText(input.action)}">
-      ${workspace.requests.map(renderRequest).join("")}
+      ${workspace.requests.map((request) => renderRequest(request, input.labels?.[request.request.name])).join("")}
       <div class="participation-offer-workspace-actions"><button type="submit" class="button-primary">${revising ? "Update offer" : "Establish offer"}</button></div>
       <p data-participation-offer-status role="status" aria-live="polite"></p>
     </form>
