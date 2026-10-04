@@ -19,12 +19,12 @@ export async function guildRefreshStatus(): Promise<GuildRefreshStatus | null> {
     `SELECT
        g.guild_id,
        g.name AS guild_name,
-       COUNT(grm.character_id)::integer AS current_member_count,
+       COUNT(gr.character_record_id)::integer AS current_member_count,
        FLOOR(EXTRACT(EPOCH FROM g.last_seen_at))::bigint AS last_reconciled_at_unix
      FROM guilds g
-     LEFT JOIN guild_roster_memberships grm
-       ON grm.guild_id = g.guild_id
-      AND grm.currently_present = true
+     LEFT JOIN guild_roster gr
+       ON gr.guild_id = g.guild_id
+      AND gr.currently_present = true
      WHERE g.guild_id = $1
      GROUP BY g.guild_id, g.name, g.last_seen_at`,
     [guildId],
