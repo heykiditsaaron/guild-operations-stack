@@ -377,3 +377,42 @@
 .occurrence-participation-intake .raffle-workspace .participation-offer-workspace {
   gap: 1rem;
 }
+
+
+.raffle-my-participation,
+.raffle-my-claims {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.raffle-my-participation h2 {
+  margin: 0;
+  font-size: clamp(1.2rem, 4vw, 1.45rem);
+}
+
+.raffle-my-claim {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border-subtle, #2a2a2f);
+  border-radius: 1rem;
+  background: var(--surface-raised, #141419);
+}
+
+.raffle-my-claim > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+}
+
+.raffle-my-claim > div > span,
+.raffle-my-claim p {
+  color: var(--theme-text-muted);
+}
+
+.raffle-my-claim p {
+  margin: 0;
+  font-size: 0.9rem;
+}
