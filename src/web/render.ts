@@ -162,9 +162,9 @@ function renderActionBar(viewer: WebViewer, pathname: string): string {
   if (administration) {
     const destinations = [
       { label: "General", href: "/admin/general" },
-      { label: "Modules", href: "/admin/modules" },
+      { label: "Add-ons", href: "/admin/modules" },
       { label: "Permissions", href: "/admin/permissions" },
-      { label: "History", href: "/admin/history" },
+      { label: "Logs", href: "/admin/history" },
     ];
     const links = destinations.map((destination) => {
       const active = pathname === destination.href ? ' aria-current="page"' : "";
