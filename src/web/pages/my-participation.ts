@@ -81,7 +81,7 @@ export async function registerMyParticipationPage(app: FastifyInstance, assets: 
         title: `My Participation · ${viewer.guildPresentation.guildName} Guild Operations`,
         description: "Your Activity Participation and outstanding participation offers.",
         viewer,
-        secondaryNavigation: { kind: "back", label: "Home", href: "/" },
+        secondaryNavigation: { kind: "back", label: "Me", href: "/me" },
         header: `<div><p class="eyebrow">Me</p><h1 id="page-title">My Participation</h1><p class="lede">Your Participation and outstanding offers across guild activities.</p></div>`,
         body,
       }));
