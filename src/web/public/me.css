@@ -236,8 +236,35 @@
   flex: 0 0 auto;
 }
 
-.me-profile-icon-field {
-  align-items: start;
+.me-profile-icon-current,
+.me-profile-icon-current img,
+.me-profile-icon-placeholder {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.65rem;
+}
+
+.me-profile-icon-current {
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.me-profile-icon-current img {
+  display: block;
+  object-fit: cover;
+}
+
+.me-profile-icon-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--theme-text-muted);
+}
+
+.me-profile-icon-picker-sheet {
+  width: min(32rem, calc(100vw - 2rem));
+  max-height: min(38rem, calc(100dvh - 2rem));
+  overflow-y: auto;
+  padding: 1rem;
 }
 
 .me-profile-icon-form {
@@ -250,7 +277,7 @@
   display: grid;
   grid-template-columns: repeat(6, 3.25rem);
   gap: 0.45rem;
-  max-height: 15rem;
+  max-height: 22rem;
   overflow-y: auto;
   padding: 0.15rem;
 }
@@ -430,13 +457,18 @@
 }
 
 @media (max-width: 36rem) {
+  .me-profile-icon-picker-sheet {
+    width: calc(100vw - 1rem);
+    max-height: calc(100dvh - 1rem);
+  }
+
   .me-profile-icon-form {
     width: 100%;
   }
 
   .me-profile-icon-choices {
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    max-height: 18rem;
+    max-height: 24rem;
   }
 
   .me-profile-icon-choice {
