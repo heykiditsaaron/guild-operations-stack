@@ -15,6 +15,10 @@ export function renderSetupDocument(assets: AssetRegistry, body: string): string
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Set up Guild Operations</title><link rel="stylesheet" href="${assetUrl(assets, "app.css")}"><link rel="stylesheet" href="${assetUrl(assets, "setup.css")}"></head><body><main class="setup-shell"><section class="setup-card"><p class="eyebrow">First run</p><h1>Set up Guild Operations</h1>${body}${restart}</section></main><script src="${assetUrl(assets, "setup.js")}" defer></script></body></html>`;
 }
 
+export function renderAccountSelectionDocument(assets: AssetRegistry, body: string): string {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Choose your WoW account · Guild Operations</title><link rel="stylesheet" href="${assetUrl(assets, "app.css")}"><link rel="stylesheet" href="${assetUrl(assets, "setup.css")}"></head><body><main class="setup-shell account-selection-shell"><section class="setup-card account-selection-card"><p class="eyebrow">Blizzard sign in</p><h1>Choose your WoW account</h1><p class="account-selection-intro">Select the World of Warcraft account you want to use with Guild Operations.</p>${body}</section></main></body></html>`;
+}
+
 export async function registerSetupPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/setup", async (request, reply) => {
     const blizzardConfigured = await installationBlizzardConfigured();
