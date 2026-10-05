@@ -1,22 +1,18 @@
 import { pool } from "../../db.js";
 import { requireOperationalInstallationGuildBinding } from "../installation/guild-binding.js";
 
-export type GuildHomepageCard = {
-  title: string;
-  body: string;
-};
+export type GuildHomepageWidth = "full" | "half" | "third";
 
-export type GuildHomepageSection =
+export type GuildHomepagePrimitive =
   | {
-      kind: "cards";
-      kicker: string | null;
-      heading: string | null;
-      body: string | null;
-      layout: "single" | "double" | "triple";
-      cards: GuildHomepageCard[];
+      kind: "card";
+      width: GuildHomepageWidth;
+      heading: string;
+      body: string;
     }
   | {
       kind: "statement";
+      width: GuildHomepageWidth;
       kicker: string | null;
       heading: string | null;
       body: string;
@@ -25,13 +21,13 @@ export type GuildHomepageSection =
 export type GuildHomepage = {
   lede: string | null;
   supportingText: string | null;
-  sections: GuildHomepageSection[];
+  primitives: GuildHomepagePrimitive[];
 };
 
 export const EMPTY_GUILD_HOMEPAGE: GuildHomepage = {
   lede: null,
   supportingText: null,
-  sections: [],
+  primitives: [],
 };
 
 function compactText(value: unknown): string | null | undefined {
@@ -41,96 +37,74 @@ function compactText(value: unknown): string | null | undefined {
   return normalized || null;
 }
 
+function homepageWidth(value: unknown): GuildHomepageWidth | undefined {
+  return value === "full" || value === "half" || value === "third" ? value : undefined;
+}
+
 export function parseGuildHomepage(value: unknown): GuildHomepage | undefined {
   if (!value || typeof value !== "object") return undefined;
-  const candidate = value as { lede?: unknown; supportingText?: unknown; sections?: unknown };
+  const candidate = value as { lede?: unknown; supportingText?: unknown; primitives?: unknown };
   const lede = compactText(candidate.lede ?? null);
   const supportingText = compactText(candidate.supportingText ?? null);
-  if (lede === undefined || supportingText === undefined || !Array.isArray(candidate.sections) || candidate.sections.length > 12) return undefined;
+  if (lede === undefined || supportingText === undefined || !Array.isArray(candidate.primitives) || candidate.primitives.length > 24) return undefined;
 
-  const sections: GuildHomepageSection[] = [];
-  for (const rawSection of candidate.sections) {
-    if (!rawSection || typeof rawSection !== "object") return undefined;
-    const section = rawSection as { kind?: unknown; kicker?: unknown; heading?: unknown; body?: unknown; layout?: unknown; cards?: unknown };
-    const kicker = compactText(section.kicker ?? null);
-    const heading = compactText(section.heading ?? null);
-    const body = compactText(section.body ?? null);
-    if (kicker === undefined || heading === undefined || body === undefined) return undefined;
+  const primitives: GuildHomepagePrimitive[] = [];
+  for (const rawPrimitive of candidate.primitives) {
+    if (!rawPrimitive || typeof rawPrimitive !== "object") return undefined;
+    const primitive = rawPrimitive as { kind?: unknown; width?: unknown; kicker?: unknown; heading?: unknown; body?: unknown };
+    const width = homepageWidth(primitive.width);
+    const heading = compactText(primitive.heading ?? null);
+    const body = compactText(primitive.body ?? null);
+    if (!width || heading === undefined || body === undefined || !body) return undefined;
 
-    if (section.kind === "statement") {
-      if (!body) return undefined;
-      sections.push({ kind: "statement", kicker, heading, body });
+    if (primitive.kind === "card") {
+      if (!heading) return undefined;
+      primitives.push({ kind: "card", width, heading, body });
       continue;
     }
 
-    if (section.kind !== "cards" || !["single", "double", "triple"].includes(String(section.layout)) || !Array.isArray(section.cards)) return undefined;
-    const expectedCards = section.layout === "single" ? 1 : section.layout === "double" ? 2 : 3;
-    if (section.cards.length !== expectedCards) return undefined;
-    const cards: GuildHomepageCard[] = [];
-    for (const rawCard of section.cards) {
-      if (!rawCard || typeof rawCard !== "object") return undefined;
-      const card = rawCard as { title?: unknown; body?: unknown };
-      const title = compactText(card.title);
-      const cardBody = compactText(card.body);
-      if (!title || !cardBody) return undefined;
-      cards.push({ title, body: cardBody });
-    }
-    sections.push({ kind: "cards", kicker, heading, body, layout: section.layout as "single" | "double" | "triple", cards });
+    if (primitive.kind !== "statement") return undefined;
+    const kicker = compactText(primitive.kicker ?? null);
+    if (kicker === undefined) return undefined;
+    primitives.push({ kind: "statement", width, kicker, heading, body });
   }
 
-  return { lede, supportingText, sections };
+  return { lede, supportingText, primitives };
 }
 
 export async function guildHomepage(): Promise<GuildHomepage> {
   const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
-  const [settingsResult, sectionResult] = await Promise.all([
+  const [settingsResult, primitiveResult] = await Promise.all([
     pool.query<{ lede: string | null; supporting_text: string | null }>(
       "SELECT lede, supporting_text FROM guild_homepage_settings WHERE guild_id = $1",
       [guildId],
     ),
     pool.query<{
-      section_id: string;
-      kind: "cards" | "statement";
+      kind: "card" | "statement";
+      width: GuildHomepageWidth;
       kicker: string | null;
       heading: string | null;
-      body: string | null;
-      layout: "single" | "double" | "triple" | null;
-      card_position: number | null;
-      card_title: string | null;
-      card_body: string | null;
+      body: string;
     }>(
-      `SELECT s.section_id, s.kind, s.kicker, s.heading, s.body, s.layout,
-              c.position AS card_position, c.title AS card_title, c.body AS card_body
-         FROM guild_homepage_sections s
-         LEFT JOIN guild_homepage_cards c ON c.section_id = s.section_id
-        WHERE s.guild_id = $1
-        ORDER BY s.position, c.position`,
+      `SELECT kind, width, kicker, heading, body
+         FROM guild_homepage_primitives
+        WHERE guild_id = $1
+        ORDER BY position`,
       [guildId],
     ),
   ]);
 
-  const sections: GuildHomepageSection[] = [];
-  let currentSectionId: string | null = null;
-  for (const row of sectionResult.rows) {
-    if (row.section_id !== currentSectionId) {
-      currentSectionId = row.section_id;
-      if (row.kind === "statement") {
-        sections.push({ kind: "statement", kicker: row.kicker, heading: row.heading, body: row.body ?? "" });
-      } else {
-        sections.push({ kind: "cards", kicker: row.kicker, heading: row.heading, body: row.body, layout: row.layout ?? "single", cards: [] });
-      }
-    }
-    const current = sections[sections.length - 1];
-    if (current?.kind === "cards" && row.card_title !== null && row.card_body !== null) {
-      current.cards.push({ title: row.card_title, body: row.card_body });
-    }
-  }
+  const primitives: GuildHomepagePrimitive[] = primitiveResult.rows.map((row) =>
+    row.kind === "card"
+      ? { kind: "card", width: row.width, heading: row.heading ?? "", body: row.body }
+      : { kind: "statement", width: row.width, kicker: row.kicker, heading: row.heading, body: row.body },
+  );
 
   const settings = settingsResult.rows[0];
   return {
     lede: settings?.lede ?? null,
     supportingText: settings?.supporting_text ?? null,
-    sections,
+    primitives,
   };
 }
 
@@ -148,23 +122,22 @@ export async function setGuildHomepage(homepage: GuildHomepage): Promise<GuildHo
          updated_at_unix = EXCLUDED.updated_at_unix`,
       [guildId, homepage.lede, homepage.supportingText],
     );
-    await client.query("DELETE FROM guild_homepage_sections WHERE guild_id = $1", [guildId]);
+    await client.query("DELETE FROM guild_homepage_primitives WHERE guild_id = $1", [guildId]);
 
-    for (const [position, section] of homepage.sections.entries()) {
-      const inserted = await client.query<{ section_id: string }>(
-        `INSERT INTO guild_homepage_sections (guild_id, position, kind, kicker, heading, body, layout)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         RETURNING section_id`,
-        [guildId, position, section.kind, section.kicker, section.heading, section.body, section.kind === "cards" ? section.layout : null],
+    for (const [position, primitive] of homepage.primitives.entries()) {
+      await client.query(
+        `INSERT INTO guild_homepage_primitives (guild_id, position, kind, width, kicker, heading, body)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          guildId,
+          position,
+          primitive.kind,
+          primitive.width,
+          primitive.kind === "statement" ? primitive.kicker : null,
+          primitive.heading,
+          primitive.body,
+        ],
       );
-      if (section.kind === "cards") {
-        for (const [cardPosition, card] of section.cards.entries()) {
-          await client.query(
-            "INSERT INTO guild_homepage_cards (section_id, position, title, body) VALUES ($1, $2, $3, $4)",
-            [inserted.rows[0].section_id, cardPosition, card.title, card.body],
-          );
-        }
-      }
     }
     await client.query("COMMIT");
     return homepage;
