@@ -115,11 +115,24 @@ export async function registerMePage(app: FastifyInstance, assets: AssetRegistry
           </div>
           <div class="me-about-field me-profile-icon-field">
             <div class="me-about-field-copy"><h3>Profile icon</h3><p>Choose a World of Warcraft icon to represent you in Guild Operations.</p></div>
-            <form class="me-profile-icon-form" method="post" action="/me/profile-icon">
-              <div class="me-profile-icon-choices">${profileIcons}</div>
-              <button type="submit" class="button-secondary">Save icon</button>
-            </form>
+            <div class="me-profile-icon-current">
+              ${viewer.identityProfileIconUrl ? `<img src="${htmlText(viewer.identityProfileIconUrl)}" alt="">` : '<span class="me-profile-icon-placeholder" aria-hidden="true">?</span>'}
+            </div>
+            <button type="button" class="button-secondary me-about-action" data-open-profile-icon-picker>${viewer.identityProfileIconUrl ? "Change icon" : "Choose icon"}</button>
           </div>
+          <dialog class="me-profile-icon-picker" data-profile-icon-picker aria-labelledby="profile-icon-picker-title">
+            <div class="me-profile-icon-picker-sheet">
+              <div class="main-picker-heading">
+                <h2 id="profile-icon-picker-title">Profile icon</h2>
+                <button type="button" class="dialog-close" data-close-profile-icon-picker aria-label="Close profile icon selection">×</button>
+              </div>
+              <p class="main-picker-section-copy">Choose a World of Warcraft icon to represent you in Guild Operations.</p>
+              <form class="me-profile-icon-form" method="post" action="/me/profile-icon">
+                <div class="me-profile-icon-choices">${profileIcons}</div>
+                <button type="submit" class="button-primary">Use this icon</button>
+              </form>
+            </div>
+          </dialog>
           ${defaultCharacter}
         </section>
 
