@@ -779,6 +779,20 @@ select:disabled {
   border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
 
+.me-identity-section {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.me-identity-name {
+  font-weight: 700;
+}
+
+.me-identity-standing {
+  color: var(--theme-text-muted);
+  font-size: 0.82rem;
+}
+
 .me-character-summary {
   display: grid;
   gap: 0.22rem;
