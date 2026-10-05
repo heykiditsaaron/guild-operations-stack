@@ -106,19 +106,25 @@ export async function registerMePage(app: FastifyInstance, assets: AssetRegistry
           <div class="me-self-service-card-heading">
             <div><p class="eyebrow">About me</p><h2>About me</h2><p>Choose how you're shown in Guild Operations.</p></div>
           </div>
-          <div class="me-about-field">
-            <div class="me-about-field-copy"><h3>Display name</h3><p>The name Guild Operations uses to identify you.</p></div>
-            <form class="me-display-name-form" method="post" action="/me/display-name">
-              <input type="text" name="display_name" value="${htmlText(viewer.identityDisplayName ?? "")}" placeholder="${htmlText(viewer.identityLabel)}" maxlength="64" required aria-label="Display name">
-              <button type="submit" class="button-secondary">Save</button>
-            </form>
-          </div>
-          <div class="me-about-field me-profile-icon-field">
-            <div class="me-about-field-copy"><h3>Profile icon</h3><p>Choose a World of Warcraft icon to represent you in Guild Operations.</p></div>
-            <div class="me-profile-icon-current">
+          <div class="me-identity-card">
+            <button type="button" class="me-identity-card-icon" data-open-profile-icon-picker aria-label="Change profile icon">
               ${viewer.identityProfileIconUrl ? `<img src="${htmlText(viewer.identityProfileIconUrl)}" alt="">` : '<span class="me-profile-icon-placeholder" aria-hidden="true">?</span>'}
+              <span class="me-identity-card-icon-edit" aria-hidden="true">✎</span>
+            </button>
+            <div class="me-identity-card-copy">
+              <div class="me-identity-name-display" data-identity-name-display>
+                <strong>${htmlText(viewer.identityLabel)}</strong>
+                <button type="button" class="me-inline-edit" data-edit-display-name aria-label="Edit display name">Edit</button>
+              </div>
+              <form class="me-display-name-form me-display-name-form-inline" method="post" action="/me/display-name" data-display-name-form hidden>
+                <input type="text" name="display_name" value="${htmlText(viewer.identityDisplayName ?? "")}" placeholder="${htmlText(viewer.identityLabel)}" maxlength="64" required aria-label="Display name">
+                <div class="me-inline-edit-actions">
+                  <button type="submit" class="button-primary">Save</button>
+                  <button type="button" class="button-secondary" data-cancel-display-name>Cancel</button>
+                </div>
+              </form>
+              ${viewer.guildRankDisplayName ? `<span class="me-identity-card-standing">${htmlText(viewer.guildRankDisplayName)}</span>` : ""}
             </div>
-            <button type="button" class="button-secondary me-about-action" data-open-profile-icon-picker>${viewer.identityProfileIconUrl ? "Change icon" : "Choose icon"}</button>
           </div>
           <dialog class="main-picker me-profile-icon-picker" data-profile-icon-picker aria-labelledby="profile-icon-picker-title">
             <div class="main-picker-sheet me-profile-icon-picker-sheet">
