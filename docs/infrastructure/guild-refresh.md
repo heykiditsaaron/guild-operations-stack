@@ -6,7 +6,7 @@ Guild refresh is the shared reconciliation procedure for Blizzard-owned guild ro
 
 Guild refresh answers:
 
-> Which Characters are currently members of OH CRIT I Pulled!, and what Blizzard-owned numeric guild rank does each currently hold?
+> Which Characters are currently members of the guild represented by this installation, and what Blizzard-owned numeric guild rank does each currently hold?
 
 It does not establish Character control and does not make Character presentation authoritative for membership.
 
