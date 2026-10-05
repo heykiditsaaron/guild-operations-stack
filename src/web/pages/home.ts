@@ -1,25 +1,21 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../auth.js";
 import { installationOperational } from "../../core/installation/guild-binding.js";
-import { guildHomepage, type GuildHomepageSection } from "../../core/presentation/guild-homepage.js";
+import { guildHomepage, type GuildHomepagePrimitive } from "../../core/presentation/guild-homepage.js";
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
 
-function renderSection(section: GuildHomepageSection, index: number): string {
-  const kicker = section.kicker ? `<p class="home-section-kicker">${htmlText(section.kicker)}</p>` : "";
-  const heading = section.heading ? `<h2 id="home-section-${index}">${htmlText(section.heading)}</h2>` : "";
-  const labelledBy = section.heading ? ` aria-labelledby="home-section-${index}"` : "";
-
-  if (section.kind === "statement") {
-    return `<section class="home-statement"${labelledBy}>${kicker}${heading}<p>${htmlText(section.body)}</p></section>`;
+function renderPrimitive(primitive: GuildHomepagePrimitive, index: number): string {
+  const widthClass = `home-piece-${primitive.width}`;
+  if (primitive.kind === "card") {
+    return `<article class="home-card home-piece ${widthClass}"><h2>${htmlText(primitive.heading)}</h2><p>${htmlText(primitive.body)}</p></article>`;
   }
 
-  const intro = section.body ? `<p>${htmlText(section.body)}</p>` : "";
-  const cards = section.cards
-    .map((card) => `<article class="home-card"><h3>${htmlText(card.title)}</h3><p>${htmlText(card.body)}</p></article>`)
-    .join("\n");
-  return `<section class="home-section"${labelledBy}><div class="home-section-heading">${kicker}${heading}${intro}</div><div class="home-card-group home-card-group-${section.layout}">${cards}</div></section>`;
+  const kicker = primitive.kicker ? `<p class="home-section-kicker">${htmlText(primitive.kicker)}</p>` : "";
+  const heading = primitive.heading ? `<h2 id="home-piece-${index}">${htmlText(primitive.heading)}</h2>` : "";
+  const labelledBy = primitive.heading ? ` aria-labelledby="home-piece-${index}"` : "";
+  return `<section class="home-statement home-piece ${widthClass}"${labelledBy}>${kicker}${heading}<p>${htmlText(primitive.body)}</p></section>`;
 }
 
 export async function registerHomePage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
@@ -36,7 +32,7 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
     const supportingText = homepage.supportingText
       ? `<p class="home-community-note">${htmlText(homepage.supportingText)}</p>`
       : "";
-    const sections = homepage.sections.map(renderSection).join("\n");
+    const primitives = homepage.primitives.map(renderPrimitive).join("\n");
 
     const html = renderPage(assets, {
       pathname: "/",
@@ -51,7 +47,7 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
           <p class="home-community-lede">${htmlText(lede)}</p>
           ${supportingText}
         </div>`,
-      body: `<div class="home-community">${sections}</div>`,
+      body: `<div class="home-community">${primitives}</div>`,
     });
 
     return reply
