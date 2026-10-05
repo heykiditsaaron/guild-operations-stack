@@ -19,7 +19,7 @@ function characterCard(character: WebViewerCharacter, selected: boolean): string
     <div class="me-character-card-copy">
       <div class="me-character-card-heading"><h3>${htmlText(character.name)}</h3>${selected ? '<span class="me-character-card-badge">Main</span>' : ""}</div>
       <p>${htmlText(characterRole(character))}</p>
-      <p class="me-character-card-context">${htmlText(realm)} · Guild rank ${character.rankIndex}</p>
+      <p class="me-character-card-context">${htmlText(realm)} · ${character.guildMember ? `Guild rank ${character.rankIndex}` : "Not in this guild"}</p>
     </div>
   </article>`;
 }
@@ -58,9 +58,9 @@ export async function registerMePage(app: FastifyInstance, assets: AssetRegistry
 
         <section class="me-self-service-card">
           <div class="me-self-service-card-heading">
-            <div><p class="eyebrow">My Characters</p><h2>Guild Characters</h2><p>Characters you currently control that are present in this guild.</p></div>
+            <div><p class="eyebrow">My Characters</p><h2>My Characters</h2><p>Characters currently controlled by your WoW Account. Guild membership is shown separately.</p></div>
           </div>
-          <div class="me-character-card-list">${characters || '<p class="me-self-service-empty">No currently eligible guild Characters were found.</p>'}</div>
+          <div class="me-character-card-list">${characters || '<p class="me-self-service-empty">No currently controlled Characters were found.</p>'}</div>
         </section>
 
         <section class="me-self-service-card me-self-service-destination">
