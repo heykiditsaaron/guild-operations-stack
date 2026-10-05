@@ -21,3 +21,13 @@ export async function identityPresentation(identityId: string): Promise<Identity
     wowAccountId,
   };
 }
+
+export async function setIdentityDisplayName(identityId: string, value: string): Promise<void> {
+  const displayName = value.trim();
+  if (!displayName || displayName.length > 64) throw new Error("invalid_display_name");
+  const result = await pool.query(
+    "UPDATE identities SET display_name = $2 WHERE identity_id = $1",
+    [identityId, displayName],
+  );
+  if (!result.rowCount) throw new Error("identity_not_found");
+}
