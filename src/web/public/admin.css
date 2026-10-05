@@ -666,3 +666,8 @@
     flex-direction: column;
   }
 }
+
+.homepage-card-texts {
+  display: grid;
+  gap: 0.85rem;
+}
