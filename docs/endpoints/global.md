@@ -61,12 +61,6 @@ Revokes the current application session when one is present, clears the `guild_s
 
 ## Current member
 
-### GET `/me`
-
-Requires an application session. Returns the current authenticated Guildie's self projection, including controlled current guild Characters and selected-main presentation.
-
-The selected main is presentation preference. It does not establish identity or authorization.
-
 ### GET `/me/refresh`
 
 Requires an application session and current guild membership. Begins the authenticated self-account refresh ceremony.
