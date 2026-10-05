@@ -1,73 +1,57 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME } from "../../auth.js";
 import { installationOperational } from "../../core/installation/guild-binding.js";
-import type { AssetName, AssetRegistry } from "../assets.js";
+import { guildHomepage, type GuildHomepageSection } from "../../core/presentation/guild-homepage.js";
+import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
+
+function renderSection(section: GuildHomepageSection, index: number): string {
+  const kicker = section.kicker ? `<p class="home-section-kicker">${htmlText(section.kicker)}</p>` : "";
+  const heading = section.heading ? `<h2 id="home-section-${index}">${htmlText(section.heading)}</h2>` : "";
+  const labelledBy = section.heading ? ` aria-labelledby="home-section-${index}"` : "";
+
+  if (section.kind === "statement") {
+    return `<section class="home-statement"${labelledBy}>${kicker}${heading}<p>${htmlText(section.body)}</p></section>`;
+  }
+
+  const intro = section.body ? `<p>${htmlText(section.body)}</p>` : "";
+  const cards = section.cards
+    .map((card) => `<article class="home-card"><h3>${htmlText(card.title)}</h3><p>${htmlText(card.body)}</p></article>`)
+    .join("\n");
+  return `<section class="home-section"${labelledBy}><div class="home-section-heading">${kicker}${heading}${intro}</div><div class="home-card-group home-card-group-${section.layout}">${cards}</div></section>`;
+}
 
 export async function registerHomePage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   app.get("/", async (request, reply) => {
     if (!(await installationOperational())) return reply.redirect("/setup");
 
-    const viewer = await viewerForRequest(request.cookies[SESSION_COOKIE_NAME]);
+    const [viewer, homepage] = await Promise.all([
+      viewerForRequest(request.cookies[SESSION_COOKIE_NAME]),
+      guildHomepage(),
+    ]);
 
-    const stylesheets: AssetName[] = ["home.css"];
-    const communityActions = viewer.presentationContributions.homeCommunityActions.join("\n");
+    const defaultLede = `A World of Warcraft guild.`;
+    const lede = homepage.lede ?? defaultLede;
+    const supportingText = homepage.supportingText
+      ? `<p class="home-community-note">${htmlText(homepage.supportingText)}</p>`
+      : "";
+    const sections = homepage.sections.map(renderSection).join("\n");
 
     const html = renderPage(assets, {
       pathname: "/",
       title: viewer.guildPresentation.guildName,
-      description: `${viewer.guildPresentation.guildName} — a World of Warcraft guild built around good people, shared adventures, and playing the game your way.`,
+      description: `${viewer.guildPresentation.guildName} — ${lede}`,
       viewer,
-      stylesheets,
+      stylesheets: ["home.css"],
       header: `
         <div class="home-community-header">
           <p class="home-community-mark">World of Warcraft guild</p>
           <h1 id="page-title">${htmlText(viewer.guildPresentation.guildName)}</h1>
-          <p class="home-community-lede">A guild built around good people, shared adventures, and playing the game your way.</p>
-          <p class="home-community-note">People first. Low pressure, not low ambition.</p>
+          <p class="home-community-lede">${htmlText(lede)}</p>
+          ${supportingText}
         </div>`,
-      body: `
-        <div class="home-community">
-          <section class="home-culture" aria-labelledby="home-culture-title">
-            <div class="home-culture-statement">
-              <p class="home-section-kicker">Around here</p>
-              <h2 id="home-culture-title">You’re a human first, a player second.</h2>
-              <p>Push progression, chase improvement, collect everything, run keys, raid, explore, or just show up for the people. Competitive play belongs here. It just isn’t the price of belonging.</p>
-            </div>
-
-            <dl class="home-principles">
-              <div class="home-principle"><dt>Play your own way</dt><dd>Growth is encouraged when you want it. Pressure, gatekeeping, and elitism are not.</dd></div>
-              <div class="home-principle"><dt>Choose your participation</dt><dd>Join the things you want to be part of. Different members engage with the guild in different ways.</dd></div>
-              <div class="home-principle"><dt>Real life wins</dt><dd>Commitment matters, but plans change and people have lives outside Azeroth.</dd></div>
-              <div class="home-principle"><dt>Enjoy the chaos</dt><dd>Mistakes happen. Laugh at the wipes, celebrate the crits, and pull again.</dd></div>
-            </dl>
-          </section>
-
-          <section class="home-section" aria-labelledby="home-community-title">
-            <div class="home-section-heading">
-              <p class="home-section-kicker">The community</p>
-              <h2 id="home-community-title">Find your place in it</h2>
-              <p>The guild lives in World of Warcraft and gathers day to day in Discord. This site helps make the things happening around the guild easier to find and participate in.</p>
-            </div>
-
-            <div class="home-orientation">
-              <article class="home-orientation-item">
-                <h3>In Azeroth</h3>
-                <p>Run the content you enjoy, join organized groups when they fit, and play at the level that makes the game fun for you.</p>
-              </article>
-              <article class="home-orientation-item">
-                <h3>In Discord</h3>
-                <p>Follow the channels and activity notifications you care about. Keep the rest quiet. Participation should fit you, not demand your attention.</p>
-                ${communityActions}
-              </article>
-            </div>
-          </section>
-
-          <section class="home-bottom-line" aria-label="Guild bottom line">
-            <p><strong>The bottom line:</strong> have fun, make friends, respect the people around you, and occasionally yell “OH CRIT, I Pulled!”</p>
-          </section>
-        </div>`,
+      body: `<div class="home-community">${sections}</div>`,
     });
 
     return reply
