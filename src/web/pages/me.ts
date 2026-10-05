@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
-import { SESSION_COOKIE_NAME } from "../../auth.js";
+import { authenticatedIdentity, SESSION_COOKIE_NAME } from "../../auth.js";
+import { setIdentityDisplayName } from "../../core/identity/identity-presentation.js";
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage, type WebViewerCharacter } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
@@ -25,6 +26,29 @@ function characterCard(character: WebViewerCharacter, selected: boolean): string
 }
 
 export async function registerMePage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
+  if (!app.hasContentTypeParser("application/x-www-form-urlencoded")) {
+    app.addContentTypeParser("application/x-www-form-urlencoded", { parseAs: "string" }, (_request, body, done) => {
+      const params = new URLSearchParams(typeof body === "string" ? body : body.toString("utf8"));
+      done(null, Object.fromEntries(params.entries()));
+    });
+  }
+
+  app.post("/me/display-name", async (request, reply) => {
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "not_authenticated" });
+    const body = request.body as { display_name?: unknown };
+    if (typeof body?.display_name !== "string") return reply.code(400).send({ error: "invalid_display_name" });
+    try {
+      await setIdentityDisplayName(identity.identityId, body.display_name);
+    } catch (error) {
+      if (error instanceof Error && error.message === "invalid_display_name") {
+        return reply.code(400).send({ error: "invalid_display_name" });
+      }
+      throw error;
+    }
+    return reply.redirect("/me");
+  });
+
   app.get("/me", async (request, reply) => {
     const viewer = await viewerForRequest(request.cookies[SESSION_COOKIE_NAME]);
     if (!viewer.authenticated) return reply.redirect("/auth/blizzard/start?return_to=%2Fme");
@@ -62,7 +86,10 @@ export async function registerMePage(app: FastifyInstance, assets: AssetRegistry
           </div>
           <div class="me-about-field">
             <div class="me-about-field-copy"><h3>Display name</h3><p>The name Guild Operations uses to identify you.</p></div>
-            <strong class="me-display-name">${htmlText(viewer.identityLabel)}</strong>
+            <form class="me-display-name-form" method="post" action="/me/display-name">
+              <input type="text" name="display_name" value="${htmlText(viewer.identityLabel)}" maxlength="64" required aria-label="Display name">
+              <button type="submit" class="button-secondary">Save</button>
+            </form>
           </div>
           ${defaultCharacter}
         </section>
