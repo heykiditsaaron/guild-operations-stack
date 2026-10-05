@@ -1,7 +1,7 @@
 import { applicationAccessToken, getJsonWithRetry } from "./blizzard.js";
 import { requireOperationalInstallationGuildBinding } from "./core/installation/guild-binding.js";
 import { guildState } from "./core/guild/guild-state.js";
-import type { WowTrait } from "./wow-traits/registry.js";
+import { allWowSpecTraitDefinitions, type WowTrait } from "./wow-traits/registry.js";
 
 type BlizzardMedia = {
   assets?: Array<{ key?: string; value?: string }>;
@@ -137,4 +137,30 @@ export async function raidBuffIconUrl(trait: RaidBuffTrait): Promise<string | nu
 export async function specializationIconUrl(className: string, specName: string): Promise<string | null> {
   const id = SPECIALIZATION_IDS[specializationKey(className, specName)];
   return id == null ? null : mediaIcon("playable-specialization", id);
+}
+
+
+export type WowProfileIconChoice = {
+  key: string;
+  className: string;
+  specName: string;
+  url: string;
+};
+
+export function specializationProfileIconKey(className: string, specName: string): string {
+  return specializationKey(className, specName);
+}
+
+export async function specializationProfileIconUrl(key: string): Promise<string | null> {
+  const id = SPECIALIZATION_IDS[key];
+  return id == null ? null : mediaIcon("playable-specialization", id);
+}
+
+export async function wowProfileIconChoices(): Promise<WowProfileIconChoice[]> {
+  const choices = await Promise.all(allWowSpecTraitDefinitions().map(async (definition) => {
+    const key = specializationProfileIconKey(definition.className, definition.specName);
+    const url = await specializationProfileIconUrl(key);
+    return url ? { key, className: definition.className, specName: definition.specName, url } : null;
+  }));
+  return choices.filter((choice): choice is WowProfileIconChoice => choice !== null);
 }
