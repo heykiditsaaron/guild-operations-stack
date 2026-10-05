@@ -15,6 +15,7 @@ import {
 import { administrationAvailabilityForIdentity } from "./administration.js";
 import { webPresentationContributionsForIdentity } from "./presentation-contributions.js";
 import type { WebViewer } from "./render.js";
+import { specializationProfileIconUrl } from "../wow-iconography.js";
 
 export async function viewerForRequest(sessionToken: string | undefined): Promise<WebViewer> {
   const [identity, theme, presentation] = await Promise.all([authenticatedIdentity(sessionToken), guildTheme(), guildPresentation()]);
@@ -40,9 +41,10 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
     webPresentationContributionsForIdentity(identity.identityId),
   ]);
 
-  const [controlledCharacters, characters] = await Promise.all([
+  const [controlledCharacters, characters, identityProfileIconUrl] = await Promise.all([
     characterProjections(controlledCharacterRecordIds),
     characterProjections(guildMemberCharacters.map((character) => character.characterRecordId)),
+    identityDisplay.profileIconKey ? specializationProfileIconUrl(identityDisplay.profileIconKey) : Promise.resolve(null),
   ]);
   const guildMembershipByCharacterRecordId = new Map(guildMemberCharacters.map((character) => [character.characterRecordId, character]));
 
@@ -58,6 +60,8 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
     operationsAvailable: false,
     identityLabel: identityDisplay.label,
     identityDisplayName: identityDisplay.displayName,
+    identityProfileIconKey: identityDisplay.profileIconKey,
+    identityProfileIconUrl,
     guildRankDisplayName: guildAuthority?.rankDisplayName ?? null,
     mainCharacter: selectedMain
       ? {
