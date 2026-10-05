@@ -27,6 +27,7 @@ import { setActivityPluginEnabled } from "../../core/activity/plugin-enablement.
 import { hasDevelopmentGuildMasterAuthority } from "../../core/authority/operator-authority.js";
 import { GUILD_THEMES, guildTheme, isGuildThemeKey, setGuildTheme, type GuildThemeKey } from "../../core/presentation/guild-theme.js";
 import { guildPresentation, parseGuildPresentationUrl, setGuildPresentationDestinations, setGuildSettingsLocationAcknowledged, type GuildPresentation } from "../../core/presentation/guild-presentation.js";
+import { guildHomepage, parseGuildHomepage, setGuildHomepage, type GuildHomepage, type GuildHomepageSection } from "../../core/presentation/guild-homepage.js";
 import type { AssetRegistry } from "../assets.js";
 import { renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
@@ -68,6 +69,21 @@ function renderThemeSettings(theme: GuildThemeKey): string {
 
 function renderGuildPresentationSettings(presentation: GuildPresentation): string {
   return `<form class="settings-panel guild-presentation-settings" data-guild-presentation-form><div><h3>Guild links</h3><p>Optional third-party destinations presented for this guild. Blizzard identity and the WoW Armory destination are derived from observed guild truth.</p></div><div class="theme-settings-controls"><label><span>Raider.IO URL</span><input type="url" value="${htmlText(presentation.raiderIoUrl ?? "")}" placeholder="https://" data-raider-io-url></label><label><span>Warcraft Logs URL</span><input type="url" value="${htmlText(presentation.warcraftLogsUrl ?? "")}" placeholder="https://" data-warcraft-logs-url></label><button type="submit" class="button-primary" data-guild-presentation-save>Save</button></div><p class="theme-settings-feedback" data-guild-presentation-feedback role="status" aria-live="polite"></p></form>`;
+}
+
+function renderHomepageSectionEditor(section: GuildHomepageSection, index: number): string {
+  const common = `<label><span>Kicker <small>optional</small></span><input type="text" value="${htmlText(section.kicker ?? "")}" data-homepage-kicker></label><label><span>Heading <small>optional</small></span><input type="text" value="${htmlText(section.heading ?? "")}" data-homepage-heading></label>`;
+  const controls = `<div class="homepage-section-controls"><button type="button" class="button-secondary" data-homepage-move-up aria-label="Move section up">↑</button><button type="button" class="button-secondary" data-homepage-move-down aria-label="Move section down">↓</button><button type="button" class="button-secondary" data-homepage-remove>Remove</button></div>`;
+  if (section.kind === "statement") {
+    return `<article class="homepage-section-editor settings-panel" data-homepage-section data-kind="statement"><div class="homepage-section-editor-heading"><strong>Statement</strong>${controls}</div><div class="homepage-section-fields">${common}<label><span>Text</span><textarea rows="3" data-homepage-body>${htmlText(section.body)}</textarea></label></div></article>`;
+  }
+  const cards = section.cards.map((card) => `<div class="homepage-card-editor" data-homepage-card><label><span>Card title</span><input type="text" value="${htmlText(card.title)}" data-homepage-card-title></label><label><span>Card text</span><textarea rows="3" data-homepage-card-body>${htmlText(card.body)}</textarea></label></div>`).join("");
+  return `<article class="homepage-section-editor settings-panel" data-homepage-section data-kind="cards"><div class="homepage-section-editor-heading"><strong>Card group</strong>${controls}</div><div class="homepage-section-fields">${common}<label><span>Introduction <small>optional</small></span><textarea rows="3" data-homepage-body>${htmlText(section.body ?? "")}</textarea></label><label><span>Cards</span><select data-homepage-layout><option value="single"${section.layout === "single" ? " selected" : ""}>Single</option><option value="double"${section.layout === "double" ? " selected" : ""}>Double</option><option value="triple"${section.layout === "triple" ? " selected" : ""}>Triple</option></select></label><div class="homepage-card-editors" data-homepage-cards>${cards}</div></div></article>`;
+}
+
+function renderHomepageSettings(homepage: GuildHomepage): string {
+  const sections = homepage.sections.map(renderHomepageSectionEditor).join("");
+  return `<form class="homepage-settings" data-homepage-form><div class="settings-panel homepage-introduction-settings"><div><h3>Introduction</h3><p>The guild name comes from Blizzard. Add the small amount of context that should greet people beneath it.</p></div><div class="homepage-section-fields"><label><span>Introduction</span><textarea rows="2" placeholder="A World of Warcraft guild." data-homepage-lede>${htmlText(homepage.lede ?? "")}</textarea></label><label><span>Supporting line <small>optional</small></span><textarea rows="2" data-homepage-supporting-text>${htmlText(homepage.supportingText ?? "")}</textarea></label></div></div><div class="homepage-settings-heading"><div><h3>Homepage pieces</h3><p>Present small pieces of guild information using Guild Operations' built-in shapes.</p></div><div class="homepage-add-actions"><button type="button" class="button-secondary" data-homepage-add-cards>Add cards</button><button type="button" class="button-secondary" data-homepage-add-statement>Add statement</button></div></div><div class="homepage-sections" data-homepage-sections>${sections}</div><div class="homepage-settings-actions"><a class="button-secondary" href="/" target="_blank" rel="noopener noreferrer">View homepage ↗</a><button type="submit" class="button-primary" data-homepage-save>Save homepage</button></div><p class="theme-settings-feedback" data-homepage-feedback role="status" aria-live="polite"></p></form>`;
 }
 
 function renderAdministrationOrientation(presentation: GuildPresentation, canConfigure: boolean): string {
@@ -114,21 +130,23 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       identityHasGuildCapability(identity.identityId, GUILD_PRESENTATION_CONFIGURE_CAPABILITY),
       identityHasGuildCapability(identity.identityId, GUILD_REFRESH_CAPABILITY),
     ]);
-    const [refreshSchedule, theme, presentation, refreshStatus] = await Promise.all([
+    const [refreshSchedule, theme, presentation, homepage, refreshStatus] = await Promise.all([
       guildRefreshSchedule(),
       guildTheme(),
       guildPresentation(),
+      guildHomepage(),
       guildRefreshStatus(),
     ]);
 
     const themeSettings = administrationSection("appearance", "appearance-heading", "Appearance", renderThemeSettings(theme).replaceAll("<select data-theme-select>", `<select data-theme-select${canConfigureTheme ? "" : " disabled"}>`).replaceAll("<button type=\"submit\" class=\"button-primary\" data-theme-save>", `<button type="submit" class="button-primary" data-theme-save${canConfigureTheme ? "" : " disabled"}>`));
-    const presentationSettings = administrationSection("guild-presentation", "guild-presentation-heading", "Guild presentation", canConfigureGuildPresentation ? renderGuildPresentationSettings(presentation) : renderGuildPresentationSettings(presentation).replaceAll("<input ", "<input disabled ").replaceAll("<button type=\"submit\"", "<button disabled type=\"submit\""));
+    const homepageSettings = administrationSection("homepage-presentation", "homepage-presentation-heading", "Homepage", canConfigureGuildPresentation ? renderHomepageSettings(homepage) : renderHomepageSettings(homepage).replaceAll("<input ", "<input disabled ").replaceAll("<textarea ", "<textarea disabled ").replaceAll("<select ", "<select disabled ").replaceAll("<button ", "<button disabled "));
+    const presentationSettings = administrationSection("guild-presentation", "guild-presentation-heading", "Guild links", canConfigureGuildPresentation ? renderGuildPresentationSettings(presentation) : renderGuildPresentationSettings(presentation).replaceAll("<input ", "<input disabled ").replaceAll("<button type=\"submit\"", "<button disabled type=\"submit\""));
     const schedule = canConfigureGuildRefreshSchedule ? renderGuildRefreshSchedule(refreshSchedule) : renderGuildRefreshSchedule(refreshSchedule).replaceAll("<input ", "<input disabled ").replaceAll("<button type=\"submit\"", "<button disabled type=\"submit\"");
     const guildSettings = administrationSection("guild-settings", "guild-settings-heading", "Guild synchronization", `<div class="settings-panel guild-synchronization-settings">${schedule}${renderGuildRefreshOperation(refreshStatus, canRefresh)}</div>`);
     const orientation = renderAdministrationOrientation(presentation, canConfigureGuildPresentation);
-    const content = `${orientation}<div class="admin-sections">${themeSettings}${presentationSettings}${guildSettings}</div>`;
+    const content = `${orientation}<div class="admin-sections">${themeSettings}${homepageSettings}${presentationSettings}${guildSettings}</div>`;
 
-    const html = renderPage(assets, { pathname: "/admin/general", title: `General Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Inspect and configure Guild Operations.", viewer, stylesheets: ["admin.css"], scripts: ["admin.js", "operations.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Inspect and manage Guild Operations according to your authority.</p></div>`, body: `${content}` });
+    const html = renderPage(assets, { pathname: "/admin/general", title: `General Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Inspect and configure Guild Operations.", viewer, stylesheets: ["admin.css"], scripts: ["admin.js", "homepage-admin.js", "operations.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Inspect and manage Guild Operations according to your authority.</p></div>`, body: `${content}` });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
 
@@ -193,6 +211,15 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     const warcraftLogsUrl = parseGuildPresentationUrl(body.warcraftLogsUrl ?? null);
     if (raiderIoUrl === undefined || warcraftLogsUrl === undefined) return reply.code(400).send({ error: "presentation_urls_must_use_http_or_https" });
     return reply.send({ presentation: await setGuildPresentationDestinations({ raiderIoUrl, warcraftLogsUrl }) });
+  });
+
+  app.put("/admin/general/homepage", async (request, reply) => {
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "authentication_required" });
+    if (!await identityHasGuildCapability(identity.identityId, GUILD_PRESENTATION_CONFIGURE_CAPABILITY)) return reply.code(403).send({ error: "guild_presentation_configuration_not_authorized" });
+    const homepage = parseGuildHomepage(request.body);
+    if (!homepage) return reply.code(400).send({ error: "invalid_homepage_presentation" });
+    return reply.send({ homepage: await setGuildHomepage(homepage) });
   });
 
   app.get("/admin/permissions", async (request, reply) => {
