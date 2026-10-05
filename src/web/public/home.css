@@ -35,18 +35,24 @@
 .home-community {
   width: min(100%, 56rem);
   display: grid;
-  gap: clamp(2.25rem, 6vw, 4.5rem);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.9rem;
 }
 
-.home-section {
-  display: grid;
-  gap: 1rem;
+.home-piece {
+  min-width: 0;
 }
 
-.home-section-heading {
-  display: grid;
-  gap: 0.45rem;
-  max-width: 43rem;
+.home-piece-full {
+  grid-column: span 6;
+}
+
+.home-piece-half {
+  grid-column: span 3;
+}
+
+.home-piece-third {
+  grid-column: span 2;
 }
 
 .home-section-kicker {
@@ -58,37 +64,6 @@
   text-transform: uppercase;
 }
 
-.home-section-heading h2,
-.home-statement h2 {
-  margin: 0;
-  font-family: Georgia, "Times New Roman", serif;
-  font-weight: 500;
-  letter-spacing: -0.025em;
-}
-
-.home-section-heading h2 {
-  font-size: clamp(1.65rem, 4vw, 2.35rem);
-}
-
-.home-section-heading p {
-  margin: 0;
-  color: var(--theme-text-muted);
-  line-height: 1.6;
-}
-
-.home-card-group {
-  display: grid;
-  gap: 0.9rem;
-}
-
-.home-card-group-double {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.home-card-group-triple {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
 .home-card {
   min-height: 9rem;
   padding: 1.25rem;
@@ -96,11 +71,16 @@
   background: rgba(255, 255, 255, 0.018);
 }
 
-.home-card h3 {
+.home-card h2,
+.home-statement h2 {
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.3rem;
   font-weight: 500;
+  letter-spacing: -0.025em;
+}
+
+.home-card h2 {
+  font-size: 1.3rem;
 }
 
 .home-card p {
@@ -130,9 +110,8 @@
 }
 
 @media (max-width: 44rem) {
-  .home-card-group-double,
-  .home-card-group-triple {
-    grid-template-columns: 1fr;
+  .home-piece {
+    grid-column: 1 / -1;
   }
 
   .home-card {
