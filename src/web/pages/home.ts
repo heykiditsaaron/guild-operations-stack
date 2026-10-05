@@ -7,15 +7,15 @@ import { htmlText, renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
 
 function renderPrimitive(primitive: GuildHomepagePrimitive, index: number): string {
-  const widthClass = `home-piece-${primitive.width}`;
   if (primitive.kind === "card") {
-    return `<article class="home-card home-piece ${widthClass}"><h2>${htmlText(primitive.heading)}</h2><p>${htmlText(primitive.body)}</p></article>`;
+    const texts = primitive.texts.map((text) => `<p>${htmlText(text)}</p>`).join("");
+    return `<article class="home-card"><h2>${htmlText(primitive.heading)}</h2><div class="home-card-texts home-card-texts-${primitive.layout}">${texts}</div></article>`;
   }
 
   const kicker = primitive.kicker ? `<p class="home-section-kicker">${htmlText(primitive.kicker)}</p>` : "";
   const heading = primitive.heading ? `<h2 id="home-piece-${index}">${htmlText(primitive.heading)}</h2>` : "";
   const labelledBy = primitive.heading ? ` aria-labelledby="home-piece-${index}"` : "";
-  return `<section class="home-statement home-piece ${widthClass}"${labelledBy}>${kicker}${heading}<p>${htmlText(primitive.body)}</p></section>`;
+  return `<section class="home-statement"${labelledBy}>${kicker}${heading}<p>${htmlText(primitive.body)}</p></section>`;
 }
 
 export async function registerHomePage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
@@ -33,6 +33,9 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
       ? `<p class="home-community-note">${htmlText(homepage.supportingText)}</p>`
       : "";
     const primitives = homepage.primitives.map(renderPrimitive).join("\n");
+    const editHomepage = viewer.authenticated && viewer.canConfigureGuildPresentation
+      ? `<a class="button-secondary home-edit-action" href="/admin/homepage">Edit homepage</a>`
+      : "";
 
     const html = renderPage(assets, {
       pathname: "/",
@@ -47,7 +50,7 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
           <p class="home-community-lede">${htmlText(lede)}</p>
           ${supportingText}
         </div>`,
-      body: `<div class="home-community">${primitives}</div>`,
+      body: `<div class="home-community">${primitives}</div>${editHomepage ? `<div class="home-edit">${editHomepage}</div>` : ""}`,
     });
 
     return reply
