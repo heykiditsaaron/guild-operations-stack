@@ -143,7 +143,7 @@ Promote shared rendering only after real application pressure demonstrates commo
 
 The guild homepage is a Core-owned presentation surface. A guild may supply a small amount of durable informational content and choose among the presentation shapes Guild Operations explicitly supports. Core owns the resulting markup, responsive behavior, theme application, and visual coherence.
 
-Homepage configuration is intentionally not a site builder or rich-content system. Current configurable content consists of an introduction, ordered card groups, and statements. Card-group layout values such as `single`, `double`, and `triple` express composition intent; they do not guarantee a fixed column count on every viewport.
+Homepage configuration is intentionally not a site builder or rich-content system. Current configurable content consists of an introduction followed by ordered Card and Statement presentation primitives. Each primitive may express a preferred width of `full`, `half`, or `third`; that width is composition intent rather than a fixed viewport guarantee. Core composes neighboring primitives and adapts them responsively.
 
 Configured homepage text is plain text. It does not accept HTML, Markdown, arbitrary CSS, or plugin-rendered fragments.
 
