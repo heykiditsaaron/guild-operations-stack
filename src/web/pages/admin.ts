@@ -42,20 +42,13 @@ function administrationSection(sectionId: string, headingId: string, heading: st
   return `<section id="${sectionId}" class="admin-section" aria-labelledby="${headingId}"><h2 id="${headingId}">${heading}</h2>${content}</section>`;
 }
 
-async function renderActivityAdministration(identityId: string, canConfigureModules: boolean): Promise<string> {
+async function renderActivityAdministration(canConfigureModules: boolean): Promise<string> {
   const [states, fingerprints] = await Promise.all([activityRegistrationStates(), knownActivityPlugins()]);
   const labels = new Map(fingerprints.map((plugin) => [plugin.kind, plugin.label]));
-  const cards = await Promise.all(states.map(async (state: ActivityRegistrationState) => {
-    const administration = await activityAdministration(state.kind);
-    const definitions = administration?.capabilities ?? [];
-    const policies = await guildCapabilityPoliciesForDefinitions(definitions);
-    const authorityChecks = await Promise.all(definitions.map((definition) => canAdministerGuildCapability(identityId, definition.key)));
-    const editable = Boolean(administration?.authoritative && state.status !== "failed" && authorityChecks.some(Boolean));
-    const permissionView = policies.capabilities.length ? `<div class="permission-capabilities">${policies.capabilities.map((policy) => renderPermissionCapability(policy, policies.ranks)).join("\n")}</div>` : '<p class="admin-section-note">This Activity declares no configurable capabilities.</p>';
-    const frozen = editable ? "" : '<p class="admin-section-note"><strong>Last known declaration.</strong> Permission values are read-only until this Activity successfully registers again.</p>';
+  const cards = states.map((state: ActivityRegistrationState) => {
     const toggleDisabled = canConfigureModules && state.available && state.status !== "failed" ? "" : " disabled";
-    return `<article class="module-lifecycle-card settings-panel" data-activity-key="${htmlText(state.kind)}"><div class="module-lifecycle-header"><div class="module-lifecycle-copy"><div class="module-lifecycle-heading"><h3>${htmlText(labels.get(state.kind) ?? state.kind)}</h3><span class="module-lifecycle-availability">${htmlText(state.status)}</span></div><p>${state.active ? "Active in Guild Operations." : "Activity procedure is not currently active."}</p></div><label class="switch module-lifecycle-toggle"><input type="checkbox" data-activity-enabled${state.enabled === false ? "" : " checked"}${toggleDisabled}><span class="switch-control" aria-hidden="true"></span><span data-activity-switch-label>${state.enabled === false ? "Off" : "On"}</span></label></div><div class="module-lifecycle-permissions">${frozen}${editable ? permissionView : permissionView.replaceAll("<input ", "<input disabled ").replaceAll("<button type=\"submit\"", "<button disabled type=\"submit\"")}</div><p class="module-lifecycle-feedback" data-activity-feedback role="status" aria-live="polite"></p></article>`;
-  }));
+    return `<article class="module-lifecycle-card settings-panel" data-activity-key="${htmlText(state.kind)}"><div class="module-lifecycle-header"><div class="module-lifecycle-copy"><div class="module-lifecycle-heading"><h3>${htmlText(labels.get(state.kind) ?? state.kind)}</h3><span class="module-lifecycle-availability">${htmlText(state.status)}</span></div><p>${state.active ? "Active in Guild Operations." : "Activity procedure is not currently active."}</p></div><label class="switch module-lifecycle-toggle"><input type="checkbox" data-activity-enabled${state.enabled === false ? "" : " checked"}${toggleDisabled}><span class="switch-control" aria-hidden="true"></span><span data-activity-switch-label>${state.enabled === false ? "Off" : "On"}</span></label></div><div class="module-lifecycle-permissions"><a class="module-lifecycle-configure" href="/admin/permissions">Manage permissions →</a></div><p class="module-lifecycle-feedback" data-activity-feedback role="status" aria-live="polite"></p></article>`;
+  });
   return `<section class="packaged-capability-group"><h3>Activities</h3><div class="module-lifecycle-list">${cards.join("\n")}</div></section>`;
 }
 
@@ -146,9 +139,9 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     const [viewer, identity] = await Promise.all([viewerForRequest(sessionToken), authenticatedIdentity(sessionToken)]);
     if (!identity) return reply.code(401).send("Authentication is required.");
     const canConfigureModules = await identityHasGuildCapabilityOrOperator(identity.identityId, MODULES_CONFIGURE_CAPABILITY);
-    const lifecycle = await renderActivityAdministration(identity.identityId, canConfigureModules);
+    const lifecycle = await renderActivityAdministration(canConfigureModules);
     const content = administrationSection("modules", "modules-heading", "Packaged capabilities", `${lifecycle}<p class="admin-section-note">Availability and entitlement are distinct from enablement. Controls are available only when your authority permits changes.</p>`);
-    const html = renderPage(assets, { pathname: "/admin/modules", title: `Add-on Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Manage optional capabilities available to this guild.", viewer, stylesheets: ["admin.css", "admin-permissions.css", "admin-modules.css"], scripts: ["admin-modules.js", "admin-permissions.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Manage the optional capabilities available to your guild.</p></div>`, body: `<div class="admin-sections">${content}</div>` });
+    const html = renderPage(assets, { pathname: "/admin/modules", title: `Add-on Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Manage optional capabilities available to this guild.", viewer, stylesheets: ["admin.css", "admin-modules.css"], scripts: ["admin-modules.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Manage the optional capabilities available to your guild.</p></div>`, body: `<div class="admin-sections">${content}</div>` });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
 
@@ -209,9 +202,8 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     const [viewer, identity] = await Promise.all([viewerForRequest(sessionToken), authenticatedIdentity(sessionToken)]);
     const authorized = identity ? await canAdministerGuildPermissions(identity.identityId) : false;
     const policies = authorized && identity ? await guildCapabilityPoliciesForActor(identity.identityId) : null;
-    const globalPolicies = policies ? { ...policies, capabilities: policies.capabilities.filter((capability) => capability.namespace === "global") } : null;
     const developmentAuthority = identity ? hasDevelopmentGuildMasterAuthority(identity.identityId) : false;
-    const content = authorized && globalPolicies ? `<section class="permission-administration" aria-labelledby="permission-heading"><div class="permission-intro"><h2 id="permission-heading">Capability access</h2><p>Choose which current Blizzard guild ranks receive each Guild Operations capability in addition to Guild Master rank 0. Rank 0 and the development authority override are inherently capable and are not configurable here.</p>${developmentAuthority ? `<p class="permission-operator-notice"><strong>Development authority override active.</strong> This access is independent of your current guild rank.</p>` : ""}</div>${renderPermissionPolicies(globalPolicies)}</section>` : `<section class="admin-unavailable" aria-labelledby="admin-unavailable-heading"><h2 id="admin-unavailable-heading">Permission administration is not available for this account.</h2></section>`;
+    const content = authorized && policies ? `<section class="permission-administration" aria-labelledby="permission-heading"><div class="permission-intro"><h2 id="permission-heading">Capability access</h2><p>Choose which current Blizzard guild ranks receive each Guild Operations capability in addition to Guild Master rank 0. Rank 0 and the development authority override are inherently capable and are not configurable here.</p>${developmentAuthority ? `<p class="permission-operator-notice"><strong>Development authority override active.</strong> This access is independent of your current guild rank.</p>` : ""}</div>${renderPermissionPolicies(policies)}</section>` : `<section class="admin-unavailable" aria-labelledby="admin-unavailable-heading"><h2 id="admin-unavailable-heading">Permission administration is not available for this account.</h2></section>`;
     const html = renderPage(assets, { pathname: "/admin/permissions", title: `Permissions Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Configure Guild Operations permission policy.", viewer, stylesheets: ["admin.css", "admin-permissions.css"], scripts: ["admin-permissions.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Configure who may use Guild Operations capabilities.</p></div>`, body: `${content}` });
     if (!authorized) return reply.code(identity ? 403 : 401).header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
