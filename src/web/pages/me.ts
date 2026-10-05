@@ -39,26 +39,38 @@ export async function registerMePage(app: FastifyInstance, assets: AssetRegistry
       ),
     ).join("\n");
 
-    const representation = selected
-      ? `<div class="me-self-service-summary">
-          ${selected.avatarUrl ? `<img class="me-self-service-avatar" src="${htmlText(selected.avatarUrl)}" alt="" referrerpolicy="no-referrer">` : ""}
-          <div><p class="eyebrow">Character representation</p><h2>${htmlText(selected.name)}</h2><p>Your main Character is the fallback Guild Operations uses when it needs to represent you as a Character and you have not made a more specific choice.</p></div>
+    const defaultCharacter = selected
+      ? `<div class="me-about-field">
+          <div class="me-about-field-copy"><h3>Default Character</h3><p>Used when something needs to show you as a Character and you have not chosen one specifically.</p></div>
+          <div class="me-default-character">
+            ${selected.avatarUrl ? `<img class="me-default-character-avatar" src="${htmlText(selected.avatarUrl)}" alt="" referrerpolicy="no-referrer">` : ""}
+            <strong>${htmlText(selected.name)}</strong>
+          </div>
+          <button type="button" class="button-secondary me-about-action" data-open-main-picker>Change default</button>
         </div>`
-      : `<div><p class="eyebrow">Character representation</p><h2>No main Character selected</h2><p>Choose the Character Guild Operations should use when it needs a Character representation and you have not made a more specific choice.</p></div>`;
+      : `<div class="me-about-field">
+          <div class="me-about-field-copy"><h3>Default Character</h3><p>Choose the Character to use when something needs to show you as a Character and you have not chosen one specifically.</p></div>
+          <p class="me-self-service-empty">No default Character selected.</p>
+          <button type="button" class="button-secondary me-about-action" data-open-main-picker>Choose default</button>
+        </div>`;
 
     const body = `
       <div class="me-self-service">
-        <section class="me-self-service-card me-self-service-representation">
-          ${representation}
-          <div class="me-self-service-actions">
-            <button type="button" class="button-primary" data-open-main-picker>Manage Characters</button>
-            <button type="button" class="button-secondary" data-refresh-characters><span data-refresh-label>Refresh from Blizzard</span></button>
+        <section class="me-self-service-card me-about-card">
+          <div class="me-self-service-card-heading">
+            <div><p class="eyebrow">About me</p><h2>About me</h2><p>Choose how you're shown in Guild Operations.</p></div>
           </div>
+          <div class="me-about-field">
+            <div class="me-about-field-copy"><h3>Display name</h3><p>The name Guild Operations uses to identify you.</p></div>
+            <strong class="me-display-name">${htmlText(viewer.identityLabel)}</strong>
+          </div>
+          ${defaultCharacter}
         </section>
 
         <section class="me-self-service-card">
-          <div class="me-self-service-card-heading">
+          <div class="me-self-service-card-heading me-characters-heading">
             <div><p class="eyebrow">My Characters</p><h2>My Characters</h2><p>Characters currently controlled by your WoW Account. Guild membership is shown separately.</p></div>
+            <button type="button" class="button-secondary" data-refresh-characters><span data-refresh-label>Refresh from Blizzard</span></button>
           </div>
           <div class="me-character-card-list">${characters || '<p class="me-self-service-empty">No currently controlled Characters were found.</p>'}</div>
         </section>
