@@ -220,6 +220,22 @@
   color: var(--theme-text-secondary);
 }
 
+.me-display-name-form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.me-display-name-form input {
+  min-width: 0;
+  width: 15rem;
+}
+
+.me-display-name-form .button-secondary {
+  width: auto;
+  flex: 0 0 auto;
+}
+
 .me-default-character {
   display: flex;
   align-items: center;
@@ -342,6 +358,16 @@
 }
 
 @media (max-width: 36rem) {
+  .me-display-name-form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .me-display-name-form input,
+  .me-display-name-form .button-secondary {
+    width: 100%;
+  }
+
   .me-about-field {
     grid-template-columns: 1fr;
   }
