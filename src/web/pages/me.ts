@@ -74,10 +74,10 @@ export async function registerMePage(app: FastifyInstance, assets: AssetRegistry
       .type("text/html; charset=utf-8")
       .send(renderPage(assets, {
         pathname: "/me",
-        title: `Me · ${viewer.guildPresentation.guildName} Guild Operations`,
-        description: "Your Guild Operations self-service area.",
+        title: `Settings · ${viewer.guildPresentation.guildName} Guild Operations`,
+        description: "Your Guild Operations settings and self-service area.",
         viewer,
-        header: '<div><p class="eyebrow">Self service</p><h1 id="page-title">Me</h1><p class="lede">Manage the parts of Guild Operations that belong to you.</p></div>',
+        header: '<div><p class="eyebrow">Self service</p><h1 id="page-title">Settings</h1><p class="lede">Manage the parts of Guild Operations that belong to you.</p></div>',
         body,
       }));
   });
