@@ -107,7 +107,7 @@ function renderMeControl(viewer: WebViewer, pathname: string): string {
     <summary class="me-control"><span data-me-label>${escapeHtml(label)}</span><span class="account-visual${viewer.mainCharacter?.avatarUrl ? " account-visual-portrait" : " account-visual-generic"}" data-me-visual>${portrait}</span></summary>
     <div class="menu-panel menu-panel-right me-menu-panel">
       <section class="me-menu-section me-character-section">${renderCurrentCharacter(viewer)}</section>
-      <section class="me-menu-section me-self-service-links"><a href="/me"><span>Me</span><span aria-hidden="true">→</span></a><a href="/me/participation"><span>My Participation</span><span aria-hidden="true">→</span></a></section>
+      <section class="me-menu-section me-self-service-links"><a href="/me"><span>Settings</span><span aria-hidden="true">→</span></a><a href="/me/participation"><span>My Participation</span><span aria-hidden="true">→</span></a></section>
       ${moduleSections}
       <section class="me-menu-section me-session-section"><button type="button" class="session-sign-out-action" data-logout>Sign out</button></section>
     </div>
