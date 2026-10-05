@@ -21,6 +21,7 @@ import { registerCalendarPage } from "./web/pages/calendar.js";
 import { registerActivitiesPage } from "./web/pages/activities.js";
 import { registerActivityBoundaryRoutes } from "./web/pages/activity-boundary.js";
 import { registerHomePage } from "./web/pages/home.js";
+import { registerMePage } from "./web/pages/me.js";
 import { registerMyParticipationPage } from "./web/pages/my-participation.js";
 import { registerSiteInformationPages } from "./web/pages/site-information.js";
 import { registerSetupPage } from "./web/pages/setup.js";
@@ -45,6 +46,7 @@ app.get("/health", async () => {
 
 await registerAssetRoutes(app, webAssets);
 await registerHomePage(app, webAssets);
+await registerMePage(app, webAssets);
 await registerMyParticipationPage(app, webAssets);
 await registerSiteInformationPages(app, webAssets);
 await registerCalendarPage(app, webAssets);
