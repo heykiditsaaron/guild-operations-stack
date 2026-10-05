@@ -2,13 +2,13 @@
 
 ## Project
 
-This repository contains a lightweight guild operations stack for **OH CRIT I Pulled!**, a World of Warcraft guild and its Discord community.
+This repository contains Guild Operations, a self-hosted application for World of Warcraft guilds. One deployment represents one guild.
 
-Guild Operations is the guild's interactive participation layer outside World of Warcraft. WoW remains where the guild exists; this system extends guild activity into places and times where the game client is not available or appropriate.
+Guild Operations is the guild's interactive participation and operation layer outside World of Warcraft. WoW remains the authoritative game domain; this system extends guild activity into places and times where the game client is not available or appropriate.
 
 ## Scope boundary
 
-This is not a generic identity platform, an Armory replacement, or a general-purpose guild product.
+This is not a generic identity platform, an Armory replacement, or a universal community platform. It is a World of Warcraft guild operations product.
 
 - World of Warcraft is the native account/Character authority domain.
 - Blizzard-authenticated WoW account authority establishes or resolves the durable Guildie and which Characters that Guildie controls.
