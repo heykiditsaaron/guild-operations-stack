@@ -1,12 +1,9 @@
 import { pool } from "../../db.js";
 import { requireOperationalInstallationGuildBinding } from "../installation/guild-binding.js";
 
-export type GuildHomepageCardLayout = "single" | "double" | "triple";
-
 export type GuildHomepagePrimitive =
   | {
       kind: "card";
-      layout: GuildHomepageCardLayout;
       heading: string;
       texts: string[];
     }
@@ -35,7 +32,6 @@ export const INITIAL_GUILD_HOMEPAGE: GuildHomepage = {
     },
     {
       kind: "card",
-      layout: "triple",
       heading: "How we play",
       texts: [
         "Play your own way — Growth is encouraged when you want it. Pressure, gatekeeping, and elitism are not.",
@@ -45,13 +41,11 @@ export const INITIAL_GUILD_HOMEPAGE: GuildHomepage = {
     },
     {
       kind: "card",
-      layout: "single",
       heading: "Enjoy the chaos",
       texts: ["Mistakes happen. Laugh at the wipes, celebrate the crits, and pull again."],
     },
     {
       kind: "card",
-      layout: "double",
       heading: "Find your place in it",
       texts: [
         "In Azeroth — Run the content you enjoy, join organized groups when they fit, and play at the level that makes the game fun for you.",
@@ -74,14 +68,6 @@ function compactText(value: unknown): string | null | undefined {
   return normalized || null;
 }
 
-function cardLayout(value: unknown): GuildHomepageCardLayout | undefined {
-  return value === "single" || value === "double" || value === "triple" ? value : undefined;
-}
-
-function expectedTextCount(layout: GuildHomepageCardLayout): number {
-  return layout === "triple" ? 3 : layout === "double" ? 2 : 1;
-}
-
 export function parseGuildHomepage(value: unknown): GuildHomepage | undefined {
   if (!value || typeof value !== "object") return undefined;
   const candidate = value as { lede?: unknown; supportingText?: unknown; primitives?: unknown };
@@ -92,16 +78,15 @@ export function parseGuildHomepage(value: unknown): GuildHomepage | undefined {
   const primitives: GuildHomepagePrimitive[] = [];
   for (const rawPrimitive of candidate.primitives) {
     if (!rawPrimitive || typeof rawPrimitive !== "object") return undefined;
-    const primitive = rawPrimitive as { kind?: unknown; layout?: unknown; kicker?: unknown; heading?: unknown; body?: unknown; texts?: unknown };
+    const primitive = rawPrimitive as { kind?: unknown; kicker?: unknown; heading?: unknown; body?: unknown; texts?: unknown };
     const heading = compactText(primitive.heading ?? null);
     if (heading === undefined) return undefined;
 
     if (primitive.kind === "card") {
-      const layout = cardLayout(primitive.layout);
-      if (!layout || !heading || !Array.isArray(primitive.texts) || primitive.texts.length !== expectedTextCount(layout)) return undefined;
+      if (!heading || !Array.isArray(primitive.texts) || primitive.texts.length < 1 || primitive.texts.length > 12) return undefined;
       const texts = primitive.texts.map(compactText);
       if (texts.some((text) => !text)) return undefined;
-      primitives.push({ kind: "card", layout, heading, texts: texts as string[] });
+      primitives.push({ kind: "card", heading, texts: texts as string[] });
       continue;
     }
 
@@ -124,13 +109,12 @@ export async function guildHomepage(): Promise<GuildHomepage> {
     ),
     pool.query<{
       kind: "card" | "statement";
-      layout: GuildHomepageCardLayout;
       kicker: string | null;
       heading: string | null;
       body: string;
       text_cells: unknown;
     }>(
-      `SELECT kind, layout, kicker, heading, body, text_cells
+      `SELECT kind, kicker, heading, body, text_cells
          FROM guild_homepage_primitives
         WHERE guild_id = $1
         ORDER BY position`,
@@ -144,7 +128,7 @@ export async function guildHomepage(): Promise<GuildHomepage> {
   const primitives: GuildHomepagePrimitive[] = primitiveResult.rows.map((row) => {
     if (row.kind === "card") {
       const texts = Array.isArray(row.text_cells) ? row.text_cells.filter((value): value is string => typeof value === "string") : [row.body];
-      return { kind: "card", layout: row.layout, heading: row.heading ?? "", texts };
+      return { kind: "card", heading: row.heading ?? "", texts };
     }
     return { kind: "statement", kicker: row.kicker, heading: row.heading, body: row.body };
   });
@@ -174,13 +158,12 @@ export async function setGuildHomepage(homepage: GuildHomepage): Promise<GuildHo
 
     for (const [position, primitive] of homepage.primitives.entries()) {
       await client.query(
-        `INSERT INTO guild_homepage_primitives (guild_id, position, kind, layout, kicker, heading, body, text_cells)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)`,
+        `INSERT INTO guild_homepage_primitives (guild_id, position, kind, kicker, heading, body, text_cells)
+         VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)`,
         [
           guildId,
           position,
           primitive.kind,
-          primitive.kind === "card" ? primitive.layout : "single",
           primitive.kind === "statement" ? primitive.kicker : null,
           primitive.heading,
           primitive.kind === "statement" ? primitive.body : "",
