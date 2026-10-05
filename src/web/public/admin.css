@@ -548,3 +548,20 @@
   color: var(--theme-text-muted);
   font-size: 0.82rem;
 }
+
+.guild-synchronization-settings {
+  display: grid;
+  gap: 0;
+}
+
+.guild-synchronization-settings .guild-refresh-schedule {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.guild-synchronization-settings .guild-refresh-admin {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
