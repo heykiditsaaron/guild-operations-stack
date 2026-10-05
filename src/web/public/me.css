@@ -267,6 +267,10 @@
   gap: 0.25rem;
 }
 
+.me-identity-card-copy > [hidden] {
+  display: none !important;
+}
+
 .me-identity-name-display {
   display: flex;
   align-items: center;
@@ -302,18 +306,27 @@
   font-size: 0.84rem;
 }
 
-.me-display-name-form-inline {
+.me-display-name-form.me-display-name-form-inline {
+  width: 100%;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
   gap: 0.5rem;
 }
 
+.me-display-name-form-inline input {
+  width: 100%;
+}
+
 .me-inline-edit-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.5rem;
 }
 
 .me-inline-edit-actions > button {
-  width: auto;
+  width: 100%;
+  min-width: 0;
   min-height: 0;
   padding: 0.5rem 0.7rem;
 }
@@ -564,13 +577,13 @@
     width: 100%;
   }
 
-  .me-display-name-form {
+  .me-display-name-form:not(.me-display-name-form-inline) {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .me-display-name-form input,
-  .me-display-name-form .button-secondary {
+  .me-display-name-form:not(.me-display-name-form-inline) input,
+  .me-display-name-form:not(.me-display-name-form-inline) .button-secondary {
     width: 100%;
   }
 
