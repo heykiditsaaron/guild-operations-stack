@@ -289,6 +289,12 @@ Open or `Any` operations may accept such an actor without requiring WoW context.
 
 > **identity determines who is an actor. Subject-guild rank determines when WoW guild authority permits that actor to act.**
 
+## identity presentation
+
+An identity may declare a **display name** for ordinary Guild Operations presentation. The display name is an identity-owned presentation preference, not an identity coordinate, authentication credential, authority fact, or uniqueness constraint.
+
+Two identities may therefore choose the same display name without becoming ambiguous to domain procedure; procedure continues to use the durable identity coordinate. When an identity has not declared a display name, a domain identity coordinate such as its WoW Account ID may be used as a presentation fallback.
+
 ## identity attributes and representation
 
 identity attributes describe a stable identity according to the authority appropriate to each attribute.
