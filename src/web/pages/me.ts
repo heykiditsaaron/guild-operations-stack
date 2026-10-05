@@ -87,7 +87,7 @@ export async function registerMePage(app: FastifyInstance, assets: AssetRegistry
           <div class="me-about-field">
             <div class="me-about-field-copy"><h3>Display name</h3><p>The name Guild Operations uses to identify you.</p></div>
             <form class="me-display-name-form" method="post" action="/me/display-name">
-              <input type="text" name="display_name" value="${htmlText(viewer.identityLabel)}" maxlength="64" required aria-label="Display name">
+              <input type="text" name="display_name" value="${htmlText(viewer.identityDisplayName ?? "")}" placeholder="${htmlText(viewer.identityLabel)}" maxlength="64" required aria-label="Display name">
               <button type="submit" class="button-secondary">Save</button>
             </form>
           </div>
