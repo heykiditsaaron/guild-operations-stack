@@ -39,6 +39,7 @@ export type WebViewer =
       administrationAvailable: boolean;
       administrationDestinations: AdministrationNavigationDestination[];
       operationsAvailable: boolean;
+      canConfigureGuildPresentation: boolean;
       identityLabel: string;
       identityDisplayName: string | null;
       identityProfileIconKey: string | null;
