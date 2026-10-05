@@ -106,8 +106,8 @@ The server derives `guildie_id` from the session. The caller never supplies a Gu
 3. verifies current organizational participation;
 4. verifies the freshly authenticated principal is already bound to that Guildie;
 5. reconciles account/control state through the existing-Guildie persistence path;
-6. intersects newly observed controlled Characters with the persisted current guild roster;
-7. requests fresh Character profile and media for those eligible Characters; and
+6. resolves the newly observed currently controlled Characters;
+7. requests fresh Character profile and media for all of those controlled Characters; and
 8. redirects to `/me` or the validated local `return_to`.
 
 The persistence operation is equivalent to:
@@ -125,7 +125,7 @@ The exact `(guildie_id, region, blizzard_principal_id)` binding must already exi
 
 No new Guild Operations session is created by self refresh.
 
-Explicit self refresh requests both profile and media acquisition for every currently eligible Character. The shared acquisition facility is documented in [`character-presentation-acquisition.md`](character-presentation-acquisition.md).
+Explicit self refresh requests both profile and media acquisition for every currently controlled Character. Guild membership is a separate observation and does not constrain Identity-owned Character refresh. The shared acquisition facility is documented in [`character-presentation-acquisition.md`](character-presentation-acquisition.md).
 
 Presentation acquisition failure is independent of committed account/control truth and does not retroactively invalidate reconciliation.
 
