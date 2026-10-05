@@ -3,9 +3,7 @@ import { authenticatedIdentity, SESSION_COOKIE_NAME } from "../../auth.js";
 import { guildRefreshStatus } from "../../core/guild/guild-refresh-status.js";
 import {
   canAdministerGuildPermissions,
-  canAdministerGuildCapability,
   guildCapabilityPoliciesForActor,
-  guildCapabilityPoliciesForDefinitions,
   setGuildCapabilityPermittedRanks,
   type GuildCapabilityPolicySet,
 } from "../../core/authority/guild-capability-policy.js";
@@ -23,7 +21,7 @@ import {
   identityHasGuildCapability,
   identityHasGuildCapabilityOrOperator,
 } from "../../core/authority/guild-permissions.js";
-import { activityAdministration, activityCapabilityDeclarationState, activityRegistrationStates, type ActivityRegistrationState } from "../../core/activity/registry.js";
+import { activityCapabilityDeclarationState, activityRegistrationStates, type ActivityRegistrationState } from "../../core/activity/registry.js";
 import { knownActivityPlugins } from "../../core/activity/plugin-control.js";
 import { setActivityPluginEnabled } from "../../core/activity/plugin-enablement.js";
 import { hasDevelopmentGuildMasterAuthority } from "../../core/authority/operator-authority.js";
