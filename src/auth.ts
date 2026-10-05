@@ -12,9 +12,7 @@ import {
   type CharacterPresentationAcquisitionTarget,
 } from "./core/guild/guild-character-enrichment.js";
 import { effectiveGuildAuthority } from "./core/authority/guild-permissions.js";
-import { installationGuildBinding, installationOperational, requireOperationalInstallationGuildBinding } from "./core/installation/guild-binding.js";
-import { controlledGuildMemberCharacters } from "./core/guild/guild-characters.js";
-import { characterProjections } from "./core/identity/character-projection.js";
+import { installationOperational, requireOperationalInstallationGuildBinding } from "./core/installation/guild-binding.js";
 import { characterRepresentationForIdentity, selectCharacterRepresentation } from "./core/identity/main-character.js";
 import { publishOperationalRecord } from "./operational-inspection.js";
 import {
