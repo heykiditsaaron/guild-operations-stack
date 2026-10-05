@@ -130,23 +130,38 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       identityHasGuildCapability(identity.identityId, GUILD_PRESENTATION_CONFIGURE_CAPABILITY),
       identityHasGuildCapability(identity.identityId, GUILD_REFRESH_CAPABILITY),
     ]);
-    const [refreshSchedule, theme, presentation, homepage, refreshStatus] = await Promise.all([
+    const [refreshSchedule, theme, presentation, refreshStatus] = await Promise.all([
       guildRefreshSchedule(),
       guildTheme(),
       guildPresentation(),
-      guildHomepage(),
       guildRefreshStatus(),
     ]);
 
     const themeSettings = administrationSection("appearance", "appearance-heading", "Appearance", renderThemeSettings(theme).replaceAll("<select data-theme-select>", `<select data-theme-select${canConfigureTheme ? "" : " disabled"}>`).replaceAll("<button type=\"submit\" class=\"button-primary\" data-theme-save>", `<button type="submit" class="button-primary" data-theme-save${canConfigureTheme ? "" : " disabled"}>`));
-    const homepageSettings = administrationSection("homepage-presentation", "homepage-presentation-heading", "Homepage", canConfigureGuildPresentation ? renderHomepageSettings(homepage) : renderHomepageSettings(homepage).replaceAll("<input ", "<input disabled ").replaceAll("<textarea ", "<textarea disabled ").replaceAll("<select ", "<select disabled ").replaceAll("<button ", "<button disabled "));
     const presentationSettings = administrationSection("guild-presentation", "guild-presentation-heading", "Guild links", canConfigureGuildPresentation ? renderGuildPresentationSettings(presentation) : renderGuildPresentationSettings(presentation).replaceAll("<input ", "<input disabled ").replaceAll("<button type=\"submit\"", "<button disabled type=\"submit\""));
     const schedule = canConfigureGuildRefreshSchedule ? renderGuildRefreshSchedule(refreshSchedule) : renderGuildRefreshSchedule(refreshSchedule).replaceAll("<input ", "<input disabled ").replaceAll("<button type=\"submit\"", "<button disabled type=\"submit\"");
     const guildSettings = administrationSection("guild-settings", "guild-settings-heading", "Guild synchronization", `<div class="settings-panel guild-synchronization-settings">${schedule}${renderGuildRefreshOperation(refreshStatus, canRefresh)}</div>`);
     const orientation = renderAdministrationOrientation(presentation, canConfigureGuildPresentation);
-    const content = `${orientation}<div class="admin-sections">${themeSettings}${homepageSettings}${presentationSettings}${guildSettings}</div>`;
+    const content = `${orientation}<div class="admin-sections">${themeSettings}${presentationSettings}${guildSettings}</div>`;
 
-    const html = renderPage(assets, { pathname: "/admin/general", title: `General Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Inspect and configure Guild Operations.", viewer, stylesheets: ["admin.css"], scripts: ["admin.js", "homepage-admin.js", "operations.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Inspect and manage Guild Operations according to your authority.</p></div>`, body: `${content}` });
+    const html = renderPage(assets, { pathname: "/admin/general", title: `General Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Inspect and configure Guild Operations.", viewer, stylesheets: ["admin.css"], scripts: ["admin.js", "operations.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Inspect and manage Guild Operations according to your authority.</p></div>`, body: `${content}` });
+    return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
+  });
+
+  app.get("/admin/homepage", async (request, reply) => {
+    const sessionToken = request.cookies[SESSION_COOKIE_NAME];
+    const [viewer, identity] = await Promise.all([viewerForRequest(sessionToken), authenticatedIdentity(sessionToken)]);
+    if (!identity) return reply.code(401).send("Authentication is required.");
+
+    const [canConfigureGuildPresentation, homepage] = await Promise.all([
+      identityHasGuildCapability(identity.identityId, GUILD_PRESENTATION_CONFIGURE_CAPABILITY),
+      guildHomepage(),
+    ]);
+    const homepageSettings = canConfigureGuildPresentation
+      ? renderHomepageSettings(homepage)
+      : renderHomepageSettings(homepage).replaceAll("<input ", "<input disabled ").replaceAll("<textarea ", "<textarea disabled ").replaceAll("<select ", "<select disabled ").replaceAll("<button ", "<button disabled ");
+    const content = administrationSection("homepage-presentation", "homepage-presentation-heading", "Homepage", homepageSettings);
+    const html = renderPage(assets, { pathname: "/admin/homepage", title: `Homepage Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Configure the guild homepage.", viewer, stylesheets: ["admin.css"], scripts: ["homepage-admin.js"], header: `<div class="admin-page-header"><h1 id="page-title">Homepage</h1><p class="lede">Choose the information your guild presents and how Guild Operations composes it.</p></div>`, body: `<div class="admin-sections">${content}</div>` });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
 
@@ -213,7 +228,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     return reply.send({ presentation: await setGuildPresentationDestinations({ raiderIoUrl, warcraftLogsUrl }) });
   });
 
-  app.put("/admin/general/homepage", async (request, reply) => {
+  app.put("/admin/homepage", async (request, reply) => {
     const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
     if (!identity) return reply.code(401).send({ error: "authentication_required" });
     if (!await identityHasGuildCapability(identity.identityId, GUILD_PRESENTATION_CONFIGURE_CAPABILITY)) return reply.code(403).send({ error: "guild_presentation_configuration_not_authorized" });
