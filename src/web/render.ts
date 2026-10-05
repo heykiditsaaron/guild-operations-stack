@@ -17,7 +17,8 @@ export type WebViewerCharacter = {
   realmId: string;
   name: string;
   realmName: string | null;
-  rankIndex: number;
+  guildMember: boolean;
+  rankIndex: number | null;
   level: number | null;
   className: string | null;
   raceName: string | null;
@@ -125,7 +126,7 @@ function characterMeta(character: WebViewerCharacter): string {
 
 function renderMainPicker(viewer: WebViewer): string {
   if (!viewer.authenticated) return "";
-  const characters = viewer.characters.map((character) => {
+  const characters = viewer.characters.filter((character) => character.guildMember).map((character) => {
     const selected = viewer.mainCharacter !== null && viewer.mainCharacter.realmId === character.realmId && viewer.mainCharacter.characterId === character.characterId;
     const portrait = character.avatarUrl ? `<img src="${escapeHtml(character.avatarUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<span class="character-portrait-placeholder" aria-hidden="true">${userGlyph()}</span>`;
     const location = character.realmName ?? `Realm ${character.realmId}`;
