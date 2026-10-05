@@ -2,11 +2,11 @@
 
 ## Purpose
 
-Guild Operations exists specifically for **OH CRIT I Pulled!** as the guild's interactive participation and operation layer outside World of Warcraft.
+Guild Operations is a self-hosted application for World of Warcraft guilds. One deployment represents one guild and provides that guild's interactive participation and operation layer outside World of Warcraft.
 
-World of Warcraft and Discord remain primary places where the guild exists and communicates. Guild Operations provides a neutral, knowledgeable place where guild-owned operational truth can be established and then expressed appropriately across those interfaces.
+World of Warcraft remains the authoritative game domain, while Discord and other integrations may be important places where a guild communicates and participates. Guild Operations provides a neutral, knowledgeable place where guild-owned operational truth can be established and then expressed appropriately across those interfaces.
 
-It is not an Armory replacement, a generic identity platform, a general-purpose guild-management product, or an attempt to move the guild out of WoW or Discord.
+It is not an Armory replacement, a generic identity platform, a universal community platform, or an attempt to move a guild out of WoW or its established community spaces. It is a guild operations product whose scope remains grounded in concrete World of Warcraft guild participation and operation.
 
 A useful product test is:
 
