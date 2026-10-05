@@ -117,14 +117,14 @@ function renderMainPicker(viewer: WebViewer): string {
     const location = character.realmName ?? `Realm ${character.realmId}`;
     const role = character.activeSpecName && character.className ? `${character.activeSpecName} ${character.className}` : character.className ?? character.activeSpecName ?? "Character";
     return `<button type="button" class="character-choice${selected ? " character-choice-current" : ""}" data-select-main data-character-id="${escapeHtml(character.characterId)}" data-realm-id="${escapeHtml(character.realmId)}" data-character-name="${escapeHtml(character.name)}" data-character-role="${escapeHtml(role)}" data-character-realm="${escapeHtml(location)}" data-character-rank="${character.rankIndex}" data-avatar-url="${escapeHtml(character.avatarUrl ?? "")}">
-      <span class="character-portrait">${portrait}</span><span class="character-choice-copy"><span class="character-choice-name">${escapeHtml(character.name)}${selected ? ' <span class="current-main-label">Current main</span>' : ""}</span><span class="character-choice-meta">${escapeHtml(characterMeta(character))}</span><span class="character-choice-submeta">${escapeHtml(location)} · Guild rank ${character.rankIndex}</span></span>
+      <span class="character-portrait">${portrait}</span><span class="character-choice-copy"><span class="character-choice-name">${escapeHtml(character.name)}${selected ? ' <span class="current-main-label">Current default</span>' : ""}</span><span class="character-choice-meta">${escapeHtml(characterMeta(character))}</span><span class="character-choice-submeta">${escapeHtml(location)} · Guild rank ${character.rankIndex}</span></span>
     </button>`;
   }).join("\n");
   return `<dialog class="main-picker" data-main-picker data-has-main="${viewer.mainCharacter ? "true" : "false"}" aria-labelledby="main-picker-title">
     <div class="main-picker-sheet">
-      <div class="main-picker-heading"><h2 id="main-picker-title">Manage characters</h2><button type="button" class="dialog-close" data-close-main-picker aria-label="Close character management">×</button></div>
-      <section class="main-picker-section main-picker-section-refresh" aria-labelledby="refresh-characters-title"><h3 id="refresh-characters-title">Refresh characters</h3><p class="main-picker-section-copy">Update your characters from Blizzard.</p><button type="button" class="refresh-characters-action" data-refresh-characters><span data-refresh-label>Refresh characters</span></button></section>
-      <section class="main-picker-section main-picker-section-main" aria-labelledby="main-character-title"><h3 id="main-character-title">Main character</h3><p class="main-picker-section-copy">Choose the character you want shown as your main.</p><div class="character-choices" data-character-choices>${characters || '<p class="main-picker-empty">No currently eligible guild characters were found.</p>'}</div></section>
+      <div class="main-picker-heading"><h2 id="main-picker-title">Default Character</h2><button type="button" class="dialog-close" data-close-main-picker aria-label="Close default Character selection">×</button></div>
+      
+      <section class="main-picker-section main-picker-section-main" aria-labelledby="main-character-title"><h3 id="main-character-title">Default Character</h3><p class="main-picker-section-copy">Choose the Character Guild Operations should use when Character context is needed and you have not chosen one specifically.</p><div class="character-choices" data-character-choices>${characters || '<p class="main-picker-empty">No currently eligible guild characters were found.</p>'}</div></section>
       <p class="main-picker-status" data-main-picker-status aria-live="polite"></p>
     </div>
   </dialog>`;
