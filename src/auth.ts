@@ -410,60 +410,6 @@ export async function registerAuthRoutes(app: FastifyInstance, assets: AssetRegi
     }
   });
 
-  app.get("/me", async (request, reply) => {
-    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
-    if (!identity) return reply.code(401).send({ error: "not_authenticated" });
-
-    const binding = await installationGuildBinding();
-    const operational = binding?.authorizedAt != null;
-    const [guildMemberCharacters, mainCharacter] = operational
-      ? await Promise.all([
-          controlledGuildMemberCharacters(identity.identityId),
-          characterRepresentationForIdentity(identity.identityId),
-        ])
-      : [[], null];
-    const guildCharacters = await characterProjections(
-      guildMemberCharacters.map((character) => character.characterRecordId),
-    );
-    const guildMembershipByCharacterRecordId = new Map(
-      guildMemberCharacters.map((character) => [character.characterRecordId, character]),
-    );
-
-    return reply.send({
-      identity_id: identity.identityId,
-      region: identity.region,
-      character_count: identity.characterCount,
-      guild: binding ? {
-        guild_id: binding.guildId,
-        main_character: mainCharacter
-          ? {
-              character_id: mainCharacter.characterId,
-              realm_id: mainCharacter.realmId,
-              name: mainCharacter.name,
-              realm_name: mainCharacter.realmName,
-              rank: mainCharacter.rankIndex,
-              currently_eligible: mainCharacter.currentlyEligible,
-              avatar_url: mainCharacter.avatarUrl,
-            }
-          : null,
-        characters: guildCharacters.map((character) => ({
-          character_id: character.characterId,
-          realm_id: character.realmId,
-          name: character.name,
-          realm_name: character.realmName,
-          rank: guildMembershipByCharacterRecordId.get(character.characterRecordId)!.rankIndex,
-          level: character.level,
-          class_name: character.className,
-          race_name: character.raceName,
-          active_spec_name: character.activeSpecName,
-          avatar_url: character.avatarUrl,
-          inset_url: character.insetUrl,
-          main_url: character.mainUrl,
-        })),
-      } : null,
-    });
-  });
-
   app.put("/me/main-character", async (request, reply) => {
     const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
     if (!identity) return reply.code(401).send({ error: "not_authenticated" });
