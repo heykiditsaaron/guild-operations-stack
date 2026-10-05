@@ -1,6 +1,7 @@
 import { controlledGuildMemberCharacters } from "../core/guild/guild-characters.js";
 import { controlledCharacterRecordIdsForIdentity } from "../core/identity/controlled-characters.js";
 import { characterRepresentationForIdentity } from "../core/identity/main-character.js";
+import { identityPresentation } from "../core/identity/identity-presentation.js";
 import { characterProjections } from "../core/identity/character-projection.js";
 import { authenticatedIdentity } from "../auth.js";
 import { guildTheme } from "../core/presentation/guild-theme.js";
@@ -8,6 +9,7 @@ import { guildPresentation } from "../core/presentation/guild-presentation.js";
 import {
   GUILD_REFRESH_CAPABILITY,
   OPERATIONS_INSPECT_CAPABILITY,
+  effectiveGuildAuthority,
   identityHasGuildCapability,
 } from "../core/authority/guild-permissions.js";
 import { administrationAvailabilityForIdentity } from "./administration.js";
@@ -26,10 +28,12 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
     };
   }
 
-  const [controlledCharacterRecordIds, guildMemberCharacters, selectedMain, administration, canRefreshGuild, canInspectOperations, presentationContributions] = await Promise.all([
+  const [controlledCharacterRecordIds, guildMemberCharacters, selectedMain, identityDisplay, guildAuthority, administration, canRefreshGuild, canInspectOperations, presentationContributions] = await Promise.all([
     controlledCharacterRecordIdsForIdentity(identity.identityId),
     controlledGuildMemberCharacters(identity.identityId),
     characterRepresentationForIdentity(identity.identityId),
+    identityPresentation(identity.identityId),
+    effectiveGuildAuthority(identity.identityId),
     administrationAvailabilityForIdentity(identity.identityId),
     identityHasGuildCapability(identity.identityId, GUILD_REFRESH_CAPABILITY),
     identityHasGuildCapability(identity.identityId, OPERATIONS_INSPECT_CAPABILITY),
@@ -52,6 +56,8 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
       ? [{ label: "Guild Operations Settings", href: "/admin" }]
       : [],
     operationsAvailable: false,
+    identityLabel: identityDisplay.label,
+    guildRankDisplayName: guildAuthority?.rankDisplayName ?? null,
     mainCharacter: selectedMain
       ? {
           characterId: selectedMain.characterId,
