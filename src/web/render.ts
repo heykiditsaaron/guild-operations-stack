@@ -39,6 +39,8 @@ export type WebViewer =
       administrationAvailable: boolean;
       administrationDestinations: AdministrationNavigationDestination[];
       operationsAvailable: boolean;
+      identityLabel: string;
+      guildRankDisplayName: string | null;
       mainCharacter: {
         characterId: string;
         realmId: string;
@@ -77,45 +79,27 @@ function userGlyph(): string {
   </svg>`;
 }
 
-function renderCurrentCharacter(viewer: Extract<WebViewer, { authenticated: true }>): string {
-  if (!viewer.mainCharacter) {
-    return `<div class="me-character-summary me-character-summary-empty">
-      <span class="me-character-name" data-me-character-name>No main selected</span>
-      <span class="me-character-meta" data-me-character-meta>Choose a character as your main.</span>
-      <span class="me-character-context" data-me-character-context hidden></span>
-      <button type="button" class="me-change-main" data-open-main-picker>Manage</button>
-    </div>`;
-  }
-  const character = viewer.mainCharacter;
-  const role = character.activeSpecName && character.className ? `${character.activeSpecName} ${character.className}` : character.className ?? character.activeSpecName ?? "Character";
-  const realm = character.realmName ?? `Realm ${character.realmId}`;
-  const rank = character.rankIndex === null ? "" : ` · <span class="guild-rank guild-rank-${character.rankIndex}" data-guild-rank="${character.rankIndex}">Rank ${character.rankIndex}</span>`;
-  return `<div class="me-character-summary">
-    <span class="me-character-name" data-me-character-name>${escapeHtml(character.name)}</span>
-    <span class="me-character-meta" data-me-character-meta>${escapeHtml(role)}</span>
-    <span class="me-character-context" data-me-character-context><span data-me-character-realm>${escapeHtml(realm)}</span>${rank}</span>
-    <button type="button" class="me-change-main" data-open-main-picker>Manage</button>
-  </div>`;
-}
-
 function renderMeControl(viewer: WebViewer, pathname: string): string {
   if (!viewer.authenticated) {
     return `<a class="me-control" href="/auth/blizzard/start?return_to=${encodeURIComponent(pathname)}" aria-label="Sign in"><span>Sign in</span><span class="account-visual account-visual-generic">${userGlyph()}</span></a>`;
   }
-  const label = viewer.mainCharacter?.name ?? "Me";
-  const portrait = viewer.mainCharacter?.avatarUrl ? `<img src="${escapeHtml(viewer.mainCharacter.avatarUrl)}" alt="" loading="eager" referrerpolicy="no-referrer">` : userGlyph();
   const moduleSections = viewer.presentationContributions.meMenuSections.map((render) => render(pathname)).join("\n");
+  const guildStanding = viewer.guildRankDisplayName
+    ? `<span class="me-identity-standing">${escapeHtml(viewer.guildRankDisplayName)}</span>`
+    : "";
   return `<details class="me-menu menu-surface">
-    <summary class="me-control"><span data-me-label>${escapeHtml(label)}</span><span class="account-visual${viewer.mainCharacter?.avatarUrl ? " account-visual-portrait" : " account-visual-generic"}" data-me-visual>${portrait}</span></summary>
+    <summary class="me-control"><span data-me-label>${escapeHtml(viewer.identityLabel)}</span><span class="account-visual account-visual-generic" data-me-visual>${userGlyph()}</span></summary>
     <div class="menu-panel menu-panel-right me-menu-panel">
-      <section class="me-menu-section me-character-section">${renderCurrentCharacter(viewer)}</section>
+      <section class="me-menu-section me-identity-section">
+        <span class="me-identity-name">${escapeHtml(viewer.identityLabel)}</span>
+        ${guildStanding}
+      </section>
       <section class="me-menu-section me-self-service-links"><a href="/me"><span>Settings</span><span aria-hidden="true">→</span></a><a href="/me/participation"><span>My Participation</span><span aria-hidden="true">→</span></a></section>
       ${moduleSections}
       <section class="me-menu-section me-session-section"><button type="button" class="session-sign-out-action" data-logout>Sign out</button></section>
     </div>
   </details>`;
 }
-
 function characterMeta(character: WebViewerCharacter): string {
   const identity: string[] = [];
   if (character.level !== null) identity.push(`Level ${character.level}`);
