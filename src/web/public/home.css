@@ -48,9 +48,13 @@
 }
 
 .home-card {
-  padding: 1.25rem;
-  border-top: 1px solid rgba(232, 201, 134, 0.24);
-  background: rgba(255, 255, 255, 0.018);
+  padding: clamp(1.25rem, 4vw, 2rem);
+  border: 1px solid rgba(238, 201, 124, 0.16);
+  border-radius: 1.25rem;
+  background:
+    linear-gradient(145deg, rgba(232, 201, 134, 0.055), transparent 42%),
+    rgba(18, 19, 24, 0.68);
+  box-shadow: 0 1.4rem 4rem rgba(0, 0, 0, 0.2);
 }
 
 .home-card h2,
@@ -67,8 +71,8 @@
 
 .home-card-texts {
   display: grid;
-  gap: 1rem;
-  margin-top: 0.8rem;
+  gap: clamp(1rem, 3vw, 1.5rem);
+  margin-top: 1rem;
 }
 
 .home-card-texts-double {
@@ -84,6 +88,12 @@
   color: var(--theme-text-muted);
   font-size: 0.92rem;
   line-height: 1.6;
+}
+
+.home-card-texts-double p + p,
+.home-card-texts-triple p + p {
+  padding-left: clamp(1rem, 3vw, 1.5rem);
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .home-statement {
@@ -106,15 +116,31 @@
 }
 
 .home-edit {
-  width: min(100%, 56rem);
-  margin-top: 1.5rem;
+  width: min(100%, 54rem);
+  margin: 0 0 0.85rem;
   display: flex;
   justify-content: flex-end;
 }
 
-@media (max-width: 44rem) {
-  .home-card-texts-double,
+.home-edit a {
+  color: var(--theme-text-muted);
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.home-edit a:hover,
+.home-edit a:focus-visible {
+  color: var(--theme-accent-strong);
+  text-decoration: underline;
+}
+
+@media (max-width: 34rem) {
   .home-card-texts-triple {
-    grid-template-columns: 1fr;
+    gap: 0.7rem;
+  }
+
+  .home-card-texts-triple p + p {
+    padding-left: 0.7rem;
   }
 }
