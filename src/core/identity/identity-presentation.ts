@@ -2,18 +2,22 @@ import { pool } from "../../db.js";
 
 export type IdentityPresentation = {
   label: string;
+  displayName: string | null;
   wowAccountId: string | null;
 };
 
 export async function identityPresentation(identityId: string): Promise<IdentityPresentation> {
-  const result = await pool.query<{ wow_account_id: string }>(
-    "SELECT wow_account_id FROM wow_account_identities WHERE identity_id = $1",
+  const result = await pool.query<{ display_name: string | null; wow_account_id: string }>(
+    "SELECT i.display_name, wai.wow_account_id FROM identities i JOIN wow_account_identities wai ON wai.identity_id = i.identity_id WHERE i.identity_id = $1",
     [identityId],
   );
-  const wowAccountId = result.rows[0]?.wow_account_id ?? null;
+  const row = result.rows[0];
+  const wowAccountId = row?.wow_account_id ?? null;
+  const displayName = row?.display_name?.trim() || null;
 
   return {
-    label: wowAccountId ? `WoW Account ${wowAccountId}` : identityId,
+    label: displayName ?? (wowAccountId ? `WoW Account ${wowAccountId}` : identityId),
+    displayName,
     wowAccountId,
   };
 }
