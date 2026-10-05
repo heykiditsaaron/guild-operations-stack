@@ -77,57 +77,6 @@ function openRequiredMainPicker() {
   if (!picker.open) picker.showModal();
 }
 
-function setMainPresentation(button) {
-  const label = document.querySelector("[data-me-label]");
-  const visual = document.querySelector("[data-me-visual]");
-  if (!(label instanceof HTMLElement) || !(visual instanceof HTMLElement)) return;
-
-  const name = button.dataset.characterName || "Me";
-  const role = button.dataset.characterRole || "Character";
-  const realm = button.dataset.characterRealm || "";
-  const avatarUrl = button.dataset.avatarUrl || "";
-  label.textContent = name;
-
-  const summary = document.querySelector(".me-character-summary");
-  const summaryName = document.querySelector("[data-me-character-name]");
-  const summaryMeta = document.querySelector("[data-me-character-meta]");
-  const summaryRealm = document.querySelector("[data-me-character-realm]");
-  const changeMain = document.querySelector(".me-change-main");
-  if (summary instanceof HTMLElement) summary.classList.remove("me-character-summary-empty");
-  if (summaryName instanceof HTMLElement) summaryName.textContent = name;
-  if (summaryMeta instanceof HTMLElement) summaryMeta.textContent = role;
-  if (summaryRealm instanceof HTMLElement) {
-    summaryRealm.textContent = realm;
-    summaryRealm.hidden = !realm;
-  }
-  if (changeMain instanceof HTMLButtonElement) changeMain.textContent = "Change main";
-
-  visual.replaceChildren();
-  visual.classList.remove("account-visual-generic", "account-visual-portrait");
-  if (avatarUrl) {
-    const image = document.createElement("img");
-    image.src = avatarUrl;
-    image.alt = "";
-    image.referrerPolicy = "no-referrer";
-    visual.appendChild(image);
-    visual.classList.add("account-visual-portrait");
-  } else {
-    const glyph = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    glyph.setAttribute("class", "account-glyph");
-    glyph.setAttribute("viewBox", "0 0 24 24");
-    glyph.setAttribute("aria-hidden", "true");
-    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    circle.setAttribute("cx", "12");
-    circle.setAttribute("cy", "8");
-    circle.setAttribute("r", "4");
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("d", "M4.8 20c.8-4 3.2-6 7.2-6s6.4 2 7.2 6");
-    glyph.append(circle, path);
-    visual.appendChild(glyph);
-    visual.classList.add("account-visual-generic");
-  }
-}
-
 async function saveMain(button) {
   const picker = document.querySelector("[data-main-picker]");
   const status = document.querySelector("[data-main-picker-status]");
@@ -163,12 +112,11 @@ async function saveMain(button) {
     if (name instanceof HTMLElement) {
       const current = document.createElement("span");
       current.className = "current-main-label";
-      current.textContent = "Current main";
+      current.textContent = "Current default";
       name.appendChild(current);
     }
 
     picker.dataset.hasMain = "true";
-    setMainPresentation(button);
     status.textContent = "";
 
     const url = new URL(window.location.href);
@@ -177,6 +125,7 @@ async function saveMain(button) {
     const closeButton = picker.querySelector("[data-close-main-picker]");
     if (closeButton instanceof HTMLButtonElement) closeButton.hidden = false;
     picker.close();
+    window.location.reload();
   } catch {
     status.textContent = "Unable to select main character.";
   } finally {
