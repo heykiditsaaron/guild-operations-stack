@@ -151,6 +151,34 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const editDisplayName = target.closest("[data-edit-display-name]");
+  if (editDisplayName) {
+    const display = document.querySelector("[data-identity-name-display]");
+    const form = document.querySelector("[data-display-name-form]");
+    if (display instanceof HTMLElement && form instanceof HTMLFormElement) {
+      display.hidden = true;
+      form.hidden = false;
+      const input = form.querySelector('input[name="display_name"]');
+      if (input instanceof HTMLInputElement) {
+        input.focus();
+        input.select();
+      }
+    }
+    return;
+  }
+
+  const cancelDisplayName = target.closest("[data-cancel-display-name]");
+  if (cancelDisplayName) {
+    const display = document.querySelector("[data-identity-name-display]");
+    const form = document.querySelector("[data-display-name-form]");
+    if (display instanceof HTMLElement && form instanceof HTMLFormElement) {
+      form.hidden = true;
+      display.hidden = false;
+      form.reset();
+    }
+    return;
+  }
+
   const openProfileIconPicker = target.closest("[data-open-profile-icon-picker]");
   if (openProfileIconPicker) {
     closeOpenMenus();
