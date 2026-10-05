@@ -9,7 +9,7 @@ import { viewerForRequest } from "../viewer.js";
 function renderPrimitive(primitive: GuildHomepagePrimitive, index: number): string {
   if (primitive.kind === "card") {
     const texts = primitive.texts.map((text) => `<p>${htmlText(text)}</p>`).join("");
-    return `<article class="home-card"><h2>${htmlText(primitive.heading)}</h2><div class="home-card-texts home-card-texts-${primitive.layout}">${texts}</div></article>`;
+    return `<article class="home-card"><h2>${htmlText(primitive.heading)}</h2><div class="home-card-texts">${texts}</div></article>`;
   }
 
   const kicker = primitive.kicker ? `<p class="home-section-kicker">${htmlText(primitive.kicker)}</p>` : "";
