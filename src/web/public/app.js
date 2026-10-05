@@ -151,6 +151,21 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const openProfileIconPicker = target.closest("[data-open-profile-icon-picker]");
+  if (openProfileIconPicker) {
+    closeOpenMenus();
+    const picker = document.querySelector("[data-profile-icon-picker]");
+    if (picker instanceof HTMLDialogElement) picker.showModal();
+    return;
+  }
+
+  const closeProfileIconPicker = target.closest("[data-close-profile-icon-picker]");
+  if (closeProfileIconPicker) {
+    const picker = document.querySelector("[data-profile-icon-picker]");
+    if (picker instanceof HTMLDialogElement) picker.close();
+    return;
+  }
+
   const openPicker = target.closest("[data-open-main-picker]");
   if (openPicker) {
     closeOpenMenus();
@@ -168,6 +183,14 @@ document.addEventListener("click", (event) => {
 
   const selectMain = target.closest("[data-select-main]");
   if (selectMain instanceof HTMLButtonElement) void saveMain(selectMain);
+});
+
+document.addEventListener("click", (event) => {
+  const picker = event.target;
+  if (!(picker instanceof HTMLDialogElement) || !picker.matches("[data-profile-icon-picker]")) return;
+  const rect = picker.getBoundingClientRect();
+  const inside = event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
+  if (!inside) picker.close();
 });
 
 document.addEventListener("click", (event) => {
