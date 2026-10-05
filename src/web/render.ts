@@ -40,6 +40,7 @@ export type WebViewer =
       administrationDestinations: AdministrationNavigationDestination[];
       operationsAvailable: boolean;
       identityLabel: string;
+      identityDisplayName: string | null;
       guildRankDisplayName: string | null;
       mainCharacter: {
         characterId: string;
