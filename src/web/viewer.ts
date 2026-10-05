@@ -57,6 +57,7 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
       : [],
     operationsAvailable: false,
     identityLabel: identityDisplay.label,
+    identityDisplayName: identityDisplay.displayName,
     guildRankDisplayName: guildAuthority?.rankDisplayName ?? null,
     mainCharacter: selectedMain
       ? {
