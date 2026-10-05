@@ -10,20 +10,21 @@ if (homepageForm) {
   }
 
   function cardTextField(index, value = "") {
-    const label = document.createElement("label");
-    label.innerHTML = `<span>Text ${index + 1}</span><textarea rows="3" data-homepage-card-text></textarea>`;
-    label.querySelector("textarea").value = value;
-    return label;
+    const row = document.createElement("div");
+    row.className = "homepage-card-text";
+    row.innerHTML = `<label><span>Text ${index + 1}</span><textarea rows="3" data-homepage-card-text></textarea></label>${index === 0 ? "" : '<button type="button" class="homepage-card-text-remove" data-homepage-remove-text aria-label="Remove this text">×</button>'}`;
+    row.querySelector("textarea").value = value;
+    return row;
   }
 
-  function syncCardTexts(card) {
-    const layout = card.querySelector("[data-homepage-layout]").value;
-    const container = card.querySelector("[data-homepage-card-texts]");
-    const desired = layout === "triple" ? 3 : layout === "double" ? 2 : 1;
-    while (container.children.length < desired) container.append(cardTextField(container.children.length));
-    while (container.children.length > desired) container.lastElementChild.remove();
-    [...container.children].forEach((label, index) => {
-      label.querySelector("span").textContent = `Text ${index + 1}`;
+  function renumberCardTexts(card) {
+    [...card.querySelectorAll(".homepage-card-text")].forEach((row, index) => {
+      row.querySelector("span").textContent = `Text ${index + 1}`;
+      const remove = row.querySelector("[data-homepage-remove-text]");
+      if (index === 0 && remove) remove.remove();
+      if (index > 0 && !remove) {
+        row.insertAdjacentHTML("beforeend", '<button type="button" class="homepage-card-text-remove" data-homepage-remove-text aria-label="Remove this text">×</button>');
+      }
     });
   }
 
@@ -34,7 +35,7 @@ if (homepageForm) {
     article.dataset.kind = kind;
 
     if (kind === "card") {
-      article.innerHTML = `<div class="homepage-section-editor-heading"><strong>Card</strong>${controls()}</div><div class="homepage-section-fields"><label><span>Columns</span><select data-homepage-layout><option value="single">Single</option><option value="double">Double</option><option value="triple">Triple</option></select></label><label><span>Title</span><input type="text" data-homepage-heading></label><div class="homepage-card-texts" data-homepage-card-texts></div></div>`;
+      article.innerHTML = `<div class="homepage-section-editor-heading"><strong>Card</strong>${controls()}</div><div class="homepage-section-fields"><label><span>Title</span><input type="text" data-homepage-heading></label><div class="homepage-card-texts" data-homepage-card-texts></div><div><button type="button" class="button-secondary homepage-add-text" data-homepage-add-text>+ Add text</button></div></div>`;
       article.querySelector("[data-homepage-card-texts]").append(cardTextField(0));
     } else {
       article.innerHTML = `<div class="homepage-section-editor-heading"><strong>Statement</strong>${controls()}</div><div class="homepage-section-fields"><label><span>Kicker <small>optional</small></span><input type="text" data-homepage-kicker></label><label><span>Heading <small>optional</small></span><input type="text" data-homepage-heading></label><label><span>Text</span><textarea rows="3" data-homepage-body></textarea></label></div>`;
@@ -47,13 +48,19 @@ if (homepageForm) {
   homepageForm.querySelector("[data-homepage-add-card]")?.addEventListener("click", () => addPrimitive("card"));
   homepageForm.querySelector("[data-homepage-add-statement]")?.addEventListener("click", () => addPrimitive("statement"));
 
-  primitives.addEventListener("change", (event) => {
-    if (event.target.matches("[data-homepage-layout]")) syncCardTexts(event.target.closest("[data-homepage-primitive]"));
-  });
-
   primitives.addEventListener("click", (event) => {
     const primitive = event.target.closest("[data-homepage-primitive]");
     if (!primitive) return;
+    if (event.target.closest("[data-homepage-add-text]")) {
+      const container = primitive.querySelector("[data-homepage-card-texts]");
+      container.append(cardTextField(container.children.length));
+      return;
+    }
+    if (event.target.closest("[data-homepage-remove-text]")) {
+      event.target.closest(".homepage-card-text").remove();
+      renumberCardTexts(primitive);
+      return;
+    }
     if (event.target.closest("[data-homepage-remove]")) primitive.remove();
     if (event.target.closest("[data-homepage-move-up]") && primitive.previousElementSibling) primitives.insertBefore(primitive, primitive.previousElementSibling);
     if (event.target.closest("[data-homepage-move-down]") && primitive.nextElementSibling) primitives.insertBefore(primitive.nextElementSibling, primitive);
@@ -71,7 +78,6 @@ if (homepageForm) {
         if (primitive.dataset.kind === "card") {
           return {
             kind: "card",
-            layout: primitive.querySelector("[data-homepage-layout]").value,
             heading: primitive.querySelector("[data-homepage-heading]").value,
             texts: [...primitive.querySelectorAll("[data-homepage-card-text]")].map((field) => field.value),
           };
