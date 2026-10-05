@@ -1,4 +1,5 @@
 import { controlledGuildMemberCharacters } from "../core/guild/guild-characters.js";
+import { controlledCharacterRecordIdsForIdentity } from "../core/identity/controlled-characters.js";
 import { characterRepresentationForIdentity } from "../core/identity/main-character.js";
 import { characterProjections } from "../core/identity/character-projection.js";
 import { authenticatedIdentity } from "../auth.js";
@@ -25,7 +26,8 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
     };
   }
 
-  const [guildMemberCharacters, selectedMain, administration, canRefreshGuild, canInspectOperations, presentationContributions] = await Promise.all([
+  const [controlledCharacterRecordIds, guildMemberCharacters, selectedMain, administration, canRefreshGuild, canInspectOperations, presentationContributions] = await Promise.all([
+    controlledCharacterRecordIdsForIdentity(identity.identityId),
     controlledGuildMemberCharacters(identity.identityId),
     characterRepresentationForIdentity(identity.identityId),
     administrationAvailabilityForIdentity(identity.identityId),
@@ -34,7 +36,7 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
     webPresentationContributionsForIdentity(identity.identityId),
   ]);
 
-  const characters = await characterProjections(guildMemberCharacters.map((character) => character.characterRecordId));
+  const characters = await characterProjections(controlledCharacterRecordIds);
   const guildMembershipByCharacterRecordId = new Map(guildMemberCharacters.map((character) => [character.characterRecordId, character]));
 
   return {
@@ -65,7 +67,8 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
       realmId: character.realmId,
       name: character.name,
       realmName: character.realmName,
-      rankIndex: guildMembershipByCharacterRecordId.get(character.characterRecordId)!.rankIndex,
+      guildMember: guildMembershipByCharacterRecordId.has(character.characterRecordId),
+      rankIndex: guildMembershipByCharacterRecordId.get(character.characterRecordId)?.rankIndex ?? null,
       level: character.level,
       className: character.className,
       raceName: character.raceName,
