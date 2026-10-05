@@ -216,6 +216,108 @@
   font-size: 0.84rem;
 }
 
+.me-identity-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+  padding: 1.15rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.me-identity-card-icon {
+  position: relative;
+  width: 4.5rem;
+  height: 4.5rem;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid rgba(232, 201, 134, 0.32);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+}
+
+.me-identity-card-icon img,
+.me-identity-card-icon .me-profile-icon-placeholder {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.me-identity-card-icon-edit {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  place-items: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+  background: var(--theme-surface);
+  color: var(--theme-accent);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.me-identity-card-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.me-identity-name-display {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.me-identity-name-display strong {
+  overflow: hidden;
+  font-size: 1.25rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.me-inline-edit {
+  min-height: 0;
+  padding: 0.2rem 0.4rem;
+  border: 0;
+  background: transparent;
+  color: var(--theme-text-muted);
+  font: inherit;
+  font-size: 0.75rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.me-inline-edit:hover,
+.me-inline-edit:focus-visible {
+  color: var(--theme-accent);
+}
+
+.me-identity-card-standing {
+  color: var(--theme-text-muted);
+  font-size: 0.84rem;
+}
+
+.me-display-name-form-inline {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.me-inline-edit-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.me-inline-edit-actions > button {
+  width: auto;
+  min-height: 0;
+  padding: 0.5rem 0.7rem;
+}
+
 .me-display-name {
   color: var(--theme-text-secondary);
 }
@@ -450,6 +552,18 @@
 }
 
 @media (max-width: 36rem) {
+  .me-identity-card {
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+  }
+
+  .me-display-name-form-inline {
+    width: 100%;
+  }
+
+  .me-display-name-form-inline input {
+    width: 100%;
+  }
+
   .me-display-name-form {
     align-items: stretch;
     flex-direction: column;
