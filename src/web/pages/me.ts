@@ -81,7 +81,7 @@ export async function registerMePage(app: FastifyInstance, assets: AssetRegistry
       return `<label class="me-profile-icon-choice${selectedIcon ? " me-profile-icon-choice-selected" : ""}" title="${htmlText(`${choice.specName} ${choice.className}`)}">
         <input type="radio" name="profile_icon_key" value="${htmlText(choice.key)}"${selectedIcon ? " checked" : ""} required>
         <img src="${htmlText(choice.url)}" alt="">
-        <span>${htmlText(choice.specName)}</span>
+        <span class="sr-only">${htmlText(`${choice.specName} ${choice.className}`)}</span>
       </label>`;
     }).join("\n");
 
@@ -120,8 +120,8 @@ export async function registerMePage(app: FastifyInstance, assets: AssetRegistry
             </div>
             <button type="button" class="button-secondary me-about-action" data-open-profile-icon-picker>${viewer.identityProfileIconUrl ? "Change icon" : "Choose icon"}</button>
           </div>
-          <dialog class="me-profile-icon-picker" data-profile-icon-picker aria-labelledby="profile-icon-picker-title">
-            <div class="me-profile-icon-picker-sheet">
+          <dialog class="main-picker me-profile-icon-picker" data-profile-icon-picker aria-labelledby="profile-icon-picker-title">
+            <div class="main-picker-sheet me-profile-icon-picker-sheet">
               <div class="main-picker-heading">
                 <h2 id="profile-icon-picker-title">Profile icon</h2>
                 <button type="button" class="dialog-close" data-close-profile-icon-picker aria-label="Close profile icon selection">×</button>
