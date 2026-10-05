@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedIdentity, SESSION_COOKIE_NAME } from "../../auth.js";
-import { setIdentityDisplayName } from "../../core/identity/identity-presentation.js";
+import { setIdentityDisplayName, setIdentityProfileIcon } from "../../core/identity/identity-presentation.js";
+import { specializationProfileIconUrl, wowProfileIconChoices } from "../../wow-iconography.js";
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage, type WebViewerCharacter } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
@@ -49,11 +50,23 @@ export async function registerMePage(app: FastifyInstance, assets: AssetRegistry
     return reply.redirect("/me");
   });
 
+  app.post("/me/profile-icon", async (request, reply) => {
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "not_authenticated" });
+    const body = request.body as { profile_icon_key?: unknown };
+    if (typeof body?.profile_icon_key !== "string" || !await specializationProfileIconUrl(body.profile_icon_key)) {
+      return reply.code(400).send({ error: "invalid_profile_icon" });
+    }
+    await setIdentityProfileIcon(identity.identityId, body.profile_icon_key);
+    return reply.redirect("/me");
+  });
+
   app.get("/me", async (request, reply) => {
     const viewer = await viewerForRequest(request.cookies[SESSION_COOKIE_NAME]);
     if (!viewer.authenticated) return reply.redirect("/auth/blizzard/start?return_to=%2Fme");
 
     const selected = viewer.mainCharacter;
+    const profileIconChoices = await wowProfileIconChoices();
     const characters = viewer.controlledCharacters.map((character) =>
       characterCard(
         character,
@@ -62,6 +75,15 @@ export async function registerMePage(app: FastifyInstance, assets: AssetRegistry
           selected.realmId === character.realmId,
       ),
     ).join("\n");
+
+    const profileIcons = profileIconChoices.map((choice) => {
+      const selectedIcon = viewer.identityProfileIconKey === choice.key;
+      return `<label class="me-profile-icon-choice${selectedIcon ? " me-profile-icon-choice-selected" : ""}" title="${htmlText(`${choice.specName} ${choice.className}`)}">
+        <input type="radio" name="profile_icon_key" value="${htmlText(choice.key)}"${selectedIcon ? " checked" : ""} required>
+        <img src="${htmlText(choice.url)}" alt="">
+        <span>${htmlText(choice.specName)}</span>
+      </label>`;
+    }).join("\n");
 
     const defaultCharacter = selected
       ? `<div class="me-about-field">
@@ -89,6 +111,13 @@ export async function registerMePage(app: FastifyInstance, assets: AssetRegistry
             <form class="me-display-name-form" method="post" action="/me/display-name">
               <input type="text" name="display_name" value="${htmlText(viewer.identityDisplayName ?? "")}" placeholder="${htmlText(viewer.identityLabel)}" maxlength="64" required aria-label="Display name">
               <button type="submit" class="button-secondary">Save</button>
+            </form>
+          </div>
+          <div class="me-about-field me-profile-icon-field">
+            <div class="me-about-field-copy"><h3>Profile icon</h3><p>Choose a World of Warcraft icon to represent you in Guild Operations.</p></div>
+            <form class="me-profile-icon-form" method="post" action="/me/profile-icon">
+              <div class="me-profile-icon-choices">${profileIcons}</div>
+              <button type="submit" class="button-secondary">Save icon</button>
             </form>
           </div>
           ${defaultCharacter}
