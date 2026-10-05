@@ -30,7 +30,7 @@ export async function registerMePage(app: FastifyInstance, assets: AssetRegistry
     if (!viewer.authenticated) return reply.redirect("/auth/blizzard/start?return_to=%2Fme");
 
     const selected = viewer.mainCharacter;
-    const characters = viewer.characters.map((character) =>
+    const characters = viewer.controlledCharacters.map((character) =>
       characterCard(
         character,
         selected !== null &&
