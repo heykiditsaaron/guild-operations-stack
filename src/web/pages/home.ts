@@ -34,7 +34,7 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
       : "";
     const primitives = homepage.primitives.map(renderPrimitive).join("\n");
     const editHomepage = viewer.authenticated && viewer.canConfigureGuildPresentation
-      ? `<a class="button-secondary home-edit-action" href="/admin/homepage">Edit homepage</a>`
+      ? `<div class="home-edit"><a href="/admin/homepage">Edit homepage</a></div>`
       : "";
 
     const html = renderPage(assets, {
@@ -44,13 +44,14 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
       viewer,
       stylesheets: ["home.css"],
       header: `
+        ${editHomepage}
         <div class="home-community-header">
           <p class="home-community-mark">World of Warcraft guild</p>
           <h1 id="page-title">${htmlText(viewer.guildPresentation.guildName)}</h1>
           <p class="home-community-lede">${htmlText(lede)}</p>
           ${supportingText}
         </div>`,
-      body: `<div class="home-community">${primitives}</div>${editHomepage ? `<div class="home-edit">${editHomepage}</div>` : ""}`,
+      body: `<div class="home-community">${primitives}</div>`,
     });
 
     return reply
