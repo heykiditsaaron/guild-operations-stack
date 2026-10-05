@@ -3,12 +3,13 @@ import { pool } from "../../db.js";
 export type IdentityPresentation = {
   label: string;
   displayName: string | null;
+  profileIconKey: string | null;
   wowAccountId: string | null;
 };
 
 export async function identityPresentation(identityId: string): Promise<IdentityPresentation> {
-  const result = await pool.query<{ display_name: string | null; wow_account_id: string }>(
-    "SELECT i.display_name, wai.wow_account_id FROM identities i JOIN wow_account_identities wai ON wai.identity_id = i.identity_id WHERE i.identity_id = $1",
+  const result = await pool.query<{ display_name: string | null; profile_icon_key: string | null; wow_account_id: string }>(
+    "SELECT i.display_name, i.profile_icon_key, wai.wow_account_id FROM identities i JOIN wow_account_identities wai ON wai.identity_id = i.identity_id WHERE i.identity_id = $1",
     [identityId],
   );
   const row = result.rows[0];
@@ -18,6 +19,7 @@ export async function identityPresentation(identityId: string): Promise<Identity
   return {
     label: displayName ?? (wowAccountId ? `WoW Account ${wowAccountId}` : identityId),
     displayName,
+    profileIconKey: row?.profile_icon_key ?? null,
     wowAccountId,
   };
 }
@@ -28,6 +30,15 @@ export async function setIdentityDisplayName(identityId: string, value: string):
   const result = await pool.query(
     "UPDATE identities SET display_name = $2 WHERE identity_id = $1",
     [identityId, displayName],
+  );
+  if (!result.rowCount) throw new Error("identity_not_found");
+}
+
+
+export async function setIdentityProfileIcon(identityId: string, profileIconKey: string): Promise<void> {
+  const result = await pool.query(
+    "UPDATE identities SET profile_icon_key = $2 WHERE identity_id = $1",
+    [identityId, profileIconKey],
   );
   if (!result.rowCount) throw new Error("identity_not_found");
 }
