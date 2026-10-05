@@ -8,6 +8,7 @@ import { guildTheme } from "../core/presentation/guild-theme.js";
 import { guildPresentation } from "../core/presentation/guild-presentation.js";
 import {
   GUILD_REFRESH_CAPABILITY,
+  GUILD_PRESENTATION_CONFIGURE_CAPABILITY,
   OPERATIONS_INSPECT_CAPABILITY,
   effectiveGuildAuthority,
   identityHasGuildCapability,
@@ -29,7 +30,7 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
     };
   }
 
-  const [controlledCharacterRecordIds, guildMemberCharacters, selectedMain, identityDisplay, guildAuthority, administration, canRefreshGuild, canInspectOperations, presentationContributions] = await Promise.all([
+  const [controlledCharacterRecordIds, guildMemberCharacters, selectedMain, identityDisplay, guildAuthority, administration, canRefreshGuild, canConfigureGuildPresentation, canInspectOperations, presentationContributions] = await Promise.all([
     controlledCharacterRecordIdsForIdentity(identity.identityId),
     controlledGuildMemberCharacters(identity.identityId),
     characterRepresentationForIdentity(identity.identityId),
@@ -37,6 +38,7 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
     effectiveGuildAuthority(identity.identityId),
     administrationAvailabilityForIdentity(identity.identityId),
     identityHasGuildCapability(identity.identityId, GUILD_REFRESH_CAPABILITY),
+    identityHasGuildCapability(identity.identityId, GUILD_PRESENTATION_CONFIGURE_CAPABILITY),
     identityHasGuildCapability(identity.identityId, OPERATIONS_INSPECT_CAPABILITY),
     webPresentationContributionsForIdentity(identity.identityId),
   ]);
@@ -58,6 +60,7 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
       ? [{ label: "Guild Operations Settings", href: "/admin" }]
       : [],
     operationsAvailable: false,
+    canConfigureGuildPresentation,
     identityLabel: identityDisplay.label,
     identityDisplayName: identityDisplay.displayName,
     identityProfileIconKey: identityDisplay.profileIconKey,
