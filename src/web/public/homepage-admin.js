@@ -1,63 +1,43 @@
 const homepageForm = document.querySelector("[data-homepage-form]");
 
 if (homepageForm) {
-  const sections = homepageForm.querySelector("[data-homepage-sections]");
+  const primitives = homepageForm.querySelector("[data-homepage-primitives]");
   const feedback = homepageForm.querySelector("[data-homepage-feedback]");
   const save = homepageForm.querySelector("[data-homepage-save]");
 
-  function cardEditor() {
-    const wrapper = document.createElement("div");
-    wrapper.className = "homepage-card-editor";
-    wrapper.dataset.homepageCard = "";
-    wrapper.innerHTML = `<label><span>Card title</span><input type="text" data-homepage-card-title></label><label><span>Card text</span><textarea rows="3" data-homepage-card-body></textarea></label>`;
-    return wrapper;
+  function controls() {
+    return `<div class="homepage-section-controls"><button type="button" class="button-secondary" data-homepage-move-up aria-label="Move piece up">↑</button><button type="button" class="button-secondary" data-homepage-move-down aria-label="Move piece down">↓</button><button type="button" class="button-secondary" data-homepage-remove>Remove</button></div>`;
   }
 
-  function sectionControls() {
-    return `<div class="homepage-section-controls"><button type="button" class="button-secondary" data-homepage-move-up aria-label="Move section up">↑</button><button type="button" class="button-secondary" data-homepage-move-down aria-label="Move section down">↓</button><button type="button" class="button-secondary" data-homepage-remove>Remove</button></div>`;
+  function widthField() {
+    return `<label><span>Width</span><select data-homepage-width><option value="full">Full</option><option value="half">Half</option><option value="third">Third</option></select></label>`;
   }
 
-  function commonFields() {
-    return `<label><span>Kicker <small>optional</small></span><input type="text" data-homepage-kicker></label><label><span>Heading <small>optional</small></span><input type="text" data-homepage-heading></label>`;
-  }
-
-  function addSection(kind) {
+  function addPrimitive(kind) {
     const article = document.createElement("article");
     article.className = "homepage-section-editor settings-panel";
-    article.dataset.homepageSection = "";
+    article.dataset.homepagePrimitive = "";
     article.dataset.kind = kind;
-    if (kind === "statement") {
-      article.innerHTML = `<div class="homepage-section-editor-heading"><strong>Statement</strong>${sectionControls()}</div><div class="homepage-section-fields">${commonFields()}<label><span>Text</span><textarea rows="3" data-homepage-body></textarea></label></div>`;
+
+    if (kind === "card") {
+      article.innerHTML = `<div class="homepage-section-editor-heading"><strong>Card</strong>${controls()}</div><div class="homepage-section-fields">${widthField()}<label><span>Title</span><input type="text" data-homepage-heading></label><label><span>Text</span><textarea rows="3" data-homepage-body></textarea></label></div>`;
     } else {
-      article.innerHTML = `<div class="homepage-section-editor-heading"><strong>Card group</strong>${sectionControls()}</div><div class="homepage-section-fields">${commonFields()}<label><span>Introduction <small>optional</small></span><textarea rows="3" data-homepage-body></textarea></label><label><span>Cards</span><select data-homepage-layout><option value="single">Single</option><option value="double">Double</option><option value="triple">Triple</option></select></label><div class="homepage-card-editors" data-homepage-cards></div></div>`;
-      article.querySelector("[data-homepage-cards]").append(cardEditor());
+      article.innerHTML = `<div class="homepage-section-editor-heading"><strong>Statement</strong>${controls()}</div><div class="homepage-section-fields">${widthField()}<label><span>Kicker <small>optional</small></span><input type="text" data-homepage-kicker></label><label><span>Heading <small>optional</small></span><input type="text" data-homepage-heading></label><label><span>Text</span><textarea rows="3" data-homepage-body></textarea></label></div>`;
     }
-    sections.append(article);
+
+    primitives.append(article);
     article.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
-  function syncCards(section) {
-    const layout = section.querySelector("[data-homepage-layout]");
-    const cards = section.querySelector("[data-homepage-cards]");
-    if (!layout || !cards) return;
-    const desired = layout.value === "triple" ? 3 : layout.value === "double" ? 2 : 1;
-    while (cards.children.length < desired) cards.append(cardEditor());
-    while (cards.children.length > desired) cards.lastElementChild.remove();
-  }
+  homepageForm.querySelector("[data-homepage-add-card]")?.addEventListener("click", () => addPrimitive("card"));
+  homepageForm.querySelector("[data-homepage-add-statement]")?.addEventListener("click", () => addPrimitive("statement"));
 
-  homepageForm.querySelector("[data-homepage-add-cards]")?.addEventListener("click", () => addSection("cards"));
-  homepageForm.querySelector("[data-homepage-add-statement]")?.addEventListener("click", () => addSection("statement"));
-
-  sections.addEventListener("change", (event) => {
-    if (event.target.matches("[data-homepage-layout]")) syncCards(event.target.closest("[data-homepage-section]"));
-  });
-
-  sections.addEventListener("click", (event) => {
-    const section = event.target.closest("[data-homepage-section]");
-    if (!section) return;
-    if (event.target.closest("[data-homepage-remove]")) section.remove();
-    if (event.target.closest("[data-homepage-move-up]") && section.previousElementSibling) sections.insertBefore(section, section.previousElementSibling);
-    if (event.target.closest("[data-homepage-move-down]") && section.nextElementSibling) sections.insertBefore(section.nextElementSibling, section);
+  primitives.addEventListener("click", (event) => {
+    const primitive = event.target.closest("[data-homepage-primitive]");
+    if (!primitive) return;
+    if (event.target.closest("[data-homepage-remove]")) primitive.remove();
+    if (event.target.closest("[data-homepage-move-up]") && primitive.previousElementSibling) primitives.insertBefore(primitive, primitive.previousElementSibling);
+    if (event.target.closest("[data-homepage-move-down]") && primitive.nextElementSibling) primitives.insertBefore(primitive.nextElementSibling, primitive);
   });
 
   homepageForm.addEventListener("submit", async (event) => {
@@ -68,23 +48,13 @@ if (homepageForm) {
     const payload = {
       lede: homepageForm.querySelector("[data-homepage-lede]").value,
       supportingText: homepageForm.querySelector("[data-homepage-supporting-text]").value,
-      sections: [...sections.querySelectorAll("[data-homepage-section]")].map((section) => {
-        const common = {
-          kind: section.dataset.kind,
-          kicker: section.querySelector("[data-homepage-kicker]").value,
-          heading: section.querySelector("[data-homepage-heading]").value,
-          body: section.querySelector("[data-homepage-body]").value,
-        };
-        if (section.dataset.kind === "statement") return common;
-        return {
-          ...common,
-          layout: section.querySelector("[data-homepage-layout]").value,
-          cards: [...section.querySelectorAll("[data-homepage-card]")].map((card) => ({
-            title: card.querySelector("[data-homepage-card-title]").value,
-            body: card.querySelector("[data-homepage-card-body]").value,
-          })),
-        };
-      }),
+      primitives: [...primitives.querySelectorAll("[data-homepage-primitive]")].map((primitive) => ({
+        kind: primitive.dataset.kind,
+        width: primitive.querySelector("[data-homepage-width]").value,
+        kicker: primitive.querySelector("[data-homepage-kicker]")?.value ?? null,
+        heading: primitive.querySelector("[data-homepage-heading]").value,
+        body: primitive.querySelector("[data-homepage-body]").value,
+      })),
     };
 
     try {
