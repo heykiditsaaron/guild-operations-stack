@@ -41,6 +41,8 @@ export type WebViewer =
       operationsAvailable: boolean;
       identityLabel: string;
       identityDisplayName: string | null;
+      identityProfileIconKey: string | null;
+      identityProfileIconUrl: string | null;
       guildRankDisplayName: string | null;
       mainCharacter: {
         characterId: string;
@@ -89,7 +91,7 @@ function renderMeControl(viewer: WebViewer, pathname: string): string {
     ? `<span class="me-identity-standing">${escapeHtml(viewer.guildRankDisplayName)}</span>`
     : "";
   return `<details class="me-menu menu-surface">
-    <summary class="me-control"><span data-me-label>${escapeHtml(viewer.identityLabel)}</span><span class="account-visual account-visual-generic" data-me-visual>${userGlyph()}</span></summary>
+    <summary class="me-control"><span data-me-label>${escapeHtml(viewer.identityLabel)}</span><span class="account-visual ${viewer.identityProfileIconUrl ? "account-visual-portrait" : "account-visual-generic"}" data-me-visual>${viewer.identityProfileIconUrl ? `<img src="${escapeHtml(viewer.identityProfileIconUrl)}" alt="" referrerpolicy="no-referrer">` : userGlyph()}</span></summary>
     <div class="menu-panel menu-panel-right me-menu-panel">
       <section class="me-menu-section me-identity-section">
         <span class="me-identity-name">${escapeHtml(viewer.identityLabel)}</span>
