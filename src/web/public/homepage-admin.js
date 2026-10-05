@@ -88,7 +88,7 @@ if (homepageForm) {
     };
 
     try {
-      const response = await fetch("/admin/general/homepage", {
+      const response = await fetch("/admin/homepage", {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
