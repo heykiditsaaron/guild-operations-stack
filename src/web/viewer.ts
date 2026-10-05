@@ -36,7 +36,10 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
     webPresentationContributionsForIdentity(identity.identityId),
   ]);
 
-  const characters = await characterProjections(controlledCharacterRecordIds);
+  const [controlledCharacters, characters] = await Promise.all([
+    characterProjections(controlledCharacterRecordIds),
+    characterProjections(guildMemberCharacters.map((character) => character.characterRecordId)),
+  ]);
   const guildMembershipByCharacterRecordId = new Map(guildMemberCharacters.map((character) => [character.characterRecordId, character]));
 
   return {
@@ -62,13 +65,26 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
           avatarUrl: selectedMain.avatarUrl,
         }
       : null,
-    characters: characters.map((character) => ({
+    controlledCharacters: controlledCharacters.map((character) => ({
       characterId: character.characterId,
       realmId: character.realmId,
       name: character.name,
       realmName: character.realmName,
       guildMember: guildMembershipByCharacterRecordId.has(character.characterRecordId),
       rankIndex: guildMembershipByCharacterRecordId.get(character.characterRecordId)?.rankIndex ?? null,
+      level: character.level,
+      className: character.className,
+      raceName: character.raceName,
+      activeSpecName: character.activeSpecName,
+      avatarUrl: character.avatarUrl,
+    })),
+    characters: characters.map((character) => ({
+      characterId: character.characterId,
+      realmId: character.realmId,
+      name: character.name,
+      realmName: character.realmName,
+      guildMember: true,
+      rankIndex: guildMembershipByCharacterRecordId.get(character.characterRecordId)!.rankIndex,
       level: character.level,
       className: character.className,
       raceName: character.raceName,
