@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import type { AssetRegistry } from "./web/assets.js";
 import { htmlText } from "./web/render.js";
-import { renderSetupDocument } from "./web/pages/setup.js";
+import { renderAccountSelectionDocument } from "./web/pages/setup.js";
 import { viewerForRequest } from "./web/viewer.js";
 import { acquireAuthority, authorizationUrl, exchangeAuthorizationCode, type BlizzardWowProfile } from "./blizzard.js";
 import { config, parseRegion, type Region } from "./config.js";
@@ -355,15 +355,31 @@ export async function registerAuthRoutes(app: FastifyInstance, assets: AssetRegi
          ) VALUES ($1,$2,$3,$4,$5,now() + ($6 * interval '1 minute'))`,
         [sha256(selectionToken), attempt.region, authority.principalId, authority.profile, returnTo, config.authAttemptTtlMinutes],
       );
-      const options = accounts.map((account) => {
-        const names = (account.characters ?? []).map((character) => htmlText(character.name)).slice(0, 4).join(", ");
+      const options = accounts.map((account, index) => {
+        const characters = (account.characters ?? []).map((character) => htmlText(character.name));
         const accountId = htmlText(account.wowAccountId);
-        const detail = names ? ` — ${names}` : "";
-        return `<label><input type="radio" name="wow_account_id" value="${accountId}" required> WoW Account ${accountId}${detail}</label>`;
-      }).join("<br>");
-      return reply.type("text/html; charset=utf-8").send(renderSetupDocument(
+        const characterSummary = characters.length
+          ? `<span class="account-selection-characters">${characters.join(" · ")}</span>`
+          : '<span class="account-selection-characters account-selection-characters-empty">No Characters found</span>';
+        return `<label class="account-selection-option">
+          <input type="radio" name="wow_account_id" value="${accountId}"${accounts.length === 1 || index === 0 ? " checked" : ""} required>
+          <span class="account-selection-indicator" aria-hidden="true"></span>
+          <span class="account-selection-copy">
+            <strong>WoW Account ${accountId}</strong>
+            ${characterSummary}
+          </span>
+        </label>`;
+      }).join("");
+      return reply.type("text/html; charset=utf-8").send(renderAccountSelectionDocument(
         assets,
-        `<p>Select the WoW Account you want to use for this Guild Operations session.</p><form method="post" action="/auth/blizzard/select-account"><input type="hidden" name="selection_token" value="${htmlText(selectionToken)}">${options}<p><button class="button-primary setup-action" type="submit">Continue</button></p></form>`,
+        `<form class="account-selection-form" method="post" action="/auth/blizzard/select-account">
+          <input type="hidden" name="selection_token" value="${htmlText(selectionToken)}">
+          <fieldset class="account-selection-options">
+            <legend class="sr-only">World of Warcraft account</legend>
+            ${options}
+          </fieldset>
+          <button class="button-primary setup-action" type="submit">Continue</button>
+        </form>`,
       ));
     } catch (error) {
       request.log.error({ err: error }, "Blizzard authentication ceremony failed");
