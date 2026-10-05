@@ -134,10 +134,9 @@ async function consumeAttempt(state: string): Promise<AuthenticationAttempt | nu
   };
 }
 
-async function eligibleCharacterPresentationTargets(
+async function controlledCharacterPresentationTargets(
   identityId: string,
 ): Promise<CharacterPresentationAcquisitionTarget[]> {
-  const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
   const result = await pool.query<{
     region: Region;
     realm_id: string;
@@ -148,19 +147,15 @@ async function eligibleCharacterPresentationTargets(
     `SELECT cr.region, cr.realm_id, cr.character_id, cr.name AS character_name, cr.realm_slug
        FROM controlled_character_roster ccr
        JOIN character_roster cr ON cr.character_record_id = ccr.character_record_id
-       JOIN guild_roster gr
-         ON gr.character_record_id = cr.character_record_id
-        AND gr.currently_present = true
       WHERE ccr.identity_id = $1
         AND ccr.currently_controlled = true
-        AND gr.guild_id = $2
-      ORDER BY gr.rank_index, cr.name`,
-    [identityId, guildId],
+      ORDER BY cr.name`,
+    [identityId],
   );
 
   return result.rows.map((row) => {
     if (!row.realm_slug) {
-      throw new Error(`Eligible character ${row.character_name} is missing realm_slug from the fresh account observation`);
+      throw new Error(`Controlled character ${row.character_name} is missing realm_slug from the fresh account observation`);
     }
     return {
       region: row.region,
@@ -294,7 +289,7 @@ export async function registerAuthRoutes(app: FastifyInstance, assets: AssetRegi
         }
 
         try {
-          const targets = await eligibleCharacterPresentationTargets(identity.identityId);
+          const targets = await controlledCharacterPresentationTargets(identity.identityId);
           const presentation = await acquireCharacterPresentation({ targets });
           const partial = presentation.failedProfiles > 0 || presentation.failedMedia > 0;
 
