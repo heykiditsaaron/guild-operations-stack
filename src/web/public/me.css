@@ -189,6 +189,67 @@
   gap: 0.75rem;
 }
 
+.me-about-card {
+  gap: 0;
+}
+
+.me-about-card .me-self-service-card-heading {
+  padding-bottom: 1rem;
+}
+
+.me-about-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  padding: 1rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.me-about-field-copy h3 {
+  margin-bottom: 0.2rem;
+  font-size: 0.95rem;
+}
+
+.me-about-field-copy p {
+  color: var(--theme-text-muted);
+  font-size: 0.84rem;
+}
+
+.me-display-name {
+  color: var(--theme-text-secondary);
+}
+
+.me-default-character {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.me-default-character-avatar {
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.me-about-action {
+  grid-column: 2;
+  width: auto;
+}
+
+.me-characters-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.me-characters-heading > button {
+  width: auto;
+  flex: 0 0 auto;
+}
+
 .me-character-card-list {
   display: grid;
   gap: 0.65rem;
@@ -281,6 +342,24 @@
 }
 
 @media (max-width: 36rem) {
+  .me-about-field {
+    grid-template-columns: 1fr;
+  }
+
+  .me-about-action {
+    grid-column: 1;
+    width: 100%;
+  }
+
+  .me-characters-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .me-characters-heading > button {
+    width: 100%;
+  }
+
   .me-self-service-summary {
     grid-template-columns: 1fr;
   }
