@@ -1,14 +1,15 @@
 import type { FastifyInstance } from "fastify";
-import { SESSION_COOKIE_NAME } from "../../auth.js";
+import { authenticatedIdentity, SESSION_COOKIE_NAME } from "../../auth.js";
 import { installationOperational } from "../../core/installation/guild-binding.js";
 import { guildHomepage, type GuildHomepagePrimitive } from "../../core/presentation/guild-homepage.js";
 import { recentPublishedGuildArticles } from "../../core/articles/guild-articles.js";
 import { identityPresentation } from "../../core/identity/identity-presentation.js";
+import { ARTICLE_PUBLISH_CAPABILITY, identityHasGuildCapability } from "../../core/authority/guild-permissions.js";
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
 
-async function renderPrimitive(primitive: GuildHomepagePrimitive, index: number): Promise<string> {
+async function renderPrimitive(primitive: GuildHomepagePrimitive, index: number, canPublishArticles: boolean): Promise<string> {
   if (primitive.kind === "articles") {
     const articles = await recentPublishedGuildArticles(primitive.count);
     if (articles.length === 0) return "";
@@ -17,7 +18,7 @@ async function renderPrimitive(primitive: GuildHomepagePrimitive, index: number)
       const published = new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(article.publishedAtUnix! * 1000));
       return `<article class="home-article-stub"><h3><a href="/articles/${htmlText(article.articleId)}">${htmlText(article.title)}</a></h3><p>By ${htmlText(author.label)} · ${htmlText(published)}</p></article>`;
     }));
-    return `<section class="home-articles" aria-labelledby="home-piece-${index}"><div class="home-articles-heading"><h2 id="home-piece-${index}">Latest Articles</h2><a href="/articles">All Articles →</a></div><div class="home-article-list">${items.join("")}</div></section>`;
+    return `<section class="home-articles" aria-labelledby="home-piece-${index}"><div class="home-articles-heading"><h2 id="home-piece-${index}">Latest Articles</h2><div class="home-articles-actions">${canPublishArticles ? '<a href="/articles/new">Create new</a>' : ""}<a href="/articles">All Articles →</a></div></div><div class="home-article-list">${items.join("")}</div></section>`;
   }
   if (primitive.kind === "card") {
     const texts = primitive.texts.map((text) => `<p>${htmlText(text)}</p>`).join("");
@@ -44,7 +45,7 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
     const supportingText = homepage.supportingText
       ? `<p class="home-community-note">${htmlText(homepage.supportingText)}</p>`
       : "";
-    const primitives = (await Promise.all(homepage.primitives.map(renderPrimitive))).join("\n");
+    const primitives = (await Promise.all(homepage.primitives.map((primitive, index) => renderPrimitive(primitive, index, canPublishArticles)))).join("\n");
     const editHomepage = viewer.authenticated && viewer.canConfigureGuildPresentation
       ? `<div class="home-edit"><a href="/admin/homepage">Edit homepage</a></div>`
       : "";
