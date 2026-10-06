@@ -178,8 +178,8 @@ export async function setGuildHomepage(homepage: GuildHomepage): Promise<GuildHo
           position,
           primitive.kind,
           primitive.kind === "statement" ? primitive.kicker : null,
-          primitive.heading,
-          primitive.kind === "statement" ? primitive.body : "",
+          primitive.kind === "articles" ? "Articles" : primitive.heading,
+          primitive.kind === "statement" ? primitive.body : primitive.kind === "articles" ? String(primitive.count) : "",
           JSON.stringify(primitive.kind === "card" ? primitive.texts : []),
         ],
       );
