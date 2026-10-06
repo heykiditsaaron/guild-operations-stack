@@ -82,3 +82,21 @@ export function renderArticleBody(source: string): string {
   if (code !== null) output.push(`<pre><code>${htmlText(code.join("\n"))}</code></pre>`);
   return output.join("\n");
 }
+
+
+export function articlePreviewText(source: string, maxLength = 180): string {
+  const plain = source
+    .replace(/^s*```.*$/gm, " ")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^-#\s+/gm, "")
+    .replace(/^>\s?/gm, "")
+    .replace(/^\s*(?:[-+*]|\d+[.)])\s+/gm, "")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/[*_~`]([^\n]*?)[*_~`]/g, "$1")
+    .replace(/^\s*(?:---+|___+|\*\*\*+)\s*$/gm, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (plain.length <= maxLength) return plain;
+  return plain.slice(0, maxLength).replace(/\s+\S*$/, "").trimEnd() + "…";
+}
