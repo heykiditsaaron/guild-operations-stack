@@ -85,6 +85,12 @@ if (homepageForm) {
             texts: [...primitive.querySelectorAll("[data-homepage-card-text]")].map((field) => field.value),
           };
         }
+        if (primitive.dataset.kind === "articles") {
+          return {
+            kind: "articles",
+            count: Number(primitive.querySelector("[data-homepage-article-count]").value),
+          };
+        }
         return {
           kind: "statement",
           kicker: primitive.querySelector("[data-homepage-kicker]").value,
