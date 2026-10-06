@@ -2246,3 +2246,40 @@ h1 {
     justify-content: flex-start;
   }
 }
+
+
+/* Guild Articles */
+.article-listing-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.article-list { display: grid; gap: 1rem; }
+.article-list-card {
+  display: grid;
+  gap: .55rem;
+  padding: 1.15rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.article-list-card h2, .article-list-card p { margin: 0; }
+.article-list-card h2 { font-family: Georgia, "Times New Roman", serif; }
+.article-meta { color: var(--theme-text-muted); font-size: .82rem; }
+.article-authoring { display: grid; gap: 1rem; width: min(100%, 52rem); }
+.article-authoring label { display: grid; gap: .45rem; }
+.article-authoring label > span { color: var(--theme-text-secondary); font-weight: 750; }
+.article-authoring input, .article-authoring textarea { width: 100%; }
+.article-authoring textarea { min-height: 24rem; resize: vertical; font: inherit; line-height: 1.55; }
+.article-authoring-actions { display: flex; flex-wrap: wrap; gap: .7rem; }
+.article-document { width: min(100%, 52rem); }
+.article-document-header { display: grid; gap: .6rem; margin-bottom: 2rem; }
+.article-document-header h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; }
+.article-body { line-height: 1.7; }
+.article-body pre { overflow-x: auto; padding: 1rem; border: 1px solid var(--border); border-radius: .65rem; background: var(--surface); }
+.article-body code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.article-body blockquote { margin-inline: 0; padding-left: 1rem; border-left: 2px solid var(--theme-accent-border); color: var(--theme-text-secondary); }
+.article-body hr { border: 0; border-top: 1px solid var(--border); margin-block: 2rem; }
+.article-drafts { margin-top: 2rem; }
+@media (max-width: 30rem) {
+  .article-listing-header { align-items: start; flex-direction: column; }
+}
