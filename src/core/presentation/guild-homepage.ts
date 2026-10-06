@@ -3,6 +3,10 @@ import { requireOperationalInstallationGuildBinding } from "../installation/guil
 
 export type GuildHomepagePrimitive =
   | {
+      kind: "articles";
+      count: number;
+    }
+  | {
       kind: "card";
       heading: string;
       texts: string[];
