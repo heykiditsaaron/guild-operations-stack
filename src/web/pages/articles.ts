@@ -22,8 +22,8 @@ function authoringForm(article?: GuildArticle): string {
   return `<form method="post" action="${action}" class="article-authoring">
     <label><span>Title</span><input name="title" maxlength="200" required value="${htmlText(article?.title ?? "")}"></label>
     <label><span>Article</span><textarea name="body" required>${htmlText(article?.body ?? "")}</textarea></label>
-    <p class="article-meta">Formatting supports headings, bold, italic, strikethrough, lists, blockquotes, links, inline code, fenced code blocks, and horizontal rules.</p>
-    <div class="article-authoring-actions"><button type="submit" class="button-primary">Save ${article ? "changes" : "draft"}</button>${article && article.publishedAtUnix === null ? `<button type="submit" formaction="/articles/${article.articleId}/publish" class="button-secondary">Publish</button>` : ""}</div>
+    <p class="article-meta">Formatting supports headings, bold, italic, strikethrough, subtext (-#), lists, blockquotes, links, inline code, fenced code blocks, and horizontal rules.</p>
+    <div class="article-authoring-actions"><button type="submit" class="button-primary">Save ${article ? "changes" : "draft"}</button>${article && article.publishedAtUnix === null ? `<button type="submit" formaction="/articles/${article.articleId}/publish" class="button-secondary">Publish</button>` : ""}<button type="submit" formaction="/articles/preview" formtarget="_blank" class="button-secondary">Preview</button></div>
   </form>`;
 }
 
@@ -59,6 +59,15 @@ export async function registerArticlesPage(app: FastifyInstance, assets: AssetRe
     const article=await createGuildArticle(identity.identityId,{title:body.title,body:body.body}); return reply.redirect(`/articles/${article.articleId}/edit`);
   });
 
+  app.post("/articles/preview", async (request, reply) => {
+    const token=request.cookies[SESSION_COOKIE_NAME]; const [viewer,identity]=await Promise.all([viewerForRequest(token),authenticatedIdentity(token)]);
+    if(!identity) return reply.code(401).send("Authentication is required.");
+    if(!await identityHasGuildCapability(identity.identityId,ARTICLE_PUBLISH_CAPABILITY)) return reply.code(403).send("Article publishing authority is required.");
+    const body=request.body as {title?:unknown;body?:unknown}; if(typeof body.title!=="string"||typeof body.body!=="string"||!body.title.trim()||!body.body.trim()) return reply.code(400).send("Title and Article body are required.");
+    const author=await identityPresentation(identity.identityId);
+    return reply.header("Cache-Control","no-store").type("text/html; charset=utf-8").send(renderPage(assets,{pathname:"/articles/preview",title:\`Preview: \${body.title.trim()} · \${viewer.guildPresentation.guildName}\`,viewer,secondaryNavigation:{kind:"back",label:"Close preview",href:"/articles"},header:\`<article class="article-document-header"><p class="eyebrow">Article Preview</p><h1 id="page-title">\${htmlText(body.title.trim())}</h1><p class="article-meta">By \${htmlText(author.label)} · Not published</p></article>\`,body:\`<article class="article-document"><div class="article-body">\${renderArticleBody(body.body)}</div></article>\`}));
+  });
+
   app.get("/articles/:articleId/edit", async (request, reply) => {
     const {articleId}=request.params as {articleId:string}; const token=request.cookies[SESSION_COOKIE_NAME]; const [viewer,identity]=await Promise.all([viewerForRequest(token),authenticatedIdentity(token)]);
     if(!identity) return reply.redirect(`/auth/blizzard/start?return_to=${encodeURIComponent(`/articles/${articleId}/edit`)}`);
@@ -83,6 +92,6 @@ export async function registerArticlesPage(app: FastifyInstance, assets: AssetRe
     const {articleId}=request.params as {articleId:string}; const token=request.cookies[SESSION_COOKIE_NAME]; const [viewer,identity,article]=await Promise.all([viewerForRequest(token),authenticatedIdentity(token),publishedGuildArticle(articleId)]);
     if(!article) return reply.code(404).send("Article not found.");
     const [author,canEdit]=await Promise.all([identityPresentation(article.authorIdentityId),Promise.resolve(identity?.identityId===article.authorIdentityId)]);
-    return reply.header("Cache-Control","no-cache").type("text/html; charset=utf-8").send(renderPage(assets,{pathname:`/articles/${articleId}`,title:`${article.title} · ${viewer.guildPresentation.guildName}`,viewer,secondaryNavigation:{kind:"back",label:"Articles",href:"/articles"},header:`<article class="article-document-header"><p class="eyebrow">Guild Article</p><h1 id="page-title">${htmlText(article.title)}</h1><p class="article-meta">By ${htmlText(author.label)} · Published ${date(article.publishedAtUnix!)}${article.updatedAtUnix>article.publishedAtUnix!?` · Updated ${date(article.updatedAtUnix)}`:""}</p>${canEdit?`<div><a href="/articles/${article.articleId}/edit">Edit Article</a></div>`:""}</article>`,body:`<article class="article-document"><div class="article-body">${renderArticleBody(article.body)}</div></article>`}));
+    return reply.header("Cache-Control","no-cache").type("text/html; charset=utf-8").send(renderPage(assets,{pathname:`/articles/${articleId}`,title:`${article.title} · ${viewer.guildPresentation.guildName}`,viewer,secondaryNavigation:{kind:"back",label:"Articles",href:"/articles"},header:`<article class="article-document-header"><p class="eyebrow">Guild Article</p><h1 id="page-title">${htmlText(article.title)}</h1><p class="article-meta">By ${htmlText(author.label)} · Published ${date(article.publishedAtUnix!)}${article.updatedAtUnix>article.publishedAtUnix!?` · Updated ${date(article.updatedAtUnix)}`:""}</p>${canEdit?`<p class="article-meta"><a href="/articles/${article.articleId}/edit">Edit</a></p>`:""}</article>`,body:`<article class="article-document"><div class="article-body">${renderArticleBody(article.body)}</div></article>`}));
   });
 }
