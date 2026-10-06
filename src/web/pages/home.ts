@@ -8,7 +8,8 @@ import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
 
-async function renderPrimitive(primitive: GuildHomepagePrimitive, index: number): Promise<string> {\n  if (primitive.kind === "articles") {
+async function renderPrimitive(primitive: GuildHomepagePrimitive, index: number): Promise<string> {
+  if (primitive.kind === "articles") {
     const articles = await recentPublishedGuildArticles(primitive.count);
     if (articles.length === 0) return "";
     const items = await Promise.all(articles.map(async (article) => {
