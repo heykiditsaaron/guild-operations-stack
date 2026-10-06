@@ -2280,6 +2280,7 @@ h1 {
 .article-body blockquote { margin-inline: 0; padding-left: 1rem; border-left: 2px solid var(--theme-accent-border); color: var(--theme-text-secondary); }
 .article-body hr { border: 0; border-top: 1px solid var(--border); margin-block: 2rem; }
 .article-drafts { margin-top: 2rem; }
+.article-remove-form { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--border); }
 @media (max-width: 30rem) {
   .article-listing-header { align-items: start; flex-direction: column; }
 }
