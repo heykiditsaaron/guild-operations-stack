@@ -78,7 +78,12 @@ export function parseGuildHomepage(value: unknown): GuildHomepage | undefined {
   const primitives: GuildHomepagePrimitive[] = [];
   for (const rawPrimitive of candidate.primitives) {
     if (!rawPrimitive || typeof rawPrimitive !== "object") return undefined;
-    const primitive = rawPrimitive as { kind?: unknown; kicker?: unknown; heading?: unknown; body?: unknown; texts?: unknown; count?: unknown };\n    if (primitive.kind === "articles") {\n      if (!Number.isInteger(primitive.count) || (primitive.count as number) < 1 || (primitive.count as number) > 10 || primitives.some((item) => item.kind === "articles")) return undefined;\n      primitives.push({ kind: "articles", count: primitive.count as number });\n      continue;\n    }
+    const primitive = rawPrimitive as { kind?: unknown; kicker?: unknown; heading?: unknown; body?: unknown; texts?: unknown; count?: unknown };
+    if (primitive.kind === "articles") {
+      if (!Number.isInteger(primitive.count) || (primitive.count as number) < 1 || (primitive.count as number) > 10 || primitives.some((item) => item.kind === "articles")) return undefined;
+      primitives.push({ kind: "articles", count: primitive.count as number });
+      continue;
+    }
     const heading = compactText(primitive.heading ?? null);
     if (heading === undefined) return undefined;
 
@@ -126,7 +131,11 @@ export async function guildHomepage(): Promise<GuildHomepage> {
   if (!settings && primitiveResult.rows.length === 0) return INITIAL_GUILD_HOMEPAGE;
 
   const primitives: GuildHomepagePrimitive[] = primitiveResult.rows.map((row) => {
-    if (row.kind === "articles") {\n      const parsed = Number.parseInt(row.body, 10);\n      return { kind: "articles", count: Number.isInteger(parsed) && parsed >= 1 && parsed <= 10 ? parsed : 3 };\n    }\n    if (row.kind === "card") {
+    if (row.kind === "articles") {
+      const parsed = Number.parseInt(row.body, 10);
+      return { kind: "articles", count: Number.isInteger(parsed) && parsed >= 1 && parsed <= 10 ? parsed : 3 };
+    }
+    if (row.kind === "card") {
       const texts = Array.isArray(row.text_cells) ? row.text_cells.filter((value): value is string => typeof value === "string") : [row.body];
       return { kind: "card", heading: row.heading ?? "", texts };
     }
