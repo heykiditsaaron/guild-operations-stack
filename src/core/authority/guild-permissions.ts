@@ -11,6 +11,8 @@ export const MODULES_CONFIGURE_CAPABILITY = "modules.configure";
 export const THEME_CONFIGURE_CAPABILITY = "theme.configure";
 export const GUILD_PRESENTATION_CONFIGURE_CAPABILITY = "guild.presentation.configure";
 export const OPERATIONS_INSPECT_CAPABILITY = "operations.inspect";
+export const ARTICLE_PUBLISH_CAPABILITY = "article.publish";
+export const ARTICLE_REMOVE_CAPABILITY = "article.remove";
 
 
 export type EffectiveGuildAuthority = {
