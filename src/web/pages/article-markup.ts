@@ -58,7 +58,9 @@ export function renderArticleBody(source: string): string {
     }
     if (/^\s*\`\`\`/.test(line)) { flushBlocks(); code = []; continue; }
     if (/^\s*(---+|___+|\*\*\*+)\s*$/.test(line)) { flushBlocks(); output.push("<hr>"); continue; }
-    const subtext = /^-#\s+(.+)$/.exec(line);\n    if (subtext) { flushBlocks(); output.push(`<p class="article-meta">${inlineMarkup(subtext[1])}</p>`); continue; }\n    const heading = /^(#{1,6})\s+(.+)$/.exec(line);
+    const subtext = /^-#\s+(.+)$/.exec(line);
+    if (subtext) { flushBlocks(); output.push(`<p class="article-meta">${inlineMarkup(subtext[1])}</p>`); continue; }
+    const heading = /^(#{1,6})\s+(.+)$/.exec(line);
     if (heading) { flushBlocks(); const level = heading[1].length; output.push(`<h${level}>${inlineMarkup(heading[2])}</h${level}>`); continue; }
     const quoted = /^>\s?(.*)$/.exec(line);
     if (quoted) { flushParagraph(); closeList(); quote.push(quoted[1]); continue; }
