@@ -34,7 +34,7 @@ if (homepageForm) {
     article.dataset.homepagePrimitive = "";
     article.dataset.kind = kind;
 
-    if (kind === "card") {
+    if (kind === "articles") {\n      article.innerHTML = `<div class="homepage-section-editor-heading"><strong>Articles</strong>${controls()}</div><div class="homepage-section-fields"><label><span>Recent Articles</span><input type="number" min="1" max="10" value="3" data-homepage-article-count></label><p>Guild Operations shows the most recently published Articles here.</p></div>`;\n    } else if (kind === "card") {
       article.innerHTML = `<div class="homepage-section-editor-heading"><strong>Card</strong>${controls()}</div><div class="homepage-section-fields"><label><span>Title</span><input type="text" data-homepage-heading></label><div class="homepage-card-texts" data-homepage-card-texts></div><div><button type="button" class="button-secondary homepage-add-text" data-homepage-add-text>+ Add text</button></div></div>`;
       article.querySelector("[data-homepage-card-texts]").append(cardTextField(0));
     } else {
@@ -46,7 +46,7 @@ if (homepageForm) {
   }
 
   homepageForm.querySelector("[data-homepage-add-card]")?.addEventListener("click", () => addPrimitive("card"));
-  homepageForm.querySelector("[data-homepage-add-statement]")?.addEventListener("click", () => addPrimitive("statement"));
+  homepageForm.querySelector("[data-homepage-add-statement]")?.addEventListener("click", () => addPrimitive("statement"));\n  homepageForm.querySelector("[data-homepage-add-articles]")?.addEventListener("click", (event) => { addPrimitive("articles"); event.currentTarget.remove(); });
 
   primitives.addEventListener("click", (event) => {
     const primitive = event.target.closest("[data-homepage-primitive]");
