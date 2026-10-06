@@ -144,7 +144,7 @@
 }
 
 
-.home-articles { display: grid; gap: 1rem; }
+.home-articles { display: grid; gap: 0.65rem; }
 .home-articles-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
 .home-articles-heading h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.35rem, 3vw, 1.8rem); font-weight: 500; letter-spacing: -0.025em; }
 .home-articles-heading a { color: var(--theme-text-muted); font-size: 0.86rem; font-weight: 700; text-decoration: none; }
