@@ -5,6 +5,8 @@ import {
   GUILD_REFRESH_CAPABILITY,
   GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY,
   GUILD_PRESENTATION_CONFIGURE_CAPABILITY,
+  ARTICLE_PUBLISH_CAPABILITY,
+  ARTICLE_REMOVE_CAPABILITY,
   MODULES_CONFIGURE_CAPABILITY,
   OPERATIONS_INSPECT_CAPABILITY,
   THEME_CONFIGURE_CAPABILITY,
@@ -46,6 +48,8 @@ export function registerGlobalGuildCapabilityDefinitions(): void {
     { key: THEME_CONFIGURE_CAPABILITY, namespace: "global", namespaceLabel: "Global", label: "Configure theme", description: "Select the visual theme used by Guild Operations for this guild.", defaultPermittedRanks: [] },
     { key: GUILD_PRESENTATION_CONFIGURE_CAPABILITY, namespace: "global", namespaceLabel: "Global", label: "Configure guild presentation", description: "Configure the guild homepage and optional presentation destinations.", defaultPermittedRanks: [] },
     { key: OPERATIONS_INSPECT_CAPABILITY, namespace: "global", namespaceLabel: "Global", label: "Inspect operations", description: "Inspect operational history and recorded failures.", defaultPermittedRanks: [1, 2] },
+    { key: ARTICLE_PUBLISH_CAPABILITY, namespace: "global", namespaceLabel: "Global", label: "Publish Articles", description: "Create, edit, publish, and remove your own guild Articles.", defaultPermittedRanks: [] },
+    { key: ARTICLE_REMOVE_CAPABILITY, namespace: "global", namespaceLabel: "Global", label: "Remove Articles", description: "Remove guild Articles authored by another member.", defaultPermittedRanks: [] },
   ]);
 }
 
