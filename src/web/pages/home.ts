@@ -35,10 +35,13 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
   app.get("/", async (request, reply) => {
     if (!(await installationOperational())) return reply.redirect("/setup");
 
-    const [viewer, homepage] = await Promise.all([
-      viewerForRequest(request.cookies[SESSION_COOKIE_NAME]),
+    const sessionToken = request.cookies[SESSION_COOKIE_NAME];
+    const [viewer, homepage, identity] = await Promise.all([
+      viewerForRequest(sessionToken),
       guildHomepage(),
+      authenticatedIdentity(sessionToken),
     ]);
+    const canPublishArticles = identity ? await identityHasGuildCapability(identity.identityId, ARTICLE_PUBLISH_CAPABILITY) : false;
 
     const defaultLede = `A World of Warcraft guild.`;
     const lede = homepage.lede ?? defaultLede;
