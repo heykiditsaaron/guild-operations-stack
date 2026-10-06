@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedIdentity, SESSION_COOKIE_NAME } from "../../auth.js";
-import { ARTICLE_PUBLISH_CAPABILITY, identityHasGuildCapability } from "../../core/authority/guild-permissions.js";
-import { createGuildArticle, guildArticlesForAuthor, publishedGuildArticle, publishGuildArticle, recentPublishedGuildArticles, updateGuildArticle, type GuildArticle } from "../../core/articles/guild-articles.js";
+import { ARTICLE_PUBLISH_CAPABILITY, ARTICLE_REMOVE_CAPABILITY, identityHasGuildCapability } from "../../core/authority/guild-permissions.js";
+import { createGuildArticle, guildArticlesForAuthor, publishedGuildArticle, publishGuildArticle, recentPublishedGuildArticles, removeGuildArticle, updateGuildArticle, type GuildArticle } from "../../core/articles/guild-articles.js";
 import { identityPresentation } from "../../core/identity/identity-presentation.js";
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage } from "../render.js";
@@ -88,10 +88,17 @@ export async function registerArticlesPage(app: FastifyInstance, assets: AssetRe
     await publishGuildArticle(identity.identityId,articleId); return reply.redirect(`/articles/${articleId}`);
   });
 
+  app.post("/articles/:articleId/remove", async (request, reply) => {
+    const identity=await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]); if(!identity) return reply.code(401).send("Authentication is required.");
+    const {articleId}=request.params as {articleId:string};
+    await removeGuildArticle(identity.identityId,articleId);
+    return reply.redirect("/articles");
+  });
+
   app.get("/articles/:articleId", async (request, reply) => {
     const {articleId}=request.params as {articleId:string}; const token=request.cookies[SESSION_COOKIE_NAME]; const [viewer,identity,article]=await Promise.all([viewerForRequest(token),authenticatedIdentity(token),publishedGuildArticle(articleId)]);
     if(!article) return reply.code(404).send("Article not found.");
-    const [author,canEdit]=await Promise.all([identityPresentation(article.authorIdentityId),Promise.resolve(identity?.identityId===article.authorIdentityId)]);
-    return reply.header("Cache-Control","no-cache").type("text/html; charset=utf-8").send(renderPage(assets,{pathname:`/articles/${articleId}`,title:`${article.title} · ${viewer.guildPresentation.guildName}`,viewer,secondaryNavigation:{kind:"back",label:"Articles",href:"/articles"},header:`<article class="article-document-header"><p class="eyebrow">Guild Article</p><h1 id="page-title">${htmlText(article.title)}</h1><p class="article-meta">By ${htmlText(author.label)} · Published ${date(article.publishedAtUnix!)}${article.updatedAtUnix>article.publishedAtUnix!?` · Updated ${date(article.updatedAtUnix)}`:""}${canEdit?` · <a href="/articles/${article.articleId}/edit">Edit</a>`:""}</p></article>`,body:`<article class="article-document"><div class="article-body">${renderArticleBody(article.body)}</div></article>`}));
+    const [author,canEdit,canRemoveOthers]=await Promise.all([identityPresentation(article.authorIdentityId),Promise.resolve(identity?.identityId===article.authorIdentityId),identity ? identityHasGuildCapability(identity.identityId,ARTICLE_REMOVE_CAPABILITY) : Promise.resolve(false)]);\n    const canRemove=Boolean(identity)&&(canEdit||canRemoveOthers);
+    return reply.header("Cache-Control","no-cache").type("text/html; charset=utf-8").send(renderPage(assets,{pathname:`/articles/${articleId}`,title:`${article.title} · ${viewer.guildPresentation.guildName}`,viewer,secondaryNavigation:{kind:"back",label:"Articles",href:"/articles"},header:`<article class="article-document-header"><p class="eyebrow">Guild Article</p><h1 id="page-title">${htmlText(article.title)}</h1><p class="article-meta">By ${htmlText(author.label)} · Published ${date(article.publishedAtUnix!)}${article.updatedAtUnix>article.publishedAtUnix!?` · Updated ${date(article.updatedAtUnix)}`:""}${canEdit?` · <a href="/articles/${article.articleId}/edit">Edit</a>`:""}</p></article>`,body:`<article class="article-document"><div class="article-body">${renderArticleBody(article.body)}</div>${canRemove?`<form method="post" action="/articles/${article.articleId}/remove" class="article-remove-form" onsubmit="return confirm(\'Remove this Article? This cannot be undone.\')"><button type="submit" class="button-destructive">Remove Article</button></form>`:""}</article>`}));
   });
 }
