@@ -1,6 +1,6 @@
 # Module Conformity
 
-Guild Operations Modules own native, concrete guild participation capabilities. This doctrine defines the application-wide invariants every Module must respect regardless of semantic family. External-system integrations are Plugins and are governed by the application-wide ownership rules in [Architecture](architecture.md), not classified as Modules merely because they are packaged or configurable.
+Guild Operations Modules own native, concrete guild participation capabilities. This doctrine defines the application-wide invariants every Module must respect regardless of semantic family. External-system integrations are separate from Modules and Activity plugins. They own procedure and reality belonging to the external system while participating in Guild Operations through contracts owned by the corresponding Guild Operations domains. An integration may consume Guild Operations truth or originate authenticated interactions without acquiring authority over the Guild Operations procedure those interactions invoke.
 
 A module family may add stronger semantic governance. Guild Activity modules, for example, are additionally governed by [Guild Activity](guild-activity.md). Family doctrine does not transfer domain ownership into shared machinery.
 
@@ -14,7 +14,7 @@ Shared abstractions emerge only from repeated concrete pressure.
 
 ## Application boundary
 
-A module owns application operations for its authoritative behavior. Web, REST, Discord, and other interaction surfaces are adapters over those operations rather than independent owners of the same procedure.
+A module owns application operations for its authoritative behavior. Web, REST, Discord, and other interaction surfaces are adapters over those operations rather than independent owners of the same procedure. An external integration may be authoritative for provider-specific facts, including the external Identity through which an interaction originated, while Guild Operations remains authoritative for actor resolution and the receiving application procedure.
 
 An adapter may translate representation, choose presentation language, and enforce surface-specific concerns, but it must not reconstruct module lifecycle, mutation rules, or authority that belongs to the application operation.
 
