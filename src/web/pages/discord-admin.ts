@@ -5,7 +5,8 @@ import { installationAbsoluteUrl } from "../../core/installation/public-origin.j
 import {
   discordIntegrationConfiguration,
   markDiscordApplicationEstablished,
-  storeDiscordIntegrationConfiguration,
+  replaceDiscordApplicationCredentials,
+  setDiscordIntegrationEnabled,
 } from "../../integrations/discord/configuration.js";
 import { discordBotInstallUrl, verifyDiscordApplication } from "../../integrations/discord/api.js";
 import type { AssetRegistry } from "../assets.js";
@@ -50,8 +51,8 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
           ${installUrl && !configuration?.discordGuildId ? `<div><h3>Install in your Discord server</h3><p>Choose the Discord server this Guild Operations deployment should use. After installation, Guild Operations will verify the bot relationship before binding the server.</p><p><a class="button-primary" href="${htmlText(installUrl)}" target="_blank" rel="noreferrer">Install in Discord Server</a></p></div>` : ""}
           <form method="post" action="/admin/discord">
             <label><span>Application ID</span><input name="application_id" value="${htmlText(configuration?.applicationId ?? "")}" required></label>
-            <label><span>Client secret</span><input type="password" name="client_secret" autocomplete="new-password" required></label>
-            <label><span>Bot token</span><input type="password" name="bot_token" autocomplete="new-password" required></label>
+            <label><span>Client secret</span><input type="password" name="client_secret" autocomplete="new-password"${configuration ? "" : " required"}><small>${configuration ? "Leave blank to keep the stored secret." : "Required for initial setup."}</small></label>
+            <label><span>Bot token</span><input type="password" name="bot_token" autocomplete="new-password"${configuration ? "" : " required"}><small>${configuration ? "Leave blank to keep the stored token." : "Required for initial setup."}</small></label>
             <label><input type="checkbox" name="enabled" value="true"${configuration?.enabled ? " checked" : ""}> <span>Enable Discord Integration</span></label>
             <button type="submit" class="button-primary">Save and verify Discord application</button>
           </form>
@@ -80,14 +81,12 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     if (typeof body.application_id !== "string" || typeof body.client_secret !== "string" || typeof body.bot_token !== "string") {
       return reply.code(400).send({ error: "invalid_discord_configuration" });
     }
-    const existing = await discordIntegrationConfiguration();
-    await storeDiscordIntegrationConfiguration({
-      enabled: body.enabled === "true",
+    await replaceDiscordApplicationCredentials({
       applicationId: body.application_id,
       clientSecret: body.client_secret,
       botToken: body.bot_token,
-      discordGuildId: existing?.discordGuildId ?? null,
     });
+    await setDiscordIntegrationEnabled(body.enabled === "true");
     const stored = await discordIntegrationConfiguration();
     if (!stored) return reply.code(500).send({ error: "discord_configuration_not_stored" });
     try {
