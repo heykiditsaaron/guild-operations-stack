@@ -148,7 +148,7 @@ export async function registerMePage(app: FastifyInstance, assets: AssetRegistry
             <div class="me-about-field-copy"><h3>Discord</h3><p>Connect a Discord Identity to use the same Guild Operations Actor when an allowed action originates in Discord.</p></div>
             ${discordIdentity
               ? `<div><strong>${htmlText(discordIdentity.username ?? "Discord user")}</strong><p class="me-self-service-empty">Discord ID ${htmlText(discordIdentity.discordUserId)} · Connected</p></div>`
-              : '<p class="me-self-service-empty">No Discord account connected. Discord authorization will be available once the Integration is established.</p>'}
+              : '<div><p class="me-self-service-empty">No Discord account connected.</p><a class="button-secondary me-about-action" href="/integrations/discord/oauth/start">Connect Discord</a></div>'}
           </div>
         </section>
 
