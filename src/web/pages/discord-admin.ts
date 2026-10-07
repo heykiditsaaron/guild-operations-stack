@@ -47,16 +47,31 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
         <h2 id="discord-heading">Discord Integration</h2>
         <div class="settings-panel">
           <div><h3>Status</h3><p><strong>${htmlText(readiness)}</strong></p>${configuration?.applicationVerifiedAt ? `<p>Application: ${htmlText(configuration.applicationName ?? configuration.applicationId)}${configuration.botUsername ? ` · Bot: ${htmlText(configuration.botUsername)}` : ""}</p>` : ""}<p>Discord remains authoritative for Discord application and server authorization. Guild Operations stores only the relationship and credentials needed to operate the Integration.</p></div>
-          <div class="discord-setup-guide"><h3>Set up your Discord application</h3><p>Guild Operations uses a Discord application owned by your guild. Discord creates a bot user for a new application, so you do not need to build one yourself.</p><ol><li><strong>Create the application.</strong> Open the <a href="https://discord.com/developers/applications" target="_blank" rel="noreferrer">Discord Developer Portal</a>, choose <strong>New Application</strong>, and give it a name. On <strong>General Information</strong>, copy the <strong>Application ID</strong> below.</li><li><strong>Add the OAuth redirect.</strong> In the application’s <strong>OAuth2</strong> settings, add this exact redirect URI:<div class="discord-callback"><code>${htmlText(callbackUrl)}</code><button type="button" class="button-secondary" data-copy-discord-callback>Copy</button></div></li><li><strong>Get the client secret.</strong> In <strong>OAuth2</strong>, copy or reset the <strong>Client Secret</strong> and enter it below.</li><li><strong>Get the bot token.</strong> Open <strong>Bot</strong> in the sidebar and reset/copy the bot <strong>Token</strong>. Treat it like a password and enter it only into your own Guild Operations installation.</li><li><strong>Verify the application.</strong> Guild Operations will verify that the bot token belongs to the Application ID before considering the application established.</li></ol><p><a class="button-secondary" href="https://discord.com/developers/applications" target="_blank" rel="noreferrer">Open Discord Developer Portal</a></p></div>
-          ${installUrl && !configuration?.discordGuildId ? `<div><h3>Install in your Discord server</h3><p>Choose the Discord server this Guild Operations deployment should use. After installation, Guild Operations will verify the bot relationship before binding the server.</p><p><a class="button-primary" href="${htmlText(installUrl)}" target="_blank" rel="noreferrer">Install in Discord Server</a></p></div>` : ""}
-          <div class="discord-credential-section"><h3>Credentials and verification</h3><p>Enter credentials from your Discord application. Existing secrets are never shown again.</p>
-          <form class="discord-credential-form" method="post" action="/admin/discord">
-            <label><span>Application ID</span><input name="application_id" value="${htmlText(configuration?.applicationId ?? "")}" required></label>
-            <label><span>Client secret</span><input type="password" name="client_secret" autocomplete="new-password"${configuration ? "" : " required"}><small>${configuration ? "Leave blank to keep the stored secret." : "Required for initial setup."}</small></label>
-            <label><span>Bot token</span><input type="password" name="bot_token" autocomplete="new-password"${configuration ? "" : " required"}><small>${configuration ? "Leave blank to keep the stored token." : "Required for initial setup."}</small></label>
-            <label class="discord-enablement"><input type="checkbox" name="enabled" value="true"${configuration?.enabled ? " checked" : ""}> <span>Enable Discord Integration</span></label>
-            <button type="submit" class="button-primary">Save and verify Discord application</button>
-          </form></div>
+          <form class="discord-setup-guide discord-credential-form" method="post" action="/admin/discord">
+            <h3>Set up your Discord application</h3>
+            <p>Guild Operations uses a Discord application owned by your guild. Discord creates its bot user automatically.</p>
+            <ol class="discord-setup-steps">
+              <li><strong>Create the application.</strong> Open the <a href="https://discord.com/developers/applications" target="_blank" rel="noreferrer">Discord Developer Portal</a>, select <strong>New Application</strong>, and name it. Find the Application ID under <strong>General Information</strong>.
+                <label class="discord-field"><span>Application ID</span><input name="application_id" value="${htmlText(configuration?.applicationId ?? "")}" required></label>
+              </li>
+              <li><strong>Configure OAuth.</strong> Under <strong>OAuth2</strong>, register this exact redirect URI:
+                <div class="discord-callback"><code>${htmlText(callbackUrl)}</code><button type="button" class="button-secondary" data-copy-discord-callback>Copy</button></div>
+                Then copy or reset the Client Secret.
+                <label class="discord-field"><span>Client secret</span><input type="password" name="client_secret" autocomplete="new-password"${configuration ? "" : " required"}><small>${configuration ? "Leave blank to retain the stored secret." : "Required for initial setup."}</small></label>
+              </li>
+              <li><strong>Configure the bot.</strong> Open <strong>Bot</strong> in the Developer Portal and copy or reset the bot Token. Treat it as a password.
+                <label class="discord-field"><span>Bot token</span><input type="password" name="bot_token" autocomplete="new-password"${configuration ? "" : " required"}><small>${configuration ? "Leave blank to retain the stored token." : "Required for initial setup."}</small></label>
+              </li>
+              <li><strong>Verify the application.</strong> Guild Operations checks that the bot token belongs to the specified application.
+                <button type="submit" class="button-primary discord-verify-action">Save and verify Discord application</button>
+              </li>
+            </ol>
+            <div class="discord-enablement-row">
+              <div><strong>Discord Integration</strong><p>Enable Discord once you want Guild Operations to operate the connection. Setup and verification can be completed while disabled.</p></div>
+              <label class="switch discord-enablement"><input type="checkbox" name="enabled" value="true"${configuration?.enabled ? " checked" : ""}><span class="switch-control" aria-hidden="true"></span><span>${configuration?.enabled ? "On" : "Off"}</span></label>
+            </div>
+          </form>
+          ${installUrl && !configuration?.discordGuildId ? `<div class="discord-server-install"><h3>Install in your Discord server</h3><p>Choose the server for this deployment. Guild Operations verifies the bot relationship before binding the server.</p><a class="button-primary" href="${htmlText(installUrl)}" target="_blank" rel="noreferrer">Install in Discord Server</a></div>` : ""}
         </div>
       </section>
     </div>`;
