@@ -47,7 +47,6 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
             <label><span>Public key</span><input name="public_key" value="${htmlText(configuration?.publicKey ?? "")}"></label>
             <label><span>Client secret</span><input type="password" name="client_secret" autocomplete="new-password" required></label>
             <label><span>Bot token</span><input type="password" name="bot_token" autocomplete="new-password" required></label>
-            <label><span>Discord server ID</span><input name="discord_guild_id" value="${htmlText(configuration?.discordGuildId ?? "")}" placeholder="Established during Discord authorization"></label>
             <label><input type="checkbox" name="enabled" value="true"${configuration?.enabled ? " checked" : ""}> <span>Enable Discord Integration</span></label>
             <button type="submit" class="button-primary">Save Discord configuration</button>
           </form>
@@ -76,13 +75,14 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     if (typeof body.application_id !== "string" || typeof body.client_secret !== "string" || typeof body.bot_token !== "string") {
       return reply.code(400).send({ error: "invalid_discord_configuration" });
     }
+    const existing = await discordIntegrationConfiguration();
     await storeDiscordIntegrationConfiguration({
       enabled: body.enabled === "true",
       applicationId: body.application_id,
       publicKey: typeof body.public_key === "string" ? body.public_key : null,
       clientSecret: body.client_secret,
       botToken: body.bot_token,
-      discordGuildId: typeof body.discord_guild_id === "string" ? body.discord_guild_id : null,
+      discordGuildId: existing?.discordGuildId ?? null,
     });
     return reply.redirect("/admin/discord");
   });
