@@ -1,8 +1,9 @@
 import { pool } from "./db.js";
 import { installationSecretKey } from "./core/installation-secret.js";
 import { discordEncryptedSecretsExist, discordIntegrationConfiguration } from "./integrations/discord/configuration.js";
+import { installationBlizzardEncryptedSecretExists } from "./core/installation/blizzard-configuration.js";
 
-installationSecretKey({ encryptedDataExists: await discordEncryptedSecretsExist() });
+installationSecretKey({ encryptedDataExists: await installationBlizzardEncryptedSecretExists() || await discordEncryptedSecretsExist() });
 
 let stopping = false;
 let lastState = "";
