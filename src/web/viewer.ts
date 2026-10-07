@@ -57,7 +57,10 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
     presentationContributions,
     administrationAvailable: administration.available || canRefreshGuild || canInspectOperations,
     administrationDestinations: administration.available || canRefreshGuild || canInspectOperations
-      ? [{ label: "Guild Operations Settings", href: "/admin" }]
+      ? [
+          { label: "Guild Operations Settings", href: "/admin" },
+          ...(administration.canConfigureDiscord ? [{ label: "Discord", href: "/admin/discord" }] : []),
+        ]
       : [],
     operationsAvailable: false,
     canConfigureGuildPresentation,
