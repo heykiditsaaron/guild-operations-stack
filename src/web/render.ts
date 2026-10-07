@@ -150,13 +150,16 @@ function renderUtilityBar(viewer: WebViewer, pathname: string): string {
 function renderActionBar(viewer: WebViewer, pathname: string): string {
   const administration = pathname === "/admin" || pathname.startsWith("/admin/");
   if (administration) {
+    const discordAdministrationAvailable = viewer.authenticated
+      ? viewer.administrationDestinations.some((destination) => destination.href === "/admin/discord")
+      : false;
     const destinations = [
       { label: "General", href: "/admin/general" },
       { label: "Homepage", href: "/admin/homepage" },
       { label: "Add-ons", href: "/admin/modules" },
       { label: "Permissions", href: "/admin/permissions" },
       { label: "Logs", href: "/admin/history" },
-      ...(viewer.authenticated && viewer.administrationDestinations.some((destination) => destination.href === "/admin/discord") ? [{ label: "Discord", href: "/admin/discord" }] : []),
+      ...(discordAdministrationAvailable ? [{ label: "Discord", href: "/admin/discord" }] : []),
     ];
     const links = destinations.map((destination) => {
       const active = pathname === destination.href ? ' aria-current="page"' : "";
