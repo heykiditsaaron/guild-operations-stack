@@ -4,8 +4,10 @@ import { DISCORD_CONFIGURE_CAPABILITY, identityHasGuildCapability } from "../../
 import { installationAbsoluteUrl } from "../../core/installation/public-origin.js";
 import {
   discordIntegrationConfiguration,
+  markDiscordApplicationEstablished,
   storeDiscordIntegrationConfiguration,
 } from "../../integrations/discord/configuration.js";
+import { verifyDiscordApplication } from "../../integrations/discord/api.js";
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
@@ -32,7 +34,9 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     ]);
     const readiness = !configuration
       ? "Not configured"
-      : configuration.discordGuildId
+      : !configuration.applicationVerifiedAt
+        ? "Setup required · application not verified"
+        : configuration.discordGuildId
         ? configuration.enabled ? "Enabled · server established" : "Configured · disabled"
         : configuration.enabled ? "Enabled · server not established" : "Configured · disabled";
 
@@ -40,15 +44,14 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       <section class="admin-section" aria-labelledby="discord-heading">
         <h2 id="discord-heading">Discord Integration</h2>
         <div class="settings-panel">
-          <div><h3>Status</h3><p><strong>${htmlText(readiness)}</strong></p><p>Discord remains authoritative for Discord application and server authorization. Guild Operations stores only the relationship and credentials needed to operate the Integration.</p></div>
+          <div><h3>Status</h3><p><strong>${htmlText(readiness)}</strong></p>${configuration?.applicationVerifiedAt ? `<p>Application: ${htmlText(configuration.applicationName ?? configuration.applicationId)}${configuration.botUsername ? ` · Bot: ${htmlText(configuration.botUsername)}` : ""}</p>` : ""}<p>Discord remains authoritative for Discord application and server authorization. Guild Operations stores only the relationship and credentials needed to operate the Integration.</p></div>
           <div><h3>OAuth callback</h3><p>Configure this redirect URI in the Discord Developer Portal.</p><code>${htmlText(callbackUrl)}</code></div>
           <form method="post" action="/admin/discord">
             <label><span>Application ID</span><input name="application_id" value="${htmlText(configuration?.applicationId ?? "")}" required></label>
-            <label><span>Public key</span><input name="public_key" value="${htmlText(configuration?.publicKey ?? "")}"></label>
             <label><span>Client secret</span><input type="password" name="client_secret" autocomplete="new-password" required></label>
             <label><span>Bot token</span><input type="password" name="bot_token" autocomplete="new-password" required></label>
             <label><input type="checkbox" name="enabled" value="true"${configuration?.enabled ? " checked" : ""}> <span>Enable Discord Integration</span></label>
-            <button type="submit" class="button-primary">Save Discord configuration</button>
+            <button type="submit" class="button-primary">Save and verify Discord application</button>
           </form>
         </div>
       </section>
@@ -79,11 +82,19 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     await storeDiscordIntegrationConfiguration({
       enabled: body.enabled === "true",
       applicationId: body.application_id,
-      publicKey: typeof body.public_key === "string" ? body.public_key : null,
       clientSecret: body.client_secret,
       botToken: body.bot_token,
       discordGuildId: existing?.discordGuildId ?? null,
     });
-    return reply.redirect("/admin/discord");
+    const stored = await discordIntegrationConfiguration();
+    if (!stored) return reply.code(500).send({ error: "discord_configuration_not_stored" });
+    try {
+      const application = await verifyDiscordApplication(stored);
+      await markDiscordApplicationEstablished(application.name, application.bot?.id ?? null, application.bot?.username ?? null);
+    } catch (error) {
+      request.log.warn({ err: error }, "Discord application verification failed");
+      return reply.redirect("/admin/discord?verification=failed");
+    }
+    return reply.redirect("/admin/discord?verification=success");
   });
 }
