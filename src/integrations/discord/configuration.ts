@@ -4,7 +4,7 @@ import { decryptApplicationSecret, encryptApplicationSecret } from "../../core/e
 export type DiscordIntegrationConfiguration = {
   enabled: boolean;
   applicationId: string;
-  publicKey: string | null;
+  applicationName: string | null;
   clientSecret: string;
   botToken: string;
   discordGuildId: string | null;
@@ -14,11 +14,11 @@ export async function discordIntegrationConfiguration(): Promise<DiscordIntegrat
   const result = await pool.query<{
     enabled: boolean;
     application_id: string;
-    public_key: string | null;
+    application_name: string | null;
     client_secret_ciphertext: string;
     bot_token_ciphertext: string;
     discord_guild_id: string | null;
-  }>(`SELECT enabled, application_id, public_key, client_secret_ciphertext, bot_token_ciphertext, discord_guild_id
+  }>(`SELECT enabled, application_id, application_name, client_secret_ciphertext, bot_token_ciphertext, discord_guild_id
       FROM discord_integration_configuration
       WHERE singleton = true`);
   const row = result.rows[0];
@@ -26,7 +26,7 @@ export async function discordIntegrationConfiguration(): Promise<DiscordIntegrat
   return {
     enabled: row.enabled,
     applicationId: row.application_id,
-    publicKey: row.public_key,
+    applicationName: row.application_name,
     clientSecret: decryptApplicationSecret(row.client_secret_ciphertext, "Discord client secret"),
     botToken: decryptApplicationSecret(row.bot_token_ciphertext, "Discord bot token"),
     discordGuildId: row.discord_guild_id,
@@ -43,7 +43,7 @@ export async function discordEncryptedSecretsExist(): Promise<boolean> {
 export async function storeDiscordIntegrationConfiguration(input: {
   enabled?: boolean;
   applicationId: string;
-  publicKey?: string | null;
+  applicationName?: string | null;
   clientSecret: string;
   botToken: string;
   discordGuildId?: string | null;
@@ -52,16 +52,16 @@ export async function storeDiscordIntegrationConfiguration(input: {
   const clientSecret = input.clientSecret.trim();
   const botToken = input.botToken.trim();
   if (!applicationId || !clientSecret || !botToken) throw new Error("invalid_discord_configuration");
-  const publicKey = input.publicKey?.trim() || null;
+  const applicationName = input.applicationName?.trim() || null;
   const discordGuildId = input.discordGuildId?.trim() || null;
   await pool.query(
     `INSERT INTO discord_integration_configuration (
-       singleton, enabled, application_id, public_key, client_secret_ciphertext, bot_token_ciphertext, discord_guild_id
+       singleton, enabled, application_id, application_name, client_secret_ciphertext, bot_token_ciphertext, discord_guild_id
      ) VALUES (true, $1, $2, $3, $4, $5, $6)
      ON CONFLICT (singleton) DO UPDATE SET
        enabled = EXCLUDED.enabled,
        application_id = EXCLUDED.application_id,
-       public_key = EXCLUDED.public_key,
+       application_name = EXCLUDED.application_name,
        client_secret_ciphertext = EXCLUDED.client_secret_ciphertext,
        bot_token_ciphertext = EXCLUDED.bot_token_ciphertext,
        discord_guild_id = EXCLUDED.discord_guild_id,
@@ -69,7 +69,7 @@ export async function storeDiscordIntegrationConfiguration(input: {
     [
       input.enabled ?? false,
       applicationId,
-      publicKey,
+      applicationName,
       encryptApplicationSecret(clientSecret),
       encryptApplicationSecret(botToken),
       discordGuildId,
