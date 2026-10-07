@@ -1,4 +1,4 @@
-import { withTransaction } from "../../db.js";
+import { pool, withTransaction } from "../../db.js";
 
 export async function establishDiscordIdentity(input: {
   discordUserId: string;
@@ -56,7 +56,6 @@ export async function associateIdentityWithWowAccount(input: {
 }
 
 export async function resolvedActorSubjectForDiscordIdentity(discordIdentityId: string): Promise<string> {
-  const { pool } = await import("../../db.js");
   const result = await pool.query<{ wow_identity_id: string }>(
     "SELECT wow_identity_id FROM identity_wow_associations WHERE external_identity_id = $1",
     [discordIdentityId],
