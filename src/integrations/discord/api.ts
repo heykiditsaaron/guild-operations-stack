@@ -60,3 +60,19 @@ export async function currentDiscordUser(accessToken: string): Promise<DiscordUs
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 }
+
+export type DiscordGuildSummary = { id: string; name: string };
+
+export function discordBotInstallUrl(applicationId: string): string {
+  const url = new URL("https://discord.com/oauth2/authorize");
+  url.searchParams.set("client_id", applicationId);
+  url.searchParams.set("scope", "bot");
+  url.searchParams.set("permissions", "0");
+  return url.toString();
+}
+
+export async function discordBotGuilds(botToken: string): Promise<DiscordGuildSummary[]> {
+  return discordJson<DiscordGuildSummary[]>(`${API}/users/@me/guilds`, {
+    headers: { Authorization: `Bot ${botToken}` },
+  });
+}
