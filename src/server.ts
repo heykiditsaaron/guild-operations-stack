@@ -11,6 +11,7 @@ import { installationOperational } from "./core/installation/guild-binding.js";
 import { installationBlizzardEncryptedSecretExists } from "./core/installation/blizzard-configuration.js";
 import { registerInstallationRoutes } from "./core/installation/routes.js";
 import { discordEncryptedSecretsExist } from "./integrations/discord/configuration.js";
+import { registerDiscordOAuthRoutes } from "./integrations/discord/oauth-routes.js";
 import { registerApplicationEmissionConsumers } from "./emissions/consumers.js";
 import { startEmissionRecovery } from "./emissions/recovery.js";
 import { startGuildRefreshScheduler } from "./guild-refresh-scheduler.js";
@@ -60,6 +61,7 @@ app.get("/events", async (_request, reply) => reply.redirect("/activities"));
 app.get<{ Params: { "*": string } }>("/events/*", async (request, reply) => reply.redirect(`/activities/${request.params["*"]}`));
 await registerAdminPage(app, webAssets);
 await registerDiscordAdminPage(app, webAssets);
+await registerDiscordOAuthRoutes(app);
 await registerOperationsAdminPage(app, webAssets);
 await registerAuthRoutes(app, webAssets);
 
