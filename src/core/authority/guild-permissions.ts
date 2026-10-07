@@ -8,6 +8,7 @@ export type GuildCapability = string;
 export const GUILD_REFRESH_CAPABILITY = "guild.refresh";
 export const GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY = "guild.refresh.schedule.configure";
 export const MODULES_CONFIGURE_CAPABILITY = "modules.configure";
+export const DISCORD_CONFIGURE_CAPABILITY = "discord.configure";
 export const THEME_CONFIGURE_CAPABILITY = "theme.configure";
 export const GUILD_PRESENTATION_CONFIGURE_CAPABILITY = "guild.presentation.configure";
 export const OPERATIONS_INSPECT_CAPABILITY = "operations.inspect";
