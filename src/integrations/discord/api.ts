@@ -76,3 +76,10 @@ export async function discordBotGuilds(botToken: string): Promise<DiscordGuildSu
     headers: { Authorization: `Bot ${botToken}` },
   });
 }
+
+export async function verifiedDiscordServer(configuration: DiscordIntegrationConfiguration): Promise<DiscordGuildSummary> {
+  const guilds = await discordBotGuilds(configuration.botToken);
+  if (guilds.length === 0) throw new Error("discord_server_not_found");
+  if (guilds.length !== 1) throw new Error("discord_server_binding_ambiguous");
+  return guilds[0];
+}
