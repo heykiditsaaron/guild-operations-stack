@@ -1,6 +1,7 @@
 import { pool } from "./db.js";
 import { installationSecretKey } from "./core/installation-secret.js";
-import { discordEncryptedSecretsExist, discordIntegrationConfiguration } from "./integrations/discord/configuration.js";
+import { discordEncryptedSecretsExist, discordIntegrationConfiguration, establishDiscordGuildBinding } from "./integrations/discord/configuration.js";
+import { verifiedDiscordServer } from "./integrations/discord/api.js";
 import { installationBlizzardEncryptedSecretExists } from "./core/installation/blizzard-configuration.js";
 
 installationSecretKey({ encryptedDataExists: await installationBlizzardEncryptedSecretExists() || await discordEncryptedSecretsExist() });
@@ -10,11 +11,23 @@ let lastState = "";
 
 async function inspectDiscordState(): Promise<void> {
   const configuration = await discordIntegrationConfiguration();
-  const state = !configuration
+  if (configuration?.enabled && configuration.applicationVerifiedAt && !configuration.discordGuildId) {
+    try {
+      const server = await verifiedDiscordServer(configuration);
+      await establishDiscordGuildBinding(server.id);
+      console.log(`Discord Integration established server binding: ${server.name} (${server.id})`);
+    } catch (error) {
+      if (!(error instanceof Error) || error.message !== "discord_server_not_found") {
+        console.error("Discord Integration server verification failed", error);
+      }
+    }
+  }
+  const refreshedConfiguration = await discordIntegrationConfiguration();
+  const state = !refreshedConfiguration
     ? "unconfigured"
-    : !configuration.enabled
+    : !refreshedConfiguration.enabled
       ? "disabled"
-      : configuration.discordGuildId
+      : refreshedConfiguration.discordGuildId
         ? "ready"
         : "awaiting_server_authorization";
   if (state !== lastState) {
