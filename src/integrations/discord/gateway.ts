@@ -14,6 +14,7 @@ export class DiscordGateway {
   private reconnect: NodeJS.Timeout | null = null;
   private sequence: number | null = null;
   private stopped = false;
+  private heartbeatAcknowledged = true;
   private health: DiscordGatewayHealth = "disconnected";
 
   constructor(private readonly botToken: string, private readonly onHealth: (health: DiscordGatewayHealth) => void) {}
@@ -55,7 +56,12 @@ export class DiscordGateway {
     if (typeof payload.s === "number") this.sequence = payload.s;
     if (payload.op === 10) {
       const hello = payload.d as HelloPayload;
-      this.heartbeat = setInterval(() => this.send({ op: 1, d: this.sequence }), hello.heartbeat_interval);
+      this.heartbeatAcknowledged = true;
+      this.heartbeat = setInterval(() => {
+        if (!this.heartbeatAcknowledged) { this.socket?.close(); return; }
+        this.heartbeatAcknowledged = false;
+        this.send({ op: 1, d: this.sequence });
+      }, hello.heartbeat_interval);
       this.send({
         op: 2,
         d: {
@@ -66,7 +72,8 @@ export class DiscordGateway {
       });
       return;
     }
-    if (payload.op === 1) { this.send({ op: 1, d: this.sequence }); return; }
+    if (payload.op === 1) { this.heartbeatAcknowledged = false; this.send({ op: 1, d: this.sequence }); return; }
+    if (payload.op === 11) { this.heartbeatAcknowledged = true; return; }
     if (payload.op === 7) { this.socket?.close(); return; }
     if (payload.op === 9) { this.sequence = null; this.socket?.close(); return; }
     if (payload.op === 0 && payload.t === "READY") this.setHealth("ready");
