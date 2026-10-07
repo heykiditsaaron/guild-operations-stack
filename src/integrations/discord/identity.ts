@@ -62,3 +62,19 @@ export async function resolvedActorSubjectForDiscordIdentity(discordIdentityId: 
   );
   return result.rows[0]?.wow_identity_id ?? discordIdentityId;
 }
+
+export async function discordIdentityForWowIdentity(wowIdentityId: string): Promise<{
+  identityId: string;
+  discordUserId: string;
+  username: string | null;
+} | null> {
+  const result = await pool.query<{ identity_id: string; discord_user_id: string; username: string | null }>(
+    `SELECT d.identity_id, d.discord_user_id, d.username
+       FROM identity_wow_associations a
+       JOIN discord_identities d ON d.identity_id = a.external_identity_id
+      WHERE a.wow_identity_id = $1`,
+    [wowIdentityId],
+  );
+  const row = result.rows[0];
+  return row ? { identityId: row.identity_id, discordUserId: row.discord_user_id, username: row.username } : null;
+}
