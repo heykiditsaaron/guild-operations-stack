@@ -97,3 +97,47 @@ export async function establishDiscordGuildBinding(discordGuildId: string): Prom
        SET discord_guild_id = $1, updated_at = now()
      WHERE singleton = true`, [value]);
 }
+
+export async function setDiscordIntegrationEnabled(enabled: boolean): Promise<void> {
+  await pool.query(
+    "UPDATE discord_integration_configuration SET enabled = $1, updated_at = now() WHERE singleton = true",
+    [enabled],
+  );
+}
+
+export async function replaceDiscordApplicationCredentials(input: {
+  applicationId: string;
+  clientSecret?: string;
+  botToken?: string;
+}): Promise<void> {
+  const existing = await discordIntegrationConfiguration();
+  const applicationId = input.applicationId.trim();
+  const clientSecret = input.clientSecret?.trim() || existing?.clientSecret || "";
+  const botToken = input.botToken?.trim() || existing?.botToken || "";
+  if (!applicationId || !clientSecret || !botToken) throw new Error("invalid_discord_configuration");
+
+  const credentialsChanged =
+    !existing ||
+    applicationId !== existing.applicationId ||
+    clientSecret !== existing.clientSecret ||
+    botToken !== existing.botToken;
+
+  if (!credentialsChanged) return;
+
+  await pool.query(
+    `INSERT INTO discord_integration_configuration (
+       singleton, enabled, application_id, client_secret_ciphertext, bot_token_ciphertext, discord_guild_id
+     ) VALUES (true, false, $1, $2, $3, NULL)
+     ON CONFLICT (singleton) DO UPDATE SET
+       application_id = EXCLUDED.application_id,
+       application_name = NULL,
+       application_verified_at = NULL,
+       bot_user_id = NULL,
+       bot_username = NULL,
+       client_secret_ciphertext = EXCLUDED.client_secret_ciphertext,
+       bot_token_ciphertext = EXCLUDED.bot_token_ciphertext,
+       discord_guild_id = NULL,
+       updated_at = now()`,
+    [applicationId, encryptApplicationSecret(clientSecret), encryptApplicationSecret(botToken)],
+  );
+}
