@@ -5,6 +5,7 @@ import { specializationProfileIconUrl, wowProfileIconChoices } from "../../wow-i
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage, type WebViewerCharacter } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
+import { discordIdentityForWowIdentity } from "../../integrations/discord/identity.js";
 
 function characterRole(character: WebViewerCharacter): string {
   if (character.activeSpecName && character.className) return `${character.activeSpecName} ${character.className}`;
@@ -66,6 +67,9 @@ export async function registerMePage(app: FastifyInstance, assets: AssetRegistry
     if (!viewer.authenticated) return reply.redirect("/auth/blizzard/start?return_to=%2Fme");
 
     const selected = viewer.mainCharacter;
+    const sessionIdentity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!sessionIdentity) return reply.redirect("/auth/blizzard/start?return_to=%2Fme");
+    const discordIdentity = await discordIdentityForWowIdentity(sessionIdentity.identityId);
     const profileIconChoices = await wowProfileIconChoices();
     const characters = viewer.controlledCharacters.map((character) =>
       characterCard(
@@ -140,6 +144,12 @@ export async function registerMePage(app: FastifyInstance, assets: AssetRegistry
             </div>
           </dialog>
           ${defaultCharacter}
+          <div class="me-about-field">
+            <div class="me-about-field-copy"><h3>Discord</h3><p>Connect a Discord Identity to use the same Guild Operations Actor when an allowed action originates in Discord.</p></div>
+            ${discordIdentity
+              ? `<div><strong>${htmlText(discordIdentity.username ?? "Discord user")}</strong><p class="me-self-service-empty">Discord ID ${htmlText(discordIdentity.discordUserId)} · Connected</p></div>`
+              : '<p class="me-self-service-empty">No Discord account connected. Discord authorization will be available once the Integration is established.</p>'}
+          </div>
         </section>
 
         <section class="me-self-service-card">
