@@ -89,3 +89,11 @@ export async function storeDiscordIntegrationConfiguration(input: {
 export async function markDiscordApplicationEstablished(applicationName: string, botUserId: string | null, botUsername: string | null): Promise<void> {
   await pool.query("UPDATE discord_integration_configuration SET application_name = $1, application_verified_at = now(), bot_user_id = $2, bot_username = $3, updated_at = now() WHERE singleton = true", [applicationName, botUserId, botUsername]);
 }
+
+export async function establishDiscordGuildBinding(discordGuildId: string): Promise<void> {
+  const value = discordGuildId.trim();
+  if (!value) throw new Error("invalid_discord_guild_id");
+  await pool.query(`UPDATE discord_integration_configuration
+       SET discord_guild_id = $1, updated_at = now()
+     WHERE singleton = true`, [value]);
+}
