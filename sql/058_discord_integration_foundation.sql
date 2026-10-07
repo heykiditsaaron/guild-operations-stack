@@ -2,13 +2,15 @@ CREATE TABLE discord_integration_configuration (
   singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton = true),
   enabled boolean NOT NULL DEFAULT false,
   application_id text NOT NULL CHECK (length(btrim(application_id)) > 0),
-  public_key text,
+  application_name text,
+  application_verified_at timestamptz,
+  bot_user_id text,
+  bot_username text,
   client_secret_ciphertext text NOT NULL CHECK (length(client_secret_ciphertext) > 0),
   bot_token_ciphertext text NOT NULL CHECK (length(bot_token_ciphertext) > 0),
   discord_guild_id text,
   configured_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
-  CHECK (public_key IS NULL OR length(btrim(public_key)) > 0),
   CHECK (discord_guild_id IS NULL OR length(btrim(discord_guild_id)) > 0)
 );
 
@@ -27,3 +29,12 @@ CREATE TABLE identity_wow_associations (
   established_at timestamptz NOT NULL DEFAULT now(),
   CHECK (external_identity_id <> wow_identity_id)
 );
+
+CREATE TABLE discord_oauth_attempts (
+  state_hash text PRIMARY KEY,
+  wow_identity_id uuid NOT NULL REFERENCES wow_account_identities(identity_id) ON DELETE CASCADE,
+  expires_at timestamptz NOT NULL,
+  consumed_at timestamptz
+);
+
+CREATE INDEX discord_oauth_attempts_expiry_idx ON discord_oauth_attempts (expires_at);
