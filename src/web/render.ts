@@ -156,7 +156,7 @@ function renderActionBar(viewer: WebViewer, pathname: string): string {
       { label: "Add-ons", href: "/admin/modules" },
       { label: "Permissions", href: "/admin/permissions" },
       { label: "Logs", href: "/admin/history" },
-      ...(viewer.administrationDestinations.some((destination) => destination.href === "/admin/discord") ? [{ label: "Discord", href: "/admin/discord" }] : []),
+      ...(viewer.authenticated && viewer.administrationDestinations.some((destination) => destination.href === "/admin/discord") ? [{ label: "Discord", href: "/admin/discord" }] : []),
     ];
     const links = destinations.map((destination) => {
       const active = pathname === destination.href ? ' aria-current="page"' : "";
