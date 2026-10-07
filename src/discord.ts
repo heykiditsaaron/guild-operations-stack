@@ -3,11 +3,14 @@ import { installationSecretKey } from "./core/installation-secret.js";
 import { discordEncryptedSecretsExist, discordIntegrationConfiguration, establishDiscordGuildBinding } from "./integrations/discord/configuration.js";
 import { verifiedDiscordServer } from "./integrations/discord/api.js";
 import { installationBlizzardEncryptedSecretExists } from "./core/installation/blizzard-configuration.js";
+import { DiscordGateway } from "./integrations/discord/gateway.js";
 
 installationSecretKey({ encryptedDataExists: await installationBlizzardEncryptedSecretExists() || await discordEncryptedSecretsExist() });
 
 let stopping = false;
 let lastState = "";
+let gateway: DiscordGateway | null = null;
+let gatewayToken = "";
 
 async function inspectDiscordState(): Promise<void> {
   const configuration = await discordIntegrationConfiguration();
@@ -30,6 +33,18 @@ async function inspectDiscordState(): Promise<void> {
       : refreshedConfiguration.discordGuildId
         ? "ready"
         : "awaiting_server_authorization";
+  if (state === "ready") {
+    if (!gateway || gatewayToken !== refreshedConfiguration!.botToken) {
+      gateway?.stop();
+      gatewayToken = refreshedConfiguration!.botToken;
+      gateway = new DiscordGateway(gatewayToken, (health) => console.log(`Discord Gateway runtime health: ${health}`));
+      gateway.start();
+    }
+  } else if (gateway) {
+    gateway.stop();
+    gateway = null;
+    gatewayToken = "";
+  }
   if (state !== lastState) {
     console.log(`Discord Integration process state: ${state}`);
     lastState = state;
@@ -45,6 +60,7 @@ async function shutdown(): Promise<void> {
   if (stopping) return;
   stopping = true;
   clearInterval(timer);
+  gateway?.stop();
   await pool.end();
   process.exit(0);
 }
