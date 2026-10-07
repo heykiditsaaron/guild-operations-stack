@@ -10,6 +10,7 @@ import { installationSecretKey } from "./core/installation-secret.js";
 import { installationOperational } from "./core/installation/guild-binding.js";
 import { installationBlizzardEncryptedSecretExists } from "./core/installation/blizzard-configuration.js";
 import { registerInstallationRoutes } from "./core/installation/routes.js";
+import { discordEncryptedSecretsExist } from "./integrations/discord/configuration.js";
 import { registerApplicationEmissionConsumers } from "./emissions/consumers.js";
 import { startEmissionRecovery } from "./emissions/recovery.js";
 import { startGuildRefreshScheduler } from "./guild-refresh-scheduler.js";
@@ -27,7 +28,7 @@ import { registerMyParticipationPage } from "./web/pages/my-participation.js";
 import { registerSiteInformationPages } from "./web/pages/site-information.js";
 import { registerSetupPage } from "./web/pages/setup.js";
 
-installationSecretKey({ encryptedDataExists: await installationBlizzardEncryptedSecretExists() });
+installationSecretKey({ encryptedDataExists: await installationBlizzardEncryptedSecretExists() || await discordEncryptedSecretsExist() });
 
 const app = Fastify({ logger: true, disableRequestLogging: true });
 await app.register(cookie);
