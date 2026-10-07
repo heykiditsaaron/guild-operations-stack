@@ -1,0 +1,11 @@
+.discord-setup-guide, .discord-credential-section { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border-color, rgba(255,255,255,.14)); }
+.discord-setup-guide ol { padding-left: 1.5rem; }
+.discord-setup-guide li + li { margin-top: .8rem; }
+.discord-callback { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin: .6rem 0; }
+.discord-callback code { overflow-wrap: anywhere; flex: 1 1 18rem; }
+.discord-credential-form { display: grid; gap: 1rem; margin-top: 1rem; }
+.discord-credential-form > label:not(.discord-enablement) { display: flex; flex-direction: column; align-items: stretch; gap: .35rem; }
+.discord-credential-form input:not([type="checkbox"]) { width: 100%; box-sizing: border-box; min-height: 2.5rem; }
+.discord-credential-form small { display: block; opacity: .75; }
+.discord-enablement { display: flex; align-items: center; gap: .6rem; padding-top: .7rem; border-top: 1px solid var(--border-color, rgba(255,255,255,.14)); }
+.discord-credential-form > button { justify-self: start; }
