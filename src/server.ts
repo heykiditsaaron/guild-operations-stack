@@ -17,6 +17,7 @@ import { startGuildRefreshScheduler } from "./guild-refresh-scheduler.js";
 import { registerInstalledActivityPlugins } from "./activity-plugins.js";
 import { loadAssetRegistry, registerAssetRoutes } from "./web/assets.js";
 import { registerAdminPage } from "./web/pages/admin.js";
+import { registerDiscordAdminPage } from "./web/pages/discord-admin.js";
 import { registerOperationsAdminPage } from "./web/pages/operations.js";
 import { registerCalendarPage } from "./web/pages/calendar.js";
 import { registerActivitiesPage } from "./web/pages/activities.js";
@@ -58,6 +59,7 @@ await registerActivityBoundaryRoutes(app, webAssets);
 app.get("/events", async (_request, reply) => reply.redirect("/activities"));
 app.get<{ Params: { "*": string } }>("/events/*", async (request, reply) => reply.redirect(`/activities/${request.params["*"]}`));
 await registerAdminPage(app, webAssets);
+await registerDiscordAdminPage(app, webAssets);
 await registerOperationsAdminPage(app, webAssets);
 await registerAuthRoutes(app, webAssets);
 
