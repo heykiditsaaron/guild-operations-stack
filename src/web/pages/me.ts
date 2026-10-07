@@ -6,6 +6,7 @@ import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage, type WebViewerCharacter } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
 import { discordIdentityForWowIdentity } from "../../integrations/discord/identity.js";
+import { discordIntegrationConfiguration } from "../../integrations/discord/configuration.js";
 
 function characterRole(character: WebViewerCharacter): string {
   if (character.activeSpecName && character.className) return `${character.activeSpecName} ${character.className}`;
@@ -69,7 +70,10 @@ export async function registerMePage(app: FastifyInstance, assets: AssetRegistry
     const selected = viewer.mainCharacter;
     const sessionIdentity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
     if (!sessionIdentity) return reply.redirect("/auth/blizzard/start?return_to=%2Fme");
-    const discordIdentity = await discordIdentityForWowIdentity(sessionIdentity.identityId);
+    const discordConfiguration = await discordIntegrationConfiguration();
+    const discordIdentity = discordConfiguration?.enabled
+      ? await discordIdentityForWowIdentity(sessionIdentity.identityId)
+      : null;
     const profileIconChoices = await wowProfileIconChoices();
     const characters = viewer.controlledCharacters.map((character) =>
       characterCard(
@@ -144,12 +148,12 @@ export async function registerMePage(app: FastifyInstance, assets: AssetRegistry
             </div>
           </dialog>
           ${defaultCharacter}
-          <div class="me-about-field">
+          ${discordConfiguration?.enabled ? `<div class="me-about-field">
             <div class="me-about-field-copy"><h3>Discord</h3><p>Connect a Discord Identity to use the same Guild Operations Actor when an allowed action originates in Discord.</p></div>
             ${discordIdentity
               ? `<div><strong>${htmlText(discordIdentity.username ?? "Discord user")}</strong><p class="me-self-service-empty">Discord ID ${htmlText(discordIdentity.discordUserId)} · Connected</p></div>`
               : '<div><p class="me-self-service-empty">No Discord account connected.</p><a class="button-secondary me-about-action" href="/integrations/discord/oauth/start">Connect Discord</a></div>'}
-          </div>
+          </div>` : ""}
         </section>
 
         <section class="me-self-service-card">
