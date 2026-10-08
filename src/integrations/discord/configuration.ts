@@ -11,6 +11,7 @@ export type DiscordIntegrationConfiguration = {
   clientSecret: string;
   botToken: string;
   discordGuildId: string | null;
+  articleChannelId: string | null;
 };
 
 export async function discordIntegrationConfiguration(): Promise<DiscordIntegrationConfiguration | null> {
@@ -24,7 +25,8 @@ export async function discordIntegrationConfiguration(): Promise<DiscordIntegrat
     client_secret_ciphertext: string;
     bot_token_ciphertext: string;
     discord_guild_id: string | null;
-  }>(`SELECT enabled, application_id, application_name, application_verified_at, bot_user_id, bot_username, client_secret_ciphertext, bot_token_ciphertext, discord_guild_id
+    article_channel_id: string | null;
+  }>(`SELECT enabled, application_id, application_name, application_verified_at, bot_user_id, bot_username, client_secret_ciphertext, bot_token_ciphertext, discord_guild_id, article_channel_id
       FROM discord_integration_configuration
       WHERE singleton = true`);
   const row = result.rows[0];
@@ -39,6 +41,7 @@ export async function discordIntegrationConfiguration(): Promise<DiscordIntegrat
     clientSecret: decryptApplicationSecret(row.client_secret_ciphertext, "Discord client secret"),
     botToken: decryptApplicationSecret(row.bot_token_ciphertext, "Discord bot token"),
     discordGuildId: row.discord_guild_id,
+    articleChannelId: row.article_channel_id,
   };
 }
 
@@ -139,5 +142,14 @@ export async function replaceDiscordApplicationCredentials(input: {
        discord_guild_id = NULL,
        updated_at = now()`,
     [applicationId, encryptApplicationSecret(clientSecret), encryptApplicationSecret(botToken)],
+  );
+}
+
+/** The configured destination is optional; an empty selection disables article projection. */
+export async function setDiscordArticleChannel(channelId: string | null): Promise<void> {
+  if (channelId !== null && !/^\d+$/.test(channelId)) throw new Error("invalid_discord_article_channel");
+  await pool.query(
+    "UPDATE discord_integration_configuration SET article_channel_id = $1, updated_at = now() WHERE singleton = true",
+    [channelId],
   );
 }
