@@ -8,6 +8,7 @@ import {
   replaceDiscordApplicationCredentials,
   setDiscordIntegrationEnabled,
   setDiscordArticleChannel,
+  setDiscordRaidChannel,
 } from "../../integrations/discord/configuration.js";
 import { discordBotInstallUrl, verifyDiscordApplication, discordServerRoles, discordServerMember, discordRoleReadiness, discordServerChannels, discordApplicationEmojis, discordApplicationEmojiMarkup, discordChannelMessage, DISCORD_TEXT_CHANNEL, DISCORD_ANNOUNCEMENT_CHANNEL } from "../../integrations/discord/api.js";
 import { provisionDiscordPresentationEmojis } from "../../integrations/discord/application-emojis.js";
@@ -100,6 +101,22 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
         articleSection = "<p>Unable to inspect Discord channels. Check bot authorization.</p>";
       }
     }
+    let raidSection = "<p>Enable Discord and establish the server to select a raid publication channel.</p>";
+    if (configuration?.enabled && configuration.discordGuildId) {
+      try {
+        const channels = (await discordServerChannels(configuration.botToken, configuration.discordGuildId))
+          .filter((channel) => channel.type === DISCORD_TEXT_CHANNEL || channel.type === DISCORD_ANNOUNCEMENT_CHANNEL);
+        const options = channels.map((channel) => `<option value="${htmlText(channel.id)}"${configuration.raidChannelId === channel.id ? " selected" : ""}>${htmlText(channel.name ?? channel.id)}</option>`).join("");
+        raidSection = `<p>Choose where future Raid projections will appear. Selecting a channel does not publish existing raids.</p>
+          <form method="post" action="/admin/discord/raids">
+            <label class="discord-field"><span>Raid publication channel</span><select name="channel_id"><option value="">Do not publish raids to Discord</option>${options}</select></label>
+            <button type="submit" class="button-primary">Save raid destination</button>
+          </form>`;
+      } catch (error) {
+        request.log.warn({ err: error }, "Discord raid channel discovery failed");
+        raidSection = "<p>Unable to inspect Discord channels. Check bot authorization.</p>";
+      }
+    }
     let previewSection = "<p>Enable Discord and establish the server to send an emoji preview.</p>";
     if (configuration?.enabled && configuration.discordGuildId && configuration.applicationVerifiedAt) {
       try {
@@ -153,6 +170,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
         </div>
       </section>
       <section class="admin-section"><h2>Article publication</h2><div class="settings-panel">${articleSection}</div></section>
+      <section class="admin-section"><h2>Raid publication</h2><div class="settings-panel">${raidSection}</div></section>
       <section class="admin-section"><h2>Application emojis</h2><div class="settings-panel">\n        ${((request.query as { emoji?: string }).emoji === "success") ? '<p role="status">Discord presentation icons successfully provisioned or reused.</p>' : ((request.query as { emoji?: string }).emoji === "failed") ? '<p role="alert">Discord icon setup was incomplete. Check Operations → Logs for details and retry.</p>' : ""}
         <p>Set up raid role and WoW specialization icons for your Discord application in one operation. Existing icons are reused; unrelated emojis are not changed.</p>
         ${configuration?.applicationVerifiedAt ? `<form method="post" action="/admin/discord/emoji/raid-roles"><button type="submit" class="button-secondary">Set up Discord icons</button></form>` : "<p>Verify the Discord application first.</p>"}
@@ -272,6 +290,25 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       request.log.error({ err: error }, "Discord emoji preview failed");
       return reply.code(303).redirect("/admin/discord?preview=failed");
     }
+  });
+
+  app.post("/admin/discord/raids", async (request, reply) => {
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "authentication_required" });
+    if (!await identityHasGuildCapability(identity.identityId, DISCORD_CONFIGURE_CAPABILITY)) {
+      return reply.code(403).send({ error: "discord_configuration_not_authorized" });
+    }
+    const configuration = await discordIntegrationConfiguration();
+    if (!configuration?.enabled || !configuration.discordGuildId) return reply.code(409).send({ error: "discord_integration_not_ready" });
+    const body = (request.body ?? {}) as Record<string, unknown>;
+    if (typeof body.channel_id !== "string") return reply.code(400).send({ error: "invalid_discord_raid_channel" });
+    const channels = await discordServerChannels(configuration.botToken, configuration.discordGuildId);
+    if (body.channel_id && !channels.some((channel) => channel.id === body.channel_id &&
+      (channel.type === DISCORD_TEXT_CHANNEL || channel.type === DISCORD_ANNOUNCEMENT_CHANNEL))) {
+      return reply.code(422).send({ error: "discord_raid_channel_unavailable" });
+    }
+    await setDiscordRaidChannel(body.channel_id || null);
+    return reply.redirect("/admin/discord");
   });
 
   app.post("/admin/discord/articles", async (request, reply) => {
