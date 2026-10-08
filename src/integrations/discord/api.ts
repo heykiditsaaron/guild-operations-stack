@@ -196,3 +196,52 @@ export async function discordDeleteChannelMessage(botToken: string, channelId: s
   });
   if (!response.ok && response.status !== 404) throw new Error(`discord_api_${response.status}`);
 }
+
+/** Application emojis belong to the Discord application, not the installed guild. */
+export type DiscordApplicationEmoji = {
+  id: string;
+  name: string;
+  animated?: boolean;
+  available?: boolean;
+};
+
+export async function discordApplicationEmojis(botToken: string, applicationId: string): Promise<DiscordApplicationEmoji[]> {
+  const response = await discordJson<{ items: DiscordApplicationEmoji[] }>(
+    `${API}/applications/${encodeURIComponent(applicationId)}/emojis`,
+    { headers: { Authorization: `Bot ${botToken}` } },
+  );
+  return response.items;
+}
+
+export async function discordCreateApplicationEmoji(input: {
+  botToken: string;
+  applicationId: string;
+  name: string;
+  imageData: string;
+}): Promise<DiscordApplicationEmoji> {
+  return discordJson<DiscordApplicationEmoji>(
+    `${API}/applications/${encodeURIComponent(input.applicationId)}/emojis`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bot ${input.botToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ name: input.name, image: input.imageData }),
+    },
+  );
+}
+
+/** Reconcile only an explicitly named asset; never modify unrelated emojis. */
+export async function discordEnsureApplicationEmoji(input: {
+  botToken: string;
+  applicationId: string;
+  name: string;
+  imageData: string;
+}): Promise<DiscordApplicationEmoji> {
+  const existing = (await discordApplicationEmojis(input.botToken, input.applicationId))
+    .find((emoji) => emoji.name === input.name);
+  if (existing) return existing;
+  return discordCreateApplicationEmoji(input);
+}
+
+export function discordApplicationEmojiMarkup(emoji: DiscordApplicationEmoji): string {
+  return `<${emoji.animated ? "a" : ""}:${emoji.name}:${emoji.id}>`;
+}
