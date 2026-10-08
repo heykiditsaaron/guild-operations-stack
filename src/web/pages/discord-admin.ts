@@ -10,6 +10,7 @@ import {
   setDiscordArticleChannel,
 } from "../../integrations/discord/configuration.js";
 import { discordBotInstallUrl, verifyDiscordApplication, discordServerRoles, discordServerMember, discordRoleReadiness, discordServerChannels, DISCORD_TEXT_CHANNEL, DISCORD_ANNOUNCEMENT_CHANNEL } from "../../integrations/discord/api.js";
+import { provisionRaidRoleEmoji } from "../../integrations/discord/role-emoji.js";
 import { discordRankRoleMappings, replaceDiscordRankRoleMappings } from "../../integrations/discord/role-mappings.js";
 import { guildRankDefinitions } from "../../core/guild/guild-ranks.js";
 import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
@@ -131,6 +132,10 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
         </div>
       </section>
       <section class="admin-section"><h2>Article publication</h2><div class="settings-panel">${articleSection}</div></section>
+      <section class="admin-section"><h2>Application emoji experiment</h2><div class="settings-panel">
+        <p>Provision the existing raid role artwork to your Discord application. Existing emojis with these names are reused; unrelated emojis are not changed.</p>
+        ${configuration?.applicationVerifiedAt ? `<form method="post" action="/admin/discord/emoji/raid-roles"><button type="submit" class="button-secondary">Provision raid role icons</button></form>` : "<p>Verify the Discord application first.</p>"}
+      </div></section>
       <section class="admin-section"><h2>Rank role mapping</h2><div class="settings-panel">${roleSection}</div></section>
 
     </div>`;
@@ -145,6 +150,28 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       body,
       scripts: ["discord-admin.js"],
     }));
+  });
+
+  app.post("/admin/discord/emoji/raid-roles", async (request, reply) => {
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "authentication_required" });
+    if (!await identityHasGuildCapability(identity.identityId, DISCORD_CONFIGURE_CAPABILITY)) {
+      return reply.code(403).send({ error: "discord_configuration_not_authorized" });
+    }
+    const configuration = await discordIntegrationConfiguration();
+    if (!configuration?.applicationVerifiedAt) return reply.code(409).send({ error: "discord_application_not_verified" });
+    try {
+      const emojis = [];
+      for (const role of ["tank", "healer", "damage"] as const) {
+        emojis.push(await provisionRaidRoleEmoji({
+          assets, botToken: configuration.botToken, applicationId: configuration.applicationId, role,
+        }));
+      }
+      return reply.code(200).send({ emojis: emojis.map(({ id, name }) => ({ id, name })) });
+    } catch (error) {
+      request.log.error({ err: error }, "Discord role emoji provisioning failed");
+      return reply.code(502).send({ error: "discord_emoji_provisioning_failed" });
+    }
   });
 
   app.post("/admin/discord/articles", async (request, reply) => {
