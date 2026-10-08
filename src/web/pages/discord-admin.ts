@@ -223,7 +223,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     }
     const body = (request.body ?? {}) as Record<string, unknown>;
     const channelId = body.channel_id;
-    if (typeof channelId !== "string" || !/^\\d+$/.test(channelId)) {
+    if (typeof channelId !== "string" || !/^\d+$/.test(channelId)) {
       return reply.code(400).send({ error: "invalid_discord_preview_channel" });
     }
     const channels = await discordServerChannels(configuration.botToken, configuration.discordGuildId);
