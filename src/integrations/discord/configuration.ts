@@ -161,7 +161,7 @@ export async function setDiscordArticleChannel(channelId: string | null): Promis
 
 /** Optional destination for future Raid projections. */
 export async function setDiscordRaidChannel(channelId: string | null): Promise<void> {
-  if (channelId !== null && !/^\\d+$/.test(channelId)) throw new Error("invalid_discord_raid_channel");
+  if (channelId !== null && !/^\d+$/.test(channelId)) throw new Error("invalid_discord_raid_channel");
   await pool.query(
     "UPDATE discord_integration_configuration SET raid_channel_id = $1, updated_at = now() WHERE singleton = true",
     [channelId],
