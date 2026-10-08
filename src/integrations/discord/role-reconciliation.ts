@@ -1,3 +1,4 @@
+import { recordDiscordRoleAction } from "./role-action-history.js";
 import { effectiveGuildAuthority } from "../../core/authority/guild-permissions.js";
 import { discordServerMember, discordServerRoles, discordRoleReadiness, discordSetMemberRole } from "./api.js";
 import type { DiscordIntegrationConfiguration } from "./configuration.js";
@@ -41,23 +42,46 @@ export async function reconcileDiscordRankRole(input: {
   // Identity is the subject; Core derives current authority from Blizzard-backed character facts.
   const rank = (await effectiveGuildAuthority(wowIdentityId, guildId))?.rankIndex;
   const desired = mappings.find((mapping) => mapping.rankIndex === rank)?.discordRoleId ?? null;
+  const record = async (action: "grant" | "remove" | "reconcile", outcome: "succeeded" | "failed" | "not_ready", roleId?: string, detail?: string) => {
+    try {
+      await recordDiscordRoleAction({
+        guildId, discordGuildId: configuration.discordGuildId!, discordUserId, wowIdentityId,
+        discordRoleId: roleId, action, outcome, detail,
+      });
+    } catch (error) {
+      // A history persistence failure must not alter Discord or Core authority.
+      console.error("Discord role action history persistence failed", error);
+    }
+  };
   const removed: string[] = [];
   const added: string[] = [];
   // Remove obsolete managed roles first, but never touch any unrelated Discord role.
   for (const roleId of currentManaged) {
     if (roleId === desired) continue;
-    await discordSetMemberRole({
-      botToken: configuration.botToken, guildId: configuration.discordGuildId,
-      userId: discordUserId, roleId, present: false,
-    });
-    removed.push(roleId);
+    try {
+      await discordSetMemberRole({
+        botToken: configuration.botToken, guildId: configuration.discordGuildId,
+        userId: discordUserId, roleId, present: false,
+      });
+      await record("remove", "succeeded", roleId, "Obsolete managed rank role");
+      removed.push(roleId);
+    } catch (error) {
+      await record("remove", "failed", roleId, error instanceof Error ? error.message : "Discord API failed");
+      throw error;
+    }
   }
   if (desired && !member.roles.includes(desired)) {
-    await discordSetMemberRole({
-      botToken: configuration.botToken, guildId: configuration.discordGuildId,
-      userId: discordUserId, roleId: desired, present: true,
-    });
-    added.push(desired);
+    try {
+      await discordSetMemberRole({
+        botToken: configuration.botToken, guildId: configuration.discordGuildId,
+        userId: discordUserId, roleId: desired, present: true,
+      });
+      await record("grant", "succeeded", desired, "Effective guild rank projection");
+      added.push(desired);
+    } catch (error) {
+      await record("grant", "failed", desired, error instanceof Error ? error.message : "Discord API failed");
+      throw error;
+    }
   }
   return { status: added.length || removed.length ? "updated" : "unchanged", added, removed };
 }
