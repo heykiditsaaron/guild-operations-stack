@@ -10,7 +10,7 @@ import {
   setDiscordArticleChannel,
 } from "../../integrations/discord/configuration.js";
 import { discordBotInstallUrl, verifyDiscordApplication, discordServerRoles, discordServerMember, discordRoleReadiness, discordServerChannels, DISCORD_TEXT_CHANNEL, DISCORD_ANNOUNCEMENT_CHANNEL } from "../../integrations/discord/api.js";
-import { provisionRaidRoleEmoji } from "../../integrations/discord/role-emoji.js";
+import { provisionDiscordPresentationEmojis } from "../../integrations/discord/application-emojis.js";
 import { publishOperationalRecord } from "../../operational-inspection.js";
 import { discordRankRoleMappings, replaceDiscordRankRoleMappings } from "../../integrations/discord/role-mappings.js";
 import { guildRankDefinitions } from "../../core/guild/guild-ranks.js";
@@ -133,9 +133,9 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
         </div>
       </section>
       <section class="admin-section"><h2>Article publication</h2><div class="settings-panel">${articleSection}</div></section>
-      <section class="admin-section"><h2>Application emoji experiment</h2><div class="settings-panel">\n        ${((request.query as { emoji?: string }).emoji === "success") ? '<p role="status">Raid role icons successfully provisioned or reused in your Discord application.</p>' : ((request.query as { emoji?: string }).emoji === "failed") ? '<p role="alert">Unable to provision raid role icons. Check application credentials and server logs, then retry.</p>' : ""}
-        <p>Provision the existing raid role artwork to your Discord application. Existing emojis with these names are reused; unrelated emojis are not changed.</p>
-        ${configuration?.applicationVerifiedAt ? `<form method="post" action="/admin/discord/emoji/raid-roles"><button type="submit" class="button-secondary">Provision raid role icons</button></form>` : "<p>Verify the Discord application first.</p>"}
+      <section class="admin-section"><h2>Application emojis</h2><div class="settings-panel">\n        ${((request.query as { emoji?: string }).emoji === "success") ? '<p role="status">Discord presentation icons successfully provisioned or reused.</p>' : ((request.query as { emoji?: string }).emoji === "failed") ? '<p role="alert">Discord icon setup was incomplete. Check Operations → Logs for details and retry.</p>' : ""}
+        <p>Set up raid role and WoW specialization icons for your Discord application in one operation. Existing icons are reused; unrelated emojis are not changed.</p>
+        ${configuration?.applicationVerifiedAt ? `<form method="post" action="/admin/discord/emoji/raid-roles"><button type="submit" class="button-secondary">Set up Discord icons</button></form>` : "<p>Verify the Discord application first.</p>"}
       </div></section>
       <section class="admin-section"><h2>Rank role mapping</h2><div class="settings-panel">${roleSection}</div></section>
 
@@ -162,25 +162,24 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     const configuration = await discordIntegrationConfiguration();
     if (!configuration?.applicationVerifiedAt) return reply.code(409).send({ error: "discord_application_not_verified" });
     try {
-      const emojis = [];
-      for (const role of ["tank", "healer", "damage"] as const) {
-        emojis.push(await provisionRaidRoleEmoji({
-          assets, botToken: configuration.botToken, applicationId: configuration.applicationId, role,
-        }));
-      }
-      await publishOperationalRecord({
-        source: "discord.application-emoji", operation: "raid-role-provisioning", kind: "result", result: "success",
-        actorIdentityId: identity.identityId,
-        summary: "Discord raid role emojis provisioned or reused",
-        details: { applicationId: configuration.applicationId, emojis: emojis.map(({ id, name }) => ({ id, name })) },
+      const result = await provisionDiscordPresentationEmojis({
+        assets, botToken: configuration.botToken, applicationId: configuration.applicationId,
       });
-      request.log.info({ applicationId: configuration.applicationId, emojis: emojis.map(({ id, name }) => ({ id, name })) }, "Discord role emoji provisioning succeeded");
-      return reply.code(303).redirect("/admin/discord?emoji=success");
+      const complete = result.unavailable.length === 0;
+      await publishOperationalRecord({
+        source: "discord.application-emoji", operation: "presentation-emoji-setup",
+        kind: "result", result: complete ? "success" : "partial",
+        actorIdentityId: identity.identityId,
+        summary: complete ? "Discord presentation emojis ready" : "Discord presentation emoji setup partially completed",
+        details: { applicationId: configuration.applicationId, created: result.created, reused: result.reused, unavailable: result.unavailable, emojis: result.emojis.map(({ id, name }) => ({ id, name })) },
+      });
+      request.log.info({ created: result.created, reused: result.reused, unavailable: result.unavailable }, "Discord presentation emoji setup finished");
+      return reply.code(303).redirect(complete ? "/admin/discord?emoji=success" : "/admin/discord?emoji=failed");
     } catch (error) {
       await publishOperationalRecord({
-        source: "discord.application-emoji", operation: "raid-role-provisioning", kind: "exception",
+        source: "discord.application-emoji", operation: "presentation-emoji-setup", kind: "exception",
         actorIdentityId: identity.identityId,
-        summary: "Discord raid role emoji provisioning failed",
+        summary: "Discord presentation emoji setup failed",
         details: { applicationId: configuration.applicationId, error: error instanceof Error ? error.message : String(error) },
       }).catch((recordError) => request.log.error({ err: recordError }, "Unable to record Discord emoji provisioning failure"));
       request.log.error({ err: error }, "Discord role emoji provisioning failed");
