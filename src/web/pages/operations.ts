@@ -64,6 +64,7 @@ function renderInspection(
   source: string | undefined,
   kind: OperationalRecordKind | undefined,
 ): string {
+  const channelLinks = `<nav aria-label="Operational log channels"><a href="/admin/history">All logs</a> · <a href="/admin/history?source=discord.role-sync">Discord synchronization</a></nav>`;
   const filters = `<form class="operations-filters" method="get" action="/admin/history">
     <label>
       <span>Source</span>
@@ -84,6 +85,7 @@ function renderInspection(
   return `<section class="operations-inspection admin-section" aria-labelledby="operations-records-heading">
     <h2 id="operations-records-heading">Operational logs</h2>
     <p class="admin-section-note">Review recorded operational results and exceptions.</p>
+    ${channelLinks}
     ${filters}
     <div class="operations-records-heading">
       <h3>Recent records</h3>
