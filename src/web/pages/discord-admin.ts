@@ -8,7 +8,10 @@ import {
   replaceDiscordApplicationCredentials,
   setDiscordIntegrationEnabled,
 } from "../../integrations/discord/configuration.js";
-import { discordBotInstallUrl, verifyDiscordApplication } from "../../integrations/discord/api.js";
+import { discordBotInstallUrl, verifyDiscordApplication, discordServerRoles, discordServerMember, discordRoleReadiness } from "../../integrations/discord/api.js";
+import { discordRankRoleMappings, replaceDiscordRankRoleMappings } from "../../integrations/discord/role-mappings.js";
+import { guildRankDefinitions } from "../../core/guild/guild-ranks.js";
+import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
@@ -42,6 +45,42 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
         : configuration.enabled ? "Enabled · server not established" : "Configured · disabled";
 
     const installUrl = configuration?.applicationVerifiedAt ? discordBotInstallUrl(configuration.applicationId) : null;
+    const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
+    const [guildRanks, mappings] = await Promise.all([guildRankDefinitions(guildId), discordRankRoleMappings(guildId)]);
+    let roleSection = "<p>Enable Discord and establish the server to configure role synchronization.</p>";
+    if (configuration?.enabled && configuration.discordGuildId && configuration.botUserId) {
+      try {
+        const [roles, botMember] = await Promise.all([
+          discordServerRoles(configuration.botToken, configuration.discordGuildId),
+          discordServerMember(configuration.botToken, configuration.discordGuildId, configuration.botUserId),
+        ]);
+        if (botMember) {
+          const roleReadiness = discordRoleReadiness({
+            roles, botRoleIds: botMember.roles, botUserId: configuration.botUserId,
+            guildId: configuration.discordGuildId, mappedRoleIds: mappings.map((mapping) => mapping.discordRoleId),
+          });
+          const options = roles.filter((role) => role.id !== configuration.discordGuildId && !role.managed);
+          const fields = guildRanks.map((rank) => {
+            const selected = mappings.find((mapping) => mapping.rankIndex === rank.rankIndex)?.discordRoleId ?? "";
+            return `<label class="discord-field"><span>${htmlText(rank.displayName)}</span>
+              <select name="rank_${rank.rankIndex}"><option value="">No role</option>
+              ${options.map((role) => `<option value="${htmlText(role.id)}"${selected === role.id ? " selected" : ""}>${htmlText(role.name)}</option>`).join("")}
+              </select></label>`;
+          }).join("");
+          roleSection = `<p>${mappings.length === 0 ? "No rank roles configured." : roleReadiness.ready ? "Configured role mappings are manageable." : "Role synchronization needs attention."}</p>
+            ${roleReadiness.reasons.map((reason) => `<p>${htmlText(reason)}</p>`).join("")}
+            <form method="post" action="/admin/discord/roles">
+              <p>Choose an optional Discord role for each effective guild rank.</p>
+              ${fields}<button class="button-primary" type="submit">Save role mappings</button>
+            </form>`;
+        } else {
+          roleSection = "<p>The bot is not in the bound Discord server.</p>";
+        }
+      } catch (error) {
+        request.log.warn({ err: error }, "Discord role discovery failed");
+        roleSection = "<p>Unable to inspect Discord roles. Check bot authorization.</p>";
+      }
+    }
     const body = `<div class="admin-sections">
       <section class="admin-section" aria-labelledby="discord-heading">
         <h2 id="discord-heading">Discord Integration</h2>
@@ -74,6 +113,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
           ${installUrl && !configuration?.discordGuildId ? `<div class="discord-server-install"><h3>Install in your Discord server</h3><p>Choose the server for this deployment. Guild Operations verifies the bot relationship before binding the server.</p><a class="button-primary" href="${htmlText(installUrl)}" target="_blank" rel="noreferrer">Install in Discord Server</a></div>` : ""}
         </div>
       </section>
+      <section class="admin-section"><h2>Rank role mapping</h2><div class="settings-panel">${roleSection}</div></section>
     </div>`;
 
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(renderPage(assets, {
@@ -86,6 +126,46 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       body,
       scripts: ["discord-admin.js"],
     }));
+  });
+
+  app.post("/admin/discord/roles", async (request, reply) => {
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "authentication_required" });
+    if (!await identityHasGuildCapability(identity.identityId, DISCORD_CONFIGURE_CAPABILITY)) {
+      return reply.code(403).send({ error: "discord_configuration_not_authorized" });
+    }
+    const configuration = await discordIntegrationConfiguration();
+    if (!configuration?.enabled || !configuration.discordGuildId || !configuration.botUserId) {
+      return reply.code(409).send({ error: "discord_integration_not_ready" });
+    }
+    const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
+    const [ranks, roles, botMember] = await Promise.all([
+      guildRankDefinitions(guildId),
+      discordServerRoles(configuration.botToken, configuration.discordGuildId),
+      discordServerMember(configuration.botToken, configuration.discordGuildId, configuration.botUserId),
+    ]);
+    if (!botMember) return reply.code(409).send({ error: "discord_bot_not_in_server" });
+    const body = (request.body ?? {}) as Record<string, unknown>;
+    const mappings = ranks.flatMap((rank) => {
+      const value = body[`rank_${rank.rankIndex}`];
+      return typeof value === "string" && value ? [{ rankIndex: rank.rankIndex, discordRoleId: value }] : [];
+    });
+    const readiness = discordRoleReadiness({
+      roles, botRoleIds: botMember.roles, botUserId: configuration.botUserId,
+      guildId: configuration.discordGuildId, mappedRoleIds: mappings.map((mapping) => mapping.discordRoleId),
+    });
+    if (!readiness.ready && mappings.length > 0) {
+      return reply.code(422).send({ error: "discord_role_mapping_not_manageable", reasons: readiness.reasons });
+    }
+    try {
+      await replaceDiscordRankRoleMappings({ guildId, discordGuildId: configuration.discordGuildId, mappings });
+    } catch (error) {
+      if (error instanceof Error && error.message === "invalid_discord_rank_role_mapping") {
+        return reply.code(400).send({ error: error.message });
+      }
+      throw error;
+    }
+    return reply.redirect("/admin/discord");
   });
 
   app.post("/admin/discord", async (request, reply) => {
