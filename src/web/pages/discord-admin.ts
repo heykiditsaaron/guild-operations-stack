@@ -11,6 +11,7 @@ import {
 } from "../../integrations/discord/configuration.js";
 import { discordBotInstallUrl, verifyDiscordApplication, discordServerRoles, discordServerMember, discordRoleReadiness, discordServerChannels, DISCORD_TEXT_CHANNEL, DISCORD_ANNOUNCEMENT_CHANNEL } from "../../integrations/discord/api.js";
 import { provisionRaidRoleEmoji } from "../../integrations/discord/role-emoji.js";
+import { publishOperationalRecord } from "../../operational-inspection.js";
 import { discordRankRoleMappings, replaceDiscordRankRoleMappings } from "../../integrations/discord/role-mappings.js";
 import { guildRankDefinitions } from "../../core/guild/guild-ranks.js";
 import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
@@ -167,9 +168,21 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
           assets, botToken: configuration.botToken, applicationId: configuration.applicationId, role,
         }));
       }
+      await publishOperationalRecord({
+        source: "discord.application-emoji", operation: "raid-role-provisioning", kind: "result", result: "success",
+        actorIdentityId: identity.identityId,
+        summary: "Discord raid role emojis provisioned or reused",
+        details: { applicationId: configuration.applicationId, emojis: emojis.map(({ id, name }) => ({ id, name })) },
+      });
       request.log.info({ applicationId: configuration.applicationId, emojis: emojis.map(({ id, name }) => ({ id, name })) }, "Discord role emoji provisioning succeeded");
       return reply.code(303).redirect("/admin/discord?emoji=success");
     } catch (error) {
+      await publishOperationalRecord({
+        source: "discord.application-emoji", operation: "raid-role-provisioning", kind: "exception",
+        actorIdentityId: identity.identityId,
+        summary: "Discord raid role emoji provisioning failed",
+        details: { applicationId: configuration.applicationId, error: error instanceof Error ? error.message : String(error) },
+      }).catch((recordError) => request.log.error({ err: recordError }, "Unable to record Discord emoji provisioning failure"));
       request.log.error({ err: error }, "Discord role emoji provisioning failed");
       return reply.code(303).redirect("/admin/discord?emoji=failed");
     }
