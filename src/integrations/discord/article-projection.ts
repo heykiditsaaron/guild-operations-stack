@@ -43,6 +43,9 @@ async function projectArticle(code: string, articleId: string): Promise<void> {
   const excerpt = articlePreviewText(article.body, 1200);
   const payload = {
     allowed_mentions: { parse: [] },
+    // Discord deduplicates a repeated create with this nonce during its short retry window.
+    nonce: `go-article-${articleId}`,
+    enforce_nonce: true,
     embeds: [{
       title: article.title.slice(0, 256),
       url,
