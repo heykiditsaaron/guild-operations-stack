@@ -9,7 +9,7 @@ import {
   setDiscordIntegrationEnabled,
   setDiscordArticleChannel,
 } from "../../integrations/discord/configuration.js";
-import { discordBotInstallUrl, verifyDiscordApplication, discordServerRoles, discordServerMember, discordRoleReadiness, discordServerChannels, DISCORD_TEXT_CHANNEL, DISCORD_ANNOUNCEMENT_CHANNEL } from "../../integrations/discord/api.js";
+import { discordBotInstallUrl, verifyDiscordApplication, discordServerRoles, discordServerMember, discordRoleReadiness, discordServerChannels, discordApplicationEmojis, discordApplicationEmojiMarkup, discordChannelMessage, DISCORD_TEXT_CHANNEL, DISCORD_ANNOUNCEMENT_CHANNEL } from "../../integrations/discord/api.js";
 import { provisionDiscordPresentationEmojis } from "../../integrations/discord/application-emojis.js";
 import { publishOperationalRecord } from "../../operational-inspection.js";
 import { discordRankRoleMappings, replaceDiscordRankRoleMappings } from "../../integrations/discord/role-mappings.js";
@@ -100,6 +100,26 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
         articleSection = "<p>Unable to inspect Discord channels. Check bot authorization.</p>";
       }
     }
+    let previewSection = "<p>Enable Discord and establish the server to send an emoji preview.</p>";
+    if (configuration?.enabled && configuration.discordGuildId && configuration.applicationVerifiedAt) {
+      try {
+        const channels = (await discordServerChannels(configuration.botToken, configuration.discordGuildId))
+          .filter((channel) => channel.type === DISCORD_TEXT_CHANNEL || channel.type === DISCORD_ANNOUNCEMENT_CHANNEL);
+        previewSection = channels.length
+          ? `<p>Send one sample raid-style message to a selected channel. This does not configure ongoing publication.</p>
+             <form method="post" action="/admin/discord/emoji/preview">
+               <label class="discord-field"><span>Preview destination</span>
+                 <select name="channel_id" required><option value="">Choose a Discord channel</option>
+                   ${channels.map((channel) => `<option value="${htmlText(channel.id)}">${htmlText(channel.name ?? channel.id)}</option>`).join("")}
+                 </select></label>
+               <button type="submit" class="button-secondary">Send emoji preview</button>
+             </form>`
+          : "<p>No text channels are available for a preview.</p>";
+      } catch (error) {
+        request.log.warn({ err: error }, "Discord preview channel discovery failed");
+        previewSection = "<p>Unable to inspect Discord channels for the preview.</p>";
+      }
+    }
     const body = `<div class="admin-sections">
       <section class="admin-section" aria-labelledby="discord-heading">
         <h2 id="discord-heading">Discord Integration</h2>
@@ -136,6 +156,10 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       <section class="admin-section"><h2>Application emojis</h2><div class="settings-panel">\n        ${((request.query as { emoji?: string }).emoji === "success") ? '<p role="status">Discord presentation icons successfully provisioned or reused.</p>' : ((request.query as { emoji?: string }).emoji === "failed") ? '<p role="alert">Discord icon setup was incomplete. Check Operations → Logs for details and retry.</p>' : ""}
         <p>Set up raid role and WoW specialization icons for your Discord application in one operation. Existing icons are reused; unrelated emojis are not changed.</p>
         ${configuration?.applicationVerifiedAt ? `<form method="post" action="/admin/discord/emoji/raid-roles"><button type="submit" class="button-secondary">Set up Discord icons</button></form>` : "<p>Verify the Discord application first.</p>"}
+      </div></section>
+      <section class="admin-section"><h2>Emoji rendering preview</h2><div class="settings-panel">
+        ${((request.query as { preview?: string }).preview === "success") ? '<p role="status">Discord emoji preview sent to the selected channel.</p>' : ((request.query as { preview?: string }).preview === "failed") ? '<p role="alert">Unable to send the emoji preview. Check Operations → Logs.</p>' : ""}
+        ${previewSection}
       </div></section>
       <section class="admin-section"><h2>Rank role mapping</h2><div class="settings-panel">${roleSection}</div></section>
 
@@ -184,6 +208,69 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       }).catch((recordError) => request.log.error({ err: recordError }, "Unable to record Discord emoji provisioning failure"));
       request.log.error({ err: error }, "Discord role emoji provisioning failed");
       return reply.code(303).redirect("/admin/discord?emoji=failed");
+    }
+  });
+
+  app.post("/admin/discord/emoji/preview", async (request, reply) => {
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "authentication_required" });
+    if (!await identityHasGuildCapability(identity.identityId, DISCORD_CONFIGURE_CAPABILITY)) {
+      return reply.code(403).send({ error: "discord_configuration_not_authorized" });
+    }
+    const configuration = await discordIntegrationConfiguration();
+    if (!configuration?.enabled || !configuration.applicationVerifiedAt || !configuration.discordGuildId) {
+      return reply.code(409).send({ error: "discord_integration_not_ready" });
+    }
+    const body = (request.body ?? {}) as Record<string, unknown>;
+    const channelId = body.channel_id;
+    if (typeof channelId !== "string" || !/^\\d+$/.test(channelId)) {
+      return reply.code(400).send({ error: "invalid_discord_preview_channel" });
+    }
+    const channels = await discordServerChannels(configuration.botToken, configuration.discordGuildId);
+    if (!channels.some((channel) => channel.id === channelId &&
+      (channel.type === DISCORD_TEXT_CHANNEL || channel.type === DISCORD_ANNOUNCEMENT_CHANNEL))) {
+      return reply.code(400).send({ error: "invalid_discord_preview_channel" });
+    }
+    try {
+      const available = new Map((await discordApplicationEmojis(configuration.botToken, configuration.applicationId))
+        .map((emoji) => [emoji.name, emoji]));
+      const icon = (name: string): string => {
+        const emoji = available.get(name);
+        return emoji ? discordApplicationEmojiMarkup(emoji) : "[icon unavailable]";
+      };
+      const payload = {
+        allowed_mentions: { parse: [] },
+        embeds: [{
+          title: "Guild Operations · Raid icon preview",
+          description: [
+            "Sample presentation only — no raid or signup was created.",
+            "",
+            `${icon("go_raid_tank")} **Tank** · ${icon("go_spec_warrior_protection")} Protection Warrior`,
+            `${icon("go_raid_healer")} **Healer** · ${icon("go_spec_priest_holy")} Holy Priest`,
+            `${icon("go_raid_damage")} **Damage** · ${icon("go_spec_mage_fire")} Fire Mage`,
+            `${icon("go_raid_damage")} **Damage** · ${icon("go_spec_druid_balance")} Balance Druid`,
+          ].join("\\n"),
+          footer: { text: "Guild Operations · Discord emoji experiment" },
+        }],
+      };
+      const message = await discordChannelMessage(configuration.botToken, channelId, payload);
+      await publishOperationalRecord({
+        source: "discord.application-emoji", operation: "presentation-preview",
+        kind: "result", result: "success", actorIdentityId: identity.identityId,
+        summary: "Discord emoji preview sent",
+        details: { applicationId: configuration.applicationId, channelId, messageId: message.id },
+      });
+      return reply.code(303).redirect("/admin/discord?preview=success");
+    } catch (error) {
+      await publishOperationalRecord({
+        source: "discord.application-emoji", operation: "presentation-preview",
+        kind: "exception", actorIdentityId: identity.identityId,
+        summary: "Discord emoji preview failed",
+        details: { applicationId: configuration.applicationId, channelId,
+          error: error instanceof Error ? error.message : String(error) },
+      }).catch((recordError) => request.log.error({ err: recordError }, "Unable to record Discord preview failure"));
+      request.log.error({ err: error }, "Discord emoji preview failed");
+      return reply.code(303).redirect("/admin/discord?preview=failed");
     }
   });
 
