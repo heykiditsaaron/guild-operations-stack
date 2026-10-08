@@ -10,6 +10,7 @@ import {
 } from "../../integrations/discord/configuration.js";
 import { discordBotInstallUrl, verifyDiscordApplication, discordServerRoles, discordServerMember, discordRoleReadiness } from "../../integrations/discord/api.js";
 import { discordRankRoleMappings, replaceDiscordRankRoleMappings } from "../../integrations/discord/role-mappings.js";
+import { recentDiscordRoleActions } from "../../integrations/discord/role-action-history.js";
 import { guildRankDefinitions } from "../../core/guild/guild-ranks.js";
 import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import type { AssetRegistry } from "../assets.js";
@@ -47,6 +48,17 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     const installUrl = configuration?.applicationVerifiedAt ? discordBotInstallUrl(configuration.applicationId) : null;
     const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
     const [guildRanks, mappings] = await Promise.all([guildRankDefinitions(guildId), discordRankRoleMappings(guildId)]);
+    const actions = await recentDiscordRoleActions(guildId);
+    const historyRows = actions.map((entry) => {
+      const timestamp = entry.occurredAt.toISOString().replace("T", " ").slice(0, 19) + " UTC";
+      const description = entry.action === "grant" ? "Granted role" : entry.action === "remove" ? "Removed role" : "Reconciliation";
+      return `<tr><td>${htmlText(timestamp)}</td><td>${htmlText(description)}</td>
+        <td>${htmlText(entry.discordUserId)}</td><td>${htmlText(entry.discordRoleId ?? "—")}</td>
+        <td>${htmlText(entry.outcome)}</td><td>${htmlText(entry.detail ?? "")}</td></tr>`;
+    }).join("");
+    const historySection = actions.length
+      ? `<div style="overflow-x:auto"><table><thead><tr><th>When</th><th>Action</th><th>Discord user ID</th><th>Role ID</th><th>Result</th><th>Detail</th></tr></thead><tbody>${historyRows}</tbody></table></div>`
+      : "<p>No Discord role actions have been recorded yet. Existing role assignments predate this history.</p>";
     let roleSection = "<p>Enable Discord and establish the server to configure role synchronization.</p>";
     if (configuration?.enabled && configuration.discordGuildId && configuration.botUserId) {
       try {
@@ -114,6 +126,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
         </div>
       </section>
       <section class="admin-section"><h2>Rank role mapping</h2><div class="settings-panel">${roleSection}</div></section>
+      <section class="admin-section"><h2>Discord role action history</h2><div class="settings-panel"><p>Recent Guild Operations role changes and API outcomes. Discord retains its own independent audit log.</p>${historySection}</div></section>
     </div>`;
 
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(renderPage(assets, {
