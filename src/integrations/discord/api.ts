@@ -182,10 +182,11 @@ export async function discordChannelMessage(botToken: string, channelId: string,
 }
 
 export async function discordEditChannelMessage(botToken: string, channelId: string, messageId: string, payload: unknown): Promise<void> {
-  await discordJson<unknown>(`${API}/channels/${encodeURIComponent(channelId)}/messages/${encodeURIComponent(messageId)}`, {
+  const response = await fetch(`${API}/channels/${encodeURIComponent(channelId)}/messages/${encodeURIComponent(messageId)}`, {
     method: "PATCH", headers: { Authorization: `Bot ${botToken}`, "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+  if (!response.ok) throw new Error(`discord_api_${response.status}`);
 }
 
 export async function discordDeleteChannelMessage(botToken: string, channelId: string, messageId: string): Promise<void> {
