@@ -4,7 +4,7 @@ import { publishedGuildArticle } from "../../core/articles/guild-articles.js";
 import { installationAbsoluteUrl } from "../../core/installation/public-origin.js";
 import { registerEmissionConsumer } from "../../emissions/registry.js";
 import { publishOperationalRecord } from "../../operational-inspection.js";
-import { articlePreviewText } from "../../web/pages/article-markup.js";
+import { discordArticleExcerpt } from "./article-excerpt.js";
 import { discordIntegrationConfiguration } from "./configuration.js";
 import { discordChannelMessage, discordDeleteChannelMessage, discordEditChannelMessage } from "./api.js";
 
@@ -41,7 +41,7 @@ async function projectArticle(code: string, articleId: string): Promise<void> {
   if (!article || !channelId) return;
 
   const url = await installationAbsoluteUrl(`/articles/${encodeURIComponent(articleId)}`);
-  const excerpt = articlePreviewText(article.body, 1200);
+  const excerpt = discordArticleExcerpt(article.body, 360);
   const payload = {
     allowed_mentions: { parse: [] },
     embeds: [{
