@@ -32,13 +32,14 @@ async function projectArticle(code: string, articleId: string): Promise<void> {
 
   let existing = await existingProjection(articleId);
   const article = code === "article.removed" ? null : await publishedGuildArticle(articleId);
-  const channelId = article ? config.articleChannelId : null;
-
-  if (existing && (!channelId || existing.discord_channel_id !== channelId)) {
-    await removeProjection(articleId, config.botToken, existing);
-    existing = null;
+  // Channel selection applies to new publications only. Existing messages
+  // retain their original channel for edits and removal.
+  if (!article) {
+    if (existing) await removeProjection(articleId, config.botToken, existing);
+    return;
   }
-  if (!article || !channelId) return;
+  const channelId = existing?.discord_channel_id ?? config.articleChannelId;
+  if (!channelId) return;
 
   const url = await installationAbsoluteUrl(`/articles/${encodeURIComponent(articleId)}`);
   const excerpt = discordArticleExcerpt(article.body, 360);
