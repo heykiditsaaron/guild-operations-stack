@@ -132,7 +132,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
         </div>
       </section>
       <section class="admin-section"><h2>Article publication</h2><div class="settings-panel">${articleSection}</div></section>
-      <section class="admin-section"><h2>Application emoji experiment</h2><div class="settings-panel">
+      <section class="admin-section"><h2>Application emoji experiment</h2><div class="settings-panel">\n        ${((request.query as { emoji?: string }).emoji === "success") ? '<p role="status">Raid role icons successfully provisioned or reused in your Discord application.</p>' : ((request.query as { emoji?: string }).emoji === "failed") ? '<p role="alert">Unable to provision raid role icons. Check application credentials and server logs, then retry.</p>' : ""}
         <p>Provision the existing raid role artwork to your Discord application. Existing emojis with these names are reused; unrelated emojis are not changed.</p>
         ${configuration?.applicationVerifiedAt ? `<form method="post" action="/admin/discord/emoji/raid-roles"><button type="submit" class="button-secondary">Provision raid role icons</button></form>` : "<p>Verify the Discord application first.</p>"}
       </div></section>
@@ -167,10 +167,11 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
           assets, botToken: configuration.botToken, applicationId: configuration.applicationId, role,
         }));
       }
-      return reply.code(200).send({ emojis: emojis.map(({ id, name }) => ({ id, name })) });
+      request.log.info({ applicationId: configuration.applicationId, emojis: emojis.map(({ id, name }) => ({ id, name })) }, "Discord role emoji provisioning succeeded");
+      return reply.code(303).redirect("/admin/discord?emoji=success");
     } catch (error) {
       request.log.error({ err: error }, "Discord role emoji provisioning failed");
-      return reply.code(502).send({ error: "discord_emoji_provisioning_failed" });
+      return reply.code(303).redirect("/admin/discord?emoji=failed");
     }
   });
 
