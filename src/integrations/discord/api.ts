@@ -69,7 +69,7 @@ export function discordBotInstallUrl(applicationId: string): string {
   url.searchParams.set("scope", "bot");
   // Manage Roles, View Channel, Send Messages, Embed Links.
   // Channel-specific overrides remain authoritative in Discord.
-  url.searchParams.set("permissions", "268438592");
+  url.searchParams.set("permissions", "268454912");
   return url.toString();
 }
 
