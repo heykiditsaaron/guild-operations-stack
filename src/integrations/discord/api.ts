@@ -67,7 +67,8 @@ export function discordBotInstallUrl(applicationId: string): string {
   const url = new URL("https://discord.com/oauth2/authorize");
   url.searchParams.set("client_id", applicationId);
   url.searchParams.set("scope", "bot");
-  url.searchParams.set("permissions", "0");
+  // MANAGE_ROLES (1 << 28). Discord still enforces the bot role hierarchy.
+  url.searchParams.set("permissions", "268435456");
   return url.toString();
 }
 
