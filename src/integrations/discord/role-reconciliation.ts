@@ -1,4 +1,4 @@
-import { guildie } from "../../core/guild/guildie.js";
+import { effectiveGuildAuthority } from "../../core/authority/guild-permissions.js";
 import { discordServerMember, discordServerRoles, discordRoleReadiness, discordSetMemberRole } from "./api.js";
 import type { DiscordIntegrationConfiguration } from "./configuration.js";
 import { discordRankRoleMappings, managedDiscordRankRoleIds } from "./role-mappings.js";
@@ -36,7 +36,8 @@ export async function reconcileDiscordRankRole(input: {
   });
   if (!readiness.ready) return { status: "not_ready", reasons: readiness.reasons };
 
-  const rank = (await guildie(wowIdentityId, guildId))?.rankIndex;
+  // Identity is the subject; Core derives current authority from Blizzard-backed character facts.
+  const rank = (await effectiveGuildAuthority(wowIdentityId, guildId))?.rankIndex;
   const desired = mappings.find((mapping) => mapping.rankIndex === rank)?.discordRoleId ?? null;
   const removed: string[] = [];
   const added: string[] = [];
