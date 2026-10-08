@@ -28,7 +28,9 @@ export async function reconcileDiscordRankRole(input: {
   if (!bot) return { status: "not_ready", reasons: ["Discord bot is not a member of the bound server."] };
 
   const roles = await discordServerRoles(configuration.botToken, configuration.discordGuildId);
-  const currentManaged = managed.filter((id) => member.roles.includes(id));
+  const knownRoles = new Set(roles.map((role) => role.id));
+  // A deleted Discord role is already absent in practice; it cannot be removed via API.
+  const currentManaged = managed.filter((id) => member.roles.includes(id) && knownRoles.has(id));
   const readiness = discordRoleReadiness({
     roles, botRoleIds: bot.roles, botUserId: configuration.botUserId,
     guildId: configuration.discordGuildId,
