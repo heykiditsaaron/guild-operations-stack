@@ -44,9 +44,6 @@ async function projectArticle(code: string, articleId: string): Promise<void> {
   const excerpt = articlePreviewText(article.body, 1200);
   const payload = {
     allowed_mentions: { parse: [] },
-    // Discord deduplicates a repeated create with this nonce during its short retry window.
-    nonce: createHash("sha256").update(`${channelId}:${articleId}`).digest("hex").slice(0, 24),
-    enforce_nonce: true,
     embeds: [{
       title: article.title.slice(0, 256),
       url,
@@ -70,7 +67,12 @@ async function projectArticle(code: string, articleId: string): Promise<void> {
     }
   }
   if (!existing) {
-    const message = await discordChannelMessage(config.botToken, channelId, payload);
+    const message = await discordChannelMessage(config.botToken, channelId, {
+      ...payload,
+      // Discord enforces this nonce during its short duplicate-create window.
+      nonce: createHash("sha256").update(`${channelId}:${articleId}`).digest("hex").slice(0, 24),
+      enforce_nonce: true,
+    });
     await pool.query(
       `INSERT INTO discord_article_projections (article_id, discord_channel_id, discord_message_id)
        VALUES ($1, $2, $3)
