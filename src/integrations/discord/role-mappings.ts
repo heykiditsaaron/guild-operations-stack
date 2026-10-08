@@ -35,7 +35,7 @@ export async function replaceDiscordRankRoleMappings(input: {
   const roles = new Set<string>();
   for (const mapping of input.mappings) {
     if (!Number.isSafeInteger(mapping.rankIndex) || mapping.rankIndex < 0 ||
-      !/^\\d+$/.test(mapping.discordRoleId) ||
+      !/^\d+$/.test(mapping.discordRoleId) ||
       ranks.has(mapping.rankIndex) || roles.has(mapping.discordRoleId)) {
       throw new Error("invalid_discord_rank_role_mapping");
     }
