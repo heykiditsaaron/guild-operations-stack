@@ -84,3 +84,82 @@ export async function verifiedDiscordServer(configuration: DiscordIntegrationCon
   if (guilds.length !== 1) throw new Error("discord_server_binding_ambiguous");
   return guilds[0];
 }
+
+
+export type DiscordRole = {
+  id: string;
+  name: string;
+  position: number;
+  permissions: string;
+  managed: boolean;
+};
+
+export type DiscordGuildMember = {
+  roles: string[];
+  user?: { id: string };
+};
+
+const MANAGE_ROLES = 1n << 28n;
+
+export async function discordServerRoles(botToken: string, guildId: string): Promise<DiscordRole[]> {
+  return discordJson<DiscordRole[]>(`${API}/guilds/${encodeURIComponent(guildId)}/roles`, {
+    headers: { Authorization: `Bot ${botToken}` },
+  });
+}
+
+export async function discordServerMember(botToken: string, guildId: string, userId: string): Promise<DiscordGuildMember | null> {
+  const response = await fetch(`${API}/guilds/${encodeURIComponent(guildId)}/members/${encodeURIComponent(userId)}`, {
+    headers: { Authorization: `Bot ${botToken}` },
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`discord_api_${response.status}`);
+  return response.json() as Promise<DiscordGuildMember>;
+}
+
+export async function discordSetMemberRole(input: {
+  botToken: string;
+  guildId: string;
+  userId: string;
+  roleId: string;
+  present: boolean;
+}): Promise<void> {
+  const response = await fetch(
+    `${API}/guilds/${encodeURIComponent(input.guildId)}/members/${encodeURIComponent(input.userId)}/roles/${encodeURIComponent(input.roleId)}`,
+    { method: input.present ? "PUT" : "DELETE", headers: { Authorization: `Bot ${input.botToken}` } },
+  );
+  if (!response.ok) throw new Error(`discord_api_${response.status}`);
+}
+
+/** Discord role positions can tie; role IDs break ties in Discord's hierarchy. */
+export function discordRoleAbove(left: DiscordRole, right: DiscordRole): boolean {
+  if (left.position !== right.position) return left.position > right.position;
+  return BigInt(left.id) > BigInt(right.id);
+}
+
+export function discordRoleReadiness(input: {
+  roles: DiscordRole[];
+  botRoleIds: string[];
+  botUserId: string;
+  guildId: string;
+  mappedRoleIds: string[];
+}): { ready: boolean; reasons: string[] } {
+  const roles = new Map(input.roles.map((role) => [role.id, role]));
+  const botRoles = input.botRoleIds.map((id) => roles.get(id)).filter((role): role is DiscordRole => Boolean(role));
+  const everyone = roles.get(input.guildId);
+  const permissions = botRoles.reduce((bits, role) => bits | BigInt(role.permissions), BigInt(everyone?.permissions ?? "0"));
+  const reasons: string[] = [];
+  if ((permissions & MANAGE_ROLES) === 0n && (permissions & (1n << 3n)) === 0n) {
+    reasons.push("Bot lacks Manage Roles permission; reauthorize the bot with Manage Roles.");
+  }
+  const highest = botRoles.sort((a, b) => discordRoleAbove(a, b) ? -1 : discordRoleAbove(b, a) ? 1 : 0)[0];
+  for (const roleId of new Set(input.mappedRoleIds)) {
+    const role = roles.get(roleId);
+    if (!role) { reasons.push(`Mapped Discord role ${roleId} no longer exists.`); continue; }
+    if (role.id === input.guildId || role.managed) {
+      reasons.push(`Discord role "${role.name}" cannot be managed by a bot.`);
+    } else if (!highest || !discordRoleAbove(highest, role)) {
+      reasons.push(`Move the bot's highest role above "${role.name}" in Discord Server Settings.`);
+    }
+  }
+  return { ready: reasons.length === 0, reasons };
+}
