@@ -140,6 +140,7 @@ export async function replaceDiscordApplicationCredentials(input: {
        client_secret_ciphertext = EXCLUDED.client_secret_ciphertext,
        bot_token_ciphertext = EXCLUDED.bot_token_ciphertext,
        discord_guild_id = NULL,
+       article_channel_id = NULL,
        updated_at = now()`,
     [applicationId, encryptApplicationSecret(clientSecret), encryptApplicationSecret(botToken)],
   );
