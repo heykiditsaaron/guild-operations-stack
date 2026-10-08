@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { pool } from "../../db.js";
 import { publishedGuildArticle } from "../../core/articles/guild-articles.js";
 import { installationAbsoluteUrl } from "../../core/installation/public-origin.js";
@@ -44,7 +45,7 @@ async function projectArticle(code: string, articleId: string): Promise<void> {
   const payload = {
     allowed_mentions: { parse: [] },
     // Discord deduplicates a repeated create with this nonce during its short retry window.
-    nonce: `go-article-${articleId}`,
+    nonce: createHash("sha256").update(`${channelId}:${articleId}`).digest("hex").slice(0, 24),
     enforce_nonce: true,
     embeds: [{
       title: article.title.slice(0, 256),
