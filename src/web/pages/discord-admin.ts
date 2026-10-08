@@ -249,7 +249,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
             `${icon("go_raid_healer")} **Healer** · ${icon("go_spec_priest_holy")} Holy Priest`,
             `${icon("go_raid_damage")} **Damage** · ${icon("go_spec_mage_fire")} Fire Mage`,
             `${icon("go_raid_damage")} **Damage** · ${icon("go_spec_druid_balance")} Balance Druid`,
-          ].join("\\n"),
+          ].join("\n"),
           footer: { text: "Guild Operations · Discord emoji experiment" },
         }],
       };
