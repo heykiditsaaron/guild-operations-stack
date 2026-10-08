@@ -7,8 +7,9 @@ import {
   markDiscordApplicationEstablished,
   replaceDiscordApplicationCredentials,
   setDiscordIntegrationEnabled,
+  setDiscordArticleChannel,
 } from "../../integrations/discord/configuration.js";
-import { discordBotInstallUrl, verifyDiscordApplication, discordServerRoles, discordServerMember, discordRoleReadiness } from "../../integrations/discord/api.js";
+import { discordBotInstallUrl, verifyDiscordApplication, discordServerRoles, discordServerMember, discordRoleReadiness, discordServerChannels, DISCORD_TEXT_CHANNEL, DISCORD_ANNOUNCEMENT_CHANNEL } from "../../integrations/discord/api.js";
 import { discordRankRoleMappings, replaceDiscordRankRoleMappings } from "../../integrations/discord/role-mappings.js";
 import { guildRankDefinitions } from "../../core/guild/guild-ranks.js";
 import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
@@ -81,6 +82,22 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
         roleSection = "<p>Unable to inspect Discord roles. Check bot authorization.</p>";
       }
     }
+    let articleSection = "<p>Enable Discord and establish the server to select an article publication channel.</p>";
+    if (configuration?.enabled && configuration.discordGuildId) {
+      try {
+        const channels = (await discordServerChannels(configuration.botToken, configuration.discordGuildId))
+          .filter((channel) => channel.type === DISCORD_TEXT_CHANNEL || channel.type === DISCORD_ANNOUNCEMENT_CHANNEL);
+        const options = channels.map((channel) => `<option value="${htmlText(channel.id)}"${configuration.articleChannelId === channel.id ? " selected" : ""}>${htmlText(channel.name ?? channel.id)}</option>`).join("");
+        articleSection = `<p>Publish Guild Operations articles to an optional Discord channel. Articles remain authoritative in Guild Operations.</p>
+          <form method="post" action="/admin/discord/articles">
+            <label class="discord-field"><span>Article publication channel</span><select name="channel_id"><option value="">Do not publish articles to Discord</option>${options}</select></label>
+            <button type="submit" class="button-primary">Save article destination</button>
+          </form>`;
+      } catch (error) {
+        request.log.warn({ err: error }, "Discord channel discovery failed");
+        articleSection = "<p>Unable to inspect Discord channels. Check bot authorization.</p>";
+      }
+    }
     const body = `<div class="admin-sections">
       <section class="admin-section" aria-labelledby="discord-heading">
         <h2 id="discord-heading">Discord Integration</h2>
@@ -113,6 +130,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
           ${installUrl && !configuration?.discordGuildId ? `<div class="discord-server-install"><h3>Install in your Discord server</h3><p>Choose the server for this deployment. Guild Operations verifies the bot relationship before binding the server.</p><a class="button-primary" href="${htmlText(installUrl)}" target="_blank" rel="noreferrer">Install in Discord Server</a></div>` : ""}
         </div>
       </section>
+      <section class="admin-section"><h2>Article publication</h2><div class="settings-panel">${articleSection}</div></section>
       <section class="admin-section"><h2>Rank role mapping</h2><div class="settings-panel">${roleSection}</div></section>
 
     </div>`;
@@ -127,6 +145,23 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       body,
       scripts: ["discord-admin.js"],
     }));
+  });
+
+  app.post("/admin/discord/articles", async (request, reply) => {
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "authentication_required" });
+    if (!await identityHasGuildCapability(identity.identityId, DISCORD_CONFIGURE_CAPABILITY)) {
+      return reply.code(403).send({ error: "discord_configuration_not_authorized" });
+    }
+    const configuration = await discordIntegrationConfiguration();
+    if (!configuration?.enabled || !configuration.discordGuildId) return reply.code(409).send({ error: "discord_integration_not_ready" });
+    const body = (request.body ?? {}) as Record<string, unknown>;
+    if (typeof body.channel_id !== "string") return reply.code(400).send({ error: "invalid_discord_article_channel" });
+    const channels = await discordServerChannels(configuration.botToken, configuration.discordGuildId);
+    const valid = channels.some((channel) => channel.id === body.channel_id && (channel.type === DISCORD_TEXT_CHANNEL || channel.type === DISCORD_ANNOUNCEMENT_CHANNEL));
+    if (body.channel_id && !valid) return reply.code(422).send({ error: "discord_article_channel_unavailable" });
+    await setDiscordArticleChannel(body.channel_id || null);
+    return reply.redirect("/admin/discord");
   });
 
   app.post("/admin/discord/roles", async (request, reply) => {
