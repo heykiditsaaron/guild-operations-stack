@@ -163,3 +163,34 @@ export function discordRoleReadiness(input: {
   }
   return { ready: reasons.length === 0, reasons };
 }
+
+export type DiscordChannel = { id: string; name?: string; type: number; parent_id?: string | null };
+export const DISCORD_TEXT_CHANNEL = 0;
+export const DISCORD_ANNOUNCEMENT_CHANNEL = 5;
+
+export async function discordServerChannels(botToken: string, guildId: string): Promise<DiscordChannel[]> {
+  return discordJson<DiscordChannel[]>(`${API}/guilds/${encodeURIComponent(guildId)}/channels`, {
+    headers: { Authorization: `Bot ${botToken}` },
+  });
+}
+
+export async function discordChannelMessage(botToken: string, channelId: string, payload: unknown): Promise<{ id: string }> {
+  return discordJson<{ id: string }>(`${API}/channels/${encodeURIComponent(channelId)}/messages`, {
+    method: "POST", headers: { Authorization: `Bot ${botToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function discordEditChannelMessage(botToken: string, channelId: string, messageId: string, payload: unknown): Promise<void> {
+  await discordJson<unknown>(`${API}/channels/${encodeURIComponent(channelId)}/messages/${encodeURIComponent(messageId)}`, {
+    method: "PATCH", headers: { Authorization: `Bot ${botToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function discordDeleteChannelMessage(botToken: string, channelId: string, messageId: string): Promise<void> {
+  const response = await fetch(`${API}/channels/${encodeURIComponent(channelId)}/messages/${encodeURIComponent(messageId)}`, {
+    method: "DELETE", headers: { Authorization: `Bot ${botToken}` },
+  });
+  if (!response.ok && response.status !== 404) throw new Error(`discord_api_${response.status}`);
+}
