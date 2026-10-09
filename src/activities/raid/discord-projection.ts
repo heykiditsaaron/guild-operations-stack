@@ -76,6 +76,10 @@ async function projectRaid(raidId: string): Promise<void> {
     discordApplicationEmojis(config.botToken, config.applicationId).catch(() => []),
   ]);
   const emojis: EmojiLookup = new Map(availableEmojis.map((emoji) => [emoji.name, discordApplicationEmojiMarkup(emoji)]));
+  // Temporary thumbnail: reuse an already-provisioned Guild Operations role icon.
+  // No external artwork dependency or new Raid configuration is required.
+  const thumbnailEmoji = availableEmojis.find((emoji) => emoji.name === "go_raid_damage" && emoji.available !== false);
+  const thumbnailUrl = thumbnailEmoji ? `https://cdn.discordapp.com/emojis/${thumbnailEmoji.id}.png?size=128` : null;
   const destinations = raidOccurrenceDestinations(raidId);
   const publicUrl = await installationAbsoluteUrl(destinations.find((item) => item.kind === "public")!.href);
   const signupUrl = await installationAbsoluteUrl(destinations.find((item) => item.kind === "participate")!.href);
@@ -96,6 +100,7 @@ async function projectRaid(raidId: string): Promise<void> {
       url: publicUrl,
       description,
       fields,
+      ...(thumbnailUrl ? { thumbnail: { url: thumbnailUrl } } : {}),
       color: raid.cancelledAtUnix !== null ? 0xb84040 : raid.concludedAtUnix !== null ? 0x667788 : 0x3275a8,
       footer: { text: "Guild Operations · Raid" },
     }],
