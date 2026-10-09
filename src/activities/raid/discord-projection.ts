@@ -25,27 +25,27 @@ function rosterFields(rows: RaidSignupView[], emojis: EmojiLookup): { name: stri
   const active = rows.filter((row) => row.withdrawnAtUnix === null && row.deniedAtUnix === null);
   const assignedActors = new Set(active.filter((row) => row.assignmentId !== null).map((row) => `${row.actorKind}:${row.actorReference}`));
   const groups: Record<string, string[]> = {
-    "Tank": [], "Healer": [], "Melee Damage": [], "Ranged Damage": [], "Damage": [], "Pending signups": [],
+    "Tanks": [], "Melee Damage": [], "Ranged Damage": [], "Healers": [], "Damage": [], "Pending signups": [],
   };
   for (const row of active) {
     const name = safeText(row.displayName).slice(0, 90);
     if (row.assignmentId && row.selectedClass && row.selectedSpec && row.selectedRole) {
       const spec = `${row.selectedSpec} ${row.selectedClass}`;
       const icon = emojis.get(emojiName(row.selectedClass, row.selectedSpec));
-      const line = `${icon ? icon + " " : ""}**${name}** — ${safeText(spec)}`;
+      const line = `${icon ? icon + " " : ""}**${name}**${icon ? "" : ` — ${safeText(spec)}`}`;
       const position = positionForSpec(row.selectedClass, row.selectedSpec);
-      const group = row.selectedRole === "tank" ? "Tank" : row.selectedRole === "healer" ? "Healer" :
+      const group = row.selectedRole === "tank" ? "Tanks" : row.selectedRole === "healer" ? "Healers" :
         position === "melee" ? "Melee Damage" : position === "ranged" ? "Ranged Damage" : "Damage";
       groups[group].push(line);
     } else if (!row.assignmentId && !assignedActors.has(`${row.actorKind}:${row.actorReference}`)) {
       const specs = row.offeredSpecs.map((spec) => {
         const icon = emojis.get(emojiName(spec.className, spec.specName));
-        return `${icon ? icon + " " : ""}${safeText(spec.specName)} ${safeText(spec.className)}`;
+        return icon ?? `${safeText(spec.specName)} ${safeText(spec.className)}`;
       }).join(", ");
       groups["Pending signups"].push(`**${name}** — ${specs}`);
     }
   }
-  return Object.entries(groups).filter(([, entries]) => entries.length).map(([name, entries]) => {
+  return Object.entries(groups).filter(([name, entries]) => name !== "Damage" || entries.length > 0).map(([name, entries]) => {
     const lines: string[] = [];
     let used = 0;
     for (const entry of entries) {
@@ -79,16 +79,16 @@ async function projectRaid(raidId: string): Promise<void> {
   const destinations = raidOccurrenceDestinations(raidId);
   const publicUrl = await installationAbsoluteUrl(destinations.find((item) => item.kind === "public")!.href);
   const signupUrl = await installationAbsoluteUrl(destinations.find((item) => item.kind === "participate")!.href);
-  const status = raid.cancelledAtUnix !== null ? "Cancelled" : raid.concludedAtUnix !== null ? "Concluded" : "Scheduled";
+  const status = raid.cancelledAtUnix !== null ? "Cancelled" : raid.concludedAtUnix !== null ? "Concluded" : null;
   const description = [
     raid.description ? safeText(raid.description).slice(0, 1600) : null,
-    `**Difficulty:** ${safeText(raid.difficulty)} · **Status:** ${status}`,
-    `**Starts:** <t:${Math.floor(raid.occursAt[0])}:F> (<t:${Math.floor(raid.occursAt[0])}:R>)`,
+    `**${safeText(raid.difficulty[0].toUpperCase() + raid.difficulty.slice(1))}**${status ? ` · **${status}**` : ""}`,
+    `**Starts:** <t:${Math.floor(raid.occursAt[0])}:F>`,
     raid.occursAt[1] !== undefined ? `**Ends:** <t:${Math.floor(raid.occursAt[1])}:F>` : null,
     ...raid.requirements.slice(0, 8).map((requirement) => `**${safeText(requirement.label)}:** ${safeText(requirement.value)}`),
   ].filter(Boolean).join("\n").slice(0, 4096);
   const fields = rosterFields(rows, emojis);
-  if (!fields.length) fields.push({ name: "Roster", value: "No active signups yet.", inline: false });
+
   const payload = {
     allowed_mentions: { parse: [] },
     embeds: [{
