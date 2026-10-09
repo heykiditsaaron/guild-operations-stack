@@ -65,7 +65,7 @@ async function projectRaid(raidId: string): Promise<void> {
   const prior = await pool.query<Projection>(
     "SELECT discord_channel_id, discord_message_id FROM discord_raid_projections WHERE raid_id = $1", [raidId],
   );
-  let existing = prior.rows[0] ?? null;
+  let existing: Projection | null = prior.rows[0] ?? null;
   // Destination changes affect future publications, not already-published messages.
   const channelId = existing?.discord_channel_id ?? config.raidChannelId;
   if (!channelId) return;
@@ -84,7 +84,7 @@ async function projectRaid(raidId: string): Promise<void> {
     raid.description ? safeText(raid.description).slice(0, 1600) : null,
     `**Difficulty:** ${safeText(raid.difficulty)} · **Status:** ${status}`,
     `**Starts:** <t:${Math.floor(raid.occursAt[0])}:F> (<t:${Math.floor(raid.occursAt[0])}:R>)`,
-    raid.occursAt.length > 1 ? `**Ends:** <t:${Math.floor(raid.occursAt[1])}:F>` : null,
+    raid.occursAt[1] !== undefined ? `**Ends:** <t:${Math.floor(raid.occursAt[1])}:F>` : null,
     ...raid.requirements.slice(0, 8).map((requirement) => `**${safeText(requirement.label)}:** ${safeText(requirement.value)}`),
   ].filter(Boolean).join("\n").slice(0, 4096);
   const fields = rosterFields(rows, emojis);
