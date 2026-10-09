@@ -103,16 +103,16 @@ async function projectRaid(raidId: string): Promise<void> {
   const payload = {
     allowed_mentions: { parse: [] },
     embeds: [{
-      title: safeText(raid.label).slice(0, 256),
+      title: `${raid.cancelledAtUnix !== null ? "CANCELLED · " : ""}${safeText(raid.label)}`.slice(0, 256),
       url: publicUrl,
       description,
       fields,
       ...(thumbnailUrl ? { thumbnail: { url: thumbnailUrl } } : {}),
       // Match the established Raid difficulty palette in src/web/public/app.css.
-      color: ({ normal: 0x79c77b, heroic: 0xa67cff, mythic: 0xff6b63 })[raid.difficulty],
+      color: raid.cancelledAtUnix !== null ? 0xe05252 : ({ normal: 0x79c77b, heroic: 0xa67cff, mythic: 0xff6b63 })[raid.difficulty],
       footer: { text: "Guild Operations · Raid" },
     }],
-    components: [{ type: 1, components: [{ type: 2, style: 5, label: "View raid and sign up", url: signupUrl }] }],
+    components: raid.cancelledAtUnix !== null ? [] : [{ type: 1, components: [{ type: 2, style: 5, label: "View raid and sign up", url: signupUrl }] }],
   };
   if (existing) {
     try {
