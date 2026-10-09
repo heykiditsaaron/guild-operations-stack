@@ -1,13 +1,13 @@
 import { createHash } from "node:crypto";
-import { raidEventFactsIncludingCancelled, raidOccurrenceDestinations } from "../../activities/raid/application.js";
-import { raidSignups, type RaidSignupView } from "../../activities/raid/participation-view.js";
+import { raidEventFactsIncludingCancelled, raidOccurrenceDestinations } from "./application.js";
+import { raidSignups, type RaidSignupView } from "./participation-view.js";
 import { pool } from "../../db.js";
 import { installationAbsoluteUrl } from "../../core/installation/public-origin.js";
 import { registerEmissionConsumer } from "../../emissions/registry.js";
 import { publishOperationalRecord } from "../../operational-inspection.js";
 import { positionForSpec } from "../../wow-traits/registry.js";
-import { discordApplicationEmojis, discordApplicationEmojiMarkup, discordChannelMessage, discordEditChannelMessage } from "./api.js";
-import { discordIntegrationConfiguration } from "./configuration.js";
+import { discordApplicationEmojis, discordApplicationEmojiMarkup, discordChannelMessage, discordEditChannelMessage } from "../../integrations/discord/api.js";
+import { discordIntegrationConfiguration } from "../../integrations/discord/configuration.js";
 
 type Projection = { discord_channel_id: string; discord_message_id: string };
 type EmojiLookup = Map<string, string>;
