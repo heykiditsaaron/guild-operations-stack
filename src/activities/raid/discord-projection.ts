@@ -45,6 +45,13 @@ function rosterFields(rows: RaidSignupView[], emojis: EmojiLookup): { name: stri
       groups["Pending signups"].push(`**${name}** — ${specs}`);
     }
   }
+  const roleIcons: Record<string, string | undefined> = {
+    "Tanks": emojis.get("go_raid_tank"),
+    "Melee Damage": emojis.get("go_raid_damage"),
+    "Ranged Damage": emojis.get("go_raid_damage"),
+    "Healers": emojis.get("go_raid_healer"),
+    "Damage": emojis.get("go_raid_damage"),
+  };
   return Object.entries(groups).filter(([name, entries]) => name !== "Damage" || entries.length > 0).map(([name, entries]) => {
     const lines: string[] = [];
     let used = 0;
@@ -55,7 +62,7 @@ function rosterFields(rows: RaidSignupView[], emojis: EmojiLookup): { name: stri
       lines.push(clipped);
       used += clipped.length + 1;
     }
-    return { name: `${name} (${entries.length})`, value: lines.join("\n") || "—", inline: false };
+    return { name: `${roleIcons[name] ? roleIcons[name] + " " : ""}${name}`, value: lines.join("\n") || "—", inline: false };
   });
 }
 
@@ -101,7 +108,8 @@ async function projectRaid(raidId: string): Promise<void> {
       description,
       fields,
       ...(thumbnailUrl ? { thumbnail: { url: thumbnailUrl } } : {}),
-      color: raid.cancelledAtUnix !== null ? 0xb84040 : raid.concludedAtUnix !== null ? 0x667788 : 0x3275a8,
+      // Match the established Raid difficulty palette in src/web/public/app.css.
+      color: ({ normal: 0x79c77b, heroic: 0xa67cff, mythic: 0xff6b63 })[raid.difficulty],
       footer: { text: "Guild Operations · Raid" },
     }],
     components: [{ type: 1, components: [{ type: 2, style: 5, label: "View raid and sign up", url: signupUrl }] }],
