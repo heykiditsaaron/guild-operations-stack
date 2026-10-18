@@ -1,5 +1,6 @@
 /** Activity plugins register Discord component handlers without a Core-to-plugin import. */
 export type DiscordComponentInteraction = {
+  id?: string;
   type?: number;
   application_id?: string;
   guild_id?: string;
