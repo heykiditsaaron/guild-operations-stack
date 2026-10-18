@@ -127,6 +127,17 @@ async function raidSignupRows(raidId: string, includeWithdrawn: boolean): Promis
   const offerByReference = new Map(offers.map((offer) => [offer.procedureReference, offer]));
   const guildieIds = offers.flatMap((offer) => offer.actor.kind === "native" ? [offer.actor.reference] : []);
   const attributions = await identityRepresentations(guildieIds);
+  const externalIds = [...new Set(offers.flatMap((offer) => offer.actor.kind === "external" ? [offer.actor.reference] : []))];
+  const externalNames = new Map<string, string>();
+  if (externalIds.length) {
+    const discord = await pool.query<{ identity_id: string; username: string | null; discord_user_id: string }>(
+      "SELECT identity_id, username, discord_user_id FROM discord_identities WHERE identity_id = ANY($1::uuid[])",
+      [externalIds],
+    );
+    for (const identity of discord.rows) {
+      externalNames.set(identity.identity_id, identity.username || `Discord user ${identity.discord_user_id}`);
+    }
+  }
 
   return result.rows.map((row) => {
     const offer = offerByReference.get(row.signup_row_id);
@@ -144,7 +155,7 @@ async function raidSignupRows(raidId: string, includeWithdrawn: boolean): Promis
       participationOfferId: offer.participationOfferId,
       actorKind: offer.actor.kind,
       actorReference: offer.actor.reference,
-      displayName: attribution?.displayName ?? (offer.actor.kind === "external" ? offer.actor.reference : `Identity ${offer.actor.reference.slice(0, 8)}`),
+      displayName: attribution?.displayName ?? (offer.actor.kind === "external" ? (externalNames.get(offer.actor.reference) ?? "Discord participant") : `Identity ${offer.actor.reference.slice(0, 8)}`),
       offeredSpecs,
       willingRoles: rolesForSpecs(offeredSpecs),
       assignmentId: row.assignment_id,
