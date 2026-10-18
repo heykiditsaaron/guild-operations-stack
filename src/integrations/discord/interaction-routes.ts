@@ -47,7 +47,13 @@ export async function registerDiscordInteractionRoutes(app: FastifyInstance): Pr
             const data = response.data ?? { content: "Interaction unavailable." };
             const result = await fetch(`https://discord.com/api/v10/webhooks/${encodeURIComponent(config.applicationId)}/${encodeURIComponent(interaction.token)}/messages/@original`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
             if (!result.ok) throw new Error(`discord_interaction_edit_${result.status}`);
-          } catch (error) { request.log.error({ error }, "Deferred Discord interaction failed"); }
+          } catch (error) {
+            request.log.error({ error }, "Deferred Discord interaction failed");
+            await fetch(`https://discord.com/api/v10/webhooks/${encodeURIComponent(interaction.application_id)}/${encodeURIComponent(interaction.token)}/messages/@original`, {
+              method: "PATCH", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ content: "The interaction could not be completed. Please try again or use Guild Operations.", components: [] }),
+            }).catch(() => {});
+          }
         })();
         return { type: 5, data: { flags: 64 } };
       }
