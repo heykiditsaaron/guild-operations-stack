@@ -46,7 +46,10 @@ export async function registerDiscordInteractionRoutes(app: FastifyInstance): Pr
             const config = await discordIntegrationConfiguration();
             if (!config?.enabled || !config.applicationVerifiedAt || !config.discordGuildId || config.interactionPublicKey !== publicKey || interaction.application_id !== config.applicationId || interaction.guild_id !== config.discordGuildId) throw new Error("discord_interaction_binding_unavailable");
             const response = await dispatchDiscordComponentInteraction(interaction);
-            const data = response.data ?? { content: "Interaction unavailable." };
+            // The deferred acknowledgement already establishes ephemerality.
+            // PATCH @original accepts message-edit fields, not interaction response flags.
+            const { flags: _flags, ...data } = response.data ?? { content: "Interaction unavailable." };
+            if (!("components" in data)) Object.assign(data, { components: [] });
             const result = await fetch(`https://discord.com/api/v10/webhooks/${encodeURIComponent(config.applicationId)}/${encodeURIComponent(interactionToken)}/messages/@original`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
             if (!result.ok) throw new Error(`discord_interaction_edit_${result.status}`);
           } catch (error) {
