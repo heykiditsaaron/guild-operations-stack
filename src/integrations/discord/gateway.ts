@@ -1,4 +1,6 @@
 import WebSocket from "ws";
+import { discordIntegrationConfiguration } from "./configuration.js";
+import { dispatchDiscordComponentInteraction, type DiscordComponentInteraction } from "./interaction-handlers.js";
 
 const GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
 const INTENTS_GUILDS = 1;
@@ -77,6 +79,38 @@ export class DiscordGateway {
     if (payload.op === 7) { this.socket?.close(); return; }
     if (payload.op === 9) { this.sequence = null; this.socket?.close(); return; }
     if (payload.op === 0 && payload.t === "READY") this.setHealth("ready");
+    if (payload.op === 0 && payload.t === "INTERACTION_CREATE") {
+      void this.handleInteraction(payload.d as DiscordComponentInteraction & { token?: string }).catch((error) => console.error("Discord Gateway interaction failed", error));
+    }
+  }
+
+  private async handleInteraction(interaction: DiscordComponentInteraction & { token?: string }): Promise<void> {
+    if (interaction.type !== 3 || !interaction.token || !interaction.application_id) return;
+    const config = await discordIntegrationConfiguration();
+    if (!config?.enabled || !config.applicationVerifiedAt || !config.discordGuildId ||
+        config.botToken !== this.botToken || interaction.application_id !== config.applicationId ||
+        interaction.guild_id !== config.discordGuildId) return;
+    const callback = `https://discord.com/api/v10/interactions/${encodeURIComponent(interaction.id ?? "")}/${encodeURIComponent(interaction.token)}/callback`;
+    const acknowledged = await fetch(callback, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: 5, data: { flags: 64 } }),
+    });
+    if (!acknowledged.ok) throw new Error(`discord_gateway_ack_${acknowledged.status}`);
+    try {
+      const response = await dispatchDiscordComponentInteraction(interaction);
+      const { flags: _flags, ...data } = response.data ?? { content: "Interaction unavailable." };
+      if (!("components" in data)) Object.assign(data, { components: [] });
+      const result = await fetch(`https://discord.com/api/v10/webhooks/${encodeURIComponent(config.applicationId)}/${encodeURIComponent(interaction.token)}/messages/@original`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data),
+      });
+      if (!result.ok) throw new Error(`discord_gateway_edit_${result.status}`);
+    } catch (error) {
+      console.error("Discord Gateway interaction dispatch failed", error);
+      await fetch(`https://discord.com/api/v10/webhooks/${encodeURIComponent(config.applicationId)}/${encodeURIComponent(interaction.token)}/messages/@original`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: "The interaction could not be completed. Please try again or use Guild Operations.", components: [] }),
+      }).catch(() => {});
+    }
   }
 
   private send(payload: unknown): void {
