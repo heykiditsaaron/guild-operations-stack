@@ -40,7 +40,7 @@ async function handleRaid(interaction: DiscordComponentInteraction): Promise<Dis
   if (!acquisition || acquisition.kind !== "wow_spec") return ephemeral("Raid specialization choices are unavailable.");
   if (action === "start") {
     const characters = acquisition.characters.filter(character => character.className);
-    const options = characters.slice(0, 25).map((character, index) => ({ label: `${character.name} · ${character.className}`.slice(0, 100), value: `c${index}` }));
+    const options = characters.slice(0, acquisition.allowDeclaredClass ? 12 : 25).map((character, index) => ({ label: `${character.name} · ${character.className}`.slice(0, 100), value: `c${index}` }));
     if (acquisition.allowDeclaredClass) options.push(...classes.slice(0, Math.max(0, 25 - options.length)).map((name, index) => ({ label: `${name} (declared)`, value: `d${index}` })));
     if (!options.length) return ephemeral("No eligible characters or class declarations are available for this raid.");
     return menu("Choose a character or class for your raid signup.", `go:raid:character:${raidId}`, options);
@@ -50,18 +50,19 @@ async function handleRaid(interaction: DiscordComponentInteraction): Promise<Dis
     const matchChoice = /^([cd])(\d{1,2})$/.exec(selected);
     if (!matchChoice) return ephemeral("Invalid selection. Start again.");
     const index = Number(matchChoice[2]);
-    const characters = acquisition.characters.filter(character => character.className).slice(0, 25);
+    const characters = acquisition.characters.filter(character => character.className).slice(0, acquisition.allowDeclaredClass ? 12 : 25);
     const selectedClass = matchChoice[1] === "c" ? characters[index]?.className : (acquisition.allowDeclaredClass ? classes[index] : undefined);
     if (!selectedClass) return ephemeral("That character or class is no longer available. Start again.");
     const specs = specsForClass(selectedClass);
-    return menu(`Choose a specialization for ${selectedClass}.`, `go:raid:spec:${raidId}`, specs.map(spec => ({ label: `${spec} ${selectedClass}`, value: `${selected}:${spec}` })));
+    const selectedKey = `${matchChoice[1]}${index}`;
+    return menu(`Choose a specialization for ${selectedClass}.`, `go:raid:spec:${raidId}`, specs.map(spec => ({ label: `${spec} ${selectedClass}`, value: `${selectedKey}:${spec}` })));
   }
   if (action === "spec") {
     const selected = interaction.data?.values?.[0] ?? "";
     const matchSpec = /^([cd])(\d{1,2}):(.{1,60})$/.exec(selected);
     if (!matchSpec) return ephemeral("Invalid specialization. Start again.");
     const index = Number(matchSpec[2]);
-    const characters = acquisition.characters.filter(character => character.className).slice(0, 25);
+    const characters = acquisition.characters.filter(character => character.className).slice(0, acquisition.allowDeclaredClass ? 12 : 25);
     let offer: RaidOfferedSpecInput;
     if (matchSpec[1] === "c") {
       const character = characters[index];
