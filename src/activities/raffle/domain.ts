@@ -510,7 +510,7 @@ export async function establishRaffleClaim(claimantGuildieId: string, raffleId: 
   });
 }
 
-export async function revokeRaffleClaim(claimantGuildieId: string, claimId: string): Promise<void> {
+export async function revokeRaffleClaimForActor(actor: ActivityParticipationActor, claimId: string): Promise<void> {
   await withTransaction(async (client) => {
     const claim = await lockedClaim(client, claimId);
     const offer = await activityParticipationOfferByProcedureReference(client, {
@@ -518,25 +518,29 @@ export async function revokeRaffleClaim(claimantGuildieId: string, claimId: stri
       activityId: String(claim.raffle_id),
       procedureReference: claimId,
     });
-    if (!offer || offer.actor.kind !== "native" || offer.actor.reference !== claimantGuildieId) {
-      throw new RaffleRuleError("claim_not_owned", "A member may only revoke their own Raffle claim", 403);
+    if (!offer || offer.actor.kind !== actor.kind || offer.actor.reference !== actor.reference) {
+      throw new RaffleRuleError("claim_not_owned", "Only the claim owner may withdraw it", 403);
     }
     if (claim.raffle_conclusion !== null) throw new RaffleRuleError("raffle_concluded", "Claims cannot be revoked after the Raffle concludes");
     if (claim.resolution_kind !== null) throw new RaffleRuleError("claim_already_resolved", "Only an unresolved claim can be revoked");
 
     const revokedAtUnix = unixNow();
-    await client.query(
-      "UPDATE raffle_claims SET resolution_kind='revoked', revoked_by_identity_id=$2, revoked_at_unix=$3 WHERE claim_id=$1",
-      [claimId, claimantGuildieId, revokedAtUnix],
-    );
     await revokeActivityParticipationOffer(client, {
       activityKind: "raffle",
       activityId: String(claim.raffle_id),
-      actor: { kind: "native", reference: claimantGuildieId },
+      actor,
       procedureReference: claimId,
       revokedAtUnix,
     });
+    await client.query(
+      "UPDATE raffle_claims SET resolution_kind='revoked', revoked_by_identity_id=$2, revoked_at_unix=$3 WHERE claim_id=$1",
+      [claimId, actor.kind === "native" ? actor.reference : null, revokedAtUnix],
+    );
   });
+}
+
+export async function revokeRaffleClaim(claimantGuildieId: string, claimId: string): Promise<void> {
+  return revokeRaffleClaimForActor({ kind: "native", reference: claimantGuildieId }, claimId);
 }
 
 export async function approveRaffleClaim(actorGuildieId:string, claimId:string):Promise<void> {
