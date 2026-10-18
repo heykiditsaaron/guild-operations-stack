@@ -49,6 +49,7 @@ export type ActivityParticipationContextRequest =
       lessThan?: number;
       lessThanOrEqual?: number;
     }
+  | { name: string; kind: "string"; allowMultiple: boolean; maxLength?: number }
   | { name: string; kind: "guild_character"; allowMultiple: boolean }
   | { name: string; kind: "wow_spec"; allowMultiple: boolean };
 
@@ -73,6 +74,7 @@ export type ParticipationOfferWorkspaceCharacter = {
 
 export type ParticipationOfferWorkspaceAcquisition =
   | { kind: "integer" }
+  | { kind: "string" }
   | { kind: "guild_character"; characters: readonly ParticipationOfferWorkspaceCharacter[] }
   | {
       kind: "wow_spec";
@@ -202,6 +204,20 @@ function requireIntegerContextValue(
     throw new ActivityParticipationOfferError("integer_out_of_range", `${request.name} must be at most ${request.lessThanOrEqual}`);
   }
   return { type: "integer", value };
+}
+
+function requireStringContextValue(
+  request: Extract<ActivityParticipationContextRequest, { kind: "string" }>,
+  raw: unknown,
+): ActivitySharedValue {
+  if (typeof raw !== "string" || !raw.trim()) {
+    throw new ActivityParticipationOfferError("invalid_string", `${request.name} must be nonempty text`);
+  }
+  const value = raw.trim();
+  if (request.maxLength !== undefined && value.length > request.maxLength) {
+    throw new ActivityParticipationOfferError("string_too_long", `${request.name} must be at most ${request.maxLength} characters`);
+  }
+  return { type: "string", value };
 }
 
 type WowSpecParticipationAcquisition = {
@@ -355,6 +371,7 @@ async function constructParticipationContextValue(
   raw: unknown,
 ): Promise<ActivitySharedValue> {
   if (request.kind === "integer") return requireIntegerContextValue(request, raw);
+  if (request.kind === "string") return requireStringContextValue(request, raw);
   if (request.kind === "wow_spec") return requireWowSpecContextValue(actor, eligibility, request, raw);
   return requireGuildCharacterContextValue(actor, request, raw);
 }
@@ -397,6 +414,10 @@ function retainedParticipationContextValue(
   if (request.kind === "integer") {
     if (value.type !== "integer") throw new ActivityParticipationOfferError("invalid_retained_context", `${request.name} contains an invalid established value`);
     return requireIntegerContextValue(request, value.value);
+  }
+  if (request.kind === "string") {
+    if (value.type !== "string") throw new ActivityParticipationOfferError("invalid_retained_context", `${request.name} contains an invalid established value`);
+    return requireStringContextValue(request, value.value);
   }
   if (request.kind === "guild_character") {
     if (value.type !== "guild_character") throw new ActivityParticipationOfferError("invalid_retained_context", `${request.name} contains an invalid established value`);
@@ -496,6 +517,7 @@ async function participationOfferWorkspaceAcquisition(
   request: ActivityParticipationContextRequest,
 ): Promise<ParticipationOfferWorkspaceAcquisition> {
   if (request.kind === "integer") return { kind: "integer" };
+  if (request.kind === "string") return { kind: "string" };
 
   if (request.kind === "guild_character") {
     return { kind: "guild_character", characters: await guildCharacterParticipationAcquisition(actor) };
