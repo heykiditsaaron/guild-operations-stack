@@ -12,6 +12,7 @@ export type InstalledActivityPlugin = {
   label: string;
   version?: string;
   register(): void;
+  registerDiscordInteractions?(): void;
   registerRoutes(app: FastifyInstance, assets: AssetRegistry): Promise<void>;
 };
 
