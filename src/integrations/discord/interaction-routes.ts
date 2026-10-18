@@ -2,8 +2,9 @@ import { createPublicKey, verify } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { currentDiscordApplication } from "./api.js";
 import { discordIntegrationConfiguration } from "./configuration.js";
+import { dispatchDiscordComponentInteraction, type DiscordComponentInteraction } from "./interaction-handlers.js";
 
-type DiscordInteraction = {
+type DiscordInteraction = DiscordComponentInteraction & {
   type?: number;
   application_id?: string;
   guild_id?: string;
@@ -40,7 +41,13 @@ export async function registerDiscordInteractionRoutes(app: FastifyInstance): Pr
       if (interaction.application_id !== config.applicationId) return reply.code(401).send({ error: "invalid_interaction_application" });
       if (interaction.type === 1) return { type: 1 };
       if (interaction.guild_id !== config.discordGuildId) return reply.code(403).send({ error: "invalid_interaction_guild" });
-      // No mutation is permitted until the Raid-specific interaction procedure is registered.
+      if (interaction.type === 3) {
+        try { return await dispatchDiscordComponentInteraction(interaction); }
+        catch (error) {
+          request.log.error({ error }, "Discord component interaction failed");
+          return { type: 4, data: { flags: 64, content: "The interaction could not be completed. Please try again." } };
+        }
+      }
       return { type: 4, data: { flags: 64, content: "This Guild Operations interaction is not available yet." } };
     });
   });
