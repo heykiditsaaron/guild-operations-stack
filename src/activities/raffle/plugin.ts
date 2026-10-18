@@ -1,5 +1,6 @@
 import type { InstalledActivityPlugin } from "../../activity-plugins.js";
 import { registerRaffleActivityIntegration } from "./activity.js";
+import { registerDiscordRaffleEmissionConsumer } from "./discord-projection.js";
 import { registerRaffleApiV1Routes } from "./api-v1-routes.js";
 import { registerRaffleRoutes } from "./routes.js";
 import { registerRaffleClaimsPage } from "./web/claims.js";
@@ -10,7 +11,8 @@ import { registerRaffleRulesPage } from "./web/rules.js";
 
 export const activityPlugin: InstalledActivityPlugin = {
   kind: "raffle", label: "Raffle",
-  register() { registerRaffleActivityIntegration(); },
+  register() { registerRaffleActivityIntegration(); registerDiscordRaffleEmissionConsumer(); },
+  registerDiscordInteractions() { registerDiscordRaffleEmissionConsumer(); },
   async registerRoutes(app, assets) {
     await registerRaffleEntryPage(app, assets);
     await registerRaffleClaimsPage(app, assets); await registerRaffleHistoryPage(app, assets);
