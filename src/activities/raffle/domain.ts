@@ -420,6 +420,7 @@ export async function establishRaffleClaimFromParticipationContext(
        ) VALUES ($1,$2,$3,$4,$5)`,
       [claimId, raffleId, promisedGoldValue.toString(), offeredAtUnix, offer.participationOfferId],
     );
+    await publishEmission(client, { code: "raffle.claim.established", parent: raffleId, subject: claimId });
 
     return {
       claimId,
@@ -488,6 +489,7 @@ export async function establishRaffleClaim(claimantGuildieId: string, raffleId: 
        ) VALUES ($1,$2,$3,$4,$5)`,
       [claimId, raffleId, promisedGoldValue.toString(), offeredAtUnix, offer.participationOfferId],
     );
+    await publishEmission(client, { code: "raffle.claim.established", parent: raffleId, subject: claimId });
 
     return {
       claimId,
