@@ -93,7 +93,7 @@ export class DiscordGateway {
     const callback = `https://discord.com/api/v10/interactions/${encodeURIComponent(interaction.id)}/${encodeURIComponent(interaction.token)}/callback`;
     const acknowledged = await fetch(callback, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: 5, data: { flags: 64 } }),
+      body: JSON.stringify(/^go:raid:(character|spec):/.test(interaction.data?.custom_id ?? "") ? { type: 6 } : { type: 5, data: { flags: 64 } }),
     });
     if (!acknowledged.ok) throw new Error(`discord_gateway_ack_${acknowledged.status}`);
     try {
