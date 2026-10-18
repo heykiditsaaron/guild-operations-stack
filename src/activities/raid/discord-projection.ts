@@ -21,14 +21,15 @@ function safeText(value: string): string {
   return value.replace(/@/g, "@\u200b").replace(/\r/g, " ").trim();
 }
 
-function rosterFields(rows: RaidSignupView[], emojis: EmojiLookup): { name: string; value: string; inline: boolean }[] {
+function rosterFields(rows: RaidSignupView[], emojis: EmojiLookup, discordIds: Map<string, string>): { name: string; value: string; inline: boolean }[] {
   const active = rows.filter((row) => row.withdrawnAtUnix === null && row.deniedAtUnix === null);
   const assignedActors = new Set(active.filter((row) => row.assignmentId !== null).map((row) => `${row.actorKind}:${row.actorReference}`));
   const groups: Record<string, string[]> = {
     "Tanks": [], "Melee Damage": [], "Ranged Damage": [], "Healers": [], "Damage": [], "Pending signups": [],
   };
   for (const row of active) {
-    const name = safeText(row.displayName).slice(0, 90);
+    const discordId = row.actorKind === "external" ? discordIds.get(row.actorReference) : undefined;
+    const name = discordId ? `<@${discordId}>` : safeText(row.displayName).slice(0, 90);
     if (row.assignmentId && row.selectedClass && row.selectedSpec && row.selectedRole) {
       const spec = `${row.selectedSpec} ${row.selectedClass}`;
       const icon = emojis.get(emojiName(row.selectedClass, row.selectedSpec));
@@ -98,7 +99,16 @@ async function projectRaid(raidId: string): Promise<void> {
     raid.occursAt[1] !== undefined ? `**Ends:** <t:${Math.floor(raid.occursAt[1])}:F>` : null,
     ...raid.requirements.slice(0, 8).map((requirement) => `**${safeText(requirement.label)}:** ${safeText(requirement.value)}`),
   ].filter(Boolean).join("\n").slice(0, 4096);
-  const fields = rosterFields(rows, emojis);
+  const externalIds = [...new Set(rows.filter(row => row.actorKind === "external").map(row => row.actorReference))];
+  const discordIds = new Map<string, string>();
+  if (externalIds.length) {
+    const identities = await pool.query<{ identity_id: string; discord_user_id: string }>(
+      "SELECT identity_id, discord_user_id FROM discord_identities WHERE identity_id = ANY($1::uuid[])",
+      [externalIds],
+    );
+    for (const identity of identities.rows) discordIds.set(identity.identity_id, identity.discord_user_id);
+  }
+  const fields = rosterFields(rows, emojis, discordIds);
 
   const payload = {
     allowed_mentions: { parse: [] },
