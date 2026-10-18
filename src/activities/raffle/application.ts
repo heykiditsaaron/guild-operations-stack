@@ -15,6 +15,7 @@ import {
   drawRaffle as drawRaffleDomain,
   establishRaffle as establishRaffleDomain,
   establishRaffleClaim as establishRaffleClaimDomain,
+  establishDeclaredRaffleClaim as establishDeclaredRaffleClaimDomain,
   establishRaffleClaimFromParticipationContext as establishRaffleClaimFromParticipationContextDomain,
   modifyRaffle as modifyRaffleDomain,
   openRaffleParticipation as openRaffleParticipationDomain,
@@ -129,6 +130,10 @@ export async function establishRaffleClaim(
   requestedEntryCount: number,
 ): Promise<RaffleClaim> {
   return establishRaffleClaimDomain(claimantGuildieId, raffleId, realmId, characterId, requestedEntryCount);
+}
+
+export async function establishDeclaredRaffleClaim(discordActorReference: string, raffleId: string, designation: string, entries: number): Promise<string> {
+  return establishDeclaredRaffleClaimDomain({ kind: "external", reference: discordActorReference }, raffleId, designation, entries);
 }
 
 export async function revokeRaffleClaim(claimantGuildieId: string, claimId: string): Promise<void> {
