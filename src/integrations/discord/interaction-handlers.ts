@@ -4,7 +4,7 @@ export type DiscordComponentInteraction = {
   type?: number;
   application_id?: string;
   guild_id?: string;
-  member?: { user?: { id?: string; username?: string } };
+  member?: { nick?: string | null; user?: { id?: string; username?: string; global_name?: string | null } };
   data?: { custom_id?: string; values?: string[] };
 };
 
