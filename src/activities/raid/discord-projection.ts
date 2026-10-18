@@ -28,7 +28,7 @@ function rosterFields(rows: RaidSignupView[], emojis: EmojiLookup, discordIds: M
     "Tanks": [], "Melee Damage": [], "Ranged Damage": [], "Healers": [], "Damage": [], "Pending signups": [],
   };
   for (const row of active) {
-    const discordId = row.actorKind === "external" ? discordIds.get(row.actorReference) : undefined;
+    const discordId = discordIds.get(`${row.actorKind}:${row.actorReference}`);
     const name = discordId ? `<@${discordId}>` : safeText(row.displayName).slice(0, 90);
     if (row.assignmentId && row.selectedClass && row.selectedSpec && row.selectedRole) {
       const spec = `${row.selectedSpec} ${row.selectedClass}`;
@@ -106,7 +106,18 @@ async function projectRaid(raidId: string): Promise<void> {
       "SELECT identity_id, discord_user_id FROM discord_identities WHERE identity_id = ANY($1::uuid[])",
       [externalIds],
     );
-    for (const identity of identities.rows) discordIds.set(identity.identity_id, identity.discord_user_id);
+    for (const identity of identities.rows) discordIds.set(`external:${identity.identity_id}`, identity.discord_user_id);
+  }
+  const nativeIds = [...new Set(rows.filter(row => row.actorKind === "native").map(row => row.actorReference))];
+  if (nativeIds.length) {
+    const linked = await pool.query<{ wow_identity_id: string; discord_user_id: string }>(
+      `SELECT a.wow_identity_id, d.discord_user_id
+         FROM identity_wow_associations a
+         JOIN discord_identities d ON d.identity_id = a.external_identity_id
+        WHERE a.wow_identity_id = ANY($1::uuid[])`,
+      [nativeIds],
+    );
+    for (const identity of linked.rows) discordIds.set(`native:${identity.wow_identity_id}`, identity.discord_user_id);
   }
   const fields = rosterFields(rows, emojis, discordIds);
 
