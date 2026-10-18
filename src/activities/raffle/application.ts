@@ -25,6 +25,7 @@ import {
   raffleParticipationIsOpen,
   raffleParticipationOfferWorkspace as raffleParticipationOfferWorkspaceDomain,
   revokeRaffleClaim as revokeRaffleClaimDomain,
+  revokeRaffleClaimForActor as revokeRaffleClaimForActorDomain,
   type Raffle,
   type RaffleClaim,
   type RaffleConclusion,
@@ -138,6 +139,10 @@ export async function establishDeclaredRaffleClaim(discordActorReference: string
 
 export async function revokeRaffleClaim(claimantGuildieId: string, claimId: string): Promise<void> {
   await revokeRaffleClaimDomain(claimantGuildieId, claimId);
+}
+
+export async function revokeExternalRaffleClaim(discordActorReference: string, claimId: string): Promise<void> {
+  await revokeRaffleClaimForActorDomain({ kind: "external", reference: discordActorReference }, claimId);
 }
 
 export async function approveRaffleClaim(actorIdentityId: string, claimId: string): Promise<void> {
