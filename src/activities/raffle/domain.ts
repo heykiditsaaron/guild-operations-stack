@@ -1,3 +1,4 @@
+import { publishEmission } from "../../emissions/registry.js";
 import type { ActivitySharedValue } from "../../core/activity/registry.js";
 import { randomInt, randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
@@ -369,6 +370,7 @@ export async function establishDeclaredRaffleClaim(actor: ActivityParticipationA
       "INSERT INTO raffle_claims (claim_id, raffle_id, promised_gold_value, created_at_unix, participation_offer_id) VALUES ($1,$2,$3,$4,$5)",
       [claimId, raffleId, promisedGold, offeredAtUnix, offer.participationOfferId],
     );
+    await publishEmission(client, { code: "raffle.claim.established", parent: raffleId, subject: claimId });
     return claimId;
   });
 }
@@ -536,6 +538,7 @@ export async function revokeRaffleClaimForActor(actor: ActivityParticipationActo
       "UPDATE raffle_claims SET resolution_kind='revoked', revoked_by_identity_id=$2, revoked_at_unix=$3 WHERE claim_id=$1",
       [claimId, actor.kind === "native" ? actor.reference : null, revokedAtUnix],
     );
+    await publishEmission(client, { code: "raffle.claim.revoked", parent: String(claim.raffle_id), subject: claimId });
   });
 }
 
@@ -564,6 +567,7 @@ export async function approveRaffleClaim(actorGuildieId:string, claimId:string):
       participationOfferId:offer.participationOfferId,
       establishedAtUnix:approvedAtUnix,
     });
+    await publishEmission(client, { code: "raffle.claim.approved", parent: String(claim.raffle_id), subject: claimId });
   });
 }
 
@@ -582,6 +586,7 @@ export async function denyRaffleClaim(actorGuildieId:string, claimId:string, rea
       procedureReference:claimId,
       closedAtUnix:deniedAtUnix,
     });
+    await publishEmission(client, { code: "raffle.claim.denied", parent: String(claim.raffle_id), subject: claimId });
   });
 }
 
