@@ -388,7 +388,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     if (!stored) return reply.code(500).send({ error: "discord_configuration_not_stored" });
     try {
       const application = await verifyDiscordApplication(stored);
-      await markDiscordApplicationEstablished(application.name, application.bot?.id ?? null, application.bot?.username ?? null);
+      await markDiscordApplicationEstablished(application.name, application.bot?.id ?? null, application.bot?.username ?? null, application.verify_key ?? "");
     } catch (error) {
       request.log.warn({ err: error }, "Discord application verification failed");
       return reply.redirect("/admin/discord?verification=failed");
