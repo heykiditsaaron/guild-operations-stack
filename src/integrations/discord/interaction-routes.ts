@@ -1,6 +1,6 @@
 import { createPublicKey, verify } from "node:crypto";
 import type { FastifyInstance } from "fastify";
-import { currentDiscordApplication } from "./api.js";
+import { discordInteractionPublicKey } from "./interaction-key.js";
 import { discordIntegrationConfiguration } from "./configuration.js";
 import { dispatchDiscordComponentInteraction, type DiscordComponentInteraction } from "./interaction-handlers.js";
 
@@ -9,6 +9,7 @@ type DiscordInteraction = DiscordComponentInteraction & {
   application_id?: string;
   guild_id?: string;
   data?: { custom_id?: string };
+  token?: string;
 };
 
 function validSignature(body: Buffer, timestamp: string, signature: string, publicKey: string): boolean {
@@ -24,31 +25,34 @@ export async function registerDiscordInteractionRoutes(app: FastifyInstance): Pr
   await app.register(async (scope) => {
     scope.addContentTypeParser("application/json", { parseAs: "buffer" }, (_request, body, done) => done(null, body));
     scope.post("/integrations/discord/interactions", async (request, reply) => {
-      const config = await discordIntegrationConfiguration();
-      if (!config?.enabled || !config.applicationVerifiedAt || !config.discordGuildId) return reply.code(503).send({ error: "discord_integration_not_ready" });
       const body = request.body;
       if (!Buffer.isBuffer(body)) return reply.code(400).send({ error: "invalid_interaction_body" });
       const timestamp = request.headers["x-signature-timestamp"];
       const signature = request.headers["x-signature-ed25519"];
       if (typeof timestamp !== "string" || typeof signature !== "string") return reply.code(401).send({ error: "invalid_interaction_signature" });
-      const application = await currentDiscordApplication(config.botToken);
-      if (!application.verify_key || !validSignature(body, timestamp, signature, application.verify_key)) {
+      const publicKey = discordInteractionPublicKey();
+      if (!publicKey || !validSignature(body, timestamp, signature, publicKey)) {
         return reply.code(401).send({ error: "invalid_interaction_signature" });
       }
       let interaction: DiscordInteraction;
       try { interaction = JSON.parse(body.toString("utf8")) as DiscordInteraction; }
       catch { return reply.code(400).send({ error: "invalid_interaction_body" }); }
-      if (interaction.application_id !== config.applicationId) return reply.code(401).send({ error: "invalid_interaction_application" });
       if (interaction.type === 1) return { type: 1 };
-      if (interaction.guild_id !== config.discordGuildId) return reply.code(403).send({ error: "invalid_interaction_guild" });
-      if (interaction.type === 3) {
-        try { return await dispatchDiscordComponentInteraction(interaction); }
-        catch (error) {
-          request.log.error({ error }, "Discord component interaction failed");
-          return { type: 4, data: { flags: 64, content: "The interaction could not be completed. Please try again." } };
-        }
+      if (interaction.type === 3 && interaction.token && interaction.application_id) {
+        void (async () => {
+          try {
+            const config = await discordIntegrationConfiguration();
+            if (!config?.enabled || !config.applicationVerifiedAt || !config.discordGuildId || config.interactionPublicKey !== publicKey || interaction.application_id !== config.applicationId || interaction.guild_id !== config.discordGuildId) throw new Error("discord_interaction_binding_unavailable");
+            const response = await dispatchDiscordComponentInteraction(interaction);
+            const data = response.data ?? { content: "Interaction unavailable." };
+            const result = await fetch(`https://discord.com/api/v10/webhooks/${encodeURIComponent(config.applicationId)}/${encodeURIComponent(interaction.token)}/messages/@original`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+            if (!result.ok) throw new Error(`discord_interaction_edit_${result.status}`);
+          } catch (error) { request.log.error({ error }, "Deferred Discord interaction failed"); }
+        })();
+        return { type: 5, data: { flags: 64 } };
       }
-      return { type: 4, data: { flags: 64, content: "This Guild Operations interaction is not available yet." } };
+      return reply.code(400).send({ error: "invalid_interaction" });
+
     });
   });
 }
