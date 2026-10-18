@@ -11,7 +11,7 @@ type DiscordInteraction = {
 };
 
 function validSignature(body: Buffer, timestamp: string, signature: string, publicKey: string): boolean {
-  if (!/^[0-9a-f]{128}$/i.test(signature) || !/^\\d{10,}$/.test(timestamp) || !/^[0-9a-f]{64}$/i.test(publicKey)) return false;
+  if (!/^[0-9a-f]{128}$/i.test(signature) || !/^\d{10,}$/.test(timestamp) || !/^[0-9a-f]{64}$/i.test(publicKey)) return false;
   // Reject requests outside the Discord replay window.
   if (Math.abs(Date.now() / 1000 - Number(timestamp)) > 300) return false;
   const key = createPublicKey({ key: Buffer.from("302a300506032b6570032100" + publicKey, "hex"), format: "der", type: "spki" });
