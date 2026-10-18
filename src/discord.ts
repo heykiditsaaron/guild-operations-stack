@@ -1,4 +1,5 @@
 import { pool } from "./db.js";
+import { readdir } from "node:fs/promises";
 import { requireOperationalInstallationGuildBinding } from "./core/installation/guild-binding.js";
 import { reconcileAssociatedDiscordRoles } from "./integrations/discord/role-sync-cycle.js";
 import { installationSecretKey } from "./core/installation-secret.js";
@@ -8,6 +9,16 @@ import { installationBlizzardEncryptedSecretExists } from "./core/installation/b
 import { DiscordGateway } from "./integrations/discord/gateway.js";
 
 installationSecretKey({ encryptedDataExists: await installationBlizzardEncryptedSecretExists() || await discordEncryptedSecretsExist() });
+
+// The Discord worker is a separate process from the web server. Register interaction
+// handlers here as well; the web process's in-memory registry is not shared.
+const activityEntries = await readdir(new URL("./activities/", import.meta.url), { withFileTypes: true });
+for (const entry of activityEntries.filter((item) => item.isDirectory())) {
+  const loaded = await import(`./activities/${entry.name}/plugin.js`) as {
+    activityPlugin?: { registerDiscordInteractions?: () => void };
+  };
+  loaded.activityPlugin?.registerDiscordInteractions?.();
+}
 
 let stopping = false;
 let lastState = "";
