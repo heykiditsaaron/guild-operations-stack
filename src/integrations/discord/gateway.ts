@@ -85,12 +85,12 @@ export class DiscordGateway {
   }
 
   private async handleInteraction(interaction: DiscordComponentInteraction & { token?: string }): Promise<void> {
-    if (interaction.type !== 3 || !interaction.token || !interaction.application_id) return;
+    if (interaction.type !== 3 || !interaction.id || !interaction.token || !interaction.application_id) return;
     const config = await discordIntegrationConfiguration();
     if (!config?.enabled || !config.applicationVerifiedAt || !config.discordGuildId ||
         config.botToken !== this.botToken || interaction.application_id !== config.applicationId ||
         interaction.guild_id !== config.discordGuildId) return;
-    const callback = `https://discord.com/api/v10/interactions/${encodeURIComponent(interaction.id ?? "")}/${encodeURIComponent(interaction.token)}/callback`;
+    const callback = `https://discord.com/api/v10/interactions/${encodeURIComponent(interaction.id)}/${encodeURIComponent(interaction.token)}/callback`;
     const acknowledged = await fetch(callback, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type: 5, data: { flags: 64 } }),
