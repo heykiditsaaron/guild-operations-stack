@@ -81,6 +81,6 @@ async function handleRaid(interaction: DiscordComponentInteraction): Promise<Dis
 export function registerDiscordRaidInteractionHandler(): void {
   registerDiscordComponentHandler("go:raid:", async interaction => {
     try { return await handleRaid(interaction); }
-    catch (error) { return ephemeral(error instanceof Error ? error.message.slice(0, 300) : "Raid participation is unavailable."); }
+    catch (_error) { return ephemeral("Raid participation could not be completed. Please try again or use the Guild Operations website."); }
   });
 }
