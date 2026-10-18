@@ -37,9 +37,10 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       return reply.code(403).send("Discord configuration is not available for this account.");
     }
 
-    const [configuration, callbackUrl] = await Promise.all([
+    const [configuration, callbackUrl, interactionsUrl] = await Promise.all([
       discordIntegrationConfiguration(),
       installationAbsoluteUrl("/integrations/discord/oauth/callback"),
+      installationAbsoluteUrl("/integrations/discord/interactions"),
     ]);
     const readiness = !configuration
       ? "Not configured"
@@ -160,6 +161,12 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
               </li>
               <li><strong>Verify the application.</strong> Guild Operations checks that the bot token belongs to the specified application.
                 <button type="submit" class="button-primary discord-verify-action">Save and verify Discord application</button>
+              </li>
+              <li><strong>Connect Discord interactions.</strong> To use Raid signup and withdrawal buttons in Discord, open <strong>General Information</strong> in the Discord Developer Portal and register this exact <strong>Interactions Endpoint URL</strong>:
+                <div class="discord-callback"><code>${htmlText(interactionsUrl)}</code></div>
+                <p>Discord verifies the endpoint when you save it. Guild Operations automatically retrieves the application's Public Key during verification above; you do not need to enter the key manually.</p>
+                <p>${configuration?.interactionPublicKey && configuration.applicationVerifiedAt ? "Interaction Public Key: configured automatically." : "Interaction Public Key: not yet available. Save and verify the Discord application first."}</p>
+                <p>If Discord cannot verify the URL, confirm that this deployment is publicly accessible over HTTPS and that its Discord application is verified and enabled.</p>
               </li>
             </ol>
             <div class="discord-enablement-row">
