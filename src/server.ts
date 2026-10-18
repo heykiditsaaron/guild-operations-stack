@@ -13,6 +13,7 @@ import { registerInstallationRoutes } from "./core/installation/routes.js";
 import { discordEncryptedSecretsExist } from "./integrations/discord/configuration.js";
 import { registerDiscordOAuthRoutes } from "./integrations/discord/oauth-routes.js";
 import { registerDiscordInteractionRoutes } from "./integrations/discord/interaction-routes.js";
+import { loadDiscordInteractionPublicKey } from "./integrations/discord/interaction-key.js";
 import { registerApplicationEmissionConsumers } from "./emissions/consumers.js";
 import { startEmissionRecovery } from "./emissions/recovery.js";
 import { startGuildRefreshScheduler } from "./guild-refresh-scheduler.js";
@@ -63,6 +64,7 @@ app.get<{ Params: { "*": string } }>("/events/*", async (request, reply) => repl
 await registerAdminPage(app, webAssets);
 await registerDiscordAdminPage(app, webAssets);
 await registerDiscordOAuthRoutes(app);
+await loadDiscordInteractionPublicKey();
 await registerDiscordInteractionRoutes(app);
 await registerOperationsAdminPage(app, webAssets);
 await registerAuthRoutes(app, webAssets);
