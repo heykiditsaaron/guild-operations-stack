@@ -16,7 +16,7 @@ async function projectRaffle(raffleId: string): Promise<void> {
   const previous = await pool.query<Projection>(
     "SELECT discord_channel_id, discord_message_id FROM discord_raffle_projections WHERE raffle_id = $1", [raffleId],
   );
-  let existing = previous.rows[0] ?? null;
+  let existing: Projection | null = previous.rows[0] ?? null;
   const channelId = existing?.discord_channel_id ?? config.raffleChannelId;
   if (!channelId) return;
   const raffle = await getRaffle(raffleId);
