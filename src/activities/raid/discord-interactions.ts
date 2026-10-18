@@ -64,7 +64,7 @@ async function handleRaid(interaction: DiscordComponentInteraction): Promise<Dis
     const offers: RaidOfferedSpecInput[] = [];
     let selectedKey: string | null = null;
     for (const selected of selections) {
-      const matchSpec = /^([cd])(\\d{1,2}):(.{1,60})$/.exec(selected);
+      const matchSpec = /^([cd])(\d{1,2}):(.{1,60})$/.exec(selected);
       if (!matchSpec) return ephemeral("Invalid specialization. Start again.");
       const key = matchSpec[1] + matchSpec[2];
       if (selectedKey !== null && selectedKey !== key) return ephemeral("Specializations must belong to the same character or class. Start again.");
