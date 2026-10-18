@@ -10,6 +10,7 @@ import {
   setDiscordArticleChannel,
   setDiscordRaidChannel,
 } from "../../integrations/discord/configuration.js";
+import { cacheDiscordInteractionPublicKey, loadDiscordInteractionPublicKey } from "../../integrations/discord/interaction-key.js";
 import { discordBotInstallUrl, verifyDiscordApplication, discordServerRoles, discordServerMember, discordRoleReadiness, discordServerChannels, discordApplicationEmojis, discordApplicationEmojiMarkup, discordChannelMessage, DISCORD_TEXT_CHANNEL, DISCORD_ANNOUNCEMENT_CHANNEL } from "../../integrations/discord/api.js";
 import { provisionDiscordPresentationEmojis } from "../../integrations/discord/application-emojis.js";
 import { publishOperationalRecord } from "../../operational-inspection.js";
@@ -384,11 +385,13 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       botToken: body.bot_token,
     });
     await setDiscordIntegrationEnabled(body.enabled === "true");
+    await loadDiscordInteractionPublicKey();
     const stored = await discordIntegrationConfiguration();
     if (!stored) return reply.code(500).send({ error: "discord_configuration_not_stored" });
     try {
       const application = await verifyDiscordApplication(stored);
       await markDiscordApplicationEstablished(application.name, application.bot?.id ?? null, application.bot?.username ?? null, application.verify_key ?? "");
+      cacheDiscordInteractionPublicKey(application.verify_key ?? null);
     } catch (error) {
       request.log.warn({ err: error }, "Discord application verification failed");
       return reply.redirect("/admin/discord?verification=failed");
