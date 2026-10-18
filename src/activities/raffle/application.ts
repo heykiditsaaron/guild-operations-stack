@@ -79,17 +79,35 @@ export async function modifyRaffle(actorIdentityId: string, raffleId: string, te
 
 export async function openRaffleParticipation(actorIdentityId: string, raffleId: string): Promise<Raffle> {
   await requireGuildCapabilityOrOperator(actorIdentityId, RAFFLE_STAGE_CAPABILITY);
-  return openRaffleParticipationDomain(actorIdentityId, raffleId);
+  const persisted = await withTransaction(async (client) => {
+    const raffle = await openRaffleParticipationDomain(actorIdentityId, raffleId, client);
+    const publication = await publishEmission(client, { code: "raffle.opened", subject: raffle.raffleId });
+    return { raffle, publication };
+  });
+  await deliverEmission(persisted.publication);
+  return persisted.raffle;
 }
 
 export async function pauseRaffleParticipation(actorIdentityId: string, raffleId: string): Promise<Raffle> {
   await requireGuildCapabilityOrOperator(actorIdentityId, RAFFLE_STAGE_CAPABILITY);
-  return pauseRaffleParticipationDomain(actorIdentityId, raffleId);
+  const persisted = await withTransaction(async (client) => {
+    const raffle = await pauseRaffleParticipationDomain(actorIdentityId, raffleId, client);
+    const publication = await publishEmission(client, { code: "raffle.paused", subject: raffle.raffleId });
+    return { raffle, publication };
+  });
+  await deliverEmission(persisted.publication);
+  return persisted.raffle;
 }
 
 export async function resumeRaffleParticipation(actorIdentityId: string, raffleId: string): Promise<Raffle> {
   await requireGuildCapabilityOrOperator(actorIdentityId, RAFFLE_STAGE_CAPABILITY);
-  return resumeRaffleParticipationDomain(actorIdentityId, raffleId);
+  const persisted = await withTransaction(async (client) => {
+    const raffle = await resumeRaffleParticipationDomain(actorIdentityId, raffleId, client);
+    const publication = await publishEmission(client, { code: "raffle.resumed", subject: raffle.raffleId });
+    return { raffle, publication };
+  });
+  await deliverEmission(persisted.publication);
+  return persisted.raffle;
 }
 
 export async function cancelRaffle(actorIdentityId: string, raffleId: string): Promise<Raffle> {
