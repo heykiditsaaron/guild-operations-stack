@@ -6,6 +6,7 @@ export type DiscordIntegrationConfiguration = {
   applicationId: string;
   applicationName: string | null;
   applicationVerifiedAt: Date | null;
+  interactionPublicKey: string | null;
   botUserId: string | null;
   botUsername: string | null;
   clientSecret: string;
@@ -21,6 +22,7 @@ export async function discordIntegrationConfiguration(): Promise<DiscordIntegrat
     application_id: string;
     application_name: string | null;
     application_verified_at: Date | null;
+    interaction_public_key: string | null;
     bot_user_id: string | null;
     bot_username: string | null;
     client_secret_ciphertext: string;
@@ -28,7 +30,7 @@ export async function discordIntegrationConfiguration(): Promise<DiscordIntegrat
     discord_guild_id: string | null;
     article_channel_id: string | null;
     raid_channel_id: string | null;
-  }>(`SELECT enabled, application_id, application_name, application_verified_at, bot_user_id, bot_username, client_secret_ciphertext, bot_token_ciphertext, discord_guild_id, article_channel_id, raid_channel_id
+  }>(`SELECT enabled, application_id, application_name, application_verified_at, interaction_public_key, bot_user_id, bot_username, client_secret_ciphertext, bot_token_ciphertext, discord_guild_id, article_channel_id, raid_channel_id
       FROM discord_integration_configuration
       WHERE singleton = true`);
   const row = result.rows[0];
@@ -38,6 +40,7 @@ export async function discordIntegrationConfiguration(): Promise<DiscordIntegrat
     applicationId: row.application_id,
     applicationName: row.application_name,
     applicationVerifiedAt: row.application_verified_at,
+    interactionPublicKey: row.interaction_public_key,
     botUserId: row.bot_user_id,
     botUsername: row.bot_username,
     clientSecret: decryptApplicationSecret(row.client_secret_ciphertext, "Discord client secret"),
@@ -76,6 +79,7 @@ export async function storeDiscordIntegrationConfiguration(input: {
        application_id = EXCLUDED.application_id,
        application_name = NULL,
        application_verified_at = NULL,
+       interaction_public_key = NULL,
        bot_user_id = NULL,
        bot_username = NULL,
        client_secret_ciphertext = EXCLUDED.client_secret_ciphertext,
@@ -92,8 +96,9 @@ export async function storeDiscordIntegrationConfiguration(input: {
   );
 }
 
-export async function markDiscordApplicationEstablished(applicationName: string, botUserId: string | null, botUsername: string | null): Promise<void> {
-  await pool.query("UPDATE discord_integration_configuration SET application_name = $1, application_verified_at = now(), bot_user_id = $2, bot_username = $3, updated_at = now() WHERE singleton = true", [applicationName, botUserId, botUsername]);
+export async function markDiscordApplicationEstablished(applicationName: string, botUserId: string | null, botUsername: string | null, interactionPublicKey: string): Promise<void> {
+  if (!/^[0-9a-f]{64}$/i.test(interactionPublicKey)) throw new Error("invalid_discord_interaction_public_key");
+  await pool.query("UPDATE discord_integration_configuration SET application_name = $1, application_verified_at = now(), bot_user_id = $2, bot_username = $3, interaction_public_key = $4, updated_at = now() WHERE singleton = true", [applicationName, botUserId, botUsername, interactionPublicKey]);
 }
 
 export async function establishDiscordGuildBinding(discordGuildId: string): Promise<void> {
