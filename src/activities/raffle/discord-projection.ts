@@ -4,17 +4,30 @@ import { rafflePublicDestination } from "./destinations.js";
 import { pool } from "../../db.js";
 import { installationAbsoluteUrl } from "../../core/installation/public-origin.js";
 import { registerEmissionConsumer } from "../../emissions/registry.js";
-import { discordChannelMessage, discordEditChannelMessage } from "../../integrations/discord/api.js";
+import { discordChannelMessage, discordEditChannelMessage, discordStartMessageThread } from "../../integrations/discord/api.js";
 import { discordIntegrationConfiguration } from "../../integrations/discord/configuration.js";
 
-type Projection = { discord_channel_id: string; discord_message_id: string };
+type Projection = { discord_channel_id: string; discord_message_id: string; discord_thread_id: string | null };
 const safeText = (value: string): string => value.replace(/@/g, "@\u200b").replace(/\r/g, " ").trim();
+
+async function ensureLedgerThread(
+  raffleId: string, botToken: string, channelId: string, projection: Projection,
+): Promise<void> {
+  if (projection.discord_thread_id) return;
+  const thread = await discordStartMessageThread(botToken, channelId, projection.discord_message_id, "Raffle claims");
+  await pool.query(
+    `UPDATE discord_raffle_projections
+        SET discord_thread_id = $2, updated_at = now()
+      WHERE raffle_id = $1 AND discord_message_id = $3 AND discord_thread_id IS NULL`,
+    [raffleId, thread.id, projection.discord_message_id],
+  );
+}
 
 async function projectRaffle(raffleId: string): Promise<void> {
   const config = await discordIntegrationConfiguration();
   if (!config?.enabled || !config.applicationVerifiedAt || !config.discordGuildId) return;
   const previous = await pool.query<Projection>(
-    "SELECT discord_channel_id, discord_message_id FROM discord_raffle_projections WHERE raffle_id = $1", [raffleId],
+    "SELECT discord_channel_id, discord_message_id, discord_thread_id FROM discord_raffle_projections WHERE raffle_id = $1", [raffleId],
   );
   let existing: Projection | null = previous.rows[0] ?? null;
   const channelId = existing?.discord_channel_id ?? config.raffleChannelId;
@@ -49,6 +62,7 @@ async function projectRaffle(raffleId: string): Promise<void> {
   if (existing) {
     try {
       await discordEditChannelMessage(config.botToken, channelId, existing.discord_message_id, payload);
+      await ensureLedgerThread(raffleId, config.botToken, channelId, existing);
       return;
     } catch (error) {
       if (!(error instanceof Error) || error.message !== "discord_api_404") throw error;
@@ -71,6 +85,7 @@ async function projectRaffle(raffleId: string): Promise<void> {
          updated_at = now()`,
       [raffleId, channelId, message.id],
     );
+    await ensureLedgerThread(raffleId, config.botToken, channelId, { discord_channel_id: channelId, discord_message_id: message.id, discord_thread_id: null });
   }
 }
 
