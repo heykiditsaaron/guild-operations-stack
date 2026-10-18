@@ -8,8 +8,8 @@ import type { RaidApplicantAnchor, RaidOfferedSpecInput } from "./domain.js";
 
 const classes = ["Death Knight", "Demon Hunter", "Druid", "Evoker", "Hunter", "Mage", "Monk", "Paladin", "Priest", "Rogue", "Shaman", "Warlock", "Warrior"];
 const ephemeral = (content: string): DiscordInteractionResponse => ({ type: 4, data: { flags: 64, content } });
-const menu = (content: string, customId: string, options: { label: string; value: string }[]): DiscordInteractionResponse => ({
-  type: 4, data: { flags: 64, content, components: [{ type: 1, components: [{ type: 3, custom_id: customId, min_values: 1, max_values: 1, options }] }] },
+const menu = (content: string, customId: string, options: { label: string; value: string }[], multiple = false): DiscordInteractionResponse => ({
+  type: 4, data: { flags: 64, content, components: [{ type: 1, components: [{ type: 3, custom_id: customId, min_values: 1, max_values: multiple ? options.length : 1, options }] }] },
 });
 
 async function actorFor(interaction: DiscordComponentInteraction): Promise<RaidApplicantAnchor> {
@@ -55,25 +55,32 @@ async function handleRaid(interaction: DiscordComponentInteraction): Promise<Dis
     if (!selectedClass) return ephemeral("That character or class is no longer available. Start again.");
     const specs = specsForClass(selectedClass);
     const selectedKey = `${matchChoice[1]}${index}`;
-    return menu(`Choose a specialization for ${selectedClass}.`, `go:raid:spec:${raidId}`, specs.map(spec => ({ label: `${spec} ${selectedClass}`, value: `${selectedKey}:${spec}` })));
+    return menu(`Choose a specialization for ${selectedClass}.`, `go:raid:spec:${raidId}`, specs.map(spec => ({ label: `${spec} ${selectedClass}`, value: `${selectedKey}:${spec}` })), true);
   }
   if (action === "spec") {
-    const selected = interaction.data?.values?.[0] ?? "";
-    const matchSpec = /^([cd])(\d{1,2}):(.{1,60})$/.exec(selected);
-    if (!matchSpec) return ephemeral("Invalid specialization. Start again.");
-    const index = Number(matchSpec[2]);
+    const selections = interaction.data?.values ?? [];
+    if (!selections.length || selections.length > 4 || new Set(selections).size !== selections.length) return ephemeral("Invalid specialization selection. Start again.");
     const characters = acquisition.characters.filter(character => character.className).slice(0, acquisition.allowDeclaredClass ? 12 : 25);
-    let offer: RaidOfferedSpecInput;
-    if (matchSpec[1] === "c") {
-      const character = characters[index];
-      if (!character?.className || !specsForClass(character.className).includes(matchSpec[3])) return ephemeral("That character specialization is no longer available.");
-      offer = { character: { region: character.region, realmId: character.realmId, characterId: character.characterId }, specName: matchSpec[3] };
-    } else {
-      const className = acquisition.allowDeclaredClass ? classes[index] : undefined;
-      if (!className || !specsForClass(className).includes(matchSpec[3])) return ephemeral("That specialization is no longer available.");
-      offer = { className, specName: matchSpec[3] };
+    const offers: RaidOfferedSpecInput[] = [];
+    let selectedKey: string | null = null;
+    for (const selected of selections) {
+      const matchSpec = /^([cd])(\\d{1,2}):(.{1,60})$/.exec(selected);
+      if (!matchSpec) return ephemeral("Invalid specialization. Start again.");
+      const key = matchSpec[1] + matchSpec[2];
+      if (selectedKey !== null && selectedKey !== key) return ephemeral("Specializations must belong to the same character or class. Start again.");
+      selectedKey = key;
+      const index = Number(matchSpec[2]);
+      if (matchSpec[1] === "c") {
+        const character = characters[index];
+        if (!character?.className || !specsForClass(character.className).includes(matchSpec[3])) return ephemeral("That character specialization is no longer available.");
+        offers.push({ character: { region: character.region, realmId: character.realmId, characterId: character.characterId }, specName: matchSpec[3] });
+      } else {
+        const className = acquisition.allowDeclaredClass ? classes[index] : undefined;
+        if (!className || !specsForClass(className).includes(matchSpec[3])) return ephemeral("That specialization is no longer available.");
+        offers.push({ className, specName: matchSpec[3] });
+      }
     }
-    await establishRaidSignup({ raidId, applicantAnchor: actor, offeredSpecs: [offer] });
+    await establishRaidSignup({ raidId, applicantAnchor: actor, offeredSpecs: offers });
     return ephemeral("Your raid signup has been recorded. You can use Sign up again to revise it.");
   }
   return ephemeral("Unsupported raid interaction.");
