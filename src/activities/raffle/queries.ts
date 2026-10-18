@@ -249,3 +249,82 @@ export async function openRaffleFacts():Promise<RaffleFacts[]>{
   return operational.filter(facts=>facts.participationOpen);
 }
 
+
+// Canonical claim ledger reads Participation Offers for both native and external actors.
+// A declared character remains text; it is never promoted to a recognized Character.
+export type RaffleLedgerClaim = {
+  claimId: string;
+  actorKind: "native" | "external";
+  actorReference: string;
+  characterDesignation: string;
+  characterProvenance: "recognized" | "declared";
+  requestedEntryCount: number;
+  promisedGoldValue: string;
+  createdAtUnix: number;
+  resolutionKind: RaffleClaimResolution;
+  approvedByIdentityId: string | null;
+  deniedByIdentityId: string | null;
+  denialReason: string | null;
+  resolvedAtUnix: number | null;
+};
+
+export async function raffleClaimLedger(raffleId: string): Promise<RaffleLedgerClaim[]> {
+  const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
+  const result = await pool.query<{
+    claim_id: string; promised_gold_value: string; created_at_unix: string;
+    resolution_kind: RaffleClaimResolution; approved_by_identity_id: string | null;
+    approved_at_unix: string | null; denied_by_identity_id: string | null;
+    denied_at_unix: string | null; revoked_at_unix: string | null; denial_reason: string | null;
+  }>(
+    `SELECT c.claim_id,c.promised_gold_value,c.created_at_unix,c.resolution_kind,
+            c.approved_by_identity_id,c.approved_at_unix,c.denied_by_identity_id,
+            c.denied_at_unix,c.revoked_at_unix,c.denial_reason
+       FROM raffle_claims c JOIN raffles r ON r.raffle_id=c.raffle_id
+      WHERE c.raffle_id=$1 AND r.guild_id=$2
+      ORDER BY c.created_at_unix ASC,c.claim_id ASC`,
+    [raffleId, guildId],
+  );
+  if (!result.rows.length) return [];
+  const client = await pool.connect();
+  try {
+    const offers = await activityParticipationOffersForActivity(client, {
+      activityKind: "raffle", activityId: raffleId,
+      procedureReferences: result.rows.map((row) => row.claim_id),
+    });
+    const byClaimId = new Map(offers.map((offer) => [offer.procedureReference, offer]));
+    return result.rows.map((row) => {
+      const offer = byClaimId.get(row.claim_id);
+      if (!offer) throw new Error(`Raffle claim ${row.claim_id} is missing its Participation Offer`);
+      const character = offer.context.find((item) => item.name === "character")?.value;
+      const claim = offer.context.find((item) => item.name === "claim")?.value;
+      if (!character || !claim || Array.isArray(character) || Array.isArray(claim)) {
+        throw new Error(`Raffle claim ${row.claim_id} has invalid Participation Offer context`);
+      }
+      const characterValue = character as ActivitySharedValue;
+      const claimValue = claim as ActivitySharedValue;
+      if (claimValue.type !== "integer" ||
+          (characterValue.type !== "string" && characterValue.type !== "guild_character")) {
+        throw new Error(`Raffle claim ${row.claim_id} has invalid Participation Offer context`);
+      }
+      return {
+        claimId: row.claim_id,
+        actorKind: offer.actor.kind,
+        actorReference: offer.actor.reference,
+        characterDesignation: characterValue.type === "string" ? characterValue.value : characterValue.value.name,
+        characterProvenance: characterValue.type === "string" ? "declared" as const : "recognized" as const,
+        requestedEntryCount: claimValue.value,
+        promisedGoldValue: row.promised_gold_value,
+        createdAtUnix: Number(row.created_at_unix),
+        resolutionKind: row.resolution_kind,
+        approvedByIdentityId: row.approved_by_identity_id,
+        deniedByIdentityId: row.denied_by_identity_id,
+        denialReason: row.denial_reason,
+        resolvedAtUnix: row.resolution_kind === "approved" ? Number(row.approved_at_unix)
+          : row.resolution_kind === "denied" ? Number(row.denied_at_unix)
+          : row.resolution_kind === "revoked" ? Number(row.revoked_at_unix) : null,
+      };
+    });
+  } finally {
+    client.release();
+  }
+}
