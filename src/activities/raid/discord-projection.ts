@@ -112,7 +112,11 @@ async function projectRaid(raidId: string): Promise<void> {
       color: raid.cancelledAtUnix !== null ? 0xe05252 : ({ normal: 0x79c77b, heroic: 0xa67cff, mythic: 0xff6b63 })[raid.difficulty],
       footer: { text: "Guild Operations · Raid" },
     }],
-    components: raid.cancelledAtUnix !== null ? [] : [{ type: 1, components: [{ type: 2, style: 5, label: "View raid and sign up", url: signupUrl }] }],
+    components: status ? [] : [{ type: 1, components: [
+      { type: 2, style: 1, label: "Sign up", custom_id: `go:raid:start:${raidId}` },
+      { type: 2, style: 2, label: "Withdraw", custom_id: `go:raid:withdraw:${raidId}` },
+      { type: 2, style: 5, label: "View raid", url: signupUrl },
+    ] }],
   };
   if (existing) {
     try {
