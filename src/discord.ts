@@ -1,4 +1,5 @@
 import { pool } from "./db.js";
+import { recoverPendingEmissions } from "./emissions/registry.js";
 import { readdir } from "node:fs/promises";
 import { requireOperationalInstallationGuildBinding } from "./core/installation/guild-binding.js";
 import { reconcileAssociatedDiscordRoles } from "./integrations/discord/role-sync-cycle.js";
@@ -86,9 +87,14 @@ async function syncDiscordRoles(): Promise<void> {
   }
 }
 await inspectDiscordState();
+void recoverPendingEmissions().catch((error) => console.error("Discord emission recovery failed", error));
 const timer = setInterval(() => void inspectDiscordState().catch((error) => {
   console.error("Discord Integration state inspection failed", error);
 }), 30_000);
+
+const emissionTimer = setInterval(() => {
+  void recoverPendingEmissions().catch((error) => console.error("Discord emission recovery failed", error));
+}, 30_000);
 
 const roleTimer = setInterval(() => {
   void syncDiscordRoles().catch((error) => console.error("Discord role sync failed", error));
@@ -100,6 +106,7 @@ async function shutdown(): Promise<void> {
   stopping = true;
   clearInterval(timer);
   clearInterval(roleTimer);
+  clearInterval(emissionTimer);
   gateway?.stop();
   await pool.end();
   process.exit(0);
