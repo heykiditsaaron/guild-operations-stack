@@ -51,7 +51,7 @@ async function handleRaid(interaction: DiscordComponentInteraction): Promise<Dis
   }
   if (action === "character") {
     const selected = interaction.data?.values?.[0] ?? "";
-    if (!/^(c[0-9a-f]{24}|d\\d{1,2})$/.test(selected)) return ephemeral("Invalid selection. Start again.");
+    if (!/^(c[0-9a-f]{24}|d\d{1,2})$/.test(selected)) return ephemeral("Invalid selection. Start again.");
     const characters = acquisition.characters.filter(character => character.className).slice(0, acquisition.allowDeclaredClass ? 12 : 25);
     const character = characters.find(item => characterKey(item) === selected);
     const selectedClass = selected.startsWith("c") ? character?.className : (acquisition.allowDeclaredClass ? classes[Number(selected.slice(1))] : undefined);
@@ -67,7 +67,7 @@ async function handleRaid(interaction: DiscordComponentInteraction): Promise<Dis
     const offers: RaidOfferedSpecInput[] = [];
     let selectedKey: string | null = null;
     for (const selected of selections) {
-      const matchSpec = /^(c[0-9a-f]{24}|d\\d{1,2}):(.{1,60})$/.exec(selected);
+      const matchSpec = /^(c[0-9a-f]{24}|d\d{1,2}):(.{1,60})$/.exec(selected);
       if (!matchSpec) return ephemeral("Invalid specialization. Start again.");
       const key = matchSpec[1];
       if (selectedKey !== null && selectedKey !== key) return ephemeral("Specializations must belong to the same character or class. Start again.");
