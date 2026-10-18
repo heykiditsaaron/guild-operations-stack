@@ -1,4 +1,4 @@
-import { publishEmission } from "../../emissions/registry.js";
+import { deliverEmission, publishEmission } from "../../emissions/registry.js";
 import type { ActivitySharedValue } from "../../core/activity/registry.js";
 import { randomInt, randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
@@ -349,7 +349,7 @@ export async function establishDeclaredRaffleClaim(actor: ActivityParticipationA
   if (separator < 1 || separator === normalized.length - 1 || normalized.length > 120) {
     throw new RaffleRuleError("invalid_character_designation", "Use Charactername-Realm", 400);
   }
-  return withTransaction(async (client) => {
+  const persisted = await withTransaction(async (client) => {
     const row = await lockedRaffle(client, raffleId);
     if (!raffleParticipationIsOpen(mapRaffle(row))) throw new RaffleRuleError("participation_closed", "Raffle participation is closed");
     const claimId = randomUUID();
@@ -370,9 +370,11 @@ export async function establishDeclaredRaffleClaim(actor: ActivityParticipationA
       "INSERT INTO raffle_claims (claim_id, raffle_id, promised_gold_value, created_at_unix, participation_offer_id) VALUES ($1,$2,$3,$4,$5)",
       [claimId, raffleId, promisedGold, offeredAtUnix, offer.participationOfferId],
     );
-    await publishEmission(client, { code: "raffle.claim.established", parent: raffleId, subject: claimId });
-    return claimId;
+    const publication = await publishEmission(client, { code: "raffle.claim.established", parent: raffleId, subject: claimId });
+    return { value: claimId, publication };
   });
+  await deliverEmission(persisted.publication);
+  return persisted.value;
 }
 
 export async function establishRaffleClaimFromParticipationContext(
@@ -380,7 +382,7 @@ export async function establishRaffleClaimFromParticipationContext(
   raffleId: string,
   context: Readonly<Record<string, unknown>>,
 ): Promise<RaffleClaim> {
-  return withTransaction(async (client) => {
+  const persisted = await withTransaction(async (client) => {
     const raffleRow = await lockedRaffle(client, raffleId);
     const raffle = mapRaffle(raffleRow);
     if (!raffleParticipationIsOpen(raffle)) throw new RaffleRuleError("participation_closed", "Raffle participation is closed");
@@ -420,9 +422,9 @@ export async function establishRaffleClaimFromParticipationContext(
        ) VALUES ($1,$2,$3,$4,$5)`,
       [claimId, raffleId, promisedGoldValue.toString(), offeredAtUnix, offer.participationOfferId],
     );
-    await publishEmission(client, { code: "raffle.claim.established", parent: raffleId, subject: claimId });
 
-    return {
+    const publication = await publishEmission(client, { code: "raffle.claim.established", parent: raffleId, subject: claimId });
+    return { value: {
       claimId,
       raffleId,
       claimantGuildieId: offer.actor.reference,
@@ -441,12 +443,14 @@ export async function establishRaffleClaimFromParticipationContext(
       denialReason: null,
       revokedByGuildieId: null,
       revokedAtUnix: null,
-    };
+    }, publication };
   });
+  await deliverEmission(persisted.publication);
+  return persisted.value;
 }
 
 export async function establishRaffleClaim(claimantGuildieId: string, raffleId: string, realmId: string, characterId: string, requestedEntryCount: number): Promise<RaffleClaim> {
-  return withTransaction(async (client) => {
+  const persisted = await withTransaction(async (client) => {
     const raffleRow = await lockedRaffle(client, raffleId);
     const raffle = mapRaffle(raffleRow);
     if (!raffleParticipationIsOpen(raffle)) throw new RaffleRuleError("participation_closed", "Raffle participation is closed");
@@ -489,9 +493,9 @@ export async function establishRaffleClaim(claimantGuildieId: string, raffleId: 
        ) VALUES ($1,$2,$3,$4,$5)`,
       [claimId, raffleId, promisedGoldValue.toString(), offeredAtUnix, offer.participationOfferId],
     );
-    await publishEmission(client, { code: "raffle.claim.established", parent: raffleId, subject: claimId });
 
-    return {
+    const publication = await publishEmission(client, { code: "raffle.claim.established", parent: raffleId, subject: claimId });
+    return { value: {
       claimId,
       raffleId,
       claimantGuildieId: offer.actor.reference,
@@ -510,12 +514,14 @@ export async function establishRaffleClaim(claimantGuildieId: string, raffleId: 
       denialReason: null,
       revokedByGuildieId: null,
       revokedAtUnix: null,
-    };
+    }, publication };
   });
+  await deliverEmission(persisted.publication);
+  return persisted.value;
 }
 
 export async function revokeRaffleClaimForActor(actor: ActivityParticipationActor, claimId: string): Promise<void> {
-  await withTransaction(async (client) => {
+  const publication = await withTransaction(async (client) => {
     const claim = await lockedClaim(client, claimId);
     const offer = await activityParticipationOfferByProcedureReference(client, {
       activityKind: "raffle",
@@ -540,8 +546,9 @@ export async function revokeRaffleClaimForActor(actor: ActivityParticipationActo
       "UPDATE raffle_claims SET resolution_kind='revoked', revoked_by_identity_id=$2, revoked_at_unix=$3 WHERE claim_id=$1",
       [claimId, actor.kind === "native" ? actor.reference : null, revokedAtUnix],
     );
-    await publishEmission(client, { code: "raffle.claim.revoked", parent: String(claim.raffle_id), subject: claimId });
+    return publishEmission(client, { code: "raffle.claim.revoked", parent: String(claim.raffle_id), subject: claimId });
   });
+  await deliverEmission(publication);
 }
 
 export async function revokeRaffleClaim(claimantGuildieId: string, claimId: string): Promise<void> {
@@ -549,7 +556,7 @@ export async function revokeRaffleClaim(claimantGuildieId: string, claimId: stri
 }
 
 export async function approveRaffleClaim(actorGuildieId:string, claimId:string):Promise<void> {
-  await withTransaction(async(client)=>{
+  const publication = await withTransaction(async(client)=>{
     const claim=await lockedClaim(client,claimId);
     if(claim.raffle_conclusion!==null) throw new RaffleRuleError("raffle_concluded","Claims can only be adjudicated before the Raffle concludes");
     if(claim.resolution_kind!==null) throw new RaffleRuleError("claim_already_resolved","Only an unresolved claim can be approved");
@@ -569,14 +576,15 @@ export async function approveRaffleClaim(actorGuildieId:string, claimId:string):
       participationOfferId:offer.participationOfferId,
       establishedAtUnix:approvedAtUnix,
     });
-    await publishEmission(client, { code: "raffle.claim.approved", parent: String(claim.raffle_id), subject: claimId });
+    return publishEmission(client, { code: "raffle.claim.approved", parent: String(claim.raffle_id), subject: claimId });
   });
+  await deliverEmission(publication);
 }
 
 export async function denyRaffleClaim(actorGuildieId:string, claimId:string, reasonInput:string):Promise<void> {
   const reason=reasonInput.trim();
   if(!reason) throw new RaffleRuleError("denial_reason_required","A denial reason is required",400);
-  await withTransaction(async(client)=>{
+  const publication = await withTransaction(async(client)=>{
     const claim=await lockedClaim(client,claimId);
     if(claim.raffle_conclusion!==null) throw new RaffleRuleError("raffle_concluded","Claims can only be adjudicated before the Raffle concludes");
     if(claim.resolution_kind!==null) throw new RaffleRuleError("claim_already_resolved","Only an unresolved claim can be denied");
@@ -588,8 +596,9 @@ export async function denyRaffleClaim(actorGuildieId:string, claimId:string, rea
       procedureReference:claimId,
       closedAtUnix:deniedAtUnix,
     });
-    await publishEmission(client, { code: "raffle.claim.denied", parent: String(claim.raffle_id), subject: claimId });
+    return publishEmission(client, { code: "raffle.claim.denied", parent: String(claim.raffle_id), subject: claimId });
   });
+  await deliverEmission(publication);
 }
 
 export async function approvedRaffleEntryCount(client: PoolClient, raffleId: string): Promise<number> {
