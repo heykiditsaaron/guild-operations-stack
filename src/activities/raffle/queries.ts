@@ -109,6 +109,19 @@ async function raffleWinnerFacts(raffle: Raffle): Promise<RaffleWinnerFacts | nu
     const characterComponent=offer?.context.find((item)=>item.name==="character")?.value;
     if(!offer||Array.isArray(characterComponent)) return null;
     const characterValue=characterComponent as ActivitySharedValue|undefined;
+    if(characterValue?.type==="string") {
+      return {
+        claimId: offer.procedureReference,
+        character: {
+          characterId: "",
+          name: characterValue.value,
+          realmId: "",
+          realmName: null,
+          realmSlug: null,
+        },
+        avatarUrl: null,
+      };
+    }
     if(characterValue?.type!=="guild_character") return null;
     const offeredCharacter=characterValue.value;
     const recognizedCharacter=await characterByRecordId(offeredCharacter.characterRecordId);
