@@ -315,14 +315,29 @@ const raffleClaimOfferContract: ActivityParticipationOfferContract = {
   ],
 };
 
+// External actors supply a character designation rather than a Character record.
+// Keep the established native contract unchanged for existing web claims.
+const declaredRaffleClaimOfferContract: ActivityParticipationOfferContract = {
+  context: [
+    { name: "character", kind: "string", allowMultiple: false, maxLength: 120 },
+    { name: "claim", kind: "integer", allowMultiple: false, greaterThan: 0 },
+  ],
+};
+
+export function raffleClaimOfferContractForActor(actor: ActivityParticipationActor): ActivityParticipationOfferContract {
+  return actor.kind === "external" ? declaredRaffleClaimOfferContract : raffleClaimOfferContract;
+}
+
 export async function raffleParticipationOfferWorkspace(
   raffle: Raffle,
   actor: ActivityParticipationActor,
 ): Promise<ParticipationOfferWorkspace> {
   return participationOfferWorkspace({
     actor,
-    eligibility: { kind: "guild_member_character", guildId: raffle.guildId },
-    contract: raffleClaimOfferContract,
+    eligibility: actor.kind === "external"
+      ? { kind: "any" }
+      : { kind: "guild_member_character", guildId: raffle.guildId },
+    contract: raffleClaimOfferContractForActor(actor),
   });
 }
 
