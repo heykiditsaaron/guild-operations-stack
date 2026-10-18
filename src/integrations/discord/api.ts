@@ -182,6 +182,20 @@ export async function discordChannelMessage(botToken: string, channelId: string,
   });
 }
 
+/** Create a public thread attached to an existing announcement message. */
+export async function discordStartMessageThread(
+  botToken: string, channelId: string, messageId: string, name: string,
+): Promise<{ id: string }> {
+  return discordJson<{ id: string }>(
+    `${API}/channels/${encodeURIComponent(channelId)}/messages/${encodeURIComponent(messageId)}/threads`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bot ${botToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ name, auto_archive_duration: 1440 }),
+    },
+  );
+}
+
 export async function discordEditChannelMessage(botToken: string, channelId: string, messageId: string, payload: unknown): Promise<void> {
   const response = await fetch(`${API}/channels/${encodeURIComponent(channelId)}/messages/${encodeURIComponent(messageId)}`, {
     method: "PATCH", headers: { Authorization: `Bot ${botToken}`, "Content-Type": "application/json" },
