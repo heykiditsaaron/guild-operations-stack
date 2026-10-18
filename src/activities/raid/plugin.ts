@@ -10,7 +10,7 @@ import { registerRaidOperationPage } from "./web/operation.js";
 export const activityPlugin: InstalledActivityPlugin = {
   kind: "raid", label: "Raid",
   register() { registerRaidActivityIntegration(); registerDiscordRaidEmissionConsumer(); registerDiscordRaidInteractionHandler(); },
-  registerDiscordInteractions() { registerDiscordRaidInteractionHandler(); },
+  registerDiscordInteractions() { registerDiscordRaidInteractionHandler(); registerDiscordRaidEmissionConsumer(); },
   async registerRoutes(app, assets) {
     await registerRaidOperationPage(app, assets);
     await registerRaidOperationDetailPage(app, assets);
