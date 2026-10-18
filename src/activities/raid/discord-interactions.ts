@@ -19,7 +19,7 @@ const menu = (content: string, customId: string, options: { label: string; value
 async function actorFor(interaction: DiscordComponentInteraction): Promise<RaidApplicantAnchor> {
   const user = interaction.member?.user;
   if (!user?.id || !/^\d+$/.test(user.id)) throw new Error("Discord member identity unavailable");
-  const discordId = await establishDiscordIdentity({ discordUserId: user.id, username: user.username });
+  const discordId = await establishDiscordIdentity({ discordUserId: user.id, username: interaction.member?.nick || user.global_name || user.username });
   const subject = await resolvedActorSubjectForDiscordIdentity(discordId);
   return subject === discordId ? { kind: "external", value: discordId } : { kind: "native", value: subject };
 }
@@ -45,9 +45,9 @@ async function handleRaid(interaction: DiscordComponentInteraction): Promise<Dis
   if (action === "start") {
     const characters = acquisition.characters.filter(character => character.className);
     const options = characters.slice(0, acquisition.allowDeclaredClass ? 12 : 25).map(character => ({ label: `${character.name} · ${character.className}`.slice(0, 100), value: characterKey(character) }));
-    if (acquisition.allowDeclaredClass) options.push(...classes.slice(0, Math.max(0, 25 - options.length)).map((name, index) => ({ label: `${name} (declared)`, value: `d${index}` })));
+    if (acquisition.allowDeclaredClass) options.push(...classes.slice(0, Math.max(0, 25 - options.length)).map((name, index) => ({ label: name, value: `d${index}` })));
     if (!options.length) return ephemeral("No eligible characters or class declarations are available for this raid.");
-    return menu("Choose a character or class for your raid signup.", `go:raid:character:${raidId}`, options);
+    return menu(characters.length ? "Choose a character or class for your raid signup." : "Choose a class for your raid signup.", `go:raid:character:${raidId}`, options);
   }
   if (action === "character") {
     const selected = interaction.data?.values?.[0] ?? "";
