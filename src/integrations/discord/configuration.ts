@@ -14,6 +14,7 @@ export type DiscordIntegrationConfiguration = {
   discordGuildId: string | null;
   articleChannelId: string | null;
   raidChannelId: string | null;
+  raffleChannelId: string | null;
 };
 
 export async function discordIntegrationConfiguration(): Promise<DiscordIntegrationConfiguration | null> {
@@ -30,7 +31,8 @@ export async function discordIntegrationConfiguration(): Promise<DiscordIntegrat
     discord_guild_id: string | null;
     article_channel_id: string | null;
     raid_channel_id: string | null;
-  }>(`SELECT enabled, application_id, application_name, application_verified_at, interaction_public_key, bot_user_id, bot_username, client_secret_ciphertext, bot_token_ciphertext, discord_guild_id, article_channel_id, raid_channel_id
+    raffle_channel_id: string | null;
+  }>(`SELECT enabled, application_id, application_name, application_verified_at, interaction_public_key, bot_user_id, bot_username, client_secret_ciphertext, bot_token_ciphertext, discord_guild_id, article_channel_id, raid_channel_id, raffle_channel_id
       FROM discord_integration_configuration
       WHERE singleton = true`);
   const row = result.rows[0];
@@ -48,6 +50,7 @@ export async function discordIntegrationConfiguration(): Promise<DiscordIntegrat
     discordGuildId: row.discord_guild_id,
     articleChannelId: row.article_channel_id,
     raidChannelId: row.raid_channel_id,
+    raffleChannelId: row.raffle_channel_id,
   };
 }
 
@@ -150,6 +153,7 @@ export async function replaceDiscordApplicationCredentials(input: {
        discord_guild_id = NULL,
        article_channel_id = NULL,
        raid_channel_id = NULL,
+       raffle_channel_id = NULL,
        updated_at = now()`,
     [applicationId, encryptApplicationSecret(clientSecret), encryptApplicationSecret(botToken)],
   );
@@ -169,6 +173,15 @@ export async function setDiscordRaidChannel(channelId: string | null): Promise<v
   if (channelId !== null && !/^\d+$/.test(channelId)) throw new Error("invalid_discord_raid_channel");
   await pool.query(
     "UPDATE discord_integration_configuration SET raid_channel_id = $1, updated_at = now() WHERE singleton = true",
+    [channelId],
+  );
+}
+
+/** Optional destination for Raffle announcements and claim ledger threads. */
+export async function setDiscordRaffleChannel(channelId: string | null): Promise<void> {
+  if (channelId !== null && !/^[0-9]+$/.test(channelId)) throw new Error("invalid_discord_raffle_channel");
+  await pool.query(
+    "UPDATE discord_integration_configuration SET raffle_channel_id = $1, updated_at = now() WHERE singleton = true",
     [channelId],
   );
 }
