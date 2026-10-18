@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { raidEventFacts, raidParticipationOfferWorkspace, establishRaidSignup } from "./application.js";
 import { raidSignups } from "./participation-view.js";
 import { revokeRaidSignup } from "./application.js";
@@ -7,6 +8,9 @@ import { specsForClass } from "../../wow-traits/registry.js";
 import type { RaidApplicantAnchor, RaidOfferedSpecInput } from "./domain.js";
 
 const classes = ["Death Knight", "Demon Hunter", "Druid", "Evoker", "Hunter", "Mage", "Monk", "Paladin", "Priest", "Rogue", "Shaman", "Warlock", "Warrior"];
+// Stable across roster reordering without exposing a character's account details in Discord values.
+const characterKey = (character: { region: string; realmId: string; characterId: string }): string =>
+  "c" + createHash("sha256").update(JSON.stringify([character.region, character.realmId, character.characterId])).digest("hex").slice(0, 24);
 const ephemeral = (content: string): DiscordInteractionResponse => ({ type: 4, data: { flags: 64, content } });
 const menu = (content: string, customId: string, options: { label: string; value: string }[], multiple = false): DiscordInteractionResponse => ({
   type: 4, data: { flags: 64, content, components: [{ type: 1, components: [{ type: 3, custom_id: customId, min_values: 1, max_values: multiple ? options.length : 1, options }] }] },
@@ -40,21 +44,20 @@ async function handleRaid(interaction: DiscordComponentInteraction): Promise<Dis
   if (!acquisition || acquisition.kind !== "wow_spec") return ephemeral("Raid specialization choices are unavailable.");
   if (action === "start") {
     const characters = acquisition.characters.filter(character => character.className);
-    const options = characters.slice(0, acquisition.allowDeclaredClass ? 12 : 25).map((character, index) => ({ label: `${character.name} · ${character.className}`.slice(0, 100), value: `c${index}` }));
+    const options = characters.slice(0, acquisition.allowDeclaredClass ? 12 : 25).map(character => ({ label: `${character.name} · ${character.className}`.slice(0, 100), value: characterKey(character) }));
     if (acquisition.allowDeclaredClass) options.push(...classes.slice(0, Math.max(0, 25 - options.length)).map((name, index) => ({ label: `${name} (declared)`, value: `d${index}` })));
     if (!options.length) return ephemeral("No eligible characters or class declarations are available for this raid.");
     return menu("Choose a character or class for your raid signup.", `go:raid:character:${raidId}`, options);
   }
   if (action === "character") {
     const selected = interaction.data?.values?.[0] ?? "";
-    const matchChoice = /^([cd])(\d{1,2})$/.exec(selected);
-    if (!matchChoice) return ephemeral("Invalid selection. Start again.");
-    const index = Number(matchChoice[2]);
+    if (!/^(c[0-9a-f]{24}|d\\d{1,2})$/.test(selected)) return ephemeral("Invalid selection. Start again.");
     const characters = acquisition.characters.filter(character => character.className).slice(0, acquisition.allowDeclaredClass ? 12 : 25);
-    const selectedClass = matchChoice[1] === "c" ? characters[index]?.className : (acquisition.allowDeclaredClass ? classes[index] : undefined);
+    const character = characters.find(item => characterKey(item) === selected);
+    const selectedClass = selected.startsWith("c") ? character?.className : (acquisition.allowDeclaredClass ? classes[Number(selected.slice(1))] : undefined);
     if (!selectedClass) return ephemeral("That character or class is no longer available. Start again.");
     const specs = specsForClass(selectedClass);
-    const selectedKey = `${matchChoice[1]}${index}`;
+    const selectedKey = selected;
     return menu(`Choose a specialization for ${selectedClass}.`, `go:raid:spec:${raidId}`, specs.map(spec => ({ label: `${spec} ${selectedClass}`, value: `${selectedKey}:${spec}` })), true);
   }
   if (action === "spec") {
@@ -64,20 +67,19 @@ async function handleRaid(interaction: DiscordComponentInteraction): Promise<Dis
     const offers: RaidOfferedSpecInput[] = [];
     let selectedKey: string | null = null;
     for (const selected of selections) {
-      const matchSpec = /^([cd])(\d{1,2}):(.{1,60})$/.exec(selected);
+      const matchSpec = /^(c[0-9a-f]{24}|d\\d{1,2}):(.{1,60})$/.exec(selected);
       if (!matchSpec) return ephemeral("Invalid specialization. Start again.");
-      const key = matchSpec[1] + matchSpec[2];
+      const key = matchSpec[1];
       if (selectedKey !== null && selectedKey !== key) return ephemeral("Specializations must belong to the same character or class. Start again.");
       selectedKey = key;
-      const index = Number(matchSpec[2]);
-      if (matchSpec[1] === "c") {
-        const character = characters[index];
-        if (!character?.className || !specsForClass(character.className).includes(matchSpec[3])) return ephemeral("That character specialization is no longer available.");
-        offers.push({ character: { region: character.region, realmId: character.realmId, characterId: character.characterId }, specName: matchSpec[3] });
+      if (key.startsWith("c")) {
+        const character = characters.find(item => characterKey(item) === key);
+        if (!character?.className || !specsForClass(character.className).includes(matchSpec[2])) return ephemeral("That character specialization is no longer available.");
+        offers.push({ character: { region: character.region, realmId: character.realmId, characterId: character.characterId }, specName: matchSpec[2] });
       } else {
-        const className = acquisition.allowDeclaredClass ? classes[index] : undefined;
-        if (!className || !specsForClass(className).includes(matchSpec[3])) return ephemeral("That specialization is no longer available.");
-        offers.push({ className, specName: matchSpec[3] });
+        const className = acquisition.allowDeclaredClass ? classes[Number(key.slice(1))] : undefined;
+        if (!className || !specsForClass(className).includes(matchSpec[2])) return ephemeral("That specialization is no longer available.");
+        offers.push({ className, specName: matchSpec[2] });
       }
     }
     await establishRaidSignup({ raidId, applicantAnchor: actor, offeredSpecs: offers });
