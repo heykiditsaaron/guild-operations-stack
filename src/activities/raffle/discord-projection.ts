@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { getRaffle, raffleParticipationCutoffUnix, raffleParticipationIsOpen } from "./application.js";
 import { rafflePublicDestination } from "./destinations.js";
+import { raffleClaimLedger, type RaffleLedgerClaim } from "./queries.js";
 import { pool } from "../../db.js";
 import { installationAbsoluteUrl } from "../../core/installation/public-origin.js";
 import { registerEmissionConsumer } from "../../emissions/registry.js";
@@ -21,6 +22,69 @@ async function ensureLedgerThread(
       WHERE raffle_id = $1 AND discord_message_id = $3 AND discord_thread_id IS NULL`,
     [raffleId, thread.id, projection.discord_message_id],
   );
+}
+
+async function projectClaim(raffleId: string, claim: RaffleLedgerClaim, threadId: string, botToken: string): Promise<void> {
+  const previous = await pool.query<{ discord_channel_id: string; discord_message_id: string }>(
+    "SELECT discord_channel_id, discord_message_id FROM discord_raffle_claim_projections WHERE claim_id = $1",
+    [claim.claimId],
+  );
+  const existing = previous.rows[0] ?? null;
+  const status = claim.resolutionKind ?? "pending";
+  const actor = claim.actorKind === "external" ? `<@${claim.actorReference}>` : "Guild member";
+  const payload = {
+    allowed_mentions: { parse: [] },
+    embeds: [{
+      title: safeText(claim.characterDesignation).slice(0, 256),
+      description: [
+        `**Claimant:** ${actor}`,
+        `**Tickets:** ${claim.requestedEntryCount}`,
+        `**Pledged:** ${claim.promisedGoldValue} gold`,
+        `**Status:** ${status}`,
+      ].join("\n"),
+      color: status === "approved" ? 0x79c77b : status === "denied" || status === "revoked" ? 0x808080 : 0xe5b567,
+      footer: { text: "Guild Operations · Raffle claim" },
+    }],
+    components: status === "pending" ? [{ type: 1, components: [
+      { type: 2, style: 3, label: "Approve", custom_id: `go:raffle:approve:${claim.claimId}` },
+      { type: 2, style: 4, label: "Deny", custom_id: `go:raffle:deny:${claim.claimId}` },
+      { type: 2, style: 2, label: "Withdraw", custom_id: `go:raffle:withdraw:${claim.claimId}` },
+    ] }] : [],
+  };
+  if (existing && existing.discord_channel_id === threadId) {
+    try {
+      await discordEditChannelMessage(botToken, threadId, existing.discord_message_id, payload);
+      return;
+    } catch (error) {
+      if (!(error instanceof Error) || error.message !== "discord_api_404") throw error;
+      await pool.query("DELETE FROM discord_raffle_claim_projections WHERE claim_id = $1", [claim.claimId]);
+    }
+  }
+  const message = await discordChannelMessage(botToken, threadId, {
+    ...payload,
+    nonce: createHash("sha256").update(`${threadId}:${claim.claimId}`).digest("hex").slice(0, 24),
+    enforce_nonce: true,
+  });
+  await pool.query(
+    `INSERT INTO discord_raffle_claim_projections (claim_id, raffle_id, discord_channel_id, discord_message_id)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (claim_id) DO UPDATE SET discord_channel_id = EXCLUDED.discord_channel_id,
+       discord_message_id = EXCLUDED.discord_message_id, updated_at = now()`,
+    [claim.claimId, raffleId, threadId, message.id],
+  );
+}
+
+async function projectLedger(raffleId: string): Promise<void> {
+  const config = await discordIntegrationConfiguration();
+  if (!config?.enabled || !config.applicationVerifiedAt || !config.discordGuildId) return;
+  const result = await pool.query<{ discord_thread_id: string | null }>(
+    "SELECT discord_thread_id FROM discord_raffle_projections WHERE raffle_id = $1", [raffleId],
+  );
+  const threadId = result.rows[0]?.discord_thread_id;
+  if (!threadId) return;
+  for (const claim of await raffleClaimLedger(raffleId)) {
+    await projectClaim(raffleId, claim, threadId, config.botToken);
+  }
 }
 
 async function projectRaffle(raffleId: string): Promise<void> {
@@ -95,7 +159,12 @@ export function registerDiscordRaffleEmissionConsumer(): void {
     codes: [
       "raffle.established", "raffle.modified", "raffle.opened", "raffle.paused",
       "raffle.resumed", "raffle.cancelled", "raffle.concluded",
+      "raffle.claim.established", "raffle.claim.approved", "raffle.claim.denied", "raffle.claim.revoked",
     ],
-    receive: async (emission) => { await projectRaffle(emission.subject); },
+    receive: async (emission) => {
+      const raffleId = emission.parent ?? emission.subject;
+      await projectRaffle(raffleId);
+      await projectLedger(raffleId);
+    },
   });
 }
