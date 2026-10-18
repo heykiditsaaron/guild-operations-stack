@@ -341,6 +341,38 @@ export async function raffleParticipationOfferWorkspace(
   });
 }
 
+export async function establishDeclaredRaffleClaim(actor: ActivityParticipationActor, raffleId: string, designation: string, entries: number): Promise<string> {
+  if (actor.kind !== "external") throw new RaffleRuleError("external_actor_required", "An external actor is required", 403);
+  const normalized = designation.trim();
+  const separator = normalized.indexOf("-");
+  if (separator < 1 || separator === normalized.length - 1 || normalized.length > 120) {
+    throw new RaffleRuleError("invalid_character_designation", "Use Charactername-Realm", 400);
+  }
+  return withTransaction(async (client) => {
+    const row = await lockedRaffle(client, raffleId);
+    if (!raffleParticipationIsOpen(mapRaffle(row))) throw new RaffleRuleError("participation_closed", "Raffle participation is closed");
+    const claimId = randomUUID();
+    const offeredAtUnix = unixNow();
+    const offer = await constructActivityParticipationOffer(client, {
+      activityKind: "raffle", activityId: raffleId, actor,
+      eligibility: { kind: "any" }, contract: declaredRaffleClaimOfferContract,
+      context: { character: normalized, claim: entries },
+      procedureReference: claimId, offeredAtUnix,
+    });
+    const count = offer.context.find((item) => item.name === "claim")?.value;
+    if (!count || Array.isArray(count) || (count as ActivitySharedValue).type !== "integer") {
+      throw new Error("Raffle claim contract was not satisfied");
+    }
+    const value = count as Extract<ActivitySharedValue, { type: "integer" }>;
+    const promisedGold = (BigInt(String(row.entry_price_gold)) * BigInt(value.value)).toString();
+    await client.query(
+      "INSERT INTO raffle_claims (claim_id, raffle_id, promised_gold_value, created_at_unix, participation_offer_id) VALUES ($1,$2,$3,$4,$5)",
+      [claimId, raffleId, promisedGold, offeredAtUnix, offer.participationOfferId],
+    );
+    return claimId;
+  });
+}
+
 export async function establishRaffleClaimFromParticipationContext(
   claimantGuildieId: string,
   raffleId: string,
