@@ -1,0 +1,1 @@
+ALTER TABLE discord_integration_configuration ADD COLUMN interaction_public_key text;
