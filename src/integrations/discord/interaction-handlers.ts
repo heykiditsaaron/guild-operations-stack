@@ -5,7 +5,7 @@ export type DiscordComponentInteraction = {
   application_id?: string;
   guild_id?: string;
   member?: { nick?: string | null; user?: { id?: string; username?: string; global_name?: string | null } };
-  data?: { custom_id?: string; values?: string[] };
+  data?: { custom_id?: string; values?: string[]; components?: Array<{ components?: Array<{ custom_id?: string; value?: string }> }> };
 };
 
 export type DiscordInteractionResponse = {
