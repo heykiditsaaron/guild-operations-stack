@@ -1,4 +1,6 @@
-import { approveRaffleClaim } from "./application.js";
+import { approveRaffleClaim, revokeExternalRaffleClaim, revokeRaffleClaim } from "./application.js";
+import { raffleClaimLedger } from "./queries.js";
+import { pool } from "../../db.js";
 import { establishDiscordIdentity, resolvedActorSubjectForDiscordIdentity } from "../../integrations/discord/identity.js";
 import { registerDiscordComponentHandler, type DiscordComponentInteraction, type DiscordInteractionResponse } from "../../integrations/discord/interaction-handlers.js";
 
@@ -8,7 +10,7 @@ async function handleRaffle(interaction: DiscordComponentInteraction): Promise<D
   const match = /^go:raffle:(enter|approve|deny|withdraw):([0-9a-f-]{36})$/.exec(interaction.data?.custom_id ?? "");
   if (!match) return ephemeral("This raffle interaction is no longer valid.");
   const [, action, id] = match;
-  if (action !== "approve") return ephemeral("This raffle action is not available yet. Please use the Guild Operations website.");
+  if (action === "enter" || action === "deny") return ephemeral("This raffle action is not available yet. Please use the Guild Operations website.");
   const user = interaction.member?.user;
   if (!user?.id || !/^\d+$/.test(user.id)) return ephemeral("Discord member identity unavailable.");
   const discordIdentityId = await establishDiscordIdentity({
@@ -16,6 +18,20 @@ async function handleRaffle(interaction: DiscordComponentInteraction): Promise<D
     username: interaction.member?.nick || user.global_name || user.username,
   });
   const subject = await resolvedActorSubjectForDiscordIdentity(discordIdentityId);
+  if (action === "withdraw") {
+    const result = await pool.query<{ raffle_id: string }>("SELECT raffle_id FROM raffle_claims WHERE claim_id = $1", [id]);
+    const raffleId = result.rows[0]?.raffle_id;
+    if (!raffleId) return ephemeral("Raffle claim not found.");
+    const claim = (await raffleClaimLedger(raffleId)).find(row => row.claimId === id);
+    if (!claim || claim.resolutionKind !== null) return ephemeral("This claim is no longer pending.");
+    const ownsClaim = claim.actorKind === "external"
+      ? claim.actorReference === discordIdentityId
+      : claim.actorReference === subject && subject !== discordIdentityId;
+    if (!ownsClaim) return ephemeral("You can only withdraw your own raffle claim.");
+    if (claim.actorKind === "external") await revokeExternalRaffleClaim(discordIdentityId, id);
+    else await revokeRaffleClaim(subject, id);
+    return ephemeral("Your raffle claim has been withdrawn.");
+  }
   if (subject === discordIdentityId) return ephemeral("Link your Discord identity to your Guild Operations account before approving claims.");
   // Application authority enforces raffle.claims. Discord roles do not grant permission.
   await approveRaffleClaim(subject, id);
