@@ -1,3 +1,7 @@
+import { componentLogger } from "../../core/runtime-logger.js";
+
+const log = componentLogger("discord.raffle.participation");
+
 import { createHash } from "node:crypto";
 import { approveRaffleClaim, denyRaffleClaim, establishDeclaredRaffleClaim, establishRaffleClaimFromParticipationContext, raffleParticipationOfferWorkspace, getRaffle, raffleParticipationIsOpen, revokeExternalRaffleClaim, revokeRaffleClaim } from "./application.js";
 import { raffleClaimLedger } from "./queries.js";
@@ -132,7 +136,8 @@ export function registerDiscordRaffleInteractionHandler(): void {
   registerDiscordComponentHandler("go:raffle:", async (interaction) => {
     try {
       return await handleRaffle(interaction);
-    } catch {
+    } catch (error) {
+      log.error({ err: error, interactionId: interaction.id ?? null, interactionKind: "go:raffle" }, "Discord raffle interaction failed");
       return ephemeral("Raffle action could not be completed. Check your guild permissions or use the Guild Operations website.");
     }
   });
