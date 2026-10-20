@@ -88,7 +88,13 @@ export async function registerDiscordInteractionRoutes(app: FastifyInstance): Pr
             await fetch(`https://discord.com/api/v10/webhooks/${encodeURIComponent(interactionApplicationId)}/${encodeURIComponent(interactionToken)}/messages/@original`, {
               method: "PATCH", headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ content: "The interaction could not be completed. Please try again or use Guild Operations.", components: [] }),
-            }).catch(() => {});
+            }).then((fallbackResponse) => {
+              if (!fallbackResponse.ok) {
+                request.log.warn({ interactionId: interaction.id, interactionKind: interaction.data?.custom_id?.split(":").slice(0, 3).join(":"), status: fallbackResponse.status }, "Deferred Discord interaction failure response was rejected");
+              }
+            }).catch((fallbackError) => {
+              request.log.warn({ err: fallbackError, interactionId: interaction.id, interactionKind: interaction.data?.custom_id?.split(":").slice(0, 3).join(":") }, "Deferred Discord interaction failure response could not be delivered");
+            });
           }
         })();
         return { type: 5, data: { flags: 64 } };
