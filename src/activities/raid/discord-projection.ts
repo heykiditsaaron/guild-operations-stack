@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { componentLogger } from "../../core/runtime-logger.js";
+import { publishInspectionBestEffort } from "../../core/operational-inspection/best-effort.js";
 import { raidEventFactsIncludingCancelled, raidOccurrenceDestinations } from "./application.js";
 import { raidSignups, type RaidSignupView } from "./participation-view.js";
 import { pool } from "../../db.js";
@@ -8,6 +10,8 @@ import { publishOperationalRecord } from "../../operational-inspection.js";
 import { positionForSpec } from "../../wow-traits/registry.js";
 import { discordApplicationEmojis, discordApplicationEmojiMarkup, discordChannelMessage, discordEditChannelMessage } from "../../integrations/discord/api.js";
 import { discordIntegrationConfiguration } from "../../integrations/discord/configuration.js";
+
+const log = componentLogger("raid.discord-projection");
 
 type Projection = { discord_channel_id: string; discord_message_id: string };
 type EmojiLookup = Map<string, string>;
@@ -178,19 +182,27 @@ export function registerDiscordRaidEmissionConsumer(): void {
     receive: async (emission) => {
       try {
         await projectRaid(emission.subject);
-        await publishOperationalRecord({
+      } catch (error) {
+        await publishInspectionBestEffort(
+          () => publishOperationalRecord({
+            source: "discord.raid-publication", operation: emission.code, kind: "exception",
+            summary: "Discord raid projection failed",
+            details: { raidId: emission.subject, error: error instanceof Error ? error.message : String(error) },
+          }),
+          (inspectionError) => log.error({ err: inspectionError, emissionCode: emission.code, raidId: emission.subject }, "Discord raid failure inspection publication failed"),
+          () => {},
+        );
+        throw error;
+      }
+      await publishInspectionBestEffort(
+        () => publishOperationalRecord({
           source: "discord.raid-publication", operation: emission.code, kind: "result", result: "success",
           summary: `Discord raid projection reconciled: ${emission.code}`,
           details: { raidId: emission.subject },
-        });
-      } catch (error) {
-        await publishOperationalRecord({
-          source: "discord.raid-publication", operation: emission.code, kind: "exception",
-          summary: "Discord raid projection failed",
-          details: { raidId: emission.subject, error: error instanceof Error ? error.message : String(error) },
-        }).catch(() => {});
-        throw error;
-      }
+        }),
+        (inspectionError) => log.error({ err: inspectionError, emissionCode: emission.code, raidId: emission.subject }, "Discord raid success inspection publication failed"),
+        () => {},
+      );
     },
   });
 }
