@@ -1,4 +1,5 @@
 import { componentLogger } from "../../core/runtime-logger.js";
+import { observeDiscordFallback } from "./fallback-diagnostics.js";
 import WebSocket from "ws";
 import { discordIntegrationConfiguration } from "./configuration.js";
 import { dispatchDiscordComponentInteraction, type DiscordComponentInteraction } from "./interaction-handlers.js";
@@ -112,16 +113,16 @@ export class DiscordGateway {
       log.info({ interactionId: interaction.id, interactionKind, responseType: response.type, durationMs: Date.now() - startedAt }, "Discord Gateway interaction completed");
     } catch (error) {
       log.error({ err: error, interactionId: interaction.id, interactionKind, durationMs: Date.now() - startedAt }, "Discord Gateway interaction dispatch failed");
-      await fetch(`https://discord.com/api/v10/webhooks/${encodeURIComponent(config.applicationId)}/${encodeURIComponent(interaction.token)}/messages/@original`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: "The interaction could not be completed. Please try again or use Guild Operations.", components: [] }),
-      }).then((fallbackResponse) => {
-        if (!fallbackResponse.ok) {
-          log.warn({ interactionId: interaction.id, interactionKind, status: fallbackResponse.status }, "Discord Gateway interaction failure response was rejected");
-        }
-      }).catch((fallbackError) => {
-        log.warn({ err: fallbackError, interactionId: interaction.id, interactionKind }, "Discord Gateway interaction failure response could not be delivered");
-      });
+      await observeDiscordFallback(
+        fetch(`https://discord.com/api/v10/webhooks/${encodeURIComponent(config.applicationId)}/${encodeURIComponent(interaction.token)}/messages/@original`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: "The interaction could not be completed. Please try again or use Guild Operations.", components: [] }),
+        }),
+        log,
+        { interactionId: interaction.id, interactionKind },
+        "Discord Gateway interaction failure response was rejected",
+        "Discord Gateway interaction failure response could not be delivered",
+      );
     }
   }
 
