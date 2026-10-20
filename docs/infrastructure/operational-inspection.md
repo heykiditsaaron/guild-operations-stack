@@ -115,14 +115,14 @@ GUILD_OPERATIONS_VERSION=dev docker compose logs --since=30m api discord
 To inspect pending receipts and repeated attempts without changing data:
 
 ```sh
-GUILD_OPERATIONS_VERSION=dev docker compose exec -T db psql -U guild_operations -d guild_operations -c \
+GUILD_OPERATIONS_VERSION=dev docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c \
 "SELECT consumer_id, count(*) AS pending_receipts, max(attempt_count) AS max_attempts
  FROM emission_consumer_receipts
  WHERE acknowledged_at_unix IS NULL
- GROUP BY consumer_id ORDER BY consumer_id;"
+ GROUP BY consumer_id ORDER BY consumer_id;"'
 ```
 
-Check the Compose database service and PostgreSQL credentials in the actual deployment before running the example; service and database names may differ. Never post database credentials or raw secret-bearing logs in an issue.
+Check the Compose database service name and configured database environment in the actual deployment before running the example. Never post database credentials or raw secret-bearing logs in an issue.
 
 A pending receipt or an increasing attempt count is a diagnostic clue, not proof of a duplicate external effect. For concurrency validation, correlate `publicationId`, `consumerId`, and `attemptCount` across processes and compare with the consumer's actual side effects. Do not intentionally interrupt production consumers or edit receipt timestamps to simulate contention.
 
