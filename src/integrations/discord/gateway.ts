@@ -1,6 +1,9 @@
+import { componentLogger } from "../../core/runtime-logger.js";
 import WebSocket from "ws";
 import { discordIntegrationConfiguration } from "./configuration.js";
 import { dispatchDiscordComponentInteraction, type DiscordComponentInteraction } from "./interaction-handlers.js";
+
+const log = componentLogger("discord.gateway");
 
 const GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
 const INTENTS_GUILDS = 1;
@@ -50,7 +53,7 @@ export class DiscordGateway {
       this.setHealth("disconnected");
       if (!this.stopped) this.reconnect = setTimeout(() => this.connect(), 5000);
     });
-    socket.on("error", (error) => console.error("Discord Gateway socket error", error));
+    socket.on("error", (error) => log.error({ err: error }, "Discord Gateway socket error"));
   }
 
   private onMessage(raw: string): void {
@@ -80,7 +83,7 @@ export class DiscordGateway {
     if (payload.op === 9) { this.sequence = null; this.socket?.close(); return; }
     if (payload.op === 0 && payload.t === "READY") this.setHealth("ready");
     if (payload.op === 0 && payload.t === "INTERACTION_CREATE") {
-      void this.handleInteraction(payload.d as DiscordComponentInteraction & { token?: string }).catch((error) => console.error("Discord Gateway interaction failed", error));
+      void this.handleInteraction(payload.d as DiscordComponentInteraction & { token?: string }).catch((error) => log.error({ err: error, interactionId: (payload.d as DiscordComponentInteraction)?.id }, "Discord Gateway interaction failed"));
     }
   }
 
@@ -105,7 +108,7 @@ export class DiscordGateway {
       });
       if (!result.ok) throw new Error(`discord_gateway_edit_${result.status}`);
     } catch (error) {
-      console.error("Discord Gateway interaction dispatch failed", error);
+      log.error({ err: error, interactionId: interaction.id }, "Discord Gateway interaction dispatch failed");
       await fetch(`https://discord.com/api/v10/webhooks/${encodeURIComponent(config.applicationId)}/${encodeURIComponent(interaction.token)}/messages/@original`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: "The interaction could not be completed. Please try again or use Guild Operations.", components: [] }),
