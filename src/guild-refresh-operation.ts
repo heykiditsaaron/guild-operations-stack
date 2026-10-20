@@ -1,3 +1,4 @@
+import { publishInspectionBestEffort } from "./core/operational-inspection/best-effort.js";
 import { componentLogger } from "./core/runtime-logger.js";
 import { refreshGuildAuthority, type GuildRefreshResult } from "./core/guild/guild-refresh.js";
 import { publishOperationalRecord } from "./operational-inspection.js";
@@ -9,30 +10,20 @@ type GuildRefreshOperationOptions = {
   onInspectionFailure?: (error: unknown) => void;
 };
 
-function reportInspectionFailure(
-  error: unknown,
-  onInspectionFailure?: (error: unknown) => void,
-): void {
-  if (onInspectionFailure) {
-    try {
-      onInspectionFailure(error);
-      return;
-    } catch (reportingError) {
-      log.error({ err: reportingError }, "Guild refresh inspection failure reporter threw");
-    }
-  }
-  log.error({ err: error }, "Operational inspection publication failed for guild refresh");
-}
-
 async function publishBestEffort(
   input: Parameters<typeof publishOperationalRecord>[0],
   onInspectionFailure?: (error: unknown) => void,
 ): Promise<void> {
-  try {
-    await publishOperationalRecord(input);
-  } catch (error) {
-    reportInspectionFailure(error, onInspectionFailure);
-  }
+  await publishInspectionBestEffort(
+    () => publishOperationalRecord(input),
+    (error) => {
+      if (onInspectionFailure) onInspectionFailure(error);
+      else log.error({ err: error }, "Operational inspection publication failed for guild refresh");
+    },
+    (reportingError) => {
+      log.error({ err: reportingError }, "Guild refresh inspection failure reporter threw");
+    },
+  );
 }
 
 function refreshDetails(result: GuildRefreshResult): Record<string, unknown> {
