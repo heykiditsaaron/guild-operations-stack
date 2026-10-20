@@ -1,5 +1,8 @@
+import { componentLogger } from "./core/runtime-logger.js";
 import { refreshGuildAuthority, type GuildRefreshResult } from "./core/guild/guild-refresh.js";
 import { publishOperationalRecord } from "./operational-inspection.js";
+
+const log = componentLogger("guild.refresh.inspection");
 
 type GuildRefreshOperationOptions = {
   actorIdentityId?: string | null;
@@ -11,10 +14,14 @@ function reportInspectionFailure(
   onInspectionFailure?: (error: unknown) => void,
 ): void {
   if (onInspectionFailure) {
-    onInspectionFailure(error);
-    return;
+    try {
+      onInspectionFailure(error);
+      return;
+    } catch (reportingError) {
+      log.error({ err: reportingError }, "Guild refresh inspection failure reporter threw");
+    }
   }
-  console.error("Operational inspection publication failed", error);
+  log.error({ err: error }, "Operational inspection publication failed for guild refresh");
 }
 
 async function publishBestEffort(
