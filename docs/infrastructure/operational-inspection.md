@@ -98,6 +98,34 @@ Emission transport logs a structured `publicationId`, `consumerId`, `emissionCod
 
 This is a transport-level trace, not an end-to-end correlation between a request, a domain operation, and an operational inspection record. Consumer receipt success means the registered consumer returned and the receipt acknowledgment was persisted; it does not guarantee exactly-once external effects.
 
+## Receipt recovery and concurrency limitations
+
+The API and Discord worker each run a guarded recovery cycle every 30 seconds. The guard prevents overlapping recovery passes **inside one process**, not across processes. The database receipt claim increments `attempt_count` and records `last_attempted_at_unix`; it allows another claim once the prior attempt is at least 30 seconds old if the receipt remains unacknowledged. This is a **time gate, not a lease tied to consumer completion**.
+
+A consumer that runs longer than the claim gate, or that completes its external effect but cannot persist its acknowledgment, can be delivered again. Consumers must therefore tolerate repeated delivery; Discord provider effects cannot be assumed exactly once. A pending receipt whose consumer is not registered in the recovering process is skipped there; the process that registers that consumer must be running to handle it.
+
+### Operator inspection (read-only)
+
+From the deployment directory, inspect the API and Discord worker streams:
+
+```sh
+GUILD_OPERATIONS_VERSION=dev docker compose logs --since=30m api discord
+```
+
+To inspect pending receipts and repeated attempts without changing data:
+
+```sh
+GUILD_OPERATIONS_VERSION=dev docker compose exec -T db psql -U guild_operations -d guild_operations -c \
+"SELECT consumer_id, count(*) AS pending_receipts, max(attempt_count) AS max_attempts
+ FROM emission_consumer_receipts
+ WHERE acknowledged_at_unix IS NULL
+ GROUP BY consumer_id ORDER BY consumer_id;"
+```
+
+Check the Compose database service and PostgreSQL credentials in the actual deployment before running the example; service and database names may differ. Never post database credentials or raw secret-bearing logs in an issue.
+
+A pending receipt or an increasing attempt count is a diagnostic clue, not proof of a duplicate external effect. For concurrency validation, correlate `publicationId`, `consumerId`, and `attemptCount` across processes and compare with the consumer's actual side effects. Do not intentionally interrupt production consumers or edit receipt timestamps to simulate contention.
+
 ## Discord interaction diagnostics
 
 The shared Discord component dispatcher logs handler start and return using Discord `interactionId`, handler kind, response type, and duration, without logging interaction tokens, custom IDs, form fields, or user-provided content. Raid and Raffle handlers also log exceptions they intentionally convert into user-facing ephemeral error responses, preserving technical evidence without changing their user-visible behavior. The same interaction ID can be used to search API or Discord worker diagnostics depending on the ingress route.
