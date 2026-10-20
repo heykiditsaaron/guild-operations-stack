@@ -5,7 +5,7 @@ import pino from "pino";
 const levels = new Set(["fatal", "error", "warn", "info", "debug", "trace", "silent"]);
 const requestedLevel = process.env.LOG_LEVEL?.toLowerCase() ?? "info";
 
-export const runtimeLogger = pino({
+export const runtimeLoggerOptions = {
   level: levels.has(requestedLevel) ? requestedLevel : "info",
   base: { service: "guild-operations", process: process.env.GUILD_OPERATIONS_PROCESS ?? "application" },
   timestamp: pino.stdTimeFunctions.isoTime,
@@ -20,7 +20,9 @@ export const runtimeLogger = pino({
     ],
     censor: "[REDACTED]",
   },
-});
+} satisfies pino.LoggerOptions;
+
+export const runtimeLogger = pino(runtimeLoggerOptions);
 
 export function componentLogger(component: string) {
   return runtimeLogger.child({ component });
