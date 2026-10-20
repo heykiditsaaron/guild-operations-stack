@@ -19,10 +19,15 @@ services:
       db:
         condition: service_healthy
     command: node dist/migrate.js
+    environment:
+      GUILD_OPERATIONS_PROCESS: migrate
     restart: "no"
 
   api:
     image: ghcr.io/heykiditsaaron/guild-operations:${GUILD_OPERATIONS_VERSION:-latest}
+    environment:
+      GUILD_OPERATIONS_PROCESS: api
+      LOG_LEVEL: ${LOG_LEVEL:-info}
     ports:
       - "${HTTP_PORT:-3100}:3100"
     volumes:
@@ -35,6 +40,9 @@ services:
   discord:
     image: ghcr.io/heykiditsaaron/guild-operations:${GUILD_OPERATIONS_VERSION:-latest}
     command: node dist/discord.js
+    environment:
+      GUILD_OPERATIONS_PROCESS: discord
+      LOG_LEVEL: ${LOG_LEVEL:-info}
     volumes:
       - guild-operations-installation:/var/lib/guild-operations
     depends_on:
