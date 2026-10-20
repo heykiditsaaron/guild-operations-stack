@@ -73,6 +73,19 @@ Runtime logging remains the home for stack traces, connectivity errors, HTTP dia
 
 A real-world failure may produce both runtime telemetry and an operational record, but neither mechanically mirrors the other.
 
+## Container log operation
+
+The packaged Compose deployment labels structured runtime records with `service: guild-operations` and `process: api` or `process: discord`; the migration container also receives `process: migrate` for consistency where it uses the shared logger. `component` identifies the subsystem. `LOG_LEVEL` can be set in the Compose environment (default `info`) for API and Discord; `debug` increases technical detail. Do not enable verbose logging indefinitely when diagnosing sensitive integrations.
+
+For example, from the deployment directory:
+
+```sh
+GUILD_OPERATIONS_VERSION=dev docker compose logs --since=10m api discord
+GUILD_OPERATIONS_VERSION=dev docker compose logs --since=10m discord | grep 'interactionId'
+```
+
+Docker logs are the runtime diagnostic sink; their retention follows the host/container logging driver configuration, not the operational-record database. Guild Settings > Logs (`/admin/history`) displays deliberately persisted administrative records, not the Docker stream. A technical Discord failure therefore does not automatically create an administrative record.
+
 ## Runtime-to-inspection lookup
 
 After a successful operational-record insert, the inspection publisher writes a structured runtime `info` entry containing `operationalRecordId`, `source`, `operation`, `kind`, and `result`. Operators can copy the record ID from the inspection data and search container logs for the same ID. This is a durable record-to-runtime lookup, not a complete request or cross-process trace; publication IDs and other execution coordinates require separate correlation work.
