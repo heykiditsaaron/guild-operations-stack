@@ -1,16 +1,27 @@
-import { approveRaffleClaim, revokeExternalRaffleClaim, revokeRaffleClaim } from "./application.js";
+import { approveRaffleClaim, denyRaffleClaim, revokeExternalRaffleClaim, revokeRaffleClaim } from "./application.js";
 import { raffleClaimLedger } from "./queries.js";
 import { pool } from "../../db.js";
 import { establishDiscordIdentity, resolvedActorSubjectForDiscordIdentity } from "../../integrations/discord/identity.js";
 import { registerDiscordComponentHandler, type DiscordComponentInteraction, type DiscordInteractionResponse } from "../../integrations/discord/interaction-handlers.js";
 
+const modal = (claimId: string): DiscordInteractionResponse => ({
+  type: 9,
+  data: {
+    custom_id: `go:raffle:deny-submit:${claimId}`,
+    title: "Deny raffle claim",
+    components: [{ type: 1, components: [{
+      type: 4, custom_id: "reason", style: 2, label: "Reason for denial",
+      min_length: 1, max_length: 500, required: true,
+    }] }],
+  },
+});
 const ephemeral = (content: string): DiscordInteractionResponse => ({ type: 4, data: { flags: 64, content } });
 
 async function handleRaffle(interaction: DiscordComponentInteraction): Promise<DiscordInteractionResponse> {
-  const match = /^go:raffle:(enter|approve|deny|withdraw):([0-9a-f-]{36})$/.exec(interaction.data?.custom_id ?? "");
+  const match = /^go:raffle:(enter|approve|deny|deny-submit|withdraw):([0-9a-f-]{36})$/.exec(interaction.data?.custom_id ?? "");
   if (!match) return ephemeral("This raffle interaction is no longer valid.");
   const [, action, id] = match;
-  if (action === "enter" || action === "deny") return ephemeral("This raffle action is not available yet. Please use the Guild Operations website.");
+  if (action === "enter") return ephemeral("This raffle action is not available yet. Please use the Guild Operations website.");
   const user = interaction.member?.user;
   if (!user?.id || !/^\d+$/.test(user.id)) return ephemeral("Discord member identity unavailable.");
   const discordIdentityId = await establishDiscordIdentity({
@@ -32,7 +43,15 @@ async function handleRaffle(interaction: DiscordComponentInteraction): Promise<D
     else await revokeRaffleClaim(subject, id);
     return ephemeral("Your raffle claim has been withdrawn.");
   }
-  if (subject === discordIdentityId) return ephemeral("Link your Discord identity to your Guild Operations account before approving claims.");
+  if (subject === discordIdentityId) return ephemeral("Link your Discord identity to your Guild Operations account before managing claims.");
+  if (action === "deny") return modal(id);
+  if (action === "deny-submit") {
+    const reason = interaction.data?.components?.flatMap(row => row.components ?? [])
+      .find(field => field.custom_id === "reason")?.value?.trim();
+    if (!reason || reason.length > 500) return ephemeral("Provide a denial reason of 1–500 characters.");
+    await denyRaffleClaim(subject, id, reason);
+    return ephemeral("Raffle claim denied.");
+  }
   // Application authority enforces raffle.claims. Discord roles do not grant permission.
   await approveRaffleClaim(subject, id);
   return ephemeral("Raffle claim approved.");
