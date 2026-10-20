@@ -1,6 +1,7 @@
 import { componentLogger } from "../core/runtime-logger.js";
 import type { PoolClient } from "pg";
 import { pool } from "../db.js";
+import { claimEmissionReceipt } from "./receipt-claim.js";
 import type {
   Emission,
   EmissionConsumerRegistration,
@@ -85,23 +86,14 @@ async function attemptConsumerReceipt(
   publication: EmissionPublication,
   consumer: EmissionConsumerRegistration,
 ): Promise<void> {
-  const claimed = await pool.query<{ attempt_count: number }>(
-    `UPDATE emission_consumer_receipts
-        SET last_attempted_at_unix = extract(epoch FROM now())::bigint,
-            attempt_count = attempt_count + 1
-      WHERE publication_id = $1
-        AND consumer_id = $2
-        AND acknowledged_at_unix IS NULL
-        AND (
-          last_attempted_at_unix IS NULL
-          OR last_attempted_at_unix <= extract(epoch FROM now())::bigint - 30
-        )
-      RETURNING attempt_count`,
-    [publication.publicationId, consumer.consumerId],
+  const attemptCount = await claimEmissionReceipt(
+    (sql, values) => pool.query<{ attempt_count: number }>(sql, values),
+    publication.publicationId,
+    consumer.consumerId,
   );
-  if (!claimed.rowCount) return;
+  if (attemptCount === null) return;
 
-  const trace = { publicationId: publication.publicationId, consumerId: consumer.consumerId, emissionCode: publication.emission.code, attemptCount: Number(claimed.rows[0].attempt_count) };
+  const trace = { publicationId: publication.publicationId, consumerId: consumer.consumerId, emissionCode: publication.emission.code, attemptCount };
   log.info(trace, "Emission delivery attempt started");
 
   try {
