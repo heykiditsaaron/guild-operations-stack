@@ -1,4 +1,7 @@
 import { recordDiscordRoleAction } from "./role-action-history.js";
+import { componentLogger } from "../../core/runtime-logger.js";
+
+const log = componentLogger("discord.role-reconciliation");
 import { effectiveGuildAuthority } from "../../core/authority/guild-permissions.js";
 import { discordServerMember, discordServerRoles, discordRoleReadiness, discordSetMemberRole } from "./api.js";
 import type { DiscordIntegrationConfiguration } from "./configuration.js";
@@ -50,7 +53,7 @@ export async function reconcileDiscordRankRole(input: {
       });
     } catch (error) {
       // A history persistence failure must not alter Discord or Core authority.
-      console.error("Discord role action history persistence failed", error);
+      log.error({ err: error, discordUserId, action, outcome, roleId: roleId ?? null }, "Discord role action history persistence failed");
     }
   };
   const removed: string[] = [];
