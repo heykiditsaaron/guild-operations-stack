@@ -2,6 +2,7 @@ import { componentLogger } from "../core/runtime-logger.js";
 import type { PoolClient } from "pg";
 import { pool } from "../db.js";
 import { claimEmissionReceipt } from "./receipt-claim.js";
+import { completeEmissionAttempt } from "./attempt-completion.js";
 import type {
   Emission,
   EmissionConsumerRegistration,
@@ -96,20 +97,22 @@ async function attemptConsumerReceipt(
   const trace = { publicationId: publication.publicationId, consumerId: consumer.consumerId, emissionCode: publication.emission.code, attemptCount };
   log.info(trace, "Emission delivery attempt started");
 
-  try {
-    await consumer.receive(publication.emission);
-    await pool.query(
-      `UPDATE emission_consumer_receipts
-          SET acknowledged_at_unix = extract(epoch FROM now())::bigint
-        WHERE publication_id = $1
-          AND consumer_id = $2
-          AND acknowledged_at_unix IS NULL`,
-      [publication.publicationId, consumer.consumerId],
-    );
-    log.info(trace, "Emission consumer acknowledged");
-  } catch (error) {
-    log.error({ err: error, ...trace, transportId: EMISSION_TRANSPORT_ID }, "Emission consumer failed; receipt remains pending");
-  }
+  await completeEmissionAttempt(
+    consumer.receive,
+    publication.emission,
+    async () => {
+      await pool.query(
+        `UPDATE emission_consumer_receipts
+            SET acknowledged_at_unix = extract(epoch FROM now())::bigint
+          WHERE publication_id = $1
+            AND consumer_id = $2
+            AND acknowledged_at_unix IS NULL`,
+        [publication.publicationId, consumer.consumerId],
+      );
+    },
+    log,
+    { ...trace, transportId: EMISSION_TRANSPORT_ID },
+  );
 }
 
 export async function deliverEmission(publication: EmissionPublication): Promise<void> {
