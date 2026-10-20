@@ -1,4 +1,7 @@
 import { pool } from "./db.js";
+import { componentLogger } from "./core/runtime-logger.js";
+
+const log = componentLogger("operational.inspection");
 
 export type OperationalRecordKind = "result" | "exception";
 export type OperationalResult = "success" | "partial" | "failure";
@@ -116,7 +119,17 @@ export async function publishOperationalRecord(
     ],
   );
 
-  return mapRecord(result.rows[0]);
+  const record = mapRecord(result.rows[0]);
+  // The persisted record ID is the shared lookup coordinate between
+  // operator inspection and container diagnostics. Never log producer details.
+  log.info({
+    operationalRecordId: record.operationalRecordId,
+    source: record.source,
+    operation: record.operation,
+    kind: record.kind,
+    result: record.result,
+  }, "Operational record persisted");
+  return record;
 }
 
 export async function listOperationalRecords(
