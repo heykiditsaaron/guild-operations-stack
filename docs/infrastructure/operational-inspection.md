@@ -73,6 +73,12 @@ Runtime logging remains the home for stack traces, connectivity errors, HTTP dia
 
 A real-world failure may produce both runtime telemetry and an operational record, but neither mechanically mirrors the other.
 
+## Runtime-to-inspection lookup
+
+After a successful operational-record insert, the inspection publisher writes a structured runtime `info` entry containing `operationalRecordId`, `source`, `operation`, `kind`, and `result`. Operators can copy the record ID from the inspection data and search container logs for the same ID. This is a durable record-to-runtime lookup, not a complete request or cross-process trace; publication IDs and other execution coordinates require separate correlation work.
+
+The runtime entry intentionally omits the record summary, actor, and producer details to avoid duplicating sensitive administrative data in container output. If persistence fails, the caller remains responsible for best-effort handling and logging the failure; this bridge cannot emit a record ID that was never committed.
+
 ## Domain-history boundary
 
 Operational records are evidence about application operations, not authoritative domain history.
