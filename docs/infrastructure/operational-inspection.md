@@ -31,7 +31,7 @@ A producer supplies:
 - `operation` — stable producer-owned operation coordinate;
 - `kind` — `result` or `exception`;
 - `result` — required for result records;
-- optional Guildie actor;
+- optional actor identity;
 - concise human-readable summary;
 - optional structured details.
 
@@ -50,14 +50,14 @@ source
 operation
 kind
 result
-actor_guildie_id
+actor_identity_id
 summary
 details
 ```
 
 `source`, `operation`, and `summary` are required non-empty values. `kind = result` requires a result classification. `kind = exception` carries no result classification.
 
-`actor_guildie_id` is optional. There is no generic subject/target/resource identity in the shared envelope.
+`actor_identity_id` is optional. There is no generic subject/target/resource identity in the shared envelope.
 
 `details` is optional producer-owned JSON. The infrastructure does not register producer-specific detail schemas.
 
@@ -112,11 +112,13 @@ Roster observations, Guildie transitions, raffle results, Discord association, a
 
 ## Administrative surface
 
-Records are reviewed at:
+Records are reviewed at **Guild Settings > Logs**:
 
 ```text
-/admin/operations
+/admin/history
 ```
+
+The former `/admin/operations` URL redirects to this page.
 
 The page requires global capability:
 
