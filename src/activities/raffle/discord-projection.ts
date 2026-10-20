@@ -91,8 +91,28 @@ async function projectLedger(raffleId: string): Promise<void> {
   );
   const threadId = result.rows[0]?.discord_thread_id;
   if (!threadId) return;
-  for (const claim of await raffleClaimLedger(raffleId)) {
-    await projectClaim(raffleId, claim, threadId, config.botToken);
+  try {
+    for (const claim of await raffleClaimLedger(raffleId)) {
+      await projectClaim(raffleId, claim, threadId, config.botToken);
+    }
+  } catch (error) {
+    if (!(error instanceof Error) || error.message !== "discord_api_404") throw error;
+    // The recorded thread was removed. Recreate it on the next emission
+    // without discarding the surviving raffle announcement.
+    await pool.query(
+      "UPDATE discord_raffle_projections SET discord_thread_id = NULL, updated_at = now() WHERE raffle_id = $1 AND discord_thread_id = $2",
+      [raffleId, threadId],
+    );
+    await projectRaffle(raffleId);
+    const refreshed = await pool.query<{ discord_thread_id: string | null }>(
+      "SELECT discord_thread_id FROM discord_raffle_projections WHERE raffle_id = $1",
+      [raffleId],
+    );
+    const replacement = refreshed.rows[0]?.discord_thread_id;
+    if (!replacement) throw error;
+    for (const claim of await raffleClaimLedger(raffleId)) {
+      await projectClaim(raffleId, claim, replacement, config.botToken);
+    }
   }
 }
 
