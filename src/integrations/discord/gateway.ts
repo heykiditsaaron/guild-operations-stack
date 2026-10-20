@@ -115,7 +115,13 @@ export class DiscordGateway {
       await fetch(`https://discord.com/api/v10/webhooks/${encodeURIComponent(config.applicationId)}/${encodeURIComponent(interaction.token)}/messages/@original`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: "The interaction could not be completed. Please try again or use Guild Operations.", components: [] }),
-      }).catch(() => {});
+      }).then((fallbackResponse) => {
+        if (!fallbackResponse.ok) {
+          log.warn({ interactionId: interaction.id, interactionKind, status: fallbackResponse.status }, "Discord Gateway interaction failure response was rejected");
+        }
+      }).catch((fallbackError) => {
+        log.warn({ err: fallbackError, interactionId: interaction.id, interactionKind }, "Discord Gateway interaction failure response could not be delivered");
+      });
     }
   }
 
