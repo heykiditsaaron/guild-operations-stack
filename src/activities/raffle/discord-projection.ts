@@ -3,6 +3,7 @@ import { getRaffle, raffleParticipationCutoffUnix, raffleParticipationIsOpen } f
 import { rafflePublicDestination } from "./destinations.js";
 import { raffleClaimLedger, type RaffleLedgerClaim } from "./queries.js";
 import { pool } from "../../db.js";
+import { discordIdentityForWowIdentity } from "../../integrations/discord/identity.js";
 import { installationAbsoluteUrl } from "../../core/installation/public-origin.js";
 import { registerEmissionConsumer } from "../../emissions/registry.js";
 import { discordChannelMessage, discordEditChannelMessage, discordStartMessageThread } from "../../integrations/discord/api.js";
@@ -31,7 +32,15 @@ async function projectClaim(raffleId: string, claim: RaffleLedgerClaim, threadId
   );
   const existing = previous.rows[0] ?? null;
   const status = claim.resolutionKind ?? "pending";
-  const actor = claim.actorKind === "external" ? `<@${claim.actorReference}>` : "Guild member";
+  const discordUserId = claim.actorKind === "external"
+    ? (await pool.query<{ discord_user_id: string }>(
+        "SELECT discord_user_id FROM discord_identities WHERE identity_id = $1",
+        [claim.actorReference],
+      )).rows[0]?.discord_user_id
+    : (await discordIdentityForWowIdentity(claim.actorReference))?.discordUserId;
+  const actor = discordUserId && /^[0-9]+$/.test(discordUserId)
+    ? `<@${discordUserId}>`
+    : "Guild member";
   const payload = {
     allowed_mentions: { parse: [] },
     embeds: [{
