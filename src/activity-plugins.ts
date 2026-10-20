@@ -7,6 +7,17 @@ import { activityPluginEnabled } from "./core/activity/plugin-enablement.js";
 import type { AssetRegistry } from "./web/assets.js";
 import { publishOperationalRecord } from "./operational-inspection.js";
 
+async function publishAvailabilityExceptionBestEffort(
+  input: Parameters<typeof publishOperationalRecord>[0],
+  logger: FastifyBaseLogger,
+): Promise<void> {
+  try {
+    await publishOperationalRecord(input);
+  } catch (error) {
+    logger.error({ err: error, activityKind: input.details?.activityKind, stage: input.details?.stage }, "Activity availability inspection publication failed");
+  }
+}
+
 export type InstalledActivityPlugin = {
   kind: string;
   label: string;
@@ -84,13 +95,13 @@ export async function registerInstalledActivityPlugins(
       const failure = error instanceof Error ? error : new Error(String(error));
       failedActivityPlugins.set(kind, failure);
       markActivityActivationFailed(kind);
-      await publishOperationalRecord({
+      await publishAvailabilityExceptionBestEffort({
         source: "activity",
         operation: "availability",
         kind: "exception",
         summary: `Activity plugin ${kind} is physically present but unavailable.`,
         details: { activityKind: kind, stage: "load", error: failure.message },
-      });
+      }, logger);
       continue;
     }
 
@@ -108,13 +119,13 @@ export async function registerInstalledActivityPlugins(
       failedActivityPlugins.set(plugin.kind, failure);
       markActivityActivationFailed(plugin.kind);
       logger.warn({ err: error, activityKind: plugin.kind }, "Activity plugin failed to activate");
-      await publishOperationalRecord({
+      await publishAvailabilityExceptionBestEffort({
         source: "activity",
         operation: "availability",
         kind: "exception",
         summary: `Activity plugin ${plugin.kind} is physically present but unavailable.`,
         details: { activityKind: plugin.kind, stage: "registration", error: failure.message },
-      });
+      }, logger);
       continue;
     }
 
