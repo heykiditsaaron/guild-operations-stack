@@ -1,4 +1,7 @@
 import { pool } from "../../db.js";
+import { componentLogger } from "../../core/runtime-logger.js";
+
+const log = componentLogger("discord.role-sync");
 import type { DiscordIntegrationConfiguration } from "./configuration.js";
 import { reconcileDiscordRankRole } from "./role-reconciliation.js";
 
@@ -29,11 +32,11 @@ export async function reconcileAssociatedDiscordRoles(input: {
       if (outcome.status === "updated") updated++;
       if (outcome.status === "not_ready") {
         failures++;
-        console.warn("Discord role synchronization not ready", { discordUserId: row.discord_user_id, reasons: outcome.reasons });
+        log.warn({ discordUserId: row.discord_user_id, reasons: outcome.reasons }, "Discord role synchronization not ready");
       }
     } catch (error) {
       failures++;
-      console.error("Discord role synchronization failed", { discordUserId: row.discord_user_id, error });
+      log.error({ err: error, discordUserId: row.discord_user_id }, "Discord role synchronization failed");
     }
   }
   return {
