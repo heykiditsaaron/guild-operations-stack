@@ -1,3 +1,4 @@
+import { componentLogger } from "./core/runtime-logger.js";
 import { pool } from "./db.js";
 import { recoverPendingEmissions } from "./emissions/registry.js";
 import { readdir } from "node:fs/promises";
@@ -21,6 +22,8 @@ for (const entry of activityEntries.filter((item) => item.isDirectory())) {
   loaded.activityPlugin?.registerDiscordInteractions?.();
 }
 
+const log = componentLogger("discord.worker");
+
 let stopping = false;
 let lastState = "";
 let gateway: DiscordGateway | null = null;
@@ -34,10 +37,10 @@ async function inspectDiscordState(): Promise<void> {
     try {
       const server = await verifiedDiscordServer(configuration);
       await establishDiscordGuildBinding(server.id);
-      console.log(`Discord Integration established server binding: ${server.name} (${server.id})`);
+      log.info({ discordGuildId: server.id, discordGuildName: server.name }, "Discord Integration established server binding");
     } catch (error) {
       if (!(error instanceof Error) || error.message !== "discord_server_not_found") {
-        console.error("Discord Integration server verification failed", error);
+        log.error({ err: error }, "Discord Integration server verification failed");
       }
     }
   }
@@ -53,7 +56,7 @@ async function inspectDiscordState(): Promise<void> {
     if (!gateway || gatewayToken !== refreshedConfiguration!.botToken) {
       gateway?.stop();
       gatewayToken = refreshedConfiguration!.botToken;
-      gateway = new DiscordGateway(gatewayToken, (health) => console.log(`Discord Gateway runtime health: ${health}`));
+      gateway = new DiscordGateway(gatewayToken, (health) => log.info({ health }, "Discord Gateway runtime health changed"));
       gateway.start();
     }
   } else if (gateway) {
@@ -62,7 +65,7 @@ async function inspectDiscordState(): Promise<void> {
     gatewayToken = "";
   }
   if (state !== lastState) {
-    console.log(`Discord Integration process state: ${state}`);
+    log.info({ state }, "Discord Integration process state changed");
     lastState = state;
   }
 }
@@ -81,15 +84,15 @@ async function syncDiscordRoles(): Promise<void> {
       configuration: config, guildId: binding.guildId, offset: roleSyncOffset, limit: 10,
     });
     roleSyncOffset = outcome.nextOffset;
-    if (outcome.updated || outcome.failures) console.log("Discord rank roles", outcome);
+    if (outcome.updated || outcome.failures) log.info({ outcome }, "Discord rank role synchronization completed");
   } finally {
     roleSyncBusy = false;
   }
 }
 await inspectDiscordState();
-void recoverPendingEmissions().catch((error) => console.error("Discord emission recovery failed", error));
+void recoverPendingEmissions().catch((error) => log.error({ err: error }, "Discord emission recovery failed"));
 const timer = setInterval(() => void inspectDiscordState().catch((error) => {
-  console.error("Discord Integration state inspection failed", error);
+  log.error({ err: error }, "Discord Integration state inspection failed");
 }), 30_000);
 
 const emissionTimer = setInterval(() => {
@@ -97,9 +100,9 @@ const emissionTimer = setInterval(() => {
 }, 30_000);
 
 const roleTimer = setInterval(() => {
-  void syncDiscordRoles().catch((error) => console.error("Discord role sync failed", error));
+  void syncDiscordRoles().catch((error) => log.error({ err: error }, "Discord role sync failed"));
 }, 120_000);
-void syncDiscordRoles().catch((error) => console.error("Discord role sync startup failed", error));
+void syncDiscordRoles().catch((error) => log.error({ err: error }, "Discord role sync startup failed"));
 
 async function shutdown(): Promise<void> {
   if (stopping) return;
