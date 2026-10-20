@@ -49,6 +49,7 @@ function renderRecord(record: OperationalRecord): string {
       ${result}
     </div>
     <p class="operations-record-summary">${escapeHtml(record.summary)}</p>
+    <small class="operations-record-id">Record ID: <code>${escapeHtml(record.operationalRecordId)}</code></small>
     ${actor}
     ${renderDetails(record.details)}
   </article>`;
@@ -84,7 +85,7 @@ function renderInspection(
 
   return `<section class="operations-inspection admin-section" aria-labelledby="operations-records-heading">
     <h2 id="operations-records-heading">Operational logs</h2>
-    <p class="admin-section-note">Review recorded operational results and exceptions.</p>
+    <p class="admin-section-note">Review recorded operational results and exceptions. Record IDs can be searched in container logs to find the matching persistence event.</p>
     ${channelLinks}
     ${filters}
     <div class="operations-records-heading">
