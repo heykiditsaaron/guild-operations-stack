@@ -1,3 +1,7 @@
+import { componentLogger } from "../runtime-logger.js";
+
+const log = componentLogger("guild.refresh.observers");
+
 export type GuildRefreshObservation = {
   guildId: string;
   changedIdentityIds: readonly string[];
@@ -17,7 +21,7 @@ export async function publishGuildRefreshObservation(observation: GuildRefreshOb
     try {
       await observer(observation);
     } catch (error) {
-      console.error("Guild refresh observer failed", { guildId: observation.guildId, error });
+      log.error({ err: error, guildId: observation.guildId }, "Guild refresh observer failed");
     }
   }
 }
