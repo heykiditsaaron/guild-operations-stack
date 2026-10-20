@@ -1,4 +1,7 @@
+import { componentLogger } from "../../core/runtime-logger.js";
 import { publishOperationalRecord } from "../../operational-inspection.js";
+
+const log = componentLogger("raffle.operational.inspection");
 
 export type RaffleOperationalExceptionInput = {
   operation: string;
@@ -20,6 +23,6 @@ export async function publishRaffleOperationalException(
       details: input.details ?? null,
     });
   } catch (error) {
-    console.error("Raffle operational inspection publication failed", error);
+    log.error({ err: error, operation: input.operation }, "Raffle operational inspection publication failed");
   }
 }
