@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { componentLogger } from "../../core/runtime-logger.js";
+import { publishInspectionBestEffort } from "../../core/operational-inspection/best-effort.js";
 import { pool } from "../../db.js";
 import { publishedGuildArticle } from "../../core/articles/guild-articles.js";
 import { installationAbsoluteUrl } from "../../core/installation/public-origin.js";
@@ -7,6 +9,8 @@ import { publishOperationalRecord } from "../../operational-inspection.js";
 import { discordArticleExcerpt } from "./article-excerpt.js";
 import { discordIntegrationConfiguration } from "./configuration.js";
 import { discordChannelMessage, discordDeleteChannelMessage, discordEditChannelMessage } from "./api.js";
+
+const log = componentLogger("discord.article-projection");
 
 type Projection = { discord_channel_id: string; discord_message_id: string };
 
@@ -93,24 +97,32 @@ export function registerDiscordArticleEmissionConsumer(): void {
     receive: async (emission) => {
       try {
         await projectArticle(emission.code, emission.subject);
-        await publishOperationalRecord({
+      } catch (error) {
+        await publishInspectionBestEffort(
+          () => publishOperationalRecord({
+            source: "discord.article-publication",
+            operation: emission.code,
+            kind: "exception",
+            summary: "Discord article projection failed",
+            details: { articleId: emission.subject, error: error instanceof Error ? error.message : String(error) },
+          }),
+          (inspectionError) => log.error({ err: inspectionError, emissionCode: emission.code, articleId: emission.subject }, "Discord article failure inspection publication failed"),
+          () => {},
+        );
+        throw error;
+      }
+      await publishInspectionBestEffort(
+        () => publishOperationalRecord({
           source: "discord.article-publication",
           operation: emission.code,
           kind: "result",
           result: "success",
           summary: `Discord article projection reconciled: ${emission.code}`,
           details: { articleId: emission.subject },
-        });
-      } catch (error) {
-        await publishOperationalRecord({
-          source: "discord.article-publication",
-          operation: emission.code,
-          kind: "exception",
-          summary: "Discord article projection failed",
-          details: { articleId: emission.subject, error: error instanceof Error ? error.message : String(error) },
-        }).catch(() => {});
-        throw error;
-      }
+        }),
+        (inspectionError) => log.error({ err: inspectionError, emissionCode: emission.code, articleId: emission.subject }, "Discord article success inspection publication failed"),
+        () => {},
+      );
     },
   });
 }
