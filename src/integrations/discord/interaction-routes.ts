@@ -53,6 +53,7 @@ export async function registerDiscordInteractionRoutes(app: FastifyInstance): Pr
             const response = await dispatchDiscordComponentInteraction(interaction);
             request.log.info({
               interactionKind: interaction.data?.custom_id?.split(":").slice(0, 3).join(":"),
+              interactionId: interaction.id,
               responseType: response.type,
               durationMs: Date.now() - startedAt,
             }, "Discord synchronous interaction handled");
@@ -60,6 +61,7 @@ export async function registerDiscordInteractionRoutes(app: FastifyInstance): Pr
           } catch (error) {
             request.log.error({
               err: error,
+              interactionId: interaction.id,
               interactionKind: interaction.data?.custom_id?.split(":").slice(0, 3).join(":"),
               durationMs: Date.now() - startedAt,
             }, "Discord synchronous interaction failed");
@@ -72,6 +74,7 @@ export async function registerDiscordInteractionRoutes(app: FastifyInstance): Pr
           try {
             const config = await discordIntegrationConfiguration();
             if (!config?.enabled || !config.applicationVerifiedAt || !config.discordGuildId || config.interactionPublicKey !== publicKey || interaction.application_id !== config.applicationId || interaction.guild_id !== config.discordGuildId) throw new Error("discord_interaction_binding_unavailable");
+            const startedAt = Date.now();
             const response = await dispatchDiscordComponentInteraction(interaction);
             // The deferred acknowledgement already establishes ephemerality.
             // PATCH @original accepts message-edit fields, not interaction response flags.
@@ -79,8 +82,9 @@ export async function registerDiscordInteractionRoutes(app: FastifyInstance): Pr
             if (!("components" in data)) Object.assign(data, { components: [] });
             const result = await fetch(`https://discord.com/api/v10/webhooks/${encodeURIComponent(config.applicationId)}/${encodeURIComponent(interactionToken)}/messages/@original`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
             if (!result.ok) throw new Error(`discord_interaction_edit_${result.status}`);
+            request.log.info({ interactionId: interaction.id, interactionKind: interaction.data?.custom_id?.split(":").slice(0, 3).join(":"), responseType: response.type, durationMs: Date.now() - startedAt }, "Deferred Discord interaction completed");
           } catch (error) {
-            request.log.error({ error }, "Deferred Discord interaction failed");
+            request.log.error({ err: error, interactionId: interaction.id, interactionKind: interaction.data?.custom_id?.split(":").slice(0, 3).join(":") }, "Deferred Discord interaction failed");
             await fetch(`https://discord.com/api/v10/webhooks/${encodeURIComponent(interactionApplicationId)}/${encodeURIComponent(interactionToken)}/messages/@original`, {
               method: "PATCH", headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ content: "The interaction could not be completed. Please try again or use Guild Operations.", components: [] }),
