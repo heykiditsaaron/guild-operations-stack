@@ -79,6 +79,12 @@ After a successful operational-record insert, the inspection publisher writes a 
 
 The runtime entry intentionally omits the record summary, actor, and producer details to avoid duplicating sensitive administrative data in container output. If persistence fails, the caller remains responsible for best-effort handling and logging the failure; this bridge cannot emit a record ID that was never committed.
 
+## Emission delivery diagnostics
+
+Emission transport logs a structured `publicationId`, `consumerId`, `emissionCode`, and `attemptCount` for each claimed delivery attempt, its acknowledgment, or its failure. These coordinates allow Docker diagnostics from the API and Discord worker to be searched together, and distinguish repeated attempts for the same receipt. A staged publication is logged at `debug` level, explicitly before its enclosing transaction commits; it is not proof that the publication was committed. Unclaimed pending receipts do not generate delivery-attempt entries.
+
+This is a transport-level trace, not an end-to-end correlation between a request, a domain operation, and an operational inspection record. Consumer receipt success means the registered consumer returned and the receipt acknowledgment was persisted; it does not guarantee exactly-once external effects.
+
 ## Domain-history boundary
 
 Operational records are evidence about application operations, not authoritative domain history.
