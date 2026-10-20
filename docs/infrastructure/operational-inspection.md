@@ -85,6 +85,12 @@ Emission transport logs a structured `publicationId`, `consumerId`, `emissionCod
 
 This is a transport-level trace, not an end-to-end correlation between a request, a domain operation, and an operational inspection record. Consumer receipt success means the registered consumer returned and the receipt acknowledgment was persisted; it does not guarantee exactly-once external effects.
 
+## Discord interaction diagnostics
+
+The shared Discord component dispatcher logs handler start and return using Discord `interactionId`, handler kind, response type, and duration, without logging interaction tokens, custom IDs, form fields, or user-provided content. Raid and Raffle handlers also log exceptions they intentionally convert into user-facing ephemeral error responses, preserving technical evidence without changing their user-visible behavior. The same interaction ID can be used to search API or Discord worker diagnostics depending on the ingress route.
+
+A handler return is not proof of an authoritative mutation, a successful Discord webhook edit, or a durable emission acknowledgment. Those boundaries retain their own evidence and coordinates; end-to-end request-to-publication linking remains separate work.
+
 ## Domain-history boundary
 
 Operational records are evidence about application operations, not authoritative domain history.
