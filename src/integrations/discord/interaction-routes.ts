@@ -1,4 +1,5 @@
 import { createPublicKey, verify } from "node:crypto";
+import { observeDiscordFallback } from "./fallback-diagnostics.js";
 import type { FastifyInstance } from "fastify";
 import { discordInteractionPublicKey } from "./interaction-key.js";
 import { discordIntegrationConfiguration } from "./configuration.js";
@@ -85,16 +86,16 @@ export async function registerDiscordInteractionRoutes(app: FastifyInstance): Pr
             request.log.info({ interactionId: interaction.id, interactionKind: interaction.data?.custom_id?.split(":").slice(0, 3).join(":"), responseType: response.type, durationMs: Date.now() - startedAt }, "Deferred Discord interaction completed");
           } catch (error) {
             request.log.error({ err: error, interactionId: interaction.id, interactionKind: interaction.data?.custom_id?.split(":").slice(0, 3).join(":"), durationMs: Date.now() - startedAt }, "Deferred Discord interaction failed");
-            await fetch(`https://discord.com/api/v10/webhooks/${encodeURIComponent(interactionApplicationId)}/${encodeURIComponent(interactionToken)}/messages/@original`, {
-              method: "PATCH", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ content: "The interaction could not be completed. Please try again or use Guild Operations.", components: [] }),
-            }).then((fallbackResponse) => {
-              if (!fallbackResponse.ok) {
-                request.log.warn({ interactionId: interaction.id, interactionKind: interaction.data?.custom_id?.split(":").slice(0, 3).join(":"), status: fallbackResponse.status }, "Deferred Discord interaction failure response was rejected");
-              }
-            }).catch((fallbackError) => {
-              request.log.warn({ err: fallbackError, interactionId: interaction.id, interactionKind: interaction.data?.custom_id?.split(":").slice(0, 3).join(":") }, "Deferred Discord interaction failure response could not be delivered");
-            });
+            await observeDiscordFallback(
+              fetch(`https://discord.com/api/v10/webhooks/${encodeURIComponent(interactionApplicationId)}/${encodeURIComponent(interactionToken)}/messages/@original`, {
+                method: "PATCH", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ content: "The interaction could not be completed. Please try again or use Guild Operations.", components: [] }),
+              }),
+              request.log,
+              { interactionId: interaction.id, interactionKind: interaction.data?.custom_id?.split(":").slice(0, 3).join(":") },
+              "Deferred Discord interaction failure response was rejected",
+              "Deferred Discord interaction failure response could not be delivered",
+            );
           }
         })();
         return { type: 5, data: { flags: 64 } };
