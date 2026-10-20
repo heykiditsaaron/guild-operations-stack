@@ -96,7 +96,7 @@ const timer = setInterval(() => void inspectDiscordState().catch((error) => {
 }), 30_000);
 
 const emissionTimer = setInterval(() => {
-  void recoverPendingEmissions().catch((error) => console.error("Discord emission recovery failed", error));
+  void recoverPendingEmissions().catch((error) => log.error({ err: error }, "Discord emission recovery failed"));
 }, 30_000);
 
 const roleTimer = setInterval(() => {
