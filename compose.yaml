@@ -21,6 +21,11 @@ services:
     command: node dist/migrate.js
     environment:
       GUILD_OPERATIONS_PROCESS: migrate
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     restart: "no"
 
   api:
@@ -35,6 +40,11 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     restart: unless-stopped
 
   discord:
@@ -48,6 +58,11 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     restart: unless-stopped
 
 volumes:
