@@ -1,9 +1,12 @@
+import { componentLogger } from "../core/runtime-logger.js";
 import type { PoolClient } from "pg";
 import { pool } from "../db.js";
 import type {
   Emission,
   EmissionConsumerRegistration,
 } from "./contract.js";
+
+const log = componentLogger("emissions.transport");
 
 export const EMISSION_TRANSPORT_ID = "in-process";
 
@@ -95,6 +98,8 @@ async function attemptConsumerReceipt(
   );
   if (!claimed.rowCount) return;
 
+  log.debug({ publicationId: publication.publicationId, consumerId: consumer.consumerId, emissionCode: publication.emission.code }, "Emission receipt claimed");
+
   try {
     await consumer.receive(publication.emission);
     await pool.query(
@@ -105,14 +110,9 @@ async function attemptConsumerReceipt(
           AND acknowledged_at_unix IS NULL`,
       [publication.publicationId, consumer.consumerId],
     );
+    log.info({ publicationId: publication.publicationId, consumerId: consumer.consumerId, emissionCode: publication.emission.code }, "Emission consumer acknowledged");
   } catch (error) {
-    console.error("Emission consumer failed", {
-      transportId: EMISSION_TRANSPORT_ID,
-      publicationId: publication.publicationId,
-      consumerId: consumer.consumerId,
-      emission: publication.emission,
-      error,
-    });
+    log.error({ err: error, transportId: EMISSION_TRANSPORT_ID, publicationId: publication.publicationId, consumerId: consumer.consumerId, emissionCode: publication.emission.code, emissionSubject: publication.emission.subject }, "Emission consumer failed; receipt remains pending");
   }
 }
 
