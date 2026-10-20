@@ -56,7 +56,8 @@ export class DiscordGateway {
         socket.close();
       }
     });
-    socket.on("close", () => {
+    socket.on("close", (code) => {
+      if (!this.stopped) log.warn({ closeCode: code }, "Discord Gateway connection closed; reconnect scheduled");
       if (this.heartbeat) clearInterval(this.heartbeat);
       this.heartbeat = null; this.socket = null;
       this.setHealth("disconnected");
@@ -72,7 +73,11 @@ export class DiscordGateway {
       const hello = payload.d as HelloPayload;
       this.heartbeatAcknowledged = true;
       this.heartbeat = setInterval(() => {
-        if (!this.heartbeatAcknowledged) { this.socket?.close(); return; }
+        if (!this.heartbeatAcknowledged) {
+          log.warn("Discord Gateway heartbeat was not acknowledged; reconnecting");
+          this.socket?.close();
+          return;
+        }
         this.heartbeatAcknowledged = false;
         this.send({ op: 1, d: this.sequence });
       }, hello.heartbeat_interval);
