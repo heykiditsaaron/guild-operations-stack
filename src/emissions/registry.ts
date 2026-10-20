@@ -44,7 +44,8 @@ export async function publishEmission(
   );
   const publicationId = result.rows[0].publication_id;
 
-  for (const consumer of consumersByCode.get(emission.code)?.values() ?? []) {
+  const consumers = [...(consumersByCode.get(emission.code)?.values() ?? [])];
+  for (const consumer of consumers) {
     await client.query(
       `INSERT INTO emission_consumer_receipts (publication_id, consumer_id)
        VALUES ($1, $2)`,
@@ -52,6 +53,8 @@ export async function publishEmission(
     );
   }
 
+  // This transaction may still roll back; do not describe staging as committed delivery.
+  log.debug({ publicationId, emissionCode: emission.code, intendedConsumerCount: consumers.length }, "Emission publication staged in transaction");
   return { publicationId, emission };
 }
 
@@ -82,7 +85,7 @@ async function attemptConsumerReceipt(
   publication: EmissionPublication,
   consumer: EmissionConsumerRegistration,
 ): Promise<void> {
-  const claimed = await pool.query(
+  const claimed = await pool.query<{ attempt_count: number }>(
     `UPDATE emission_consumer_receipts
         SET last_attempted_at_unix = extract(epoch FROM now())::bigint,
             attempt_count = attempt_count + 1
@@ -93,12 +96,13 @@ async function attemptConsumerReceipt(
           last_attempted_at_unix IS NULL
           OR last_attempted_at_unix <= extract(epoch FROM now())::bigint - 30
         )
-      RETURNING publication_id`,
+      RETURNING attempt_count`,
     [publication.publicationId, consumer.consumerId],
   );
   if (!claimed.rowCount) return;
 
-  log.debug({ publicationId: publication.publicationId, consumerId: consumer.consumerId, emissionCode: publication.emission.code }, "Emission receipt claimed");
+  const trace = { publicationId: publication.publicationId, consumerId: consumer.consumerId, emissionCode: publication.emission.code, attemptCount: Number(claimed.rows[0].attempt_count) };
+  log.info(trace, "Emission delivery attempt started");
 
   try {
     await consumer.receive(publication.emission);
@@ -110,9 +114,9 @@ async function attemptConsumerReceipt(
           AND acknowledged_at_unix IS NULL`,
       [publication.publicationId, consumer.consumerId],
     );
-    log.info({ publicationId: publication.publicationId, consumerId: consumer.consumerId, emissionCode: publication.emission.code }, "Emission consumer acknowledged");
+    log.info(trace, "Emission consumer acknowledged");
   } catch (error) {
-    log.error({ err: error, transportId: EMISSION_TRANSPORT_ID, publicationId: publication.publicationId, consumerId: consumer.consumerId, emissionCode: publication.emission.code, emissionSubject: publication.emission.subject }, "Emission consumer failed; receipt remains pending");
+    log.error({ err: error, ...trace, transportId: EMISSION_TRANSPORT_ID }, "Emission consumer failed; receipt remains pending");
   }
 }
 
