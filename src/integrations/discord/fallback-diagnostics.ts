@@ -2,7 +2,7 @@
 export async function observeDiscordFallback(
   delivery: Promise<{ ok: boolean; status: number }>,
   log: { warn: (fields: Record<string, unknown>, message: string) => void },
-  context: { interactionId: string; interactionKind?: string },
+  context: { interactionId: string | undefined; interactionKind?: string },
   rejectedMessage: string,
   deliveryFailureMessage: string,
 ): Promise<void> {
