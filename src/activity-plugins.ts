@@ -118,14 +118,12 @@ export async function registerInstalledActivityPlugins(
       continue;
     }
 
-    await publishOperationalRecord({
-      source: "activity",
-      operation: "availability",
-      kind: "result",
-      result: "success",
-      summary: `Activity plugin ${plugin.kind} is available.`,
-      details: { activityKind: plugin.kind, version: plugin.version ?? null },
-    });
+    // Registration occurs on each API process start. This is useful runtime
+    // diagnostic context, not a new administrative availability transition.
+    logger.info(
+      { activityKind: plugin.kind, version: plugin.version ?? null },
+      "Activity plugin registered and available",
+    );
 
     await app.register(async (activityApp) => {
       activityApp.addHook("onRequest", async (_request, reply) => {
