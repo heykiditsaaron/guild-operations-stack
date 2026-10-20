@@ -1,4 +1,7 @@
 import { createHash } from "node:crypto";
+import { componentLogger } from "../../core/runtime-logger.js";
+
+const log = componentLogger("discord.raid.interaction");
 import { raidEventFacts, raidParticipationOfferWorkspace, establishRaidSignup } from "./application.js";
 import { raidSignups } from "./participation-view.js";
 import { revokeRaidSignup } from "./application.js";
@@ -91,6 +94,9 @@ async function handleRaid(interaction: DiscordComponentInteraction): Promise<Dis
 export function registerDiscordRaidInteractionHandler(): void {
   registerDiscordComponentHandler("go:raid:", async interaction => {
     try { return await handleRaid(interaction); }
-    catch (_error) { return ephemeral("Raid participation could not be completed. Please try again or use the Guild Operations website."); }
+    catch (error) {
+      log.error({ err: error, interactionId: interaction.id, interactionKind: interaction.data?.custom_id?.split(":").slice(0, 3).join(":") }, "Discord raid interaction failed");
+      return ephemeral("Raid participation could not be completed. Please try again or use the Guild Operations website.");
+    }
   });
 }
