@@ -1,4 +1,6 @@
 import { componentLogger } from "../../core/runtime-logger.js";
+import { publishInspectionBestEffort } from "../../core/operational-inspection/best-effort.js";
+import { publishOperationalRecord } from "../../operational-inspection.js";
 import { observeDiscordFallback } from "./fallback-diagnostics.js";
 import WebSocket from "ws";
 import { discordIntegrationConfiguration } from "./configuration.js";
@@ -113,6 +115,20 @@ export class DiscordGateway {
       log.info({ interactionId: interaction.id, interactionKind, responseType: response.type, durationMs: Date.now() - startedAt }, "Discord Gateway interaction completed");
     } catch (error) {
       log.error({ err: error, interactionId: interaction.id, interactionKind, durationMs: Date.now() - startedAt }, "Discord Gateway interaction dispatch failed");
+      // Only stable internal failure codes are safe for operator-visible details.
+      // Arbitrary provider messages and stacks stay in the redacted runtime log.
+      const failureCode = error instanceof Error && /^discord_gateway_(?:ack|edit)_[0-9]{3}$/.test(error.message)
+        ? error.message
+        : "discord_gateway_dispatch_failure";
+      await publishInspectionBestEffort(
+        () => publishOperationalRecord({
+          source: "discord.gateway", operation: "interaction-delivery", kind: "exception",
+          summary: "Discord interaction response could not be delivered",
+          details: { interactionId: interaction.id, interactionKind, failureCode },
+        }),
+        (inspectionError) => log.error({ err: inspectionError, interactionId: interaction.id, interactionKind }, "Discord Gateway failure inspection publication failed"),
+        () => {},
+      );
       await observeDiscordFallback(
         fetch(`https://discord.com/api/v10/webhooks/${encodeURIComponent(config.applicationId)}/${encodeURIComponent(interaction.token)}/messages/@original`, {
           method: "PATCH", headers: { "Content-Type": "application/json" },
