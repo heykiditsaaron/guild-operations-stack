@@ -99,6 +99,7 @@ export class DiscordGateway {
       body: JSON.stringify(/^go:raid:(character|spec):/.test(interaction.data?.custom_id ?? "") ? { type: 6 } : { type: 5, data: { flags: 64 } }),
     });
     if (!acknowledged.ok) throw new Error(`discord_gateway_ack_${acknowledged.status}`);
+    const startedAt = Date.now();
     try {
       const response = await dispatchDiscordComponentInteraction(interaction);
       const { flags: _flags, ...data } = response.data ?? { content: "Interaction unavailable." };
@@ -107,8 +108,9 @@ export class DiscordGateway {
         method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data),
       });
       if (!result.ok) throw new Error(`discord_gateway_edit_${result.status}`);
+      log.info({ interactionId: interaction.id, interactionKind: interaction.data?.custom_id?.split(":").slice(0, 3).join(":"), responseType: response.type, durationMs: Date.now() - startedAt }, "Discord Gateway interaction completed");
     } catch (error) {
-      log.error({ err: error, interactionId: interaction.id }, "Discord Gateway interaction dispatch failed");
+      log.error({ err: error, interactionId: interaction.id, interactionKind: interaction.data?.custom_id?.split(":").slice(0, 3).join(":"), durationMs: Date.now() - startedAt }, "Discord Gateway interaction dispatch failed");
       await fetch(`https://discord.com/api/v10/webhooks/${encodeURIComponent(config.applicationId)}/${encodeURIComponent(interaction.token)}/messages/@original`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: "The interaction could not be completed. Please try again or use Guild Operations.", components: [] }),
