@@ -48,7 +48,14 @@ export class DiscordGateway {
     this.setHealth("connecting");
     const socket = new WebSocket(GATEWAY_URL);
     this.socket = socket;
-    socket.on("message", (data) => this.onMessage(data.toString()));
+    socket.on("message", (data) => {
+      try {
+        this.onMessage(data.toString());
+      } catch (error) {
+        log.error({ err: error }, "Discord Gateway message processing failed");
+        socket.close();
+      }
+    });
     socket.on("close", () => {
       if (this.heartbeat) clearInterval(this.heartbeat);
       this.heartbeat = null; this.socket = null;
