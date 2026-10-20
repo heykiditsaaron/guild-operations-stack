@@ -1,6 +1,6 @@
 # Operational Inspection
 
-Operational inspection is global infrastructure for preserving and reviewing administrator-useful evidence produced by Guild Operations without requiring container or runtime access.
+Operational inspection is an existing, bounded, database-backed view of selected execution evidence produced by Guild Operations without requiring container or runtime access. It is not the authoritative history of administrative or domain actions, and PostgreSQL is not established as the permanent diagnostic retention backend.
 
 It stores evidence about operations; it does not own the operations or become authoritative for their domain state.
 
@@ -71,7 +71,7 @@ Operational inspection does not replace Fastify logs, container logs, process di
 
 Runtime logging remains the home for stack traces, connectivity errors, HTTP diagnostics, Blizzard retry/rate-limit detail, OAuth implementation detail, startup/shutdown, migration output, and unexpected internal exceptions.
 
-A real-world failure may produce both runtime telemetry and an operational record, but neither mechanically mirrors the other.
+A real-world failure may produce both runtime telemetry and an operational record. For producers using the shared diagnostic-event boundary, both destinations represent **one diagnostic occurrence** with the same event ID and summary; runtime output may include a technical error while persisted details contain only explicitly selected, sanitized context. Older producers still publish independently and must not be assumed to share an event ID.
 
 ## Container log operation
 
@@ -84,11 +84,11 @@ GUILD_OPERATIONS_VERSION=dev docker compose logs --since=10m api discord
 GUILD_OPERATIONS_VERSION=dev docker compose logs --since=10m discord | grep 'interactionId'
 ```
 
-Docker logs are the runtime diagnostic sink; their retention follows the host/container logging driver configuration, not the operational-record database. Guild Settings > Logs (`/admin/history`) displays deliberately persisted administrative records, not the Docker stream. A technical Discord failure therefore does not automatically create an administrative record.
+Docker logs are the runtime diagnostic sink; their retention follows the host/container logging driver configuration, not the operational-record database. Guild Settings > Logs (`/admin/history`) currently displays deliberately persisted records, not the Docker stream. The Discord Gateway interaction-delivery failure is the first diagnostic producer using a shared event ID in both views. Other technical failures are not automatically persisted. The retention and retrieval policy for operator-visible diagnostics remains open; do not treat this database view as a permanent audit ledger.
 
 ## Runtime-to-inspection lookup
 
-After a successful operational-record insert, the inspection publisher writes a structured runtime `info` entry containing `operationalRecordId`, `source`, `operation`, `kind`, and `result`. Operators can copy the record ID from the inspection data and search container logs for the same ID. This is a durable record-to-runtime lookup, not a complete request or cross-process trace; publication IDs and other execution coordinates require separate correlation work.
+After a successful operational-record insert, the inspection publisher writes a structured runtime `info` entry containing `operationalRecordId`, `source`, `operation`, `kind`, and `result`. Operators can copy the record ID from the inspection data and search container logs for the same ID. This is a durable record-to-runtime lookup, not a complete request or cross-process trace; publication IDs and other execution coordinates require separate correlation work. Shared diagnostic events additionally provide an `eventId` in the runtime occurrence and persisted `details`, so operators can correlate the actual failure message, not merely the subsequent persistence acknowledgment.
 
 The runtime entry intentionally omits the record summary, actor, and producer details to avoid duplicating sensitive administrative data in container output. If persistence fails, the caller remains responsible for best-effort handling and logging the failure; this bridge cannot emit a record ID that was never committed.
 
@@ -134,7 +134,7 @@ A handler return is not proof of an authoritative mutation, a successful Discord
 
 ## Domain-history boundary
 
-Operational records are evidence about application operations, not authoritative domain history.
+Operational records are evidence about application execution, not authoritative domain history. Historical facts and administrative changes belong to the concrete machinery or plugin that establishes and understands their lifecycle. A centralized log must not become a substitute for that owner’s history. Operational diagnostic retention is intentionally provisional for v0.1.0; establish future retention requirements from real operator use rather than prescribing an indefinite log archive.
 
 Roster observations, Guildie transitions, raffle results, Discord association, and other domain facts remain authoritative in the persistence owned by those capabilities.
 
