@@ -48,8 +48,23 @@ export async function registerDiscordInteractionRoutes(app: FastifyInstance): Pr
               interaction.guild_id !== config.discordGuildId) {
             return reply.code(403).send({ error: "discord_interaction_binding_unavailable" });
           }
-          const response = await dispatchDiscordComponentInteraction(interaction);
-          return response;
+          const startedAt = Date.now();
+          try {
+            const response = await dispatchDiscordComponentInteraction(interaction);
+            request.log.info({
+              interactionKind: interaction.data?.custom_id?.split(":").slice(0, 3).join(":"),
+              responseType: response.type,
+              durationMs: Date.now() - startedAt,
+            }, "Discord synchronous interaction handled");
+            return response;
+          } catch (error) {
+            request.log.error({
+              err: error,
+              interactionKind: interaction.data?.custom_id?.split(":").slice(0, 3).join(":"),
+              durationMs: Date.now() - startedAt,
+            }, "Discord synchronous interaction failed");
+            return reply.code(500).send({ error: "discord_interaction_failed" });
+          }
         }
         const interactionToken = interaction.token;
         const interactionApplicationId = interaction.application_id;
