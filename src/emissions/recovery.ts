@@ -12,7 +12,7 @@ export function startEmissionRecovery(log: FastifyBaseLogger): () => void {
     try {
       await recoverPendingEmissions();
     } catch (error) {
-      log.error({ error }, "Emission recovery failed");
+      log.error({ err: error }, "Emission recovery failed");
     } finally {
       running = false;
     }
