@@ -1,5 +1,5 @@
 import cookie from "@fastify/cookie";
-import Fastify, { type FastifyBaseLogger } from "fastify";
+import Fastify, { LogController, type FastifyBaseLogger } from "fastify";
 import { componentLogger } from "./core/runtime-logger.js";
 import { registerApiV1Routes } from "./api-v1-routes.js";
 import { config } from "./config.js";
@@ -36,7 +36,7 @@ import { registerSetupPage } from "./web/pages/setup.js";
 installationSecretKey({ encryptedDataExists: await installationBlizzardEncryptedSecretExists() || await discordEncryptedSecretsExist() });
 
 const apiLogger: FastifyBaseLogger = componentLogger("api");
-const app = Fastify({ loggerInstance: apiLogger, disableRequestLogging: true });
+const app = Fastify({ loggerInstance: apiLogger, logController: new LogController({ disableRequestLogging: true }) });
 await app.register(cookie);
 
 registerGlobalGuildCapabilityDefinitions();
