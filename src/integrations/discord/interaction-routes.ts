@@ -41,7 +41,7 @@ export async function registerDiscordInteractionRoutes(app: FastifyInstance): Pr
       if ((interaction.type === 3 || interaction.type === 5) && interaction.token && interaction.application_id) {
         // Discord modals must be the initial response to a component interaction.
         // Unlike ordinary components, they cannot be opened after a deferred acknowledgement.
-        if (interaction.type === 3 && /^go:raffle:(enter|deny):[0-9a-f-]{36}$/.test(interaction.data?.custom_id ?? "")) {
+        if (interaction.type === 3 && /^go:raffle:(enter|character|deny):[0-9a-f-]{36}$/.test(interaction.data?.custom_id ?? "")) {
           const config = await discordIntegrationConfiguration();
           if (!config?.enabled || !config.applicationVerifiedAt || !config.discordGuildId ||
               config.interactionPublicKey !== publicKey || interaction.application_id !== config.applicationId ||
@@ -49,7 +49,6 @@ export async function registerDiscordInteractionRoutes(app: FastifyInstance): Pr
             return reply.code(403).send({ error: "discord_interaction_binding_unavailable" });
           }
           const response = await dispatchDiscordComponentInteraction(interaction);
-          if (response.type === 9) return response;
           return response;
         }
         const interactionToken = interaction.token;
