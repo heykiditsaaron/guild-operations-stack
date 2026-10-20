@@ -67,9 +67,11 @@ export function discordBotInstallUrl(applicationId: string): string {
   const url = new URL("https://discord.com/oauth2/authorize");
   url.searchParams.set("client_id", applicationId);
   url.searchParams.set("scope", "bot");
-  // Manage Roles, View Channel, Send Messages, Embed Links.
+  // Manage Roles, View Channel, Send Messages, Embed Links,
+  // Create Public Threads, Send Messages in Threads.
   // Channel-specific overrides remain authoritative in Discord.
-  url.searchParams.set("permissions", "268454912");
+  const permissions = (1n << 28n) | (1n << 10n) | (1n << 11n) | (1n << 14n) | (1n << 35n) | (1n << 38n);
+  url.searchParams.set("permissions", permissions.toString());
   return url.toString();
 }
 
