@@ -32,6 +32,10 @@ import type { AssetRegistry } from "../assets.js";
 import { renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
 import { publishOperationalRecord } from "../../operational-inspection.js";
+import { publishInspectionBestEffort } from "../../core/operational-inspection/best-effort.js";
+import { componentLogger } from "../../core/runtime-logger.js";
+
+const inspectionLog = componentLogger("activity.enablement.inspection");
 
 function htmlText(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
@@ -188,7 +192,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     if (!state) return reply.code(404).send({ error: "unknown_activity" });
     if (!state.available || state.status === "failed") return reply.code(409).send({ error: "activity_declaration_not_authoritative" });
     await setActivityPluginEnabled(params.activityKind, body.enabled);
-    await publishOperationalRecord({
+    await publishInspectionBestEffort(() => publishOperationalRecord({
       source: "activity",
       operation: "enablement",
       kind: "result",
@@ -196,7 +200,10 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       actorIdentityId: identity.identityId,
       summary: `Activity plugin ${params.activityKind} was ${body.enabled ? "enabled" : "disabled"}.`,
       details: { activityKind: params.activityKind, enabled: body.enabled },
-    });
+    }),
+    (error) => inspectionLog.error({ err: error, activityKind: params.activityKind }, "Activity enablement inspection publication failed"),
+    () => {});
+
     return reply.send({ activityKind: params.activityKind, enabled: body.enabled });
   });
 
