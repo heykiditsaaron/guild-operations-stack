@@ -1,5 +1,6 @@
 import { componentLogger } from "./core/runtime-logger.js";
 import { pool } from "./db.js";
+import { databaseReady } from "./core/operations/database-availability.js";
 import { recoverPendingEmissions } from "./emissions/registry.js";
 import { createEmissionRecoveryCycle } from "./emissions/recovery.js";
 import { readdir } from "node:fs/promises";
@@ -33,6 +34,14 @@ let roleSyncOffset = 0;
 let roleSyncBusy = false;
 
 async function inspectDiscordState(): Promise<void> {
+  if (!await databaseReady()) {
+    gateway?.stop();
+    gateway = null;
+    gatewayToken = "";
+    if (lastState !== "database_unavailable") log.warn("Database unavailable; Discord gateway paused");
+    lastState = "database_unavailable";
+    return;
+  }
   const configuration = await discordIntegrationConfiguration();
   if (configuration?.enabled && configuration.applicationVerifiedAt && !configuration.discordGuildId) {
     try {
@@ -72,7 +81,7 @@ async function inspectDiscordState(): Promise<void> {
 }
 
 async function syncDiscordRoles(): Promise<void> {
-  if (stopping || roleSyncBusy) return;
+  if (stopping || roleSyncBusy || !await databaseReady()) return;
   roleSyncBusy = true;
   try {
     const config = await discordIntegrationConfiguration();
@@ -92,7 +101,7 @@ async function syncDiscordRoles(): Promise<void> {
 }
 await inspectDiscordState();
 const recoverEmissions = createEmissionRecoveryCycle(recoverPendingEmissions, log);
-void recoverEmissions();
+void databaseReady().then((ready) => ready ? recoverEmissions() : undefined).catch((error) => log.error({ err: error }, "Emission readiness check failed"));
 const timer = setInterval(() => void inspectDiscordState().catch((error) => {
   log.error({ err: error }, "Discord Integration state inspection failed");
 }), 30_000);
