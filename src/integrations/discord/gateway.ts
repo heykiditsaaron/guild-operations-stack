@@ -97,7 +97,7 @@ export class DiscordGateway {
   }
 
   private async handleInteraction(interaction: DiscordComponentInteraction & { token?: string }): Promise<void> {
-    if (interaction.type !== 3 || !interaction.id || !interaction.token || !interaction.application_id) return;
+    if ((interaction.type !== 3 && interaction.type !== 5) || !interaction.id || !interaction.token || !interaction.application_id) return;
     const config = await discordIntegrationConfiguration();
     if (!config?.enabled || !config.applicationVerifiedAt || !config.discordGuildId ||
         config.botToken !== this.botToken || interaction.application_id !== config.applicationId ||
