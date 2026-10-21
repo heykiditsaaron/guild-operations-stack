@@ -3,6 +3,8 @@ import { pool } from "../../db.js";
 export function isDatabaseUnavailable(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const code = (error as { code?: unknown }).code;
+  const message = (error as { message?: unknown }).message;
+  if (typeof message === "string" && /^(Connection terminated unexpectedly|Connection terminated due to connection timeout|timeout exceeded when trying to connect|Connection terminated)$/i.test(message)) return true;
   return typeof code === "string" && (
     code.startsWith("08") ||
     ["57P01", "57P02", "57P03", "53300", "ECONNREFUSED", "ECONNRESET", "EPIPE", "ETIMEDOUT", "ENOTFOUND", "EAI_AGAIN"].includes(code)
