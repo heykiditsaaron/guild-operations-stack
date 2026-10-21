@@ -4,7 +4,7 @@ import { claimDueGuildRefresh } from "./core/guild/guild-refresh-schedule.js";
 
 const SCHEDULER_POLL_MILLISECONDS = 5000;
 
-export function startGuildRefreshScheduler(logger: FastifyBaseLogger): () => void {
+export function startGuildRefreshScheduler(logger: FastifyBaseLogger, ready: () => Promise<boolean> = async () => true): () => void {
   let stopped = false;
   let running = false;
   let timer: NodeJS.Timeout | null = null;
@@ -23,6 +23,7 @@ export function startGuildRefreshScheduler(logger: FastifyBaseLogger): () => voi
 
     running = true;
     try {
+      if (!await ready()) return;
       const claimed = await claimDueGuildRefresh();
       if (!claimed) return;
 
