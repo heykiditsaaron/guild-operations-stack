@@ -132,6 +132,10 @@ async function inspectReadiness(): Promise<void> {
     await loadDiscordInteractionPublicKey();
     if (await installationOperational()) startOperationalBackgroundWork();
   } catch (error) {
+    if (isDatabaseUnavailable(error)) {
+      app.log.warn({ err: error }, "Database connection lost during readiness inspection; retrying");
+      return;
+    }
     app.log.fatal({ err: error }, "Installation readiness failed; API cannot safely continue");
     process.exitCode = 1;
     if (readinessTimer) clearInterval(readinessTimer);
