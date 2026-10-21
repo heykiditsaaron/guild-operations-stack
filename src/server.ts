@@ -20,7 +20,7 @@ import { loadDiscordInteractionPublicKey } from "./integrations/discord/interact
 import { registerApplicationEmissionConsumers } from "./emissions/consumers.js";
 import { startEmissionRecovery } from "./emissions/recovery.js";
 import { startGuildRefreshScheduler } from "./guild-refresh-scheduler.js";
-import { registerInstalledActivityPlugins } from "./activity-plugins.js";
+import { registerInstalledActivityPlugins, retryActivityPluginPersistence } from "./activity-plugins.js";
 import { loadAssetRegistry, registerAssetRoutes } from "./web/assets.js";
 import { registerAdminPage } from "./web/pages/admin.js";
 import { registerDiscordAdminPage } from "./web/pages/discord-admin.js";
@@ -127,6 +127,7 @@ async function inspectReadiness(): Promise<void> {
   inspectingReadiness = true;
   try {
     if (!await databaseReady()) return;
+    await retryActivityPluginPersistence(app.log);
     const encryptedDataExists = await installationBlizzardEncryptedSecretExists() || await discordEncryptedSecretsExist();
     installationSecretKey({ encryptedDataExists });
     await loadDiscordInteractionPublicKey();
