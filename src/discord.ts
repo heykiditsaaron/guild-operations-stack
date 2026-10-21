@@ -1,6 +1,6 @@
 import { componentLogger } from "./core/runtime-logger.js";
 import { pool } from "./db.js";
-import { databaseReady } from "./core/operations/database-availability.js";
+import { databaseReady, isDatabaseUnavailable } from "./core/operations/database-availability.js";
 import { recoverPendingEmissions } from "./emissions/registry.js";
 import { createEmissionRecoveryCycle } from "./emissions/recovery.js";
 import { readdir } from "node:fs/promises";
@@ -104,6 +104,14 @@ await inspectDiscordState();
 const recoverEmissions = createEmissionRecoveryCycle(recoverPendingEmissions, log, databaseReady);
 void databaseReady().then((ready) => ready ? recoverEmissions() : undefined).catch((error) => log.error({ err: error }, "Emission readiness check failed"));
 const timer = setInterval(() => void inspectDiscordState().catch((error) => {
+  if (isDatabaseUnavailable(error)) {
+    gateway?.stop();
+    gateway = null;
+    gatewayToken = "";
+    if (lastState !== "database_unavailable") log.warn({ err: error }, "Database unavailable; Discord gateway paused");
+    lastState = "database_unavailable";
+    return;
+  }
   log.fatal({ err: error }, "Discord Integration state inspection failed; worker cannot safely continue");
   process.exit(1);
 }), 30_000);
