@@ -28,6 +28,12 @@ A published image may also be pinned instead of using the default latest tag:
 
     GUILD_OPERATIONS_VERSION=v0.1.0
 
+If Guild Operations is served through a reverse proxy, set the externally reachable origin explicitly (scheme, hostname, and optional port; no path):
+
+    PUBLIC_ORIGIN=https://guild.example.com
+
+Forward this setting to the API container in your Compose deployment. Do not rely on incoming `X-Forwarded-Host` or `X-Forwarded-Proto` headers to establish OAuth callback authority.
+
 These are deployment choices, not application configuration.
 
 ## First-run setup
