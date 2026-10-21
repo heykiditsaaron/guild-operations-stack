@@ -3,8 +3,9 @@ import { pool } from "../../db.js";
 
 function firstHeaderValue(value: string | string[] | undefined): string | null {
   const raw = Array.isArray(value) ? value[0] : value;
-  const first = raw?.split(",")[0]?.trim();
-  return first || null;
+  // Do not silently accept the first value from a potentially forged chain.
+  if (!raw || raw.includes(",")) return null;
+  return raw.trim() || null;
 }
 
 function normalizeOrigin(value: string): string {
@@ -15,9 +16,15 @@ function normalizeOrigin(value: string): string {
 }
 
 export function publicOriginForRequest(request: FastifyRequest): string {
-  const protocol = firstHeaderValue(request.headers["x-forwarded-proto"]) ?? request.protocol;
-  const host = firstHeaderValue(request.headers["x-forwarded-host"]) ?? request.headers.host;
-  if (!host) throw new Error("Request did not provide a public host");
+  const forwardedProto = request.headers["x-forwarded-proto"];
+  const forwardedHost = request.headers["x-forwarded-host"];
+  if ((forwardedProto !== undefined && !firstHeaderValue(forwardedProto)) ||
+      (forwardedHost !== undefined && !firstHeaderValue(forwardedHost))) {
+    throw new Error("Ambiguous forwarded origin headers");
+  }
+  const protocol = firstHeaderValue(forwardedProto) ?? request.protocol;
+  const host = firstHeaderValue(forwardedHost) ?? request.headers.host;
+  if (!host || Array.isArray(host)) throw new Error("Request did not provide a public host");
   return normalizeOrigin(`${protocol}://${host}`);
 }
 
