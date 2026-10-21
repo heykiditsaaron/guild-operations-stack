@@ -104,7 +104,8 @@ await inspectDiscordState();
 const recoverEmissions = createEmissionRecoveryCycle(recoverPendingEmissions, log, databaseReady);
 void databaseReady().then((ready) => ready ? recoverEmissions() : undefined).catch((error) => log.error({ err: error }, "Emission readiness check failed"));
 const timer = setInterval(() => void inspectDiscordState().catch((error) => {
-  log.error({ err: error }, "Discord Integration state inspection failed");
+  log.fatal({ err: error }, "Discord Integration state inspection failed; worker cannot safely continue");
+  process.exit(1);
 }), 30_000);
 
 const emissionTimer = setInterval(() => {
