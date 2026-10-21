@@ -12,7 +12,7 @@ import { verifiedDiscordServer } from "./integrations/discord/api.js";
 import { installationBlizzardEncryptedSecretExists } from "./core/installation/blizzard-configuration.js";
 import { DiscordGateway } from "./integrations/discord/gateway.js";
 
-installationSecretKey({ encryptedDataExists: await installationBlizzardEncryptedSecretExists() || await discordEncryptedSecretsExist() });
+// Secrets are inspected after database readiness, including recovery from startup outages.
 
 // The Discord worker is a separate process from the web server. Register interaction
 // handlers here as well; the web process's in-memory registry is not shared.
@@ -42,6 +42,7 @@ async function inspectDiscordState(): Promise<void> {
     lastState = "database_unavailable";
     return;
   }
+  installationSecretKey({ encryptedDataExists: await installationBlizzardEncryptedSecretExists() || await discordEncryptedSecretsExist() });
   const configuration = await discordIntegrationConfiguration();
   if (configuration?.enabled && configuration.applicationVerifiedAt && !configuration.discordGuildId) {
     try {
@@ -100,7 +101,7 @@ async function syncDiscordRoles(): Promise<void> {
   }
 }
 await inspectDiscordState();
-const recoverEmissions = createEmissionRecoveryCycle(recoverPendingEmissions, log);
+const recoverEmissions = createEmissionRecoveryCycle(recoverPendingEmissions, log, databaseReady);
 void databaseReady().then((ready) => ready ? recoverEmissions() : undefined).catch((error) => log.error({ err: error }, "Emission readiness check failed"));
 const timer = setInterval(() => void inspectDiscordState().catch((error) => {
   log.error({ err: error }, "Discord Integration state inspection failed");
