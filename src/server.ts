@@ -4,6 +4,7 @@ import { componentLogger } from "./core/runtime-logger.js";
 import { registerApiV1Routes } from "./api-v1-routes.js";
 import { config } from "./config.js";
 import { pool } from "./db.js";
+import { databaseReady, isDatabaseUnavailable } from "./core/operations/database-availability.js";
 import { registerAuthRoutes } from "./auth.js";
 import { registerGlobalGuildCapabilityDefinitions, registerGuildCapabilityPolicyObserver } from "./core/authority/guild-capability-policy.js";
 import { registerGuildRoutes } from "./guild-routes.js";
@@ -41,6 +42,26 @@ const apiLogger: FastifyBaseLogger = componentLogger("api");
 const app = Fastify({ loggerInstance: apiLogger, logController: new LogController({ disableRequestLogging: true }) });
 await app.register(cookie);
 
+const maintenanceHtml = "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Service unavailable</title></head><body><main><h1>Service temporarily unavailable.</h1><p>Please contact your administrator.</p></main></body></html>";
+function sendMaintenance(request: { url: string; method: string }, reply: { code: (status: number) => any; header: (name: string, value: string) => any; type: (value: string) => any; send: (body: unknown) => any }) {
+  reply.code(503).header("Cache-Control", "no-store").header("Retry-After", "10");
+  if (request.url.startsWith("/api/") || request.method !== "GET") return reply.send({ error: "service_temporarily_unavailable" });
+  return reply.type("text/html; charset=utf-8").send(maintenanceHtml);
+}
+
+app.addHook("onRequest", async (request, reply) => {
+  if (request.url.split("?")[0] === "/health") return;
+  if (!await databaseReady()) return sendMaintenance(request, reply);
+});
+app.setErrorHandler((error, request, reply) => {
+  if (isDatabaseUnavailable(error)) {
+    request.log.error({ err: error }, "Database unavailable during request");
+    return sendMaintenance(request, reply);
+  }
+  request.log.error({ err: error }, "Request failed");
+  return reply.code(error.statusCode ?? 500).send({ error: "internal_server_error" });
+});
+
 registerGlobalGuildCapabilityDefinitions();
 
 const webAssets = await loadAssetRegistry();
@@ -50,7 +71,7 @@ registerApplicationEmissionConsumers();
 registerGuildCapabilityPolicyObserver();
 
 app.get("/health", async () => {
-  await pool.query("SELECT 1");
+  if (!await databaseReady()) return { status: "unavailable" };
   return { status: "ok" };
 });
 
