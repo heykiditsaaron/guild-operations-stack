@@ -14,12 +14,14 @@ import {
 } from "./blizzard-configuration.js";
 import { establishInstallationPublicOrigin, publicOriginForRequest } from "./public-origin.js";
 import { withTransaction } from "../../db.js";
+import { validSetupAuthorization } from "./setup-authorization.js";
 
 export async function registerInstallationRoutes(
   app: FastifyInstance,
   options: { onOperational?: () => void | Promise<void> } = {},
 ): Promise<void> {
   app.post("/installation/blizzard", async (request, reply) => {
+    if (!validSetupAuthorization(request.headers["x-setup-authorization"])) return reply.code(403).send({ error: "setup_authorization_required" });
     if (await installationBlizzardConfigured()) {
       return reply.code(409).send({ error: "blizzard_already_configured" });
     }
@@ -38,6 +40,7 @@ export async function registerInstallationRoutes(
   });
 
   app.post("/installation/restart", async (request, reply) => {
+    if (!validSetupAuthorization(request.headers["x-setup-authorization"])) return reply.code(403).send({ error: "setup_authorization_required" });
     const binding = await installationGuildBinding();
     if (binding?.authorizedAt) {
       return reply.code(409).send({ error: "operational_installation_cannot_restart_setup" });
