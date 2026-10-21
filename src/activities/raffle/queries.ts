@@ -277,6 +277,7 @@ export type RaffleLedgerClaim = {
   resolutionKind: RaffleClaimResolution;
   approvedByIdentityId: string | null;
   deniedByIdentityId: string | null;
+  revokedByIdentityId: string | null;
   denialReason: string | null;
   resolvedAtUnix: number | null;
 };
@@ -287,11 +288,11 @@ export async function raffleClaimLedger(raffleId: string): Promise<RaffleLedgerC
     claim_id: string; promised_gold_value: string; created_at_unix: string;
     resolution_kind: RaffleClaimResolution; approved_by_identity_id: string | null;
     approved_at_unix: string | null; denied_by_identity_id: string | null;
-    denied_at_unix: string | null; revoked_at_unix: string | null; denial_reason: string | null;
+    denied_at_unix: string | null; revoked_by_identity_id: string | null; revoked_at_unix: string | null; denial_reason: string | null;
   }>(
     `SELECT c.claim_id,c.promised_gold_value,c.created_at_unix,c.resolution_kind,
             c.approved_by_identity_id,c.approved_at_unix,c.denied_by_identity_id,
-            c.denied_at_unix,c.revoked_at_unix,c.denial_reason
+            c.denied_at_unix,c.revoked_by_identity_id,c.revoked_at_unix,c.denial_reason
        FROM raffle_claims c JOIN raffles r ON r.raffle_id=c.raffle_id
       WHERE c.raffle_id=$1 AND r.guild_id=$2
       ORDER BY c.created_at_unix ASC,c.claim_id ASC`,
@@ -331,6 +332,7 @@ export async function raffleClaimLedger(raffleId: string): Promise<RaffleLedgerC
         resolutionKind: row.resolution_kind,
         approvedByIdentityId: row.approved_by_identity_id,
         deniedByIdentityId: row.denied_by_identity_id,
+        revokedByIdentityId: row.revoked_by_identity_id,
         denialReason: row.denial_reason,
         resolvedAtUnix: row.resolution_kind === "approved" ? Number(row.approved_at_unix)
           : row.resolution_kind === "denied" ? Number(row.denied_at_unix)
