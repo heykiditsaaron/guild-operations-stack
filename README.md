@@ -32,6 +32,14 @@ These are deployment choices, not application configuration.
 
 ## First-run setup
 
+### Setup authorization
+
+Before configuring Blizzard, retrieve the installation-local setup authorization token from the running API container:
+
+    docker compose exec api cat /var/lib/guild-operations/setup-authorization.token
+
+Enter it in the first-run setup form. The token is generated automatically, remains in the installation volume, and is required again if an incomplete setup must be restarted. Treat it as a private host-operator credential. It does **not** grant guild authority; a Blizzard-verified rank-0 Guild Master must still authorize the installation.
+
 ### 1. Configure Blizzard
 
 Guild Operations displays the exact OAuth callback URL for the address through which setup was opened. Copy that value and register it for an application in the Blizzard Developer Portal.
