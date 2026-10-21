@@ -1,12 +1,6 @@
 import type { FastifyRequest } from "fastify";
 import { pool } from "../../db.js";
 
-function firstHeaderValue(value: string | string[] | undefined): string | null {
-  const raw = Array.isArray(value) ? value[0] : value;
-  const first = raw?.split(",")[0]?.trim();
-  return first || null;
-}
-
 function normalizeOrigin(value: string): string {
   const url = new URL(value);
   if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("Installation public origin must use http or https");
@@ -15,10 +9,11 @@ function normalizeOrigin(value: string): string {
 }
 
 export function publicOriginForRequest(request: FastifyRequest): string {
-  const protocol = firstHeaderValue(request.headers["x-forwarded-proto"]) ?? request.protocol;
-  const host = firstHeaderValue(request.headers["x-forwarded-host"]) ?? request.headers.host;
-  if (!host) throw new Error("Request did not provide a public host");
-  return normalizeOrigin(`${protocol}://${host}`);
+  // Fastify does not trust proxy headers by default. Use the actual request\n  // authority; reverse-proxy deployments must explicitly configure PUBLIC_ORIGIN.\n  const configured = process.env.PUBLIC_ORIGIN?.trim();
+  if (configured) return normalizeOrigin(configured);
+  const host = request.headers.host;
+  if (!host || Array.isArray(host)) throw new Error("Request did not provide a public host");
+  return normalizeOrigin(`${request.protocol}://${host}`);
 }
 
 export async function installationPublicOrigin(): Promise<string | null> {
