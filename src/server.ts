@@ -107,8 +107,9 @@ await registerInstallationRoutes(app, { onOperational: startOperationalBackgroun
 await registerGuildRoutes(app);
 await registerApiV1Routes(app);
 
+let readinessTimer: NodeJS.Timeout | null = null;
 const shutdown = async (): Promise<void> => {
-  clearInterval(readinessTimer);
+  if (readinessTimer) clearInterval(readinessTimer);
   stopEmissionRecovery?.();
   stopGuildRefreshScheduler?.();
   await app.close();
@@ -135,5 +136,5 @@ async function inspectReadiness(): Promise<void> {
   }
 }
 await inspectReadiness();
-const readinessTimer = setInterval(() => void inspectReadiness(), 10_000);
+readinessTimer = setInterval(() => void inspectReadiness(), 10_000);
 readinessTimer.unref();
