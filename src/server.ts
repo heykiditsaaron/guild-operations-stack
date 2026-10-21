@@ -70,8 +70,8 @@ await registerInstalledActivityPlugins(app, webAssets, app.log);
 registerApplicationEmissionConsumers();
 registerGuildCapabilityPolicyObserver();
 
-app.get("/health", async () => {
-  if (!await databaseReady()) return { status: "unavailable" };
+app.get("/health", async (_request, reply) => {
+  if (!await databaseReady()) return reply.code(503).send({ status: "unavailable" });
   return { status: "ok" };
 });
 
