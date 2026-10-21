@@ -27,7 +27,8 @@ export async function registerSetupPage(app: FastifyInstance, assets: AssetRegis
       return reply.type("text/html; charset=utf-8").send(renderSetupDocument(
         assets,
         `<p>Connect Guild Operations to a Blizzard application before identifying the guild this installation will serve.</p>
-        <p>Create a Blizzard application, then register this callback URL.</p>\n        <p>Retrieve the setup authorization token from the host with <code>docker compose exec api cat /var/lib/guild-operations/setup-authorization.token</code>. Keep it private.</p>
+        <p>Create a Blizzard application, then register this callback URL.</p>
+        <p>Retrieve the setup authorization token from the host with <code>docker compose exec api cat /var/lib/guild-operations/setup-authorization.token</code>. Keep it private.</p>
         <p><a class="button-secondary setup-external-action" href="https://develop.battle.net/access/clients" target="_blank" rel="noopener noreferrer">Open Blizzard Developer Portal ↗</a></p>
         <div class="setup-copy-value">
           <code>${escapeHtml(callbackUrl)}</code>
@@ -36,7 +37,8 @@ export async function registerSetupPage(app: FastifyInstance, assets: AssetRegis
             <svg class="setup-copy-icon setup-copy-icon-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg>
           </button>
         </div>
-        <form method="post" data-setup-blizzard>\n          <label>Setup authorization token<input name="setup_token" type="password" autocomplete="off" required></label>
+        <form method="post" data-setup-blizzard>
+          <label>Setup authorization token<input name="setup_token" type="password" autocomplete="off" required></label>
           <label>Client ID<input name="client_id" autocomplete="off" required></label>
           <label>Client Secret<input name="client_secret" type="password" autocomplete="new-password" required></label>
           <button class="button-primary setup-action" type="submit">Connect Blizzard</button>
