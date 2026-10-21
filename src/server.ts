@@ -119,8 +119,20 @@ process.on("SIGTERM", () => void shutdown());
 
 await app.listen({ host: "0.0.0.0", port: config.port });
 
-if (await installationOperational()) {
-  startOperationalBackgroundWork();
-} else {
-  app.log.info("Installation is not operational; background guild work is paused");
+let inspectingReadiness = false;
+async function inspectReadiness(): Promise<void> {
+  if (inspectingReadiness) return;
+  inspectingReadiness = true;
+  try {
+    if (!await databaseReady()) return;
+    installationSecretKey({ encryptedDataExists: await installationBlizzardEncryptedSecretExists() || await discordEncryptedSecretsExist() });
+    if (await installationOperational()) startOperationalBackgroundWork();
+  } catch (error) {
+    app.log.error({ err: error }, "Installation readiness inspection failed");
+  } finally {
+    inspectingReadiness = false;
+  }
 }
+await inspectReadiness();
+const readinessTimer = setInterval(() => void inspectReadiness(), 10_000);
+readinessTimer.unref();
