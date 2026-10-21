@@ -59,7 +59,7 @@ app.setErrorHandler((error, request, reply) => {
     return sendMaintenance(request, reply);
   }
   request.log.error({ err: error }, "Request failed");
-  return reply.code(error.statusCode ?? 500).send({ error: "internal_server_error" });
+  return reply.code(typeof error === "object" && error !== null && "statusCode" in error && typeof error.statusCode === "number" ? error.statusCode : 500).send({ error: "internal_server_error" });
 });
 
 registerGlobalGuildCapabilityDefinitions();
