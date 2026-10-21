@@ -1,11 +1,13 @@
 import { Pool, type PoolClient } from "pg";
+import { componentLogger } from "./core/runtime-logger.js";
 const PACKAGED_DATABASE_URL = "postgres://guild_operations:guild_operations@db:5432/guild_operations";
 
 export const pool = new Pool({ connectionString: PACKAGED_DATABASE_URL, connectionTimeoutMillis: 5000 });
 
 // Idle PostgreSQL connections emit errors outside request/transaction promises.
 pool.on("error", (error) => {
-  console.error("PostgreSQL idle connection error", error);
+  const code = error && typeof error === "object" && "code" in error ? String(error.code) : null;
+  componentLogger("database").warn({ code, message: error instanceof Error ? error.message : "Unknown database connection error" }, "PostgreSQL idle connection error");
 });
 
 export async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
