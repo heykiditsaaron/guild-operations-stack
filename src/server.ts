@@ -89,7 +89,7 @@ app.get<{ Params: { "*": string } }>("/events/*", async (request, reply) => repl
 await registerAdminPage(app, webAssets);
 await registerDiscordAdminPage(app, webAssets);
 await registerDiscordOAuthRoutes(app);
-await loadDiscordInteractionPublicKey();
+// Interaction key loads during readiness inspection.
 await registerDiscordInteractionRoutes(app);
 await registerOperationsAdminPage(app, webAssets);
 await registerAuthRoutes(app, webAssets);
@@ -128,6 +128,7 @@ async function inspectReadiness(): Promise<void> {
   try {
     if (!await databaseReady()) return;
     installationSecretKey({ encryptedDataExists: await installationBlizzardEncryptedSecretExists() || await discordEncryptedSecretsExist() });
+    await loadDiscordInteractionPublicKey();
     if (await installationOperational()) startOperationalBackgroundWork();
   } catch (error) {
     app.log.error({ err: error }, "Installation readiness inspection failed");
