@@ -41,6 +41,31 @@ async function projectClaim(raffleId: string, claim: RaffleLedgerClaim, threadId
   const actor = discordUserId && /^[0-9]+$/.test(discordUserId)
     ? `<@${discordUserId}>`
     : "Guild member";
+  const resolverIdentityId = status === "approved" ? claim.approvedByIdentityId
+    : status === "denied" ? claim.deniedByIdentityId
+    : status === "revoked" ? claim.revokedByIdentityId : null;
+  const resolverDiscordId = resolverIdentityId
+    ? (await pool.query<{ discord_user_id: string }>(
+        `SELECT discord_user_id FROM discord_identities WHERE identity_id = $1
+         UNION
+         SELECT d.discord_user_id FROM identity_wow_associations a
+         JOIN discord_identities d ON d.identity_id = a.external_identity_id
+         WHERE a.wow_identity_id = $1 LIMIT 1`,
+        [resolverIdentityId],
+      )).rows[0]?.discord_user_id
+    : null;
+  const resolver = resolverDiscordId && /^[0-9]+$/.test(resolverDiscordId)
+    ? `<@${resolverDiscordId}>`
+    : resolverIdentityId ? `Operator (${resolverIdentityId})` : null;
+  const resolutionLabel = status === "approved" ? "Approved"
+    : status === "denied" ? "Denied" : "Revoked";
+  const resolutionDetails = status === "pending" ? [] : [
+    resolver ? `**${resolutionLabel} by:** ${resolver}` : null,
+    claim.resolvedAtUnix !== null && Number.isFinite(claim.resolvedAtUnix)
+      ? `**${resolutionLabel} at:** <t:${claim.resolvedAtUnix}:f>` : null,
+    status === "denied" && claim.denialReason
+      ? `**Reason:** ${safeText(claim.denialReason).slice(0, 900)}` : null,
+  ].filter((line): line is string => line !== null);
   const payload = {
     allowed_mentions: { parse: [] },
     embeds: [{
@@ -50,6 +75,7 @@ async function projectClaim(raffleId: string, claim: RaffleLedgerClaim, threadId
         `**Tickets:** ${claim.requestedEntryCount}`,
         `**Pledged:** ${claim.promisedGoldValue} gold`,
         `**Status:** ${status}`,
+        ...resolutionDetails,
       ].join("\n"),
       color: status === "approved" ? 0x79c77b : status === "denied" || status === "revoked" ? 0x808080 : 0xe5b567,
       footer: { text: "Guild Operations · Raffle claim" },
