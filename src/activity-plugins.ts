@@ -1,4 +1,5 @@
 import { readdir } from "node:fs/promises";
+import { isDatabaseUnavailable } from "./core/operations/database-availability.js";
 import type { FastifyInstance, FastifyBaseLogger } from "fastify";
 import { activityAdministration, activityRegistrationState, configureActivityActivation, markActivityActivationFailed } from "./core/activity/registry.js";
 import { rememberActivityCapabilityDeclarations } from "./core/activity/plugin-administration.js";
@@ -32,6 +33,28 @@ type InstalledActivityPluginModule = { kind: string; modulePath: string };
 
 const failedActivityPlugins = new Map<string, Error>();
 const availableActivityPlugins = new Set<string>();
+const pendingActivityPersistence = new Map<string, InstalledActivityPlugin>();
+
+/** Retry only persistence that was deferred by a transient database outage. */
+export async function retryActivityPluginPersistence(logger: FastifyBaseLogger): Promise<void> {
+  for (const [kind, plugin] of pendingActivityPersistence) {
+    try {
+      await rememberActivityPlugin({ kind, label: plugin.label, version: plugin.version });
+      const administration = await activityAdministration(kind);
+      await rememberActivityCapabilityDeclarations(kind, administration?.capabilities ?? []);
+      configureActivityActivation(kind, { enabled: () => activityPluginEnabled(kind) });
+      pendingActivityPersistence.delete(kind);
+      logger.info({ activityKind: kind }, "Activity plugin persistence recovered");
+    } catch (error) {
+      if (isDatabaseUnavailable(error)) return;
+      pendingActivityPersistence.delete(kind);
+      failedActivityPlugins.set(kind, error instanceof Error ? error : new Error(String(error)));
+      markActivityActivationFailed(kind);
+      logger.error({ err: error, activityKind: kind }, "Activity plugin persistence failed");
+    }
+  }
+}
+
 
 export type ActivityRuntimeState = "available" | "failed";
 
@@ -116,17 +139,22 @@ export async function registerInstalledActivityPlugins(
       configureActivityActivation(plugin.kind, { enabled: () => activityPluginEnabled(plugin.kind) });
     } catch (error) {
       const failure = error instanceof Error ? error : new Error(String(error));
-      failedActivityPlugins.set(plugin.kind, failure);
-      markActivityActivationFailed(plugin.kind);
-      logger.warn({ err: error, activityKind: plugin.kind }, "Activity plugin failed to activate");
-      await publishAvailabilityExceptionBestEffort({
+      if (isDatabaseUnavailable(error)) {
+        pendingActivityPersistence.set(plugin.kind, plugin);
+        logger.warn({ activityKind: plugin.kind }, "Activity plugin persistence deferred until database recovery");
+      } else {
+        failedActivityPlugins.set(plugin.kind, failure);
+        markActivityActivationFailed(plugin.kind);
+        logger.warn({ err: error, activityKind: plugin.kind }, "Activity plugin failed to activate");
+      }
+      if (!isDatabaseUnavailable(error)) await publishAvailabilityExceptionBestEffort({
         source: "activity",
         operation: "availability",
         kind: "exception",
         summary: `Activity plugin ${plugin.kind} is physically present but unavailable.`,
         details: { activityKind: plugin.kind, stage: "registration", error: failure.message },
       }, logger);
-      continue;
+      if (!isDatabaseUnavailable(error)) continue;
     }
 
     // Registration occurs on each API process start. This is useful runtime
