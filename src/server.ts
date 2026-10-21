@@ -108,6 +108,7 @@ await registerGuildRoutes(app);
 await registerApiV1Routes(app);
 
 const shutdown = async (): Promise<void> => {
+  clearInterval(readinessTimer);
   stopEmissionRecovery?.();
   stopGuildRefreshScheduler?.();
   await app.close();
