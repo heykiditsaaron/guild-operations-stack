@@ -7,6 +7,7 @@ const RECOVERY_INTERVAL_MS = 30_000;
 export function createEmissionRecoveryCycle(
   recoverPending: () => Promise<void>,
   log: Pick<FastifyBaseLogger, "error">,
+  ready: () => Promise<boolean> = async () => true,
 ): () => Promise<void> {
   let running = false;
 
@@ -14,7 +15,7 @@ export function createEmissionRecoveryCycle(
     if (running) return;
     running = true;
     try {
-      await recoverPending();
+      if (await ready()) await recoverPending();
     } catch (error) {
       log.error({ err: error }, "Emission recovery failed");
     } finally {
@@ -23,8 +24,8 @@ export function createEmissionRecoveryCycle(
   };
 }
 
-export function startEmissionRecovery(log: FastifyBaseLogger): () => void {
-  const recover = createEmissionRecoveryCycle(recoverPendingEmissions, log);
+export function startEmissionRecovery(log: FastifyBaseLogger, ready?: () => Promise<boolean>): () => void {
+  const recover = createEmissionRecoveryCycle(recoverPendingEmissions, log, ready);
   void recover();
   const timer = setInterval(() => void recover(), RECOVERY_INTERVAL_MS);
   return () => clearInterval(timer);
