@@ -127,11 +127,15 @@ async function inspectReadiness(): Promise<void> {
   inspectingReadiness = true;
   try {
     if (!await databaseReady()) return;
-    installationSecretKey({ encryptedDataExists: await installationBlizzardEncryptedSecretExists() || await discordEncryptedSecretsExist() });
+    const encryptedDataExists = await installationBlizzardEncryptedSecretExists() || await discordEncryptedSecretsExist();
+    installationSecretKey({ encryptedDataExists });
     await loadDiscordInteractionPublicKey();
     if (await installationOperational()) startOperationalBackgroundWork();
   } catch (error) {
-    app.log.error({ err: error }, "Installation readiness inspection failed");
+    app.log.fatal({ err: error }, "Installation readiness failed; API cannot safely continue");
+    process.exitCode = 1;
+    if (readinessTimer) clearInterval(readinessTimer);
+    await shutdown();
   } finally {
     inspectingReadiness = false;
   }
