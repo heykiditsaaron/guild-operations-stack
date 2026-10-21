@@ -36,7 +36,7 @@ import { registerSiteInformationPages } from "./web/pages/site-information.js";
 import { registerSetupPage } from "./web/pages/setup.js";
 
 setupAuthorizationToken();
-installationSecretKey({ encryptedDataExists: await installationBlizzardEncryptedSecretExists() || await discordEncryptedSecretsExist() });
+// Database-dependent secret inspection runs after readiness.
 
 const apiLogger: FastifyBaseLogger = componentLogger("api");
 const app = Fastify({ loggerInstance: apiLogger, logController: new LogController({ disableRequestLogging: true }) });
@@ -98,8 +98,8 @@ let stopGuildRefreshScheduler: (() => void) | null = null;
 let stopEmissionRecovery: (() => void) | null = null;
 const startOperationalBackgroundWork = (): void => {
   if (stopEmissionRecovery || stopGuildRefreshScheduler) return;
-  stopEmissionRecovery = startEmissionRecovery(app.log);
-  stopGuildRefreshScheduler = startGuildRefreshScheduler(app.log);
+  stopEmissionRecovery = startEmissionRecovery(app.log, databaseReady);
+  stopGuildRefreshScheduler = startGuildRefreshScheduler(app.log, databaseReady);
 };
 
 await registerSetupPage(app, webAssets);
