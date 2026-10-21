@@ -161,7 +161,9 @@ export async function registerInstalledActivityPlugins(
     // diagnostic context, not a new administrative availability transition.
     logger.info(
       { activityKind: plugin.kind, version: plugin.version ?? null },
-      "Activity plugin registered and available",
+      pendingActivityPersistence.has(plugin.kind)
+        ? "Activity plugin routes registered; persistence pending database recovery"
+        : "Activity plugin registered and available",
     );
 
     await app.register(async (activityApp) => {
