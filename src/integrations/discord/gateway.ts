@@ -108,6 +108,39 @@ export class DiscordGateway {
         config.botToken !== this.botToken || interaction.application_id !== config.applicationId ||
         interaction.guild_id !== config.discordGuildId) return;
     const callback = `https://discord.com/api/v10/interactions/${encodeURIComponent(interaction.id)}/${encodeURIComponent(interaction.token)}/callback`;
+    // Modal responses must be sent as the initial interaction callback, never as a webhook edit.
+    // These Raffle components can open a modal depending on current participation state.
+    if (/^go:raffle:(enter|character|deny):[0-9a-f-]{36}$/.test(interaction.data?.custom_id ?? "")) {
+      const startedAt = Date.now();
+      const interactionKind = interaction.data?.custom_id?.split(":").slice(0, 3).join(":");
+      try {
+        const response = await dispatchDiscordComponentInteraction(interaction);
+        const delivered = await fetch(callback, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(response),
+        });
+        if (!delivered.ok) throw new Error(`discord_gateway_callback_${delivered.status}`);
+        log.info({ interactionId: interaction.id, interactionKind, responseType: response.type, durationMs: Date.now() - startedAt }, "Discord Gateway interaction completed");
+      } catch (error) {
+        await emitDiagnosticEvent({
+          severity: "error", source: "discord.gateway", operation: "interaction-delivery",
+          kind: "exception", summary: "Discord Gateway initial interaction callback failed",
+          correlation: { interactionId: interaction.id }, runtimeError: error,
+          details: { interactionKind: interactionKind ?? "unknown", durationMs: Date.now() - startedAt },
+        }, log);
+        // An unacknowledged interaction can still receive an ephemeral error.
+        await observeDiscordFallback(
+          fetch(callback, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ type: 4, data: { flags: 64, content: "The interaction could not be completed. Please try again or use Guild Operations." } }),
+          }),
+          log, { interactionId: interaction.id, interactionKind },
+          "Discord Gateway initial interaction failure response was rejected",
+          "Discord Gateway initial interaction failure response could not be delivered",
+        );
+      }
+      return;
+    }
     const acknowledged = await fetch(callback, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(/^go:raid:(character|spec):/.test(interaction.data?.custom_id ?? "") ? { type: 6 } : { type: 5, data: { flags: 64 } }),
