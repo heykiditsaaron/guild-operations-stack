@@ -28,7 +28,17 @@ A published image may also be pinned instead of using the default latest tag:
 
     GUILD_OPERATIONS_VERSION=v0.1.0
 
-These are deployment choices, not application configuration.
+These are deployment choices, not application configuration. Docker Compose reads these settings from the deployment's `.env` file automatically, including when invoked by `./go`. For a development deployment, set `GUILD_OPERATIONS_VERSION=dev` in `.env` once rather than prefixing every command with it.
+
+### Host Tools
+
+The deployment-local `./go` launcher runs the Host Tools CLI from the configured application image:
+
+    ./go           # Interactive console (exit or Ctrl+D to leave)
+    ./go help      # Execute one command and return to the host
+    ./go version
+
+Host Tools uses the same image selection as the deployment. The launcher does not start the database, migration service, or API dependencies when invoked; operations that require running services will validate their own prerequisites. Host Tools currently provides the console, help, and version commands. Installation and recovery commands will be introduced separately. The launcher is a host-side file and must be updated alongside deployment files when upgrading; pulling an image alone does not replace it.
 
 ## First-run setup
 
