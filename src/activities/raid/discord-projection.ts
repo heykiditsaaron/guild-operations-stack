@@ -85,7 +85,10 @@ async function projectRaid(raidId: string): Promise<void> {
   if (!raid) return;
   const [rows, availableEmojis] = await Promise.all([
     raidSignups(raidId),
-    discordApplicationEmojis(config.botToken, config.applicationId).catch(() => []),
+    discordApplicationEmojis(config.botToken, config.applicationId).catch((err: unknown) => {
+      log.warn({ raidId, err }, "Discord emoji lookup failed; using plain-text raid presentation");
+      return [];
+    }),
   ]);
   const emojis: EmojiLookup = new Map(availableEmojis.map((emoji) => [emoji.name, discordApplicationEmojiMarkup(emoji)]));
   // Temporary thumbnail: reuse an already-provisioned Guild Operations role icon.
