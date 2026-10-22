@@ -1,3 +1,4 @@
+import { guildRankDefinitions } from "../core/guild/guild-ranks.js";
 import { controlledGuildMemberCharacters } from "../core/guild/guild-characters.js";
 import { controlledCharacterRecordIdsForIdentity } from "../core/identity/controlled-characters.js";
 import { characterRepresentationForIdentity } from "../core/identity/main-character.js";
@@ -43,11 +44,13 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
     webPresentationContributionsForIdentity(identity.identityId),
   ]);
 
-  const [controlledCharacters, characters, identityProfileIconUrl] = await Promise.all([
+  const [controlledCharacters, characters, identityProfileIconUrl, rankDefinitions] = await Promise.all([
     characterProjections(controlledCharacterRecordIds),
     characterProjections(guildMemberCharacters.map((character) => character.characterRecordId)),
     identityDisplay.profileIconKey ? specializationProfileIconUrl(identityDisplay.profileIconKey) : Promise.resolve(null),
+    guildRankDefinitions(),
   ]);
+  const rankNames = new Map(rankDefinitions.map((rank) => [rank.rankIndex, rank.displayName]));
   const guildMembershipByCharacterRecordId = new Map(guildMemberCharacters.map((character) => [character.characterRecordId, character]));
 
   return {
@@ -76,6 +79,7 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
           name: selectedMain.name,
           realmName: selectedMain.realmName,
           rankIndex: selectedMain.rankIndex,
+          rankDisplayName: selectedMain.rankIndex === null ? null : rankNames.get(selectedMain.rankIndex) ?? `Rank ${selectedMain.rankIndex}`,
           level: characters.find((character) => character.realmId === selectedMain.realmId && character.characterId === selectedMain.characterId)?.level ?? null,
           className: characters.find((character) => character.realmId === selectedMain.realmId && character.characterId === selectedMain.characterId)?.className ?? null,
           activeSpecName: characters.find((character) => character.realmId === selectedMain.realmId && character.characterId === selectedMain.characterId)?.activeSpecName ?? null,
@@ -89,6 +93,7 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
       realmName: character.realmName,
       guildMember: guildMembershipByCharacterRecordId.has(character.characterRecordId),
       rankIndex: guildMembershipByCharacterRecordId.get(character.characterRecordId)?.rankIndex ?? null,
+      rankDisplayName: rankNames.get(guildMembershipByCharacterRecordId.get(character.characterRecordId)?.rankIndex ?? -1) ?? null,
       level: character.level,
       className: character.className,
       raceName: character.raceName,
@@ -102,6 +107,7 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
       realmName: character.realmName,
       guildMember: true,
       rankIndex: guildMembershipByCharacterRecordId.get(character.characterRecordId)!.rankIndex,
+      rankDisplayName: rankNames.get(guildMembershipByCharacterRecordId.get(character.characterRecordId)!.rankIndex) ?? null,
       level: character.level,
       className: character.className,
       raceName: character.raceName,
