@@ -23,7 +23,7 @@ function characterCard(character: WebViewerCharacter, selected: boolean): string
     <div class="me-character-card-copy">
       <div class="me-character-card-heading"><h3>${htmlText(character.name)}</h3>${selected ? '<span class="me-character-card-badge">Main</span>' : ""}</div>
       <p>${htmlText(characterRole(character))}</p>
-      <p class="me-character-card-context">${htmlText(realm)} · ${character.guildMember ? `Guild rank ${character.rankIndex}` : "Not in this guild"}</p>
+      <p class="me-character-card-context">${htmlText(realm)} · ${character.guildMember ? `${character.rankDisplayName ?? `Rank ${character.rankIndex}`} (Rank ${character.rankIndex})` : "Not in this guild"}</p>
     </div>
   </article>`;
 }
