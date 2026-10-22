@@ -8,7 +8,7 @@ function firstHeaderValue(value: string | string[] | undefined): string | null {
   return raw.trim() || null;
 }
 
-function normalizeOrigin(value: string): string {
+export function normalizeOrigin(value: string): string {
   const url = new URL(value);
   if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("Installation public origin must use http or https");
   if (url.pathname !== "/" || url.search || url.hash || url.username || url.password) throw new Error("Installation public origin must contain only scheme, host, and optional port");
@@ -49,4 +49,21 @@ export async function establishInstallationPublicOrigin(origin: string): Promise
 
 export async function installationAbsoluteUrl(pathname: string): Promise<string> {
   return new URL(pathname, await requireInstallationPublicOrigin()).toString();
+}
+
+/**
+ * Relocation is an explicit, authenticated administrative operation.
+ * Never derive a replacement origin from untrusted forwarding headers.
+ */
+export async function relocateInstallationPublicOrigin(expectedOrigin: string, nextOrigin: string): Promise<string | null> {
+  const expected = normalizeOrigin(expectedOrigin);
+  const next = normalizeOrigin(nextOrigin);
+  const result = await pool.query<{ public_origin: string }>(
+    `UPDATE installation_web_configuration
+        SET public_origin = $1
+      WHERE singleton = true AND public_origin = $2
+      RETURNING public_origin`,
+    [next, expected],
+  );
+  return result.rows[0]?.public_origin ?? null;
 }
