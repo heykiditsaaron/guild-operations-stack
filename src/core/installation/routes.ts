@@ -12,7 +12,8 @@ import {
   storeInstallationBlizzardConfiguration,
   validateBlizzardApplicationCredentials,
 } from "./blizzard-configuration.js";
-import { establishInstallationPublicOrigin, publicOriginForRequest } from "./public-origin.js";
+import { establishInstallationPublicOrigin, installationPublicOrigin, normalizeOrigin, publicOriginForRequest, relocateInstallationPublicOrigin } from "./public-origin.js";
+import { effectiveGuildAuthority } from "../authority/guild-permissions.js";
 import { withTransaction } from "../../db.js";
 import { validSetupAuthorization } from "./setup-authorization.js";
 
@@ -20,6 +21,38 @@ export async function registerInstallationRoutes(
   app: FastifyInstance,
   options: { onOperational?: () => void | Promise<void> } = {},
 ): Promise<void> {
+  // Relocation is restricted to the Blizzard-authoritative guild master.
+  // A same-origin JSON request prevents a cross-site form from changing the callback host.
+  app.put("/installation/public-origin", async (request, reply) => {
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "authentication_required" });
+    const authority = await effectiveGuildAuthority(identity.identityId);
+    if (!authority || authority.rankIndex !== 0) return reply.code(403).send({ error: "guild_master_required" });
+
+    const current = await installationPublicOrigin();
+    if (!current) return reply.code(409).send({ error: "public_origin_not_established" });
+    if (request.headers.origin !== current || !request.is("application/json")) {
+      return reply.code(403).send({ error: "same_origin_json_required" });
+    }
+
+    const body = request.body as { expected_origin?: unknown; public_origin?: unknown } | null;
+    if (typeof body?.expected_origin !== "string" || typeof body.public_origin !== "string") {
+      return reply.code(400).send({ error: "invalid_public_origin" });
+    }
+    let expected: string;
+    let next: string;
+    try {
+      expected = normalizeOrigin(body.expected_origin);
+      next = normalizeOrigin(body.public_origin);
+    } catch {
+      return reply.code(400).send({ error: "invalid_public_origin" });
+    }
+    if (expected !== current) return reply.code(409).send({ error: "public_origin_changed", current });
+    const updated = await relocateInstallationPublicOrigin(expected, next);
+    if (!updated) return reply.code(409).send({ error: "public_origin_changed" });
+    return reply.send({ public_origin: updated, previous_origin: expected, oauth_redirects_must_be_updated: true });
+  });
+
   app.post("/installation/blizzard", async (request, reply) => {
     if (!validSetupAuthorization(request.headers["x-setup-authorization"])) return reply.code(403).send({ error: "setup_authorization_required" });
     if (await installationBlizzardConfigured()) {
