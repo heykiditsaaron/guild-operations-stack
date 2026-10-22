@@ -31,3 +31,17 @@ The supported contract for a self-hosted release can include deployment configur
 GitHub's **pre-release** checkbox is independent of SemVer pre-release identifiers (such as `-rc.1`). The historical `v0.0.x` rehearsals were marked GitHub pre-releases. Starting with `v0.1.0`, publish normal GitHub releases unless a release is explicitly designated a candidate or preview.
 
 Do not move or reuse a published version tag. Correct a published release with a new version. Versioned container tags should identify the corresponding release source; `latest` is a distribution alias and must not be used as a substitute for a pinned version during controlled validation.
+
+## Release rehearsal
+
+Before the first `v0.1.0` release, a disposable tag such as `v0.1.0-rehearsal.1` may exercise the version-tag publication workflow. Rehearsal tags publish their own GHCR tag and a commit-SHA tag, **not** `latest`; they are not official Guild Operations releases. Do not create a GitHub Release for a rehearsal tag.
+
+Rehearsal procedure:
+
+1. Merge and verify the publication-safety change before tagging. Select the exact `main` commit to rehearse and create the rehearsal tag at that commit.
+2. Confirm the tag-triggered **Publish Guild Operations Image** workflow succeeds. Verify the rehearsal image and SHA image exist in GHCR and `latest` has not changed.
+3. In an isolated Compose project with fresh named volumes, pin `GUILD_OPERATIONS_VERSION=v0.1.0-rehearsal.1` and follow the README's first-run setup. Do not reuse production or development volumes or credentials.
+4. Verify installation completion, container replacement with the same volumes, and a recoverable backup/restore of **both** database and installation-key volumes. Record the actual observed outcomes against issue #128; CI alone cannot prove these runtime steps.
+5. Delete the disposable Git tag and, if desired, the rehearsal package version after validation. Deleting the tag does not automatically remove the GHCR image.
+
+A passing rehearsal does not replace verification of the actual `v0.1.0` tag, GHCR `v0.1.0`/`latest`/SHA image publication, and a fresh deployment of the official artifact. Never reuse or move a published version tag.
