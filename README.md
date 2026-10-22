@@ -102,7 +102,7 @@ Do not add -v during an ordinary restart or update.
 
 ## Development image publishing
 
-Every push to `main` publishes `ghcr.io/heykiditsaaron/guild-operations:dev` and a commit-SHA image tag. Development deployments may opt into `GUILD_OPERATIONS_VERSION=dev`; the tag is mutable and must not be used for pinned production deployments. Publishing an image does not restart any deployment: operators explicitly pull and recreate services when ready. Version-tagged releases continue to publish independently.
+To test a feature branch before merging, push the branch and use **Actions → Publish Guild Operations Image → Run workflow**, selecting that branch. A manual run against a branch publishes `ghcr.io/heykiditsaaron/guild-operations:dev` and a commit-SHA image tag. Development deployments may opt into `GUILD_OPERATIONS_VERSION=dev`; this mutable tag represents the most recently manually published branch, not necessarily `main`, and must not be used for pinned production deployments. A push to `main` does not overwrite `:dev`. Publishing an image does not restart any deployment: operators explicitly pull and recreate services when ready. Version-tagged releases continue to publish independently.
 
 ## Development and architecture
 
