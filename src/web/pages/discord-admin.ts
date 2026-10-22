@@ -68,7 +68,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
           const options = roles.filter((role) => role.id !== configuration.discordGuildId && !role.managed);
           const fields = guildRanks.map((rank) => {
             const selected = mappings.find((mapping) => mapping.rankIndex === rank.rankIndex)?.discordRoleId ?? "";
-            return `<label class="discord-field"><span>${htmlText(rank.displayName)}</span>
+            return `<label class="discord-field"><span>${htmlText(rank.displayName)} (Rank ${rank.rankIndex})</span>
               <select name="rank_${rank.rankIndex}"><option value="">No role</option>
               ${options.map((role) => `<option value="${htmlText(role.id)}"${selected === role.id ? " selected" : ""}>${htmlText(role.name)}</option>`).join("")}
               </select></label>`;
