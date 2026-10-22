@@ -31,7 +31,7 @@ export async function registerInstallationRoutes(
 
     const current = await installationPublicOrigin();
     if (!current) return reply.code(409).send({ error: "public_origin_not_established" });
-    if (request.headers.origin !== current || !request.is("application/json")) {
+    if (request.headers.origin !== current || request.headers["content-type"]?.split(";")[0]?.trim().toLowerCase() !== "application/json") {
       return reply.code(403).send({ error: "same_origin_json_required" });
     }
 
