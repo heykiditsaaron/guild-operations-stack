@@ -24,14 +24,17 @@ export async function registerInstallationRoutes(
   // Relocation is restricted to the Blizzard-authoritative guild master.
   // A same-origin JSON request prevents a cross-site form from changing the callback host.
   app.put("/installation/public-origin", async (request, reply) => {
-    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
-    if (!identity) return reply.code(401).send({ error: "authentication_required" });
-    const authority = await effectiveGuildAuthority(identity.identityId);
-    if (!authority || authority.rankIndex !== 0) return reply.code(403).send({ error: "guild_master_required" });
+    const setupAuthorized = validSetupAuthorization(request.headers["x-setup-authorization"]);
+    if (!setupAuthorized) {
+      const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+      if (!identity) return reply.code(401).send({ error: "authentication_required" });
+      const authority = await effectiveGuildAuthority(identity.identityId);
+      if (!authority || authority.rankIndex !== 0) return reply.code(403).send({ error: "guild_master_required" });
+    }
 
     const current = await installationPublicOrigin();
     if (!current) return reply.code(409).send({ error: "public_origin_not_established" });
-    if (request.headers.origin !== current || request.headers["content-type"]?.split(";")[0]?.trim().toLowerCase() !== "application/json") {
+    if ((!setupAuthorized && request.headers.origin !== current) || request.headers["content-type"]?.split(";")[0]?.trim().toLowerCase() !== "application/json") {
       return reply.code(403).send({ error: "same_origin_json_required" });
     }
 
