@@ -1,3 +1,18 @@
+const rankSelectors = [...document.querySelectorAll("[data-rank-select]")];
+const rankWorkspaces = [...document.querySelectorAll("[data-rank-workspace]")];
+function selectRank(rankIndex) {
+  for (const button of rankSelectors) {
+    const selected = button.dataset.rankSelect === String(rankIndex);
+    button.setAttribute("aria-pressed", String(selected));
+  }
+  for (const workspace of rankWorkspaces) workspace.hidden = workspace.id !== `rank-${rankIndex}`;
+}
+for (const button of rankSelectors) button.addEventListener("click", () => selectRank(button.dataset.rankSelect));
+if (rankSelectors.length) {
+  const requestedRank = location.hash.match(/^#rank-(\d+)$/)?.[1];
+  selectRank(rankSelectors.some((button) => button.dataset.rankSelect === requestedRank) ? requestedRank : rankSelectors[0].dataset.rankSelect);
+}
+
 for (const input of document.querySelectorAll("[data-rank-capability]")) {
   input.addEventListener("change", async () => {
     const status = input.closest("label")?.querySelector("[data-capability-status]");
@@ -44,10 +59,10 @@ for (const form of document.querySelectorAll("[data-rank-name-form]")) {
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error ?? "Rank name could not be saved");
       const workspace = form.closest("[data-rank-workspace]");
-      const heading = workspace?.querySelector("h2");
+      const heading = workspace?.querySelector("[data-rank-heading]");
       if (heading) heading.textContent = body.rank.displayName;
-      const link = document.querySelector(`a[href="#rank-${form.dataset.rankIndex}"]`);
-      if (link) link.firstChild.textContent = body.rank.displayName + " ";
+      const label = document.querySelector(`[data-rank-select="${form.dataset.rankIndex}"] [data-rank-label]`);
+      if (label) label.textContent = body.rank.displayName;
       if (status) status.textContent = "Saved.";
     } catch (error) {
       if (status) status.textContent = error instanceof Error ? error.message : "Save failed.";
