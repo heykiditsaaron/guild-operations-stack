@@ -100,6 +100,10 @@ Inspect the deployment with:
 
 Do not add -v during an ordinary restart or update.
 
+## Development image publishing
+
+Every push to `main` publishes `ghcr.io/heykiditsaaron/guild-operations:dev` and a commit-SHA image tag. Development deployments may opt into `GUILD_OPERATIONS_VERSION=dev`; the tag is mutable and must not be used for pinned production deployments. Publishing an image does not restart any deployment: operators explicitly pull and recreate services when ready. Version-tagged releases continue to publish independently.
+
 ## Development and architecture
 
 Customer installation and development topology are intentionally different. Development-only authority facilities are not part of customer installation and must not be used to establish a real deployment.
