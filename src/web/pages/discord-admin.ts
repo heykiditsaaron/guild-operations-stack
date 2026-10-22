@@ -22,6 +22,8 @@ import type { AssetRegistry } from "../assets.js";
 import { htmlText, renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
 
+const emojiSetupsInProgress = new Set<string>();
+
 export async function registerDiscordAdminPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   if (!app.hasContentTypeParser("application/x-www-form-urlencoded")) {
     app.addContentTypeParser("application/x-www-form-urlencoded", { parseAs: "string" }, (_request, body, done) => {
@@ -192,9 +194,16 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       <section class="admin-section"><h2>Article publication</h2><div class="settings-panel">${articleSection}</div></section>
       <section class="admin-section"><h2>Raid publication</h2><div class="settings-panel">${raidSection}</div></section>
       <section class="admin-section"><h2>Raffle publication</h2><div class="settings-panel">${raffleSection}</div></section>
-      <section class="admin-section"><h2>Application emojis</h2><div class="settings-panel">\n        ${((request.query as { emoji?: string }).emoji === "success") ? '<p role="status">Discord presentation icons successfully provisioned or reused.</p>' : ((request.query as { emoji?: string }).emoji === "failed") ? '<p role="alert">Discord icon setup was incomplete. Check Operations → Logs for details and retry.</p>' : ""}
-        <p>Set up raid role and WoW specialization icons for your Discord application in one operation. Existing icons are reused; unrelated emojis are not changed.</p>
-        ${configuration?.applicationVerifiedAt ? `<form method="post" action="/admin/discord/emoji/raid-roles"><button type="submit" class="button-secondary">Set up Discord icons</button></form>` : "<p>Verify the Discord application first.</p>"}
+      <section class="admin-section"><h2>Application emojis</h2><div class="settings-panel">\n        <p>Set up raid role and WoW specialization icons. Existing icons are reused; unrelated emojis are not changed.</p>
+        ${configuration?.applicationVerifiedAt ? `<form data-emoji-setup method="post" action="/admin/discord/emoji/raid-roles">
+          <button type="submit" class="button-secondary" data-emoji-submit>Set up Discord icons</button>
+          <div data-emoji-results hidden aria-live="polite">
+            <p data-emoji-status role="status"></p>
+            <progress data-emoji-progress max="1" value="0"></progress>
+            <p data-emoji-counts></p>
+            <ul data-emoji-failures></ul>
+          </div>
+        </form>` : "<p>Verify the Discord application first.</p>"}
       </div></section>
       <section class="admin-section"><h2>Emoji rendering preview</h2><div class="settings-panel">
         ${((request.query as { preview?: string }).preview === "success") ? '<p role="status">Discord emoji preview sent to the selected channel.</p>' : ((request.query as { preview?: string }).preview === "failed") ? '<p role="alert">Unable to send the emoji preview. Check Operations → Logs.</p>' : ""}
@@ -224,9 +233,25 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     }
     const configuration = await discordIntegrationConfiguration();
     if (!configuration?.applicationVerifiedAt) return reply.code(409).send({ error: "discord_application_not_verified" });
+    if (emojiSetupsInProgress.has(configuration.applicationId)) {
+      return reply.code(409).send({ error: "emoji_setup_already_running" });
+    }
+    emojiSetupsInProgress.add(configuration.applicationId);
+    reply.hijack();
+    reply.raw.writeHead(200, { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" });
+    const send = (event: object) => { if (!reply.raw.destroyed) reply.raw.write(JSON.stringify(event) + "\n"); };
+    const safeReason = (reason: string): string => {
+      if (reason.startsWith("specialization_icon_http_")) return "Blizzard artwork request failed (" + reason.slice("specialization_icon_http_".length) + ")";
+      if (reason === "specialization_icon_unavailable") return "Blizzard artwork unavailable";
+      if (reason === "unsupported_specialization_icon_format" || reason === "specialization_icon_too_large") return "Blizzard artwork cannot be uploaded";
+      if (reason.startsWith("discord_api_")) return "Discord rejected the icon (" + reason.slice("discord_api_".length) + ")";
+      return "Icon upload failed; retry setup";
+    };
     try {
+      send({ type: "start", message: "Checking existing Discord icons" });
       const result = await provisionDiscordPresentationEmojis({
         assets, botToken: configuration.botToken, applicationId: configuration.applicationId,
+        onProgress: (progress) => send({ type: "progress", ...progress, ...(progress.reason ? { reason: safeReason(progress.reason) } : {}) }),
       });
       const complete = result.unavailable.length === 0;
       await publishOperationalRecord({
@@ -234,19 +259,15 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
         kind: "result", result: complete ? "success" : "partial",
         actorIdentityId: identity.identityId,
         summary: complete ? "Discord presentation emojis ready" : "Discord presentation emoji setup partially completed",
-        details: { applicationId: configuration.applicationId, created: result.created, reused: result.reused, unavailable: result.unavailable, emojis: result.emojis.map(({ id, name }) => ({ id, name })) },
-      });
-      request.log.info({ created: result.created, reused: result.reused, unavailable: result.unavailable }, "Discord presentation emoji setup finished");
-      return reply.code(303).redirect(complete ? "/admin/discord?emoji=success" : "/admin/discord?emoji=failed");
+        details: { applicationId: configuration.applicationId, created: result.created, reused: result.reused, unavailable: result.unavailable, failures: result.failures, emojis: result.emojis.map(({ id, name }) => ({ id, name })) },
+      }).catch((error) => request.log.warn({ err: error }, "Unable to record Discord emoji setup result"));
+      send({ type: "complete", status: complete ? "success" : "partial", created: result.created, reused: result.reused, failed: result.failures.length, failures: result.failures.map((failure) => ({ name: failure.name, reason: safeReason(failure.reason) })) });
     } catch (error) {
-      await publishOperationalRecord({
-        source: "discord.application-emoji", operation: "presentation-emoji-setup", kind: "exception",
-        actorIdentityId: identity.identityId,
-        summary: "Discord presentation emoji setup failed",
-        details: { applicationId: configuration.applicationId, error: error instanceof Error ? error.message : String(error) },
-      }).catch((recordError) => request.log.error({ err: recordError }, "Unable to record Discord emoji provisioning failure"));
-      request.log.error({ err: error }, "Discord role emoji provisioning failed");
-      return reply.code(303).redirect("/admin/discord?emoji=failed");
+      request.log.error({ err: error }, "Discord emoji setup failed");
+      send({ type: "complete", status: "failed", message: "Setup could not finish. Existing icons were preserved; retry to continue." });
+    } finally {
+      emojiSetupsInProgress.delete(configuration.applicationId);
+      reply.raw.end();
     }
   });
 
