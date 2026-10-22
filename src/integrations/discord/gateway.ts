@@ -1,3 +1,4 @@
+import { databaseReady } from "../../core/operations/database-availability.js";
 import { componentLogger } from "../../core/runtime-logger.js";
 import { emitDiagnosticEvent } from "../../core/diagnostic-event.js";
 import { observeDiscordFallback } from "./fallback-diagnostics.js";
@@ -103,6 +104,13 @@ export class DiscordGateway {
 
   private async handleInteraction(interaction: DiscordComponentInteraction & { token?: string }): Promise<void> {
     if ((interaction.type !== 3 && interaction.type !== 5) || !interaction.id || !interaction.token || !interaction.application_id) return;
+    if (!await databaseReady()) {
+      await fetch(`https://discord.com/api/v10/interactions/${encodeURIComponent(interaction.id)}/${encodeURIComponent(interaction.token)}/callback`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: 4, data: { flags: 64, content: "Service temporarily unavailable. Please contact your administrator." } }),
+      });
+      return;
+    }
     const config = await discordIntegrationConfiguration();
     if (!config?.enabled || !config.applicationVerifiedAt || !config.discordGuildId ||
         config.botToken !== this.botToken || interaction.application_id !== config.applicationId ||
