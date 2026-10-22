@@ -72,6 +72,7 @@ export async function viewerForRequest(sessionToken: string | undefined): Promis
     identityProfileIconKey: identityDisplay.profileIconKey,
     identityProfileIconUrl,
     guildRankDisplayName: guildAuthority?.rankDisplayName ?? null,
+    guildRankIndex: guildAuthority?.rankIndex ?? null,
     mainCharacter: selectedMain
       ? {
           characterId: selectedMain.characterId,
