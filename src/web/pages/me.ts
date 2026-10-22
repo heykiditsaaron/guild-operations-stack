@@ -131,7 +131,7 @@ export async function registerMePage(app: FastifyInstance, assets: AssetRegistry
                   <button type="button" class="button-secondary" data-cancel-display-name>Cancel</button>
                 </div>
               </form>
-              ${viewer.guildRankDisplayName ? `<span class="me-identity-card-standing">${htmlText(viewer.guildRankDisplayName)}</span>` : ""}
+              ${viewer.guildRankIndex !== null ? `<span class="me-identity-card-standing">${htmlText(viewer.guildRankDisplayName ? `${viewer.guildRankDisplayName} · Rank ${viewer.guildRankIndex}` : `Rank ${viewer.guildRankIndex}`)}</span>` : ""}
             </div>
           </div>
           <dialog class="main-picker me-profile-icon-picker" data-profile-icon-picker aria-labelledby="profile-icon-picker-title">
