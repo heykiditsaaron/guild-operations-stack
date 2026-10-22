@@ -9,6 +9,7 @@ export type EmojiSetupResult = {
   created: number;
   reused: number;
   unavailable: string[];
+  failures: { name: string; reason: string }[];
 };
 
 function specEmojiName(className: string, specName: string): string {
@@ -35,15 +36,21 @@ export async function provisionDiscordPresentationEmojis(input: {
   assets: AssetRegistry;
   botToken: string;
   applicationId: string;
+  onProgress?: (progress: { total: number; processed: number; created: number; reused: number; failed: number; name: string; phase: string; reason?: string }) => void;
 }): Promise<EmojiSetupResult> {
   const known = new Map((await discordApplicationEmojis(input.botToken, input.applicationId)).map((emoji) => [emoji.name, emoji]));
   const emojis: DiscordApplicationEmoji[] = [];
   const unavailable: string[] = [];
+  const failures: { name: string; reason: string }[] = [];
+  const total = 3 + allWowSpecTraitDefinitions().length;
+  let processed = 0;
+  const progress = (name: string, phase: string, reason?: string) => input.onProgress?.({ total, processed, created, reused, failed: failures.length, name, phase, ...(reason ? { reason } : {}) });
   let created = 0;
   let reused = 0;
   async function ensure(name: string, image: () => Promise<string>): Promise<void> {
     const existing = known.get(name);
-    if (existing) { emojis.push(existing); reused++; return; }
+    if (existing) { emojis.push(existing); reused++; processed++; progress(name, "reused"); return; }
+    progress(name, "uploading");
     try {
       const emoji = await discordCreateApplicationEmoji({
         botToken: input.botToken, applicationId: input.applicationId, name, imageData: await image(),
@@ -51,9 +58,13 @@ export async function provisionDiscordPresentationEmojis(input: {
       known.set(name, emoji);
       emojis.push(emoji);
       created++;
-    } catch {
+    } catch (error) {
       unavailable.push(name);
+      const reason = error instanceof Error ? error.message : String(error);
+      failures.push({ name, reason });
     }
+    processed++;
+    progress(name, failures.some((failure) => failure.name === name) ? "failed" : "created", failures.find((failure) => failure.name === name)?.reason);
   }
 
   for (const role of ["tank", "healer", "damage"] as const) {
@@ -67,5 +78,5 @@ export async function provisionDiscordPresentationEmojis(input: {
       return imageDataFromUrl(url);
     });
   }
-  return { emojis, created, reused, unavailable };
+  return { emojis, created, reused, unavailable, failures };
 }
