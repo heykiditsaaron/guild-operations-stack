@@ -1,36 +1,61 @@
-for (const form of document.querySelectorAll("[data-permission-form]")) {
-  if (!(form instanceof HTMLFormElement)) continue;
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const capability = form.closest("[data-permission-capability]");
-    if (!(capability instanceof HTMLElement)) return;
-    const key = capability.dataset.permissionCapability;
-    if (!key) return;
-    const submit = form.querySelector('button[type="submit"]');
-    const status = form.querySelector("[data-permission-status]");
-    const summary = capability.querySelector("[data-permission-summary]");
-    const selected = [...form.querySelectorAll('input[type="checkbox"]:checked')];
-    const permittedRanks = selected.map((input) => Number(input.value));
-    if (submit instanceof HTMLButtonElement) submit.disabled = true;
+for (const input of document.querySelectorAll("[data-rank-capability]")) {
+  input.addEventListener("change", async () => {
+    const status = input.closest("label")?.querySelector("[data-capability-status]");
+    const rankIndex = Number(input.dataset.rankIndex);
+    const previous = input.dataset.permittedRanks.split(",").filter(Boolean).map(Number);
+    const next = input.checked ? [...new Set([...previous, rankIndex])].sort((a, b) => a - b) : previous.filter((rank) => rank !== rankIndex);
+    input.disabled = true;
     if (status) status.textContent = "Saving…";
     try {
-      const response = await fetch(`/admin/permissions/${encodeURIComponent(key)}`, {
+      const response = await fetch(`/admin/permissions/${encodeURIComponent(input.dataset.rankCapability)}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ permittedRanks }),
+        body: JSON.stringify({ permittedRanks: next }),
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error ?? "Permission could not be saved");
-      if (summary) {
-        const names = selected.map((input) => input.closest("label")?.querySelector("strong")?.textContent ?? `Rank ${input.value}`);
-        const effectiveNames = ["Guild Master", ...names];
-        summary.textContent = effectiveNames.length <= 3 ? effectiveNames.join(", ") : `${effectiveNames.slice(0, 2).join(", ")} + ${effectiveNames.length - 2} more`;
+      for (const peer of document.querySelectorAll("[data-rank-capability]")) {
+        if (peer.dataset.rankCapability === input.dataset.rankCapability) {
+          peer.dataset.permittedRanks = body.permittedRanks.join(",");
+        }
       }
       if (status) status.textContent = "Saved.";
     } catch (error) {
-      if (status) status.textContent = error instanceof Error ? error.message : "Permission could not be saved.";
+      input.checked = !input.checked;
+      if (status) status.textContent = error instanceof Error ? error.message : "Save failed.";
     } finally {
-      if (submit instanceof HTMLButtonElement) submit.disabled = false;
+      input.disabled = false;
+    }
+  });
+}
+
+for (const form of document.querySelectorAll("[data-rank-name-form]")) {
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const input = form.querySelector('input[name="displayName"]');
+    const button = form.querySelector('button[type="submit"]');
+    const status = form.querySelector("[data-rank-name-status]");
+    if (!input) return;
+    button.disabled = true;
+    if (status) status.textContent = "Saving…";
+    try {
+      const response = await fetch(`/admin/ranks/${encodeURIComponent(form.dataset.rankIndex)}/display-name`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ displayName: input.value }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error ?? "Rank name could not be saved");
+      const workspace = form.closest("[data-rank-workspace]");
+      const heading = workspace?.querySelector("h2");
+      if (heading) heading.textContent = body.rank.displayName;
+      const link = document.querySelector(`a[href="#rank-${form.dataset.rankIndex}"]`);
+      if (link) link.firstChild.textContent = body.rank.displayName + " ";
+      if (status) status.textContent = "Saved.";
+    } catch (error) {
+      if (status) status.textContent = error instanceof Error ? error.message : "Save failed.";
+    } finally {
+      button.disabled = false;
     }
   });
 }
