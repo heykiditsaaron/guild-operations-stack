@@ -13,3 +13,8 @@
 .discord-enablement { flex: none; display: flex; align-items: center; gap: .5rem; }
 .discord-server-install { border-top: 1px solid var(--theme-border, rgba(255,255,255,.14)); padding-top: 1.2rem; margin-top: 1.5rem; }
 @media (max-width: 35rem) { .discord-enablement-row { align-items: flex-start; flex-direction: column; } }
+
+[data-emoji-results] { margin-top: 1rem; }
+[data-emoji-results] progress { width: 100%; max-width: 36rem; }
+[data-emoji-failures] { max-height: 15rem; overflow-y: auto; overflow-wrap: anywhere; }
+[data-emoji-results][hidden] { display: none; }
