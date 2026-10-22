@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { authenticatedIdentity, SESSION_COOKIE_NAME } from "../../auth.js";
 import { effectiveGuildAuthority } from "../../core/authority/guild-permissions.js";
+import { setGuildRankDisplayName } from "../../core/guild/guild-ranks.js";
 import { installationPublicOrigin } from "../../core/installation/public-origin.js";
 import { guildRefreshStatus } from "../../core/guild/guild-refresh-status.js";
 import {
@@ -100,28 +101,26 @@ function renderAdministrationOrientation(presentation: GuildPresentation, canCon
   return `<section class="admin-orientation" aria-labelledby="admin-orientation-heading"><div class="admin-orientation-copy"><h2 id="admin-orientation-heading">Guild administration</h2><p>You are in your guild's administrative area. What you can view or change here depends on your permissions.</p></div><label class="admin-orientation-acknowledgement"><input type="checkbox" data-guild-settings-location-acknowledged${checked}${disabled}><span>I know where to find Guild Settings</span></label><p class="admin-orientation-feedback" data-guild-settings-orientation-feedback role="status" aria-live="polite"></p></section>`;
 }
 
-function rankSummary(policy: GuildCapabilityPolicySet["capabilities"][number], ranks: GuildCapabilityPolicySet["ranks"]): string {
-  const guildMaster = ranks.find((rank) => rank.rankIndex === 0)?.displayName ?? "Rank 0";
-  const names = policy.permittedRanks.map((rankIndex) => ranks.find((rank) => rank.rankIndex === rankIndex)?.displayName ?? `Rank ${rankIndex}`);
-  const effectiveNames = [guildMaster, ...names];
-  return effectiveNames.length <= 3 ? effectiveNames.join(", ") : `${effectiveNames.slice(0, 2).join(", ")} + ${effectiveNames.length - 2} more`;
-}
-
-function renderPermissionCapability(policy: GuildCapabilityPolicySet["capabilities"][number], ranks: GuildCapabilityPolicySet["ranks"]): string {
-  const checkboxes = ranks.filter((rank) => rank.active && rank.rankIndex !== 0).map((rank) => `<label class="permission-rank-option"><input type="checkbox" value="${rank.rankIndex}"${policy.permittedRanks.includes(rank.rankIndex) ? " checked" : ""}><span><strong>${htmlText(rank.displayName)}</strong><small>Rank ${rank.rankIndex}</small></span></label>`).join("\n");
-  return `<article class="permission-capability" data-permission-capability="${htmlText(policy.key)}"><details><summary><span class="permission-capability-copy"><strong>${htmlText(policy.label)}</strong>${policy.description ? `<small>${htmlText(policy.description)}</small>` : ""}</span><span class="permission-capability-summary" data-permission-summary>${htmlText(rankSummary(policy, ranks))}</span></summary><form class="permission-capability-editor" data-permission-form><p class="permission-inherent-authority"><strong>Guild Master</strong> · Rank 0 · inherent</p><div class="permission-rank-options">${checkboxes}</div><div class="permission-capability-actions"><button type="submit" class="button-primary">Save</button><p data-permission-status role="status" aria-live="polite"></p></div></form></details></article>`;
-}
-
-function renderPermissionPolicies(policies: GuildCapabilityPolicySet): string {
-  const groups = new Map<string, { label: string; capabilities: GuildCapabilityPolicySet["capabilities"] }>();
-  for (const capability of policies.capabilities) {
-    const group = groups.get(capability.namespace) ?? { label: capability.namespaceLabel, capabilities: [] };
-    group.capabilities.push(capability);
-    groups.set(capability.namespace, group);
-  }
-  const index = [...groups.entries()].map(([namespace, group]) => `<a href="#permissions-${htmlText(namespace)}">${htmlText(group.label)}</a>`).join("");
-  const sections = [...groups.entries()].map(([namespace, group]) => `<section id="permissions-${htmlText(namespace)}" class="permission-namespace"><h2>${htmlText(group.label)}</h2><div class="permission-capabilities">${group.capabilities.map((capability) => renderPermissionCapability(capability, policies.ranks)).join("\n")}</div></section>`).join("\n");
-  return `<nav class="permission-index" aria-label="Permission groups">${index}</nav><div class="permission-namespaces">${sections}</div>`;
+function renderPermissionPolicies(policies: GuildCapabilityPolicySet, canRename: boolean): string {
+  const ranks = policies.ranks.filter((rank) => rank.active);
+  const sections = ranks.map((rank) => {
+    const groups = new Map<string, { label: string; capabilities: GuildCapabilityPolicySet["capabilities"] }>();
+    for (const capability of policies.capabilities) {
+      const group = groups.get(capability.namespace) ?? { label: capability.namespaceLabel, capabilities: [] };
+      group.capabilities.push(capability);
+      groups.set(capability.namespace, group);
+    }
+    const nameEditor = canRename
+      ? `<form data-rank-name-form data-rank-index="${rank.rankIndex}" class="rank-name-form"><label>Display name <input name="displayName" maxlength="80" required value="${htmlText(rank.displayName)}"></label><button type="submit" class="button-secondary">Save name</button><span role="status" data-rank-name-status></span></form>`
+      : "";
+    const capabilities = [...groups.values()].map((group) => `<section class="permission-namespace"><h3>${htmlText(group.label)}</h3><div class="permission-capabilities">${group.capabilities.map((capability) => {
+      const enabled = rank.rankIndex === 0 || capability.permittedRanks.includes(rank.rankIndex);
+      return `<label class="rank-capability-row"><input type="checkbox" data-rank-capability="${htmlText(capability.key)}" data-rank-index="${rank.rankIndex}" data-permitted-ranks="${htmlText(capability.permittedRanks.join(","))}"${enabled ? " checked" : ""}${rank.rankIndex === 0 ? " disabled" : ""}><span><strong>${htmlText(capability.label)}</strong>${capability.description ? `<small>${htmlText(capability.description)}</small>` : ""}</span><span role="status" data-capability-status></span></label>`;
+    }).join("")}</div></section>`).join("");
+    return `<section id="rank-${rank.rankIndex}" class="rank-workspace" data-rank-workspace><h2>${htmlText(rank.displayName)}</h2><p class="rank-coordinate">${rank.rankIndex === 0 ? "Guild Master · highest Blizzard rank · Rank 0" : `Blizzard Rank ${rank.rankIndex} · lower numbers are higher ranks`}</p>${nameEditor}<details class="rank-capability-details"><summary>Capabilities ${rank.rankIndex === 0 ? "· inherent authority" : ""}</summary><p>${rank.rankIndex === 0 ? "Guild Master has inherent authority; grants cannot be removed here." : "Changes save individually and preserve grants to other ranks."}</p>${capabilities}</details><div class="rank-relationships"><p><strong>Discord role mapping:</strong> <a href="/admin/discord">Manage in Discord settings</a></p></div></section>`;
+  }).join("");
+  const index = ranks.map((rank) => `<a href="#rank-${rank.rankIndex}">${htmlText(rank.displayName)} <small>Rank ${rank.rankIndex}</small></a>`).join("");
+  return `<nav class="permission-index" aria-label="Guild ranks">${index}</nav><div class="rank-workspaces">${sections}</div>`;
 }
 
 export async function registerAdminPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
@@ -260,10 +259,27 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     const authorized = identity ? await canAdministerGuildPermissions(identity.identityId) : false;
     const policies = authorized && identity ? await guildCapabilityPoliciesForActor(identity.identityId) : null;
     const developmentAuthority = identity ? hasDevelopmentGuildMasterAuthority(identity.identityId) : false;
-    const content = authorized && policies ? `<section class="permission-administration" aria-labelledby="permission-heading"><div class="permission-intro"><h2 id="permission-heading">Capability access</h2><p>Choose which current Blizzard guild ranks receive each Guild Operations capability in addition to Guild Master rank 0. Rank 0 and the development authority override are inherently capable and are not configurable here.</p>${developmentAuthority ? `<p class="permission-operator-notice"><strong>Development authority override active.</strong> This access is independent of your current guild rank.</p>` : ""}</div>${renderPermissionPolicies(policies)}</section>` : `<section class="admin-unavailable" aria-labelledby="admin-unavailable-heading"><h2 id="admin-unavailable-heading">Permission administration is not available for this account.</h2></section>`;
+    const canRename = identity ? (developmentAuthority || (await effectiveGuildAuthority(identity.identityId))?.rankIndex === 0) : false;
+    const content = authorized && policies ? `<section class="permission-administration" aria-labelledby="permission-heading"><div class="permission-intro"><h2 id="permission-heading">Capability access</h2><p>Start with a guild rank to review its display name, capabilities, and integration relationships. Lower Blizzard rank numbers mean higher authority; Rank 0 is Guild Master.</p>${developmentAuthority ? `<p class="permission-operator-notice"><strong>Development authority override active.</strong> This access is independent of your current guild rank.</p>` : ""}</div>${renderPermissionPolicies(policies, canRename)}</section>` : `<section class="admin-unavailable" aria-labelledby="admin-unavailable-heading"><h2 id="admin-unavailable-heading">Permission administration is not available for this account.</h2></section>`;
     const html = renderPage(assets, { pathname: "/admin/permissions", title: `Permissions Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Configure Guild Operations permission policy.", viewer, stylesheets: ["admin.css", "admin-permissions.css"], scripts: ["admin-permissions.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Configure who may use Guild Operations capabilities.</p></div>`, body: `${content}` });
     if (!authorized) return reply.code(identity ? 403 : 401).header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
+  });
+
+  app.put("/admin/ranks/:rankIndex/display-name", async (request, reply) => {
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "authentication_required" });
+    const authority = await effectiveGuildAuthority(identity.identityId);
+    if (authority?.rankIndex !== 0 && !hasDevelopmentGuildMasterAuthority(identity.identityId)) return reply.code(403).send({ error: "guild_master_required" });
+    const rankIndex = Number((request.params as { rankIndex?: string }).rankIndex);
+    const displayName = (request.body as { displayName?: unknown } | null)?.displayName;
+    if (!Number.isSafeInteger(rankIndex) || typeof displayName !== "string") return reply.code(400).send({ error: "invalid_rank_display_name" });
+    try {
+      return reply.send({ rank: await setGuildRankDisplayName(rankIndex, displayName) });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "invalid_rank_display_name";
+      return reply.code(message === "unknown_guild_rank" ? 404 : 400).send({ error: message });
+    }
   });
 
   app.put("/admin/permissions/:capability", async (request, reply) => {
