@@ -46,6 +46,7 @@ export type WebViewer =
       identityProfileIconKey: string | null;
       identityProfileIconUrl: string | null;
       guildRankDisplayName: string | null;
+      guildRankIndex: number | null;
       mainCharacter: {
         characterId: string;
         realmId: string;
@@ -90,8 +91,8 @@ function renderMeControl(viewer: WebViewer, pathname: string): string {
     return `<a class="me-control" href="/auth/blizzard/start?return_to=${encodeURIComponent(pathname)}" aria-label="Sign in"><span>Sign in</span><span class="account-visual account-visual-generic">${userGlyph()}</span></a>`;
   }
   const moduleSections = viewer.presentationContributions.meMenuSections.map((render) => render(pathname)).join("\n");
-  const guildStanding = viewer.guildRankDisplayName
-    ? `<span class="me-identity-standing">${escapeHtml(viewer.guildRankDisplayName)}</span>`
+  const guildStanding = viewer.guildRankIndex !== null
+    ? `<span class="me-identity-standing">${escapeHtml(viewer.guildRankDisplayName ? `${viewer.guildRankDisplayName} · Rank ${viewer.guildRankIndex}` : `Rank ${viewer.guildRankIndex}`)}</span>`
     : "";
   return `<details class="me-menu menu-surface">
     <summary class="me-control"><span data-me-label>${escapeHtml(viewer.identityLabel)}</span><span class="account-visual ${viewer.identityProfileIconUrl ? "account-visual-portrait" : "account-visual-generic"}" data-me-visual>${viewer.identityProfileIconUrl ? `<img src="${escapeHtml(viewer.identityProfileIconUrl)}" alt="" referrerpolicy="no-referrer">` : userGlyph()}</span></summary>
