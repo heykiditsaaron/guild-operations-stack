@@ -4,7 +4,8 @@ for (const input of document.querySelectorAll("[data-rank-capability]")) {
     const rankIndex = Number(input.dataset.rankIndex);
     const previous = input.dataset.permittedRanks.split(",").filter(Boolean).map(Number);
     const next = input.checked ? [...new Set([...previous, rankIndex])].sort((a, b) => a - b) : previous.filter((rank) => rank !== rankIndex);
-    input.disabled = true;
+    const peers = [...document.querySelectorAll("[data-rank-capability]")].filter((peer) => peer.dataset.rankCapability === input.dataset.rankCapability);
+    for (const peer of peers) peer.disabled = true;
     if (status) status.textContent = "Saving…";
     try {
       const response = await fetch(`/admin/permissions/${encodeURIComponent(input.dataset.rankCapability)}`, {
@@ -14,17 +15,13 @@ for (const input of document.querySelectorAll("[data-rank-capability]")) {
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error ?? "Permission could not be saved");
-      for (const peer of document.querySelectorAll("[data-rank-capability]")) {
-        if (peer.dataset.rankCapability === input.dataset.rankCapability) {
-          peer.dataset.permittedRanks = body.permittedRanks.join(",");
-        }
-      }
+      for (const peer of peers) peer.dataset.permittedRanks = body.permittedRanks.join(",");
       if (status) status.textContent = "Saved.";
     } catch (error) {
       input.checked = !input.checked;
       if (status) status.textContent = error instanceof Error ? error.message : "Save failed.";
     } finally {
-      input.disabled = false;
+      for (const peer of peers) peer.disabled = Number(peer.dataset.rankIndex) === 0;
     }
   });
 }
