@@ -42,6 +42,8 @@ const apiLogger: FastifyBaseLogger = componentLogger("api");
 const app = Fastify({ loggerInstance: apiLogger, logController: new LogController({ disableRequestLogging: true }) });
 await app.register(cookie);
 
+let applicationReady = false;
+
 const maintenanceHtml = "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Service unavailable</title></head><body><main><h1>Service temporarily unavailable.</h1><p>Please contact your administrator.</p></main></body></html>";
 function sendMaintenance(request: { url: string; method: string }, reply: { code: (status: number) => any; header: (name: string, value: string) => any; type: (value: string) => any; send: (body: unknown) => any }) {
   reply.code(503).header("Cache-Control", "no-store").header("Retry-After", "10");
@@ -51,10 +53,15 @@ function sendMaintenance(request: { url: string; method: string }, reply: { code
 
 app.addHook("onRequest", async (request, reply) => {
   if (request.url.split("?")[0] === "/health") return;
-  if (!await databaseReady()) return sendMaintenance(request, reply);
+  if (!await databaseReady()) {
+    applicationReady = false;
+    return sendMaintenance(request, reply);
+  }
+  if (!applicationReady) return sendMaintenance(request, reply);
 });
 app.setErrorHandler((error, request, reply) => {
   if (isDatabaseUnavailable(error)) {
+    applicationReady = false;
     request.log.error({ err: error }, "Database unavailable during request");
     return sendMaintenance(request, reply);
   }
@@ -71,7 +78,11 @@ registerApplicationEmissionConsumers();
 registerGuildCapabilityPolicyObserver();
 
 app.get("/health", async (_request, reply) => {
-  if (!await databaseReady()) return reply.code(503).send({ status: "unavailable" });
+  if (!await databaseReady()) {
+    applicationReady = false;
+    return reply.code(503).send({ status: "unavailable" });
+  }
+  if (!applicationReady) return reply.code(503).send({ status: "unavailable" });
   return { status: "ok" };
 });
 
@@ -126,17 +137,23 @@ async function inspectReadiness(): Promise<void> {
   if (inspectingReadiness) return;
   inspectingReadiness = true;
   try {
-    if (!await databaseReady()) return;
+    if (!await databaseReady()) {
+      applicationReady = false;
+      return;
+    }
     await retryActivityPluginPersistence(app.log);
     const encryptedDataExists = await installationBlizzardEncryptedSecretExists() || await discordEncryptedSecretsExist();
     installationSecretKey({ encryptedDataExists });
     await loadDiscordInteractionPublicKey();
     if (await installationOperational()) startOperationalBackgroundWork();
+    applicationReady = true;
   } catch (error) {
     if (isDatabaseUnavailable(error)) {
+      applicationReady = false;
       app.log.warn({ err: error }, "Database connection lost during readiness inspection; retrying");
       return;
     }
+    applicationReady = false;
     app.log.fatal({ err: error }, "Installation readiness failed; API cannot safely continue");
     process.exitCode = 1;
     if (readinessTimer) clearInterval(readinessTimer);
