@@ -157,7 +157,7 @@ function renderActionBar(viewer: WebViewer, pathname: string): string {
       { label: "General", href: "/admin/general" },
       { label: "Homepage", href: "/admin/homepage" },
       { label: "Add-ons", href: "/admin/modules" },
-      { label: "Permissions", href: "/admin/permissions" },
+      { label: "Ranks", href: "/admin/permissions" },
       { label: "Logs", href: "/admin/history" },
       ...(discordAdministrationAvailable ? [{ label: "Discord", href: "/admin/discord" }] : []),
     ];
