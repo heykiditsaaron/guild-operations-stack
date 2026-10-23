@@ -106,7 +106,7 @@ jobs:
         run: npm run typecheck
 
       - name: Test Administration
-        run: node --import tsx --test tests/system-administration.test.ts
+        run: node --import tsx --test tests/system-administration*.test.ts
 
       - name: Build Administration
         run: npm run build
