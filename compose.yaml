@@ -34,7 +34,7 @@ services:
       GUILD_OPERATIONS_PROCESS: api
       LOG_LEVEL: ${LOG_LEVEL:-info}
     ports:
-      - "${HTTP_PORT:-3100}:3100"
+      - "${HTTP_PORT:-3000}:3100"
     volumes:
       - guild-operations-installation:/var/lib/guild-operations
     depends_on:
