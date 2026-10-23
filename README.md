@@ -16,11 +16,11 @@ Clone the repository and start the application:
     cd guild-operations-stack
     docker compose up -d
 
-The web service is published on host port 3100 by default. Browse to the address through which members will reach the application. A new installation automatically redirects the root URL to /setup.
+The web service is published on host port 3000 by default. Browse to the address through which members will reach the application. A new installation automatically redirects the root URL to /setup.
 
 ### Optional deployment settings
 
-No .env file is required for an ordinary installation. If host port 3100 is occupied, create .env in the repository root containing:
+No .env file is required for an ordinary installation. If host port 3000 is occupied, create .env in the repository root containing:
 
     HTTP_PORT=8765
 
@@ -29,6 +29,8 @@ A published image may also be pinned instead of using the default latest tag:
     GUILD_OPERATIONS_VERSION=v0.1.0
 
 These are deployment choices, not application configuration. Docker Compose reads these settings from the deployment's `.env` file automatically, including when invoked by `./go`. For a development deployment, set `GUILD_OPERATIONS_VERSION=dev` in `.env` once rather than prefixing every command with it.
+
+System Administration is bootstrapped independently, bound to `127.0.0.1:3001` by default, and can use a different host port via `ADMIN_HOST_PORT`. See [System Administration bootstrap](docs/system-administration-bootstrap.md). The application and Administration ports are independent.
 
 ### Host Tools
 
