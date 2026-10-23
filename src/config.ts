@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { runtimeDatabaseConnectionString } from "./system-administration/database-runtime.js";
 
 export type Region = "us" | "eu" | "kr" | "tw";
 
@@ -26,7 +27,7 @@ export function parseRegion(value: unknown): Region | null {
 
 export const config = {
   port,
-  databaseUrl: "postgres://guild_operations:guild_operations@db:5432/guild_operations",
+  get databaseUrl() { return runtimeDatabaseConnectionString(); },
   authAttemptTtlMinutes: 10,
   sessionTtlDays: 30,
   developmentAuthorityGuildieId: development ? optional("DEVELOPMENT_AUTHORITY_GUILDIE_ID") : null,
