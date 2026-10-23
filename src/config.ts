@@ -26,7 +26,7 @@ export function parseRegion(value: unknown): Region | null {
 
 export const config = {
   port,
-  databaseUrl: "postgres://guild_operations:guild_operations@db:5432/guild_operations",
+  databaseUrl: required("DATABASE_URL"),
   authAttemptTtlMinutes: 10,
   sessionTtlDays: 30,
   developmentAuthorityGuildieId: development ? optional("DEVELOPMENT_AUTHORITY_GUILDIE_ID") : null,
