@@ -1,8 +1,8 @@
 import { Pool, type PoolClient } from "pg";
 import { componentLogger } from "./core/runtime-logger.js";
-const PACKAGED_DATABASE_URL = "postgres://guild_operations:guild_operations@db:5432/guild_operations";
+import { runtimeDatabaseConnectionString } from "./system-administration/database-runtime.js";
 
-export const pool = new Pool({ connectionString: PACKAGED_DATABASE_URL, connectionTimeoutMillis: 5000 });
+export const pool = new Pool({ connectionString: runtimeDatabaseConnectionString(), connectionTimeoutMillis: 5000 });
 
 // Idle PostgreSQL connections emit errors outside request/transaction promises.
 pool.on("error", (error) => {
