@@ -1,13 +1,19 @@
 import Fastify from "fastify";
 import { administrationStatus } from "./operations.js";
+import { validAdministratorCredential } from "./authorization.js";
 
-export function createAdministrationServer() {
+export function createAdministrationServer(directory?: string) {
   const app = Fastify({ logger: true });
   app.get("/health", async () => ({ status: "ok" }));
   // Installation identifiers and state are not exposed over unauthenticated HTTP.
   app.get("/status", async () => {
     const state = await administrationStatus();
     return { status: state.status, initialized: state.initialized };
+  });
+  app.get("/administration/installation", async (request, reply) => {
+    const match = /^Bearer ([0-9a-f]{64})$/.exec(request.headers.authorization || "");
+    if (!match || !(await validAdministratorCredential(match[1], directory))) return reply.code(401).send({ error: "Unauthorized" });
+    return administrationStatus(directory);
   });
   return app;
 }
