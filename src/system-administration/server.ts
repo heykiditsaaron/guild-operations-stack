@@ -57,6 +57,8 @@ if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).
   const app = createAdministrationServer();
   const port = Number(process.env.GUILD_OPERATIONS_ADMIN_PORT || "3103");
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("Invalid administration port");
-  // Remains local-only; browser access through remote networks is not yet supported.
-  await app.listen({ host: "127.0.0.1", port });
+  // Container networking requires an internal wildcard bind; publish only to host loopback.
+  const host = process.env.GUILD_OPERATIONS_ADMIN_BIND_HOST || "127.0.0.1";
+  if (host !== "127.0.0.1" && host !== "0.0.0.0") throw new Error("Invalid administration bind host");
+  await app.listen({ host, port });
 }
