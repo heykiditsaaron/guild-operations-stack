@@ -161,24 +161,31 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          project="go-admin-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          export ADMIN_HOST_PORT=0
+          name="go-admin-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          volume="${name}-state"
+          image="guild-operations-administration-ci:${{ github.sha }}"
           cleanup() {
-            docker compose -p "$project" -f compose.administration.yaml down --remove-orphans || true
-            docker volume rm "${project}_administration-state" >/dev/null 2>&1 || true
+            docker rm -f "$name" >/dev/null 2>&1 || true
+            docker volume rm "$volume" >/dev/null 2>&1 || true
           }
           trap cleanup EXIT
-          docker compose -p "$project" -f compose.administration.yaml up -d --build
+          docker volume create "$volume"
+          start_admin() {
+            docker run -d --name "$name" \
+              -v "$volume:/var/lib/guild-operations-administration" \
+              "$image" >/dev/null
+          }
+          start_admin
           for attempt in $(seq 1 30); do
-            if docker compose -p "$project" -f compose.administration.yaml exec -T administration node -e 'fetch("http://127.0.0.1:3103/health").then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))'; then
+            if docker exec "$name" node -e 'fetch("http://127.0.0.1:3103/health").then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))'; then
               break
             fi
-            if [ "$attempt" -eq 30 ]; then exit 1; fi
+            if [ "$attempt" -eq 30 ]; then docker logs "$name"; exit 1; fi
             sleep 1
           done
-          admin() { docker compose -p "$project" -f compose.administration.yaml exec -T administration node dist/system-administration/cli.js "$@"; }
-          admin initialize
-          admin status > "$RUNNER_TEMP/admin-before.json"
-          docker compose -p "$project" -f compose.administration.yaml up -d --force-recreate --no-build
-          admin status > "$RUNNER_TEMP/admin-after.json"
+          docker exec "$name" node dist/system-administration/cli.js initialize
+          docker exec "$name" node dist/system-administration/cli.js status > "$RUNNER_TEMP/admin-before.json"
+          docker rm -f "$name"
+          start_admin
+          docker exec "$name" node dist/system-administration/cli.js status > "$RUNNER_TEMP/admin-after.json"
           node -e 'const fs=require("fs");const a=JSON.parse(fs.readFileSync(process.argv[1]));const b=JSON.parse(fs.readFileSync(process.argv[2]));if(!a.initialized||a.installation.installationId!==b.installation.installationId)process.exit(1)' "$RUNNER_TEMP/admin-before.json" "$RUNNER_TEMP/admin-after.json"
