@@ -4,11 +4,12 @@ import { establishAdministratorCredential, rotateAdministratorCredential } from 
 import { readDatabaseConfiguration, publicDatabaseConfiguration, writeDatabaseConfiguration } from "./database-configuration.js";
 import { readFile } from "node:fs/promises";
 import { deploymentReadiness } from "./deployment-readiness.js";
+import { createDeploymentPlan } from "./deployment-plan.js";
 
 async function main(): Promise<void> {
   const command = argv[2] || "help";
   if (command === "help") {
-    stdout.write("System Administration (foundation)\nCommands: help, status, initialize, enroll-administrator, rotate-administrator, database-status, database-configure <json-file>, deployment-check\n");
+    stdout.write("System Administration (foundation)\nCommands: help, status, initialize, enroll-administrator, rotate-administrator, database-status, database-configure <json-file>, deployment-check, deployment-plan <compose-directory>\n");
   } else if (command === "status") {
     stdout.write(JSON.stringify(await administrationStatus(), null, 2) + "\n");
   } else if (command === "initialize") {
@@ -21,6 +22,9 @@ async function main(): Promise<void> {
     const result = await deploymentReadiness();
     stdout.write(JSON.stringify(result, null, 2) + "\n");
     if (!result.ready) process.exitCode = 1;
+  } else if (command === "deployment-plan") {
+    if (!argv[3]) throw new Error("Usage: deployment-plan <compose-directory>");
+    stdout.write(JSON.stringify(await createDeploymentPlan(argv[3]), null, 2) + "\n");
   } else if (command === "database-status") {
     stdout.write(JSON.stringify(publicDatabaseConfiguration(await readDatabaseConfiguration()), null, 2) + "\n");
   } else if (command === "database-configure") {
