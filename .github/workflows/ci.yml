@@ -153,3 +153,31 @@ jobs:
           done
           test "$ready" -eq 1
           node -e 'fetch("http://127.0.0.1:31393/status").then(r=>r.json()).then(j=>{if(!j.initialized||"installation" in j)process.exit(1)}).catch(()=>process.exit(1))'
+
+      - name: Build independent Administration image
+        run: docker build -f Dockerfile.administration -t guild-operations-administration-ci:${{ github.sha }} .
+
+      - name: Verify mastercontainer startup and persistent state
+        shell: bash
+        run: |
+          set -euo pipefail
+          project="go-admin-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          cleanup() {
+            docker compose -p "$project" -f compose.administration.yaml down --remove-orphans || true
+            docker volume rm "${project}_administration-state" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          docker compose -p "$project" -f compose.administration.yaml up -d --build
+          for attempt in $(seq 1 30); do
+            if docker compose -p "$project" -f compose.administration.yaml exec -T administration node -e 'fetch("http://127.0.0.1:3103/health").then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))'; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then exit 1; fi
+            sleep 1
+          done
+          admin() { docker compose -p "$project" -f compose.administration.yaml exec -T administration node dist/system-administration/cli.js "$@"; }
+          admin initialize
+          admin status > "$RUNNER_TEMP/admin-before.json"
+          docker compose -p "$project" -f compose.administration.yaml up -d --force-recreate --no-build
+          admin status > "$RUNNER_TEMP/admin-after.json"
+          node -e 'const fs=require("fs");const a=JSON.parse(fs.readFileSync(process.argv[1]));const b=JSON.parse(fs.readFileSync(process.argv[2]));if(!a.initialized||a.installation.installationId!==b.installation.installationId)process.exit(1)' "$RUNNER_TEMP/admin-before.json" "$RUNNER_TEMP/admin-after.json"
