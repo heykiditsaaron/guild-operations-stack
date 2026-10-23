@@ -1,5 +1,5 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import { chmod, mkdir, open, readFile } from "node:fs/promises";
+import { chmod, mkdir, open, readFile, rename, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { administrationDataDirectory } from "./state.js";
 
@@ -43,4 +43,26 @@ export async function validAdministratorCredential(candidate: unknown, directory
   const stored = await readAdministratorCredential(directory);
   if (!stored) return false;
   return timingSafeEqual(Buffer.from(digest(candidate), "hex"), Buffer.from(stored, "hex"));
+}
+
+/** Explicit host-local recovery. Requires filesystem access to the Administration data directory. */
+export async function rotateAdministratorCredential(directory = administrationDataDirectory()): Promise<string> {
+  await mkdir(directory, { recursive: true, mode: 0o700 });
+  // Refuse to silently repair malformed credential files.
+  await readAdministratorCredential(directory);
+  const token = randomBytes(32).toString("hex");
+  const temporary = join(directory, `.administrator-credential-${randomBytes(16).toString("hex")}.tmp`);
+  const handle = await open(temporary, "wx", 0o600);
+  try {
+    await handle.writeFile(digest(token) + "\n");
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+  try {
+    await rename(temporary, join(directory, "administrator-credential.sha256"));
+  } finally {
+    await rm(temporary, { force: true });
+  }
+  return token;
 }
