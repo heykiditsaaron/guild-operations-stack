@@ -19,6 +19,8 @@ services:
       db:
         condition: service_healthy
     command: node dist/migrate.js
+    volumes:
+      - /var/lib/guild-operations-administration:/var/lib/guild-operations-administration:ro
     environment:
       GUILD_OPERATIONS_PROCESS: migrate
     logging:
@@ -37,6 +39,7 @@ services:
       - "${HTTP_PORT:-3100}:3100"
     volumes:
       - guild-operations-installation:/var/lib/guild-operations
+      - /var/lib/guild-operations-administration:/var/lib/guild-operations-administration:ro
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -55,6 +58,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
     volumes:
       - guild-operations-installation:/var/lib/guild-operations
+      - /var/lib/guild-operations-administration:/var/lib/guild-operations-administration:ro
     depends_on:
       migrate:
         condition: service_completed_successfully
