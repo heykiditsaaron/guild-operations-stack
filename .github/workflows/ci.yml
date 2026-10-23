@@ -12,8 +12,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify:
-    name: Verify
+  application:
+    name: Application verification
     runs-on:
       - self-hosted
       - linux
@@ -79,3 +79,69 @@ jobs:
           mkdir -p src/activities
           npm run typecheck
           npm run build
+
+  administration:
+    name: Administration verification
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+      - guild-operations
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck Administration
+        run: npm run typecheck
+
+      - name: Test Administration
+        run: node --import tsx --test tests/system-administration.test.ts
+
+      - name: Build Administration
+        run: npm run build
+
+      - name: Prove standalone Administration startup without PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          export GUILD_OPERATIONS_ADMIN_DATA_DIR="$(mktemp -d)"
+          export GUILD_OPERATIONS_ADMIN_PORT=31393
+          cleanup() {
+            if [ -n "${admin_pid:-}" ]; then
+              kill "$admin_pid" 2>/dev/null || true
+              wait "$admin_pid" 2>/dev/null || true
+            fi
+            rm -rf "$GUILD_OPERATIONS_ADMIN_DATA_DIR"
+          }
+          trap cleanup EXIT
+          node dist/system-administration/cli.js status > "$GUILD_OPERATIONS_ADMIN_DATA_DIR/before.json"
+          node dist/system-administration/cli.js initialize > "$GUILD_OPERATIONS_ADMIN_DATA_DIR/initialized.json"
+          node dist/system-administration/cli.js status > "$GUILD_OPERATIONS_ADMIN_DATA_DIR/after.json"
+          node -e 'const fs=require("node:fs");const d=process.env.GUILD_OPERATIONS_ADMIN_DATA_DIR;const before=JSON.parse(fs.readFileSync(d+"/before.json"));const after=JSON.parse(fs.readFileSync(d+"/after.json"));if(before.initialized||!after.initialized||!after.installation?.installationId)process.exit(1)'
+          node dist/system-administration/server.js &
+          admin_pid=$!
+          ready=0
+          for attempt in $(seq 1 30); do
+            if ! kill -0 "$admin_pid" 2>/dev/null; then
+              echo "Administration process exited before readiness"
+              exit 1
+            fi
+            if node -e 'fetch("http://127.0.0.1:31393/health").then(r=>r.json()).then(j=>{if(j.status!=="ok")process.exit(1)}).catch(()=>process.exit(1))'; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          test "$ready" -eq 1
+          node -e 'fetch("http://127.0.0.1:31393/status").then(r=>r.json()).then(j=>{if(!j.initialized||"installation" in j)process.exit(1)}).catch(()=>process.exit(1))'
