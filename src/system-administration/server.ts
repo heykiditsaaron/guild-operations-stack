@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import { administrationStatus } from "./operations.js";
 import { AdministrationSessions } from "./sessions.js";
+import { readDatabaseConfiguration, publicDatabaseConfiguration } from "./database-configuration.js";
 
 const COOKIE_NAME = "go_admin_session";
 
@@ -34,6 +35,11 @@ export function createAdministrationServer(directory?: string) {
   app.get("/administration/installation", async (request, reply) => {
     if (!(await sessions.valid(readSessionCookie(request.headers.cookie)))) return reply.code(401).send({ error: "Unauthorized" });
     return reply.header("Cache-Control", "no-store").send(await administrationStatus(directory));
+  });
+
+  app.get("/administration/database", async (request, reply) => {
+    if (!(await sessions.valid(readSessionCookie(request.headers.cookie)))) return reply.code(401).send({ error: "Unauthorized" });
+    return reply.header("Cache-Control", "no-store").send(publicDatabaseConfiguration(await readDatabaseConfiguration(directory)));
   });
 
   app.post("/administration/logout", async (request, reply) => {
