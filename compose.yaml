@@ -21,6 +21,7 @@ services:
     command: node dist/migrate.js
     environment:
       GUILD_OPERATIONS_PROCESS: migrate
+      DATABASE_URL: ${DATABASE_URL:-postgres://guild_operations:guild_operations@db:5432/guild_operations}
     logging:
       driver: json-file
       options:
@@ -32,6 +33,7 @@ services:
     image: ghcr.io/heykiditsaaron/guild-operations:${GUILD_OPERATIONS_VERSION:-latest}
     environment:
       GUILD_OPERATIONS_PROCESS: api
+      DATABASE_URL: ${DATABASE_URL:-postgres://guild_operations:guild_operations@db:5432/guild_operations}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     ports:
       - "${HTTP_PORT:-3100}:3100"
@@ -52,6 +54,7 @@ services:
     command: node dist/discord.js
     environment:
       GUILD_OPERATIONS_PROCESS: discord
+      DATABASE_URL: ${DATABASE_URL:-postgres://guild_operations:guild_operations@db:5432/guild_operations}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     volumes:
       - guild-operations-installation:/var/lib/guild-operations

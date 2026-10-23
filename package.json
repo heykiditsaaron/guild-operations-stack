@@ -14,7 +14,7 @@
     "guild:sync": "tsx src/sync-guild.ts",
     "guild:enrich": "tsx src/enrich-guild-characters.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --import tsx --test tests/*.test.ts",
+    "test": "DATABASE_URL=postgresql://test:test@127.0.0.1:5432/guild_operations_test node --import tsx --test tests/*.test.ts",
     "check:boundaries": "node scripts/check-raffle-application-boundary.mjs"
   },
   "dependencies": {

@@ -2,12 +2,6 @@ import "dotenv/config";
 
 export type Region = "us" | "eu" | "kr" | "tw";
 
-const required = (name: string): string => {
-  const value = process.env[name];
-  if (!value) throw new Error(`Missing required environment variable: ${name}`);
-  return value;
-};
-
 const optional = (name: string): string | null => {
   const value = process.env[name]?.trim();
   return value ? value : null;
@@ -26,7 +20,11 @@ export function parseRegion(value: unknown): Region | null {
 
 export const config = {
   port,
-  databaseUrl: "postgres://guild_operations:guild_operations@db:5432/guild_operations",
+  get databaseUrl(): string {
+    const value = optional("DATABASE_URL");
+    if (!value) throw new Error("Missing required environment variable: DATABASE_URL");
+    return value;
+  },
   authAttemptTtlMinutes: 10,
   sessionTtlDays: 30,
   developmentAuthorityGuildieId: development ? optional("DEVELOPMENT_AUTHORITY_GUILDIE_ID") : null,
