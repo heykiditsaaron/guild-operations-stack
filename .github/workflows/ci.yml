@@ -162,6 +162,7 @@ jobs:
         run: |
           set -euo pipefail
           project="go-admin-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          export ADMIN_HOST_PORT=0
           cleanup() {
             docker compose -p "$project" -f compose.administration.yaml down --remove-orphans || true
             docker volume rm "${project}_administration-state" >/dev/null 2>&1 || true
