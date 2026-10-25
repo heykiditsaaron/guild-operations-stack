@@ -58,17 +58,17 @@ export async function discordIntegrationConfiguration(): Promise<DiscordIntegrat
   return {
     enabled: row.enabled && credentialsMatch,
     applicationId: hostCredentials.applicationId,
-    applicationName: row.application_name,
+    applicationName: credentialsMatch ? row.application_name : null,
     applicationVerifiedAt: credentialsMatch ? row.application_verified_at : null,
-    interactionPublicKey: row.interaction_public_key,
-    botUserId: row.bot_user_id,
-    botUsername: row.bot_username,
+    interactionPublicKey: credentialsMatch ? row.interaction_public_key : null,
+    botUserId: credentialsMatch ? row.bot_user_id : null,
+    botUsername: credentialsMatch ? row.bot_username : null,
     clientSecret: hostCredentials.clientSecret,
     botToken: hostCredentials.botToken,
-    discordGuildId: row.discord_guild_id,
-    articleChannelId: row.article_channel_id,
-    raidChannelId: row.raid_channel_id,
-    raffleChannelId: row.raffle_channel_id,
+    discordGuildId: credentialsMatch ? row.discord_guild_id : null,
+    articleChannelId: credentialsMatch ? row.article_channel_id : null,
+    raidChannelId: credentialsMatch ? row.raid_channel_id : null,
+    raffleChannelId: credentialsMatch ? row.raffle_channel_id : null,
   };
 }
 
