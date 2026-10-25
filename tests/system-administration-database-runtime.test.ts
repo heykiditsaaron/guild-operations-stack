@@ -7,11 +7,19 @@ import { databaseConnectionString, runtimeDatabaseConnectionString } from "../sr
 
 test("runtime refuses to start with missing or malformed Administration database state", () => {
   const directory = mkdtempSync(join(tmpdir(), "go-runtime-db-"));
+  const previousUrl = process.env.DATABASE_URL;
+  const previousFile = process.env.DATABASE_URL_FILE;
   try {
+    delete process.env.DATABASE_URL;
+    delete process.env.DATABASE_URL_FILE;
     assert.throws(() => runtimeDatabaseConnectionString(directory), /not configured/);
     writeFileSync(join(directory, "database-configuration.json"), '{"schemaVersion":1,"mode":"external","connectionUrl":"http://bad"}');
     assert.throws(() => runtimeDatabaseConnectionString(directory), /PostgreSQL/);
-  } finally { rmSync(directory, { recursive: true, force: true }); }
+  } finally {
+    if (previousUrl === undefined) delete process.env.DATABASE_URL; else process.env.DATABASE_URL = previousUrl;
+    if (previousFile === undefined) delete process.env.DATABASE_URL_FILE; else process.env.DATABASE_URL_FILE = previousFile;
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("bundled and external runtime database connection semantics", () => {
