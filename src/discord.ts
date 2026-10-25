@@ -58,7 +58,7 @@ async function inspectDiscordState(): Promise<void> {
     }
   }
   const configuration = await discordIntegrationConfiguration();
-  if (configuration?.enabled && configuration.applicationVerifiedAt && !configuration.discordGuildId) {
+  if (configuration?.applicationVerifiedAt && !configuration.discordGuildId) {
     try {
       const server = await verifiedDiscordServer(configuration);
       await establishDiscordGuildBinding(server.id);
