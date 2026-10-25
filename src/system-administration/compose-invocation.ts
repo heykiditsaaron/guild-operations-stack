@@ -61,13 +61,14 @@ export function buildComposeInvocation(
     environment.GO_BUNDLED_POSTGRES_DATABASE = projection.bundledDatabase!;
     environment.GO_BUNDLED_POSTGRES_USERNAME = projection.bundledUsername!;
   }
+  const starting = request.action === "start";
   return {
     executable: "docker",
     arguments: [
       "compose", "-p", "guild-operations",
       "-f", base, "-f", overlay,
-      "up", "-d",
-      ...plan.services,
+      ...(starting ? ["start"] : ["up", "-d"]),
+      ...(starting ? plan.services.filter((service) => service !== "migrate") : plan.services),
     ],
     environment,
   };
@@ -89,7 +90,11 @@ export async function prepareLifecycleInvocation(
 ): Promise<ComposeInvocation> {
   const intent = await createLifecycleIntent(request, composeDirectory, administrationDirectory);
   if (intent.plan.databaseMode === "bundled") {
-    assertBundledClusterContinuity(await inspectBundledClusterVolume(inspect));
+    const evidence = await inspectBundledClusterVolume(inspect);
+    if (intent.request.action === "start" && evidence.kind === "absent") {
+      throw new Error("Cannot start a bundled installation before PostgreSQL storage exists");
+    }
+    assertBundledClusterContinuity(evidence);
   }
   return buildComposeInvocation(intent.request, intent.plan, projection);
 }
