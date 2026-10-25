@@ -35,7 +35,8 @@ test("external invocation cannot receive bundled secrets or services", () => {
   const invocation = buildComposeInvocation({ schemaVersion: 1, action: "start" }, external, {
     databaseConnectionFile: "/run/go/database-connection.json",
   });
-  assert.deepEqual(invocation.arguments.slice(-3), ["migrate", "api", "discord"]);
+  assert.deepEqual(invocation.arguments.slice(-3), ["start", "api", "discord"]);
+  assert.ok(!invocation.arguments.includes("migrate"));
   assert.deepEqual(Object.keys(invocation.environment), ["GO_RUNTIME_DATABASE_CONFIG_FILE"]);
   assert.throws(() => buildComposeInvocation({ schemaVersion: 1, action: "start" }, external, {
     databaseConnectionFile: "/run/go/database-connection.json",
@@ -44,4 +45,15 @@ test("external invocation cannot receive bundled secrets or services", () => {
   assert.throws(() => buildComposeInvocation({ schemaVersion: 1, action: "start" }, {
     ...external, services: ["db", "migrate", "api", "discord"],
   }, { databaseConnectionFile: "/run/go/database-connection.json" }), /Unexpected deployment services/);
+});
+
+test("bundled start never creates containers or reruns migration", () => {
+  const invocation = buildComposeInvocation({ schemaVersion: 1, action: "start" }, bundled, {
+    databaseConnectionFile: "/run/go/database-connection.json",
+    bundledPasswordFile: "/run/go/postgres-password",
+    bundledDatabase: "guild_operations", bundledUsername: "guild_operations",
+  });
+  assert.deepEqual(invocation.arguments.slice(-4), ["start", "db", "api", "discord"]);
+  assert.ok(!invocation.arguments.includes("up"));
+  assert.ok(!invocation.arguments.includes("migrate"));
 });
