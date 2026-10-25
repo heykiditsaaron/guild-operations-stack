@@ -32,3 +32,25 @@ test("host DATABASE_URL overrides legacy Administration state", () => {
     else process.env.DATABASE_URL = previous;
   }
 });
+
+test("protected DATABASE_URL_FILE takes precedence over legacy state and rejects ambiguity", () => {
+  const directory = mkdtempSync(join(tmpdir(), "go-db-secret-"));
+  const previousUrl = process.env.DATABASE_URL;
+  const previousFile = process.env.DATABASE_URL_FILE;
+  try {
+    const secret = join(directory, "database-url");
+    writeFileSync(secret, "postgresql://operator:password@postgres.example:5432/guild\\n".replace("\\n", "\n"), { mode: 0o600 });
+    delete process.env.DATABASE_URL;
+    process.env.DATABASE_URL_FILE = secret;
+    assert.equal(runtimeDatabaseConnectionString("/missing-admin-state"), "postgresql://operator:password@postgres.example:5432/guild");
+    process.env.DATABASE_URL = "postgresql://other:password@localhost:5432/other";
+    assert.throws(() => runtimeDatabaseConnectionString("/missing-admin-state"), /only one/);
+    delete process.env.DATABASE_URL;
+    writeFileSync(secret, "");
+    assert.throws(() => runtimeDatabaseConnectionString("/missing-admin-state"), /empty/);
+  } finally {
+    if (previousUrl === undefined) delete process.env.DATABASE_URL; else process.env.DATABASE_URL = previousUrl;
+    if (previousFile === undefined) delete process.env.DATABASE_URL_FILE; else process.env.DATABASE_URL_FILE = previousFile;
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
