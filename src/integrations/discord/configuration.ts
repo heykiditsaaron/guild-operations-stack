@@ -101,14 +101,14 @@ export async function establishHostDiscordApplication(input: {
   );
 }
 
-export async function pendingDiscordApplicationReplacement(): Promise<{ previousServerId: string } | null> {
+export async function pendingDiscordApplicationReplacement(): Promise<{ previousServerId: string | null } | null> {
   const host = hostDiscordCredentials();
   if (!host) return null;
   const result = await pool.query<{ application_id: string; discord_guild_id: string | null }>(
     "SELECT application_id, discord_guild_id FROM discord_integration_configuration WHERE singleton = true",
   );
   const row = result.rows[0];
-  return row && row.application_id !== host.applicationId && row.discord_guild_id
+  return row && row.application_id !== host.applicationId
     ? { previousServerId: row.discord_guild_id } : null;
 }
 
@@ -121,7 +121,7 @@ export async function reconnectHostDiscordApplication(input: {
   botUserId: string | null;
   botUsername: string | null;
   interactionPublicKey: string;
-  discordGuildId: string;
+  discordGuildId: string | null;
 }): Promise<boolean> {
   const host = hostDiscordCredentials();
   if (!host) throw new Error("discord_host_configuration_required");
@@ -131,7 +131,7 @@ export async function reconnectHostDiscordApplication(input: {
        SET enabled = false, application_id = $1, application_name = $2,
            application_verified_at = now(), bot_user_id = $3, bot_username = $4,
            interaction_public_key = $5, updated_at = now()
-       WHERE singleton = true AND application_id <> $1 AND discord_guild_id = $6`,
+       WHERE singleton = true AND application_id <> $1 AND discord_guild_id IS NOT DISTINCT FROM $6`,
     [host.applicationId, input.applicationName, input.botUserId, input.botUsername,
       input.interactionPublicKey, input.discordGuildId],
   );
