@@ -7,31 +7,11 @@ import {
   installationGuildBinding,
 } from "./guild-binding.js";
 import { discoverInstallationGuildCandidates } from "./guild-candidates.js";
-import { withTransaction } from "../../db.js";
-import { validSetupAuthorization } from "./setup-authorization.js";
 
 export async function registerInstallationRoutes(
   app: FastifyInstance,
   options: { onOperational?: () => void | Promise<void> } = {},
 ): Promise<void> {
-  app.post("/installation/restart", async (request, reply) => {
-    if (!validSetupAuthorization(request.headers["x-setup-authorization"])) return reply.code(403).send({ error: "setup_authorization_required" });
-    const binding = await installationGuildBinding();
-    if (binding?.authorizedAt) {
-      return reply.code(409).send({ error: "operational_installation_cannot_restart_setup" });
-    }
-
-    await withTransaction(async (client) => {
-      await client.query("DELETE FROM installation_guild_binding WHERE singleton = true");
-      await client.query("DELETE FROM installation_blizzard_configuration WHERE singleton = true");
-      await client.query("DELETE FROM installation_web_configuration WHERE singleton = true");
-      await client.query("DELETE FROM authentication_attempts");
-      await client.query("UPDATE application_sessions SET revoked_at = now() WHERE revoked_at IS NULL");
-    });
-    reply.clearCookie(SESSION_COOKIE_NAME, { path: "/" });
-    return reply.code(204).send();
-  });
-
   app.get("/installation", async (request, reply) => {
     const binding = await installationGuildBinding();
     const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
