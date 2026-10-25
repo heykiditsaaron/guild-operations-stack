@@ -1,12 +1,4 @@
-import type { FastifyRequest } from "fastify";
-import { pool } from "../../db.js";
-
-function firstHeaderValue(value: string | string[] | undefined): string | null {
-  const raw = Array.isArray(value) ? value[0] : value;
-  // Do not silently accept the first value from a potentially forged chain.
-  if (!raw || raw.includes(",")) return null;
-  return raw.trim() || null;
-}
+import { readFileSync } from "node:fs";
 
 export function normalizeOrigin(value: string): string {
   const url = new URL(value);
@@ -15,55 +7,21 @@ export function normalizeOrigin(value: string): string {
   return url.origin;
 }
 
-export function publicOriginForRequest(request: FastifyRequest): string {
-  const forwardedProto = request.headers["x-forwarded-proto"];
-  const forwardedHost = request.headers["x-forwarded-host"];
-  if ((forwardedProto !== undefined && !firstHeaderValue(forwardedProto)) ||
-      (forwardedHost !== undefined && !firstHeaderValue(forwardedHost))) {
-    throw new Error("Ambiguous forwarded origin headers");
-  }
-  const protocol = firstHeaderValue(forwardedProto) ?? request.protocol;
-  const host = firstHeaderValue(forwardedHost) ?? request.headers.host;
-  if (!host || Array.isArray(host)) throw new Error("Request did not provide a public host");
-  return normalizeOrigin(`${protocol}://${host}`);
-}
-
-export async function installationPublicOrigin(): Promise<string | null> {
-  const result = await pool.query<{ public_origin: string }>("SELECT public_origin FROM installation_web_configuration WHERE singleton = true");
-  return result.rows[0]?.public_origin ?? null;
+/** The canonical public origin is supplied by the host, never inferred from request headers. */
+export async function installationPublicOrigin(env: NodeJS.ProcessEnv = process.env): Promise<string | null> {
+  const direct = env.PUBLIC_ORIGIN?.trim();
+  const file = env.PUBLIC_ORIGIN_FILE?.trim();
+  if (direct && file) throw new Error("Configure only one of PUBLIC_ORIGIN or PUBLIC_ORIGIN_FILE");
+  const configured = file ? readFileSync(file, "utf8").trim() : direct;
+  return configured ? normalizeOrigin(configured) : null;
 }
 
 export async function requireInstallationPublicOrigin(): Promise<string> {
   const origin = await installationPublicOrigin();
-  if (!origin) throw new Error("Installation public origin has not been established");
+  if (!origin) throw new Error("Installation public origin is not configured on the host");
   return origin;
-}
-
-export async function establishInstallationPublicOrigin(origin: string): Promise<string> {
-  const normalized = normalizeOrigin(origin);
-  await pool.query(`INSERT INTO installation_web_configuration (singleton, public_origin) VALUES (true, $1) ON CONFLICT (singleton) DO NOTHING`, [normalized]);
-  const established = await requireInstallationPublicOrigin();
-  if (established !== normalized) throw new Error(`Installation public origin is already established as ${established}`);
-  return established;
 }
 
 export async function installationAbsoluteUrl(pathname: string): Promise<string> {
   return new URL(pathname, await requireInstallationPublicOrigin()).toString();
-}
-
-/**
- * Relocation is an explicit, authenticated administrative operation.
- * Never derive a replacement origin from untrusted forwarding headers.
- */
-export async function relocateInstallationPublicOrigin(expectedOrigin: string, nextOrigin: string): Promise<string | null> {
-  const expected = normalizeOrigin(expectedOrigin);
-  const next = normalizeOrigin(nextOrigin);
-  const result = await pool.query<{ public_origin: string }>(
-    `UPDATE installation_web_configuration
-        SET public_origin = $1
-      WHERE singleton = true AND public_origin = $2
-      RETURNING public_origin`,
-    [next, expected],
-  );
-  return result.rows[0]?.public_origin ?? null;
 }
