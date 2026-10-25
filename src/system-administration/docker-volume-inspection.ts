@@ -8,7 +8,11 @@ const execFileAsync = promisify(execFile);
 export type DockerInspect = (args: readonly string[]) => Promise<{ stdout: string }>;
 
 export async function systemDockerInspect(args: readonly string[]): Promise<{ stdout: string }> {
-  const result = await execFileAsync("docker", [...args], {
+  if (JSON.stringify(args) !== JSON.stringify([
+    "volume", "inspect", "guild-operations_guild-operations-db", "--format", "{{json .}}",
+  ])) throw new Error("Unsupported Docker inspection");
+  const result = await execFileAsync("/usr/bin/docker", [...args], {
+    env: { PATH: "/usr/bin:/bin", HOME: "/" },
     timeout: 10000,
     maxBuffer: 1024 * 1024,
   });
