@@ -13,3 +13,6 @@ Thumbs.db
 
 .vscode/
 .idea/
+
+# Host-managed credential files (never commit).
+/secrets/
