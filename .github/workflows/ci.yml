@@ -41,12 +41,7 @@ jobs:
         run: npm run typecheck
 
       - name: Establish isolated test database configuration
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "GUILD_OPERATIONS_ADMIN_DATA_DIR=$RUNNER_TEMP/go-application-test-admin-$GITHUB_RUN_ID" >> "$GITHUB_ENV"
-          mkdir -p "$RUNNER_TEMP/go-application-test-admin-$GITHUB_RUN_ID"
-          node -e 'const fs=require("node:fs");const path=require("node:path");const dir=path.join(process.env.RUNNER_TEMP,"go-application-test-admin-"+process.env.GITHUB_RUN_ID);fs.writeFileSync(path.join(dir,"database-configuration.json"),JSON.stringify({schemaVersion:1,mode:"bundled",database:"guild_operations_test",username:"guild_operations_test",password:"test-only-not-a-production-password"}),{mode:0o600})'
+        run: echo "DATABASE_URL=postgresql://guild_operations_test:test-only-not-a-production-password@127.0.0.1:5432/guild_operations_test" >> "$GITHUB_ENV"
 
       - name: Test
         run: npm test
