@@ -35,6 +35,9 @@ services:
       GUILD_OPERATIONS_PROCESS: api
       DATABASE_URL: ${DATABASE_URL:-postgresql://guild_operations:guild_operations@db:5432/guild_operations}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-}
+      BLIZZARD_CLIENT_ID: ${BLIZZARD_CLIENT_ID:-}
+      BLIZZARD_CLIENT_SECRET: ${BLIZZARD_CLIENT_SECRET:-}
     ports:
       - "${HTTP_PORT:-3000}:3100"
     volumes:
@@ -56,6 +59,9 @@ services:
       GUILD_OPERATIONS_PROCESS: discord
       DATABASE_URL: ${DATABASE_URL:-postgresql://guild_operations:guild_operations@db:5432/guild_operations}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-}
+      BLIZZARD_CLIENT_ID: ${BLIZZARD_CLIENT_ID:-}
+      BLIZZARD_CLIENT_SECRET: ${BLIZZARD_CLIENT_SECRET:-}
     volumes:
       - guild-operations-installation:/var/lib/guild-operations
     depends_on:
