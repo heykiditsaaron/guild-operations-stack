@@ -5,13 +5,13 @@ import { installationAbsoluteUrl } from "../../core/installation/public-origin.j
 import {
   discordIntegrationConfiguration,
   markDiscordApplicationEstablished,
-  replaceDiscordApplicationCredentials,
   setDiscordIntegrationEnabled,
   setDiscordArticleChannel,
   setDiscordRaidChannel,
   setDiscordRaffleChannel,
 } from "../../integrations/discord/configuration.js";
 import { cacheDiscordInteractionPublicKey, loadDiscordInteractionPublicKey } from "../../integrations/discord/interaction-key.js";
+import { hostDiscordCredentials } from "../../integrations/discord/host-credentials.js";
 import { discordBotInstallUrl, verifyDiscordApplication, discordServerRoles, discordServerMember, discordRoleReadiness, discordServerChannels, discordApplicationEmojis, discordApplicationEmojiMarkup, discordChannelMessage, DISCORD_TEXT_CHANNEL, DISCORD_ANNOUNCEMENT_CHANNEL } from "../../integrations/discord/api.js";
 import { provisionDiscordPresentationEmojis } from "../../integrations/discord/application-emojis.js";
 import { publishOperationalRecord } from "../../operational-inspection.js";
@@ -162,32 +162,20 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
         <h2 id="discord-heading">Discord Integration</h2>
         <div class="settings-panel">
           <div><h3>Status</h3><p><strong>${htmlText(readiness)}</strong></p>${configuration?.applicationVerifiedAt ? `<p>Application: ${htmlText(configuration.applicationName ?? configuration.applicationId)}${configuration.botUsername ? ` · Bot: ${htmlText(configuration.botUsername)}` : ""}</p>` : ""}<p>Discord remains authoritative for Discord application and server authorization. Guild Operations stores only the relationship and credentials needed to operate the Integration.</p></div>
-          <form class="discord-setup-guide discord-credential-form" method="post" action="/admin/discord">
-            <h3>Set up your Discord application</h3>
-            <p>Guild Operations uses a Discord application owned by your guild. Discord creates its bot user automatically.</p>
-            <ol class="discord-setup-steps">
-              <li><strong>Create the application.</strong> Open the <a href="https://discord.com/developers/applications" target="_blank" rel="noreferrer">Discord Developer Portal</a>, select <strong>New Application</strong>, and name it. Find the Application ID under <strong>General Information</strong>.
-                <label class="discord-field"><span>Application ID</span><input name="application_id" value="${htmlText(configuration?.applicationId ?? "")}" required></label>
-              </li>
-              <li><strong>Configure OAuth.</strong> Under <strong>OAuth2</strong>, register this exact redirect URI:
-                <div class="discord-callback"><code>${htmlText(callbackUrl)}</code><button type="button" class="button-secondary" data-copy-discord-callback>Copy</button></div>
-                Then copy or reset the Client Secret.
-                <label class="discord-field"><span>Client secret</span><input type="password" name="client_secret" autocomplete="new-password"${configuration ? "" : " required"}><small>${configuration ? "Leave blank to retain the stored secret." : "Required for initial setup."}</small></label>
-              </li>
-              <li><strong>Configure the bot.</strong> Open <strong>Bot</strong> in the Developer Portal and copy or reset the bot Token. Treat it as a password.
-                <label class="discord-field"><span>Bot token</span><input type="password" name="bot_token" autocomplete="new-password"${configuration ? "" : " required"}><small>${configuration ? "Leave blank to retain the stored token." : "Required for initial setup."}</small></label>
-              </li>
-              <li><strong>Verify the application.</strong> Guild Operations checks that the bot token belongs to the specified application.
-                <button type="submit" class="button-primary discord-verify-action">Save and verify Discord application</button>
-              </li>
-              <li><strong>Discord interactions.</strong> Raid signup and withdrawal buttons use the existing Discord bot connection automatically. No Interactions Endpoint URL is required. In the Discord Developer Portal under <strong>General Information</strong>, leave the <strong>Interactions Endpoint URL</strong> empty so Discord delivers interactions through the Gateway.
-              </li>
-            </ol>
-            <div class="discord-enablement-row">
-              <div><strong>Discord Integration</strong><p>Enable Discord once you want Guild Operations to operate the connection. Setup and verification can be completed while disabled.</p></div>
-              <label class="switch discord-enablement"><input type="checkbox" name="enabled" value="true"${configuration?.enabled ? " checked" : ""}><span class="switch-control" aria-hidden="true"></span><span>${configuration?.enabled ? "On" : "Off"}</span></label>
-            </div>
-          </form>
+          ${!hostDiscordCredentials() ? '<p role="status">Discord integration is not configured for this installation. Contact your Guild Operations host administrator.</p>' : `<div class="discord-setup-guide">
+            <h3>Discord application</h3>
+            <p>Application credentials are managed by the host administrator, outside Guild Operations.</p>
+            <p>Register this OAuth redirect URI in the Discord Developer Portal:</p>
+            <div class="discord-callback"><code>${htmlText(callbackUrl)}</code><button type="button" class="button-secondary" data-copy-discord-callback>Copy</button></div>
+            <p>Leave the Discord Interactions Endpoint URL empty; interactions are delivered through the Gateway.</p>
+            <form method="post" action="/admin/discord">
+              <div class="discord-enablement-row">
+                <div><strong>Discord Integration</strong><p>Enable guild-facing Discord operations after the application has been verified.</p></div>
+                <label class="switch discord-enablement"><input type="checkbox" name="enabled" value="true"${configuration?.enabled ? " checked" : ""}><span class="switch-control" aria-hidden="true"></span><span>${configuration?.enabled ? "On" : "Off"}</span></label>
+              </div>
+              <button type="submit" class="button-primary">Save integration settings</button>
+            </form>
+          </div>`}
           ${installUrl && !configuration?.discordGuildId ? `<div class="discord-server-install"><h3>Install in your Discord server</h3><p>Choose the server for this deployment. Guild Operations verifies the bot relationship before binding the server.</p><a class="button-primary" href="${htmlText(installUrl)}" target="_blank" rel="noreferrer">Install in Discord Server</a></div>` : ""}
         </div>
       </section>
@@ -435,27 +423,12 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     if (!await identityHasGuildCapability(identity.identityId, DISCORD_CONFIGURE_CAPABILITY)) {
       return reply.code(403).send({ error: "discord_configuration_not_authorized" });
     }
+    if (!hostDiscordCredentials()) return reply.code(409).send({ error: "discord_host_configuration_required" });
+    const configuration = await discordIntegrationConfiguration();
+    if (!configuration?.applicationVerifiedAt) return reply.code(409).send({ error: "discord_application_not_verified" });
     const body = (request.body ?? {}) as Record<string, unknown>;
-    if (typeof body.application_id !== "string" || typeof body.client_secret !== "string" || typeof body.bot_token !== "string") {
-      return reply.code(400).send({ error: "invalid_discord_configuration" });
-    }
-    await replaceDiscordApplicationCredentials({
-      applicationId: body.application_id,
-      clientSecret: body.client_secret,
-      botToken: body.bot_token,
-    });
     await setDiscordIntegrationEnabled(body.enabled === "true");
     await loadDiscordInteractionPublicKey();
-    const stored = await discordIntegrationConfiguration();
-    if (!stored) return reply.code(500).send({ error: "discord_configuration_not_stored" });
-    try {
-      const application = await verifyDiscordApplication(stored);
-      await markDiscordApplicationEstablished(application.name, application.bot?.id ?? null, application.bot?.username ?? null, application.verify_key ?? "");
-      cacheDiscordInteractionPublicKey(application.verify_key ?? null);
-    } catch (error) {
-      request.log.warn({ err: error }, "Discord application verification failed");
-      return reply.redirect("/admin/discord?verification=failed");
-    }
-    return reply.redirect("/admin/discord?verification=success");
+    return reply.redirect("/admin/discord");
   });
 }
