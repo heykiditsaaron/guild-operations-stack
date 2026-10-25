@@ -13,7 +13,10 @@ export function databaseConnectionString(configuration: DatabaseConfiguration): 
 }
 
 export function runtimeDatabaseConnectionString(directory = administrationDataDirectory()): string {
-  const configured = process.env.DATABASE_URL?.trim();
+  const filePath = process.env.DATABASE_URL_FILE?.trim();
+  if (filePath && process.env.DATABASE_URL?.trim()) throw new Error("Configure only one of DATABASE_URL or DATABASE_URL_FILE");
+  const configured = filePath ? readFileSync(filePath, "utf8").trim() : process.env.DATABASE_URL?.trim();
+  if (filePath && !configured) throw new Error("DATABASE_URL_FILE is empty");
   if (configured) {
     let parsed: URL;
     try { parsed = new URL(configured); } catch { throw new Error("Invalid DATABASE_URL"); }
