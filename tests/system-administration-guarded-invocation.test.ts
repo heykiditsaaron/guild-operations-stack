@@ -32,6 +32,12 @@ test("bundled deployment preparation blocks an existing or unverifiable Docker v
     const invocation = await prepareLifecycleInvocation(request, "/srv/go", directory, paths, async () => {
       throw { code: 1, stderr: "Error response from daemon: No such volume: guild-operations_guild-operations-db" };
     });
+    await assert.rejects(
+      prepareLifecycleInvocation({ schemaVersion: 1, action: "start" }, "/srv/go", directory, paths, async () => {
+        throw { code: 1, stderr: "No such volume: guild-operations_guild-operations-db" };
+      }),
+      /Cannot start a bundled installation/,
+    );
     assert.equal(invocation.executable, "docker");
     assert.ok(invocation.arguments.includes("compose.bundled.yaml") === false);
     assert.ok(invocation.arguments.includes("/srv/go/compose.bundled.yaml"));
