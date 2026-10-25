@@ -28,7 +28,7 @@ test("host process boundary rejects forged Docker operations and environment", (
   const forbidden = [
     { ...valid, arguments: ["ps"] },
     { ...valid, arguments: [...valid.arguments, "--privileged"] },
-    { ...valid, arguments: valid.arguments.map((value) => value === "/srv/go/compose.bundled.yaml" ? "/tmp/compose.bundled.yaml" : value) },
+    { ...valid, arguments: valid.arguments.map((value) => value === "/srv/go/compose.bundled.yaml" ? "/tmp/arbitrary.yaml" : value) },
     { ...valid, environment: { ...valid.environment, DOCKER_HOST: "tcp://untrusted:2375" } },
     { ...valid, environment: { ...valid.environment, GO_RUNTIME_DATABASE_CONFIG_FILE: "relative.json" } },
   ];
