@@ -167,7 +167,7 @@ export function discordRoleReadiness(input: {
   return { ready: reasons.length === 0, reasons };
 }
 
-export type DiscordChannel = { id: string; name?: string; type: number; parent_id?: string | null };
+export type DiscordChannel = { id: string; name?: string; type: number; parent_id?: string | null; permission_overwrites?: Array<{ id: string; type: number; allow: string; deny: string }> };
 export const DISCORD_TEXT_CHANNEL = 0;
 export const DISCORD_ANNOUNCEMENT_CHANNEL = 5;
 
@@ -175,6 +175,55 @@ export async function discordServerChannels(botToken: string, guildId: string): 
   return discordJson<DiscordChannel[]>(`${API}/guilds/${encodeURIComponent(guildId)}/channels`, {
     headers: { Authorization: `Bot ${botToken}` },
   });
+}
+
+export type DiscordChannelPermissions = DiscordChannel & {
+  permission_overwrites?: Array<{ id: string; type: number; allow: string; deny: string }>;
+};
+
+/** Calculate the bot's effective permissions for a guild text channel.
+ * Discord applies @everyone, combined role, then member overwrites.
+ */
+export function discordChannelPublicationReadiness(input: {
+  channel: DiscordChannelPermissions;
+  guildId: string;
+  botUserId: string;
+  botRoleIds: string[];
+  roles: DiscordRole[];
+  requireThreads?: boolean;
+}): { ready: boolean; reasons: string[] } {
+  const { channel, guildId, botUserId, botRoleIds, roles } = input;
+  const everyone = roles.find((role) => role.id === guildId);
+  let permissions = BigInt(everyone?.permissions ?? "0");
+  for (const role of roles) if (botRoleIds.includes(role.id)) permissions |= BigInt(role.permissions);
+  const administrator = 1n << 3n;
+  if (permissions & administrator) return { ready: true, reasons: [] };
+  const overwrites = channel.permission_overwrites ?? [];
+  const apply = (deny: bigint, allow: bigint) => { permissions = (permissions & ~deny) | allow; };
+  const everyoneOverride = overwrites.find((item) => item.id === guildId && item.type === 0);
+  if (everyoneOverride) apply(BigInt(everyoneOverride.deny), BigInt(everyoneOverride.allow));
+  let roleDeny = 0n, roleAllow = 0n;
+  for (const item of overwrites) {
+    if (item.type === 0 && botRoleIds.includes(item.id)) {
+      roleDeny |= BigInt(item.deny);
+      roleAllow |= BigInt(item.allow);
+    }
+  }
+  apply(roleDeny, roleAllow);
+  const memberOverride = overwrites.find((item) => item.id === botUserId && item.type === 1);
+  if (memberOverride) apply(BigInt(memberOverride.deny), BigInt(memberOverride.allow));
+  const required = [
+    { bit: 10n, name: "View Channel" },
+    { bit: 11n, name: "Send Messages" },
+    { bit: 14n, name: "Embed Links" },
+    ...(input.requireThreads ? [
+      { bit: 35n, name: "Create Public Threads" },
+      { bit: 38n, name: "Send Messages in Threads" },
+    ] : []),
+  ];
+  const reasons = required.filter(({ bit }) => !(permissions & (1n << bit)))
+    .map(({ name }) => `Bot lacks ${name} in channel ${channel.name ?? channel.id}.`);
+  return { ready: reasons.length === 0, reasons };
 }
 
 export async function discordChannelMessage(botToken: string, channelId: string, payload: unknown): Promise<{ id: string }> {
