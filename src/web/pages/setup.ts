@@ -4,15 +4,13 @@ import { installationGuildBinding } from "../../core/installation/guild-binding.
 import { discoverInstallationGuildCandidates } from "../../core/installation/guild-candidates.js";
 import { assetUrl, type AssetRegistry } from "../assets.js";
 import { installationBlizzardConfigured } from "../../core/installation/blizzard-configuration.js";
-import { publicOriginForRequest } from "../../core/installation/public-origin.js";
 
 function escapeHtml(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
 }
 
 export function renderSetupDocument(assets: AssetRegistry, body: string): string {
-  const restart = `<aside class="setup-restart"><p>Need to start over?</p><button class="button-secondary setup-restart-action" type="button" data-setup-restart>Restart setup</button></aside>`;
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Set up Guild Operations</title><link rel="stylesheet" href="${assetUrl(assets, "app.css")}"><link rel="stylesheet" href="${assetUrl(assets, "setup.css")}"></head><body><main class="setup-shell"><section class="setup-card"><p class="eyebrow">First run</p><h1>Set up Guild Operations</h1>${body}${restart}</section></main><script src="${assetUrl(assets, "setup.js")}" defer></script></body></html>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Set up Guild Operations</title><link rel="stylesheet" href="${assetUrl(assets, "app.css")}"><link rel="stylesheet" href="${assetUrl(assets, "setup.css")}"></head><body><main class="setup-shell"><section class="setup-card"><p class="eyebrow">First run</p><h1>Set up Guild Operations</h1>${body}</section></main><script src="${assetUrl(assets, "setup.js")}" defer></script></body></html>`;
 }
 
 export function renderAccountSelectionDocument(assets: AssetRegistry, body: string): string {
@@ -23,27 +21,9 @@ export async function registerSetupPage(app: FastifyInstance, assets: AssetRegis
   app.get("/setup", async (request, reply) => {
     const blizzardConfigured = await installationBlizzardConfigured();
     if (!blizzardConfigured) {
-      const callbackUrl = new URL("/auth/blizzard/callback", publicOriginForRequest(request)).toString();
-      return reply.type("text/html; charset=utf-8").send(renderSetupDocument(
+      return reply.code(503).type("text/html; charset=utf-8").send(renderSetupDocument(
         assets,
-        `<p>Connect Guild Operations to a Blizzard application before identifying the guild this installation will serve.</p>
-        <p>Create a Blizzard application, then register this callback URL.</p>
-        <p>Retrieve the setup authorization token from the host with <code>docker compose exec api cat /var/lib/guild-operations/setup-authorization.token</code>. Keep it private.</p>
-        <p><a class="button-secondary setup-external-action" href="https://develop.battle.net/access/clients" target="_blank" rel="noopener noreferrer">Open Blizzard Developer Portal ↗</a></p>
-        <div class="setup-copy-value">
-          <code>${escapeHtml(callbackUrl)}</code>
-          <button class="setup-copy-action" type="button" data-copy-value="${escapeHtml(callbackUrl)}" aria-label="Copy callback URL" title="Copy callback URL">
-            <svg class="setup-copy-icon setup-copy-icon-copy" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3"></path></svg>
-            <svg class="setup-copy-icon setup-copy-icon-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg>
-          </button>
-        </div>
-        <form method="post" data-setup-blizzard>
-          <label>Setup authorization token<input name="setup_token" type="password" autocomplete="off" required></label>
-          <label>Client ID<input name="client_id" autocomplete="off" required></label>
-          <label>Client Secret<input name="client_secret" type="password" autocomplete="new-password" required></label>
-          <button class="button-primary setup-action" type="submit">Connect Blizzard</button>
-        </form>
-        <p class="setup-status" data-setup-status aria-live="polite"></p>`,
+        '<p>Configuration required</p><p>Guild Operations cannot complete initialization because its hosting environment is not configured correctly. Contact the server administrator to review the host configuration and restart the application.</p>',
       ));
     }
 
