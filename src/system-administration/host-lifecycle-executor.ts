@@ -72,8 +72,8 @@ export async function systemComposeRunner(invocation: ComposeInvocation): Promis
   try {
     await execFileAsync("docker", [...invocation.arguments], {
       env: {
-        PATH: process.env.PATH || "/usr/bin:/bin",
-        HOME: process.env.HOME || "/",
+        PATH: "/usr/bin:/bin",
+        HOME: "/",
         ...invocation.environment,
       },
       timeout: 120000,
