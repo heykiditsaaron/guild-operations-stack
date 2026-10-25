@@ -13,6 +13,15 @@ export function databaseConnectionString(configuration: DatabaseConfiguration): 
 }
 
 export function runtimeDatabaseConnectionString(directory = administrationDataDirectory()): string {
+  const configured = process.env.DATABASE_URL?.trim();
+  if (configured) {
+    let parsed: URL;
+    try { parsed = new URL(configured); } catch { throw new Error("Invalid DATABASE_URL"); }
+    if (!["postgres:", "postgresql:"].includes(parsed.protocol) || !parsed.hostname || !parsed.username || !parsed.pathname || parsed.pathname === "/") {
+      throw new Error("DATABASE_URL must be a PostgreSQL connection URL");
+    }
+    return configured;
+  }
   let serialized: string;
   try {
     serialized = readFileSync(join(directory, "database-configuration.json"), "utf8");
