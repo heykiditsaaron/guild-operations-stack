@@ -9,7 +9,6 @@ import { registerAuthRoutes } from "./auth.js";
 import { registerGlobalGuildCapabilityDefinitions, registerGuildCapabilityPolicyObserver } from "./core/authority/guild-capability-policy.js";
 import { registerGuildRoutes } from "./guild-routes.js";
 import { installationSecretKey } from "./core/installation-secret.js";
-import { setupAuthorizationToken } from "./core/installation/setup-authorization.js";
 import { installationOperational } from "./core/installation/guild-binding.js";
 import { installationBlizzardEncryptedSecretExists } from "./core/installation/blizzard-configuration.js";
 import { registerInstallationRoutes } from "./core/installation/routes.js";
@@ -35,7 +34,6 @@ import { registerMyParticipationPage } from "./web/pages/my-participation.js";
 import { registerSiteInformationPages } from "./web/pages/site-information.js";
 import { registerSetupPage } from "./web/pages/setup.js";
 
-setupAuthorizationToken();
 // Database-dependent secret inspection runs after readiness.
 
 const apiLogger: FastifyBaseLogger = componentLogger("api");
