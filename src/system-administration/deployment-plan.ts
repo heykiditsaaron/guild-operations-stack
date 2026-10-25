@@ -26,7 +26,7 @@ export async function createDeploymentPlan(
     executor: "docker-compose",
     administrationStateDirectory: resolve(administrationDirectory),
     composeFiles: [
-      resolve(composeDirectory, readiness.databaseMode === "bundled" ? "compose.yaml" : "compose.external.yaml"),
+      resolve(composeDirectory, readiness.databaseMode === "bundled" ? "compose.bundled.yaml" : "compose.external.yaml"),
       resolve(composeDirectory, "compose.runtime.yaml"),
     ],
     services: readiness.databaseMode === "bundled"
