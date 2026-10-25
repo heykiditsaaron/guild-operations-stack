@@ -1,0 +1,30 @@
+# Administration-managed runtime overlay. The constrained executor must supply
+# GO_RUNTIME_DATABASE_CONFIG_FILE as an absolute path to a private projected file.
+# Never mount the Administration state directory into managed services.
+services:
+  migrate:
+    environment:
+      GUILD_OPERATIONS_DATABASE_CONFIG_FILE: /run/guild-operations/database-connection.json
+    volumes:
+      - type: bind
+        source: ${GO_RUNTIME_DATABASE_CONFIG_FILE:?Administration runtime projection required}
+        target: /run/guild-operations/database-connection.json
+        read_only: true
+
+  api:
+    environment:
+      GUILD_OPERATIONS_DATABASE_CONFIG_FILE: /run/guild-operations/database-connection.json
+    volumes:
+      - type: bind
+        source: ${GO_RUNTIME_DATABASE_CONFIG_FILE:?Administration runtime projection required}
+        target: /run/guild-operations/database-connection.json
+        read_only: true
+
+  discord:
+    environment:
+      GUILD_OPERATIONS_DATABASE_CONFIG_FILE: /run/guild-operations/database-connection.json
+    volumes:
+      - type: bind
+        source: ${GO_RUNTIME_DATABASE_CONFIG_FILE:?Administration runtime projection required}
+        target: /run/guild-operations/database-connection.json
+        read_only: true
