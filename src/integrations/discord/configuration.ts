@@ -19,6 +19,7 @@ export type DiscordIntegrationConfiguration = {
 };
 
 export async function discordIntegrationConfiguration(): Promise<DiscordIntegrationConfiguration | null> {
+  const hostCredentials = hostDiscordCredentials();
   const result = await pool.query<{
     enabled: boolean;
     application_id: string;
@@ -37,8 +38,25 @@ export async function discordIntegrationConfiguration(): Promise<DiscordIntegrat
       FROM discord_integration_configuration
       WHERE singleton = true`);
   const row = result.rows[0];
+  if (!row && !hostCredentials) return null;
+  if (!row && hostCredentials) {
+    return {
+      enabled: false,
+      applicationId: hostCredentials.applicationId,
+      applicationName: null,
+      applicationVerifiedAt: null,
+      interactionPublicKey: null,
+      botUserId: null,
+      botUsername: null,
+      clientSecret: hostCredentials.clientSecret,
+      botToken: hostCredentials.botToken,
+      discordGuildId: null,
+      articleChannelId: null,
+      raidChannelId: null,
+      raffleChannelId: null,
+    };
+  }
   if (!row) return null;
-  const hostCredentials = hostDiscordCredentials();
   const credentialsMatch = !hostCredentials || hostCredentials.applicationId === row.application_id;
   return {
     enabled: row.enabled && credentialsMatch,
