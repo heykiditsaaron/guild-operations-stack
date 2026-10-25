@@ -25,7 +25,10 @@ export async function createDeploymentPlan(
     schemaVersion: 1,
     executor: "docker-compose",
     administrationStateDirectory: resolve(administrationDirectory),
-    composeFiles: [resolve(composeDirectory, readiness.databaseMode === "bundled" ? "compose.yaml" : "compose.external.yaml")],
+    composeFiles: [
+      resolve(composeDirectory, readiness.databaseMode === "bundled" ? "compose.yaml" : "compose.external.yaml"),
+      resolve(composeDirectory, "compose.runtime.yaml"),
+    ],
     services: readiness.databaseMode === "bundled"
       ? ["db", "migrate", "api", "discord"]
       : ["migrate", "api", "discord"],
