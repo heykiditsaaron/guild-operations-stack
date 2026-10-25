@@ -4,6 +4,8 @@ import { DISCORD_CONFIGURE_CAPABILITY, identityHasGuildCapability } from "../../
 import { installationAbsoluteUrl } from "../../core/installation/public-origin.js";
 import {
   discordIntegrationConfiguration,
+  pendingDiscordApplicationReplacement,
+  reconnectHostDiscordApplication,
   markDiscordApplicationEstablished,
   setDiscordIntegrationEnabled,
   setDiscordArticleChannel,
@@ -12,7 +14,7 @@ import {
 } from "../../integrations/discord/configuration.js";
 import { cacheDiscordInteractionPublicKey, loadDiscordInteractionPublicKey } from "../../integrations/discord/interaction-key.js";
 import { hostDiscordCredentials } from "../../integrations/discord/host-credentials.js";
-import { discordBotInstallUrl, verifyDiscordApplication, discordServerRoles, discordServerMember, discordRoleReadiness, discordServerChannels, discordApplicationEmojis, discordApplicationEmojiMarkup, discordChannelMessage, DISCORD_TEXT_CHANNEL, DISCORD_ANNOUNCEMENT_CHANNEL } from "../../integrations/discord/api.js";
+import { discordBotInstallUrl, currentDiscordApplication, discordBotGuilds, verifyDiscordApplication, discordServerRoles, discordServerMember, discordRoleReadiness, discordServerChannels, discordApplicationEmojis, discordApplicationEmojiMarkup, discordChannelMessage, DISCORD_TEXT_CHANNEL, DISCORD_ANNOUNCEMENT_CHANNEL } from "../../integrations/discord/api.js";
 import { provisionDiscordPresentationEmojis } from "../../integrations/discord/application-emojis.js";
 import { publishOperationalRecord } from "../../operational-inspection.js";
 import { discordRankRoleMappings, replaceDiscordRankRoleMappings } from "../../integrations/discord/role-mappings.js";
@@ -44,6 +46,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       discordIntegrationConfiguration(),
       installationAbsoluteUrl("/integrations/discord/oauth/callback"),
     ]);
+    const replacement = await pendingDiscordApplicationReplacement();
     const readiness = !configuration
       ? "Not configured"
       : !configuration.applicationVerifiedAt
@@ -52,7 +55,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
         ? configuration.enabled ? "Enabled · server established" : "Configured · disabled"
         : configuration.enabled ? "Enabled · server not established" : "Configured · disabled";
 
-    const installUrl = configuration?.applicationVerifiedAt ? discordBotInstallUrl(configuration.applicationId) : null;
+    const installUrl = (configuration?.applicationVerifiedAt || replacement) && configuration ? discordBotInstallUrl(configuration.applicationId) : null;
     const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
     const [guildRanks, mappings] = await Promise.all([guildRankDefinitions(guildId), discordRankRoleMappings(guildId)]);
     let roleSection = "<p>Enable Discord and establish the server to configure role synchronization.</p>";
@@ -176,6 +179,12 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
               <button type="submit" class="button-primary">Save integration settings</button>
             </form>
           </div>`}
+          ${replacement ? `<div class="discord-server-install" role="status"><h3>Reconnect Discord application</h3>
+            <p>The host administrator changed the Discord application. The previous server binding and guild settings are preserved but inactive. Install the new bot in your existing Discord server, then confirm the connection.</p>
+            <p>Previous Discord server ID: <code>${htmlText(replacement.previousServerId)}</code></p>
+            <form method="post" action="/admin/discord/reconnect"><button class="button-primary" type="submit">Verify and reconnect existing server</button></form>
+            <p>Integration remains disabled until you review and enable it again.</p>
+          </div>` : ""}
           ${installUrl && !configuration?.discordGuildId ? `<div class="discord-server-install"><h3>Install in your Discord server</h3><p>Choose the server for this deployment. Guild Operations verifies the bot relationship before binding the server.</p><a class="button-primary" href="${htmlText(installUrl)}" target="_blank" rel="noreferrer">Install in Discord Server</a></div>` : ""}
         </div>
       </section>
@@ -414,6 +423,34 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       }
       throw error;
     }
+    return reply.redirect("/admin/discord");
+  });
+
+  app.post("/admin/discord/reconnect", async (request, reply) => {
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "authentication_required" });
+    if (!await identityHasGuildCapability(identity.identityId, DISCORD_CONFIGURE_CAPABILITY)) {
+      return reply.code(403).send({ error: "discord_configuration_not_authorized" });
+    }
+    const replacement = await pendingDiscordApplicationReplacement();
+    const host = hostDiscordCredentials();
+    if (!replacement || !host) return reply.code(409).send({ error: "discord_reconnection_not_pending" });
+    const application = await currentDiscordApplication(host.botToken);
+    if (application.id !== host.applicationId || !application.verify_key) {
+      return reply.code(409).send({ error: "discord_application_not_verified" });
+    }
+    const guilds = await discordBotGuilds(host.botToken);
+    if (!guilds.some((guild) => guild.id === replacement.previousServerId)) {
+      return reply.code(409).send({ error: "discord_new_bot_not_in_previous_server" });
+    }
+    const changed = await reconnectHostDiscordApplication({
+      applicationName: application.name,
+      botUserId: application.bot?.id ?? null,
+      botUsername: application.bot?.username ?? null,
+      interactionPublicKey: application.verify_key,
+      discordGuildId: replacement.previousServerId,
+    });
+    if (!changed) return reply.code(409).send({ error: "discord_reconnection_state_changed" });
     return reply.redirect("/admin/discord");
   });
 
