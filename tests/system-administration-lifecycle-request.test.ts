@@ -51,3 +51,23 @@ test("lifecycle intent derives services from Administration database mode", asyn
     assert.ok(!JSON.stringify(intent).includes("private"));
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
+
+test("bundled deployment uses credential-projected topology, not legacy Compose", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "go-lifecycle-bundled-"));
+  try {
+    await initializeInstallationState(directory);
+    await writeDatabaseConfiguration({
+      schemaVersion: 1, mode: "bundled",
+      database: "guild_operations", username: "guild_operations",
+      password: "a-unique-generated-password",
+    }, directory);
+    const intent = await createLifecycleIntent(
+      { schemaVersion: 1, action: "apply" }, "/srv/go", directory,
+    );
+    assert.deepEqual(intent.plan.composeFiles, [
+      "/srv/go/compose.bundled.yaml", "/srv/go/compose.runtime.yaml",
+    ]);
+    assert.deepEqual(intent.plan.services, ["db", "migrate", "api", "discord"]);
+    assert.ok(!JSON.stringify(intent).includes("a-unique-generated-password"));
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
