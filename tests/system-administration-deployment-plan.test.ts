@@ -24,7 +24,10 @@ test("deployment plan selects database topology without exposing credentials", a
     }, directory);
     const bundled = await createDeploymentPlan("/srv/guild-operations", directory);
     assert.deepEqual(bundled.services, ["db", "migrate", "api", "discord"]);
-    assert.equal(bundled.composeFiles[0], resolve("/srv/guild-operations/compose.yaml"));
+    assert.deepEqual(bundled.composeFiles, [
+      resolve("/srv/guild-operations/compose.bundled.yaml"),
+      resolve("/srv/guild-operations/compose.runtime.yaml"),
+    ]);
     assert.ok(!JSON.stringify(bundled).includes("sensitive-test-password-123"));
     await writeDatabaseConfiguration({
       schemaVersion: 1, mode: "external",
@@ -32,6 +35,10 @@ test("deployment plan selects database topology without exposing credentials", a
     }, directory);
     const external = await createDeploymentPlan("/srv/guild-operations", directory);
     assert.deepEqual(external.services, ["migrate", "api", "discord"]);
+    assert.deepEqual(external.composeFiles, [
+      resolve("/srv/guild-operations/compose.external.yaml"),
+      resolve("/srv/guild-operations/compose.runtime.yaml"),
+    ]);
     assert.ok(!JSON.stringify(external).includes("private"));
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
