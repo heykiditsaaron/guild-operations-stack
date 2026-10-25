@@ -13,6 +13,17 @@ export function databaseConnectionString(configuration: DatabaseConfiguration): 
 }
 
 export function runtimeDatabaseConnectionString(directory = administrationDataDirectory()): string {
+  const projectedPath = process.env.GUILD_OPERATIONS_DATABASE_CONFIG_FILE;
+  if (projectedPath) {
+    const projection = JSON.parse(readFileSync(projectedPath, "utf8")) as unknown;
+    if (!projection || typeof projection !== "object" || Array.isArray(projection)) throw new Error("Invalid database runtime projection");
+    const record = projection as Record<string, unknown>;
+    if (Object.keys(record).sort().join(",") !== "connectionUrl,schemaVersion" || record.schemaVersion !== 1 || typeof record.connectionUrl !== "string") throw new Error("Invalid database runtime projection");
+    let url: URL;
+    try { url = new URL(record.connectionUrl); } catch { throw new Error("Invalid database runtime projection"); }
+    if (!["postgres:", "postgresql:"].includes(url.protocol) || !url.hostname || !url.username || !url.pathname || url.pathname === "/") throw new Error("Invalid database runtime projection");
+    return record.connectionUrl;
+  }
   let serialized: string;
   try {
     serialized = readFileSync(join(directory, "database-configuration.json"), "utf8");
