@@ -20,7 +20,7 @@ export async function prepareRuntimeHandoff(
       authority.startsWith(destination + "/")) {
     throw new Error("Runtime handoff must be separate from Administration state");
   }
-  // A reused handoff directory must not retain credentials from a previous
+  // The projection helpers create this directory if absent. If it exists,\n  // reject symlinks and permissions that expose projected credentials.\n  try {\n    const directory = await lstat(destination);\n    if (!directory.isDirectory() || (directory.mode & 0o077) !== 0) {\n      throw new Error("Runtime handoff directory must be private");\n    }\n  } catch (error) {\n    if (!(error && typeof error === "object" && "code" in error && error.code === "ENOENT")) throw error;\n  }\n  // A reused handoff directory must not retain credentials from a previous
   // database mode. Refuse unrelated files rather than deleting host data.
   let entries: string[] = [];
   try { entries = await readdir(destination); } catch (error) {
