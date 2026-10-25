@@ -7,8 +7,9 @@ import { readdir } from "node:fs/promises";
 import { requireOperationalInstallationGuildBinding } from "./core/installation/guild-binding.js";
 import { reconcileAssociatedDiscordRoles } from "./integrations/discord/role-sync-cycle.js";
 import { installationSecretKey } from "./core/installation-secret.js";
-import { discordEncryptedSecretsExist, discordIntegrationConfiguration, establishDiscordGuildBinding } from "./integrations/discord/configuration.js";
-import { verifiedDiscordServer } from "./integrations/discord/api.js";
+import { discordEncryptedSecretsExist, discordIntegrationConfiguration, establishDiscordGuildBinding, establishHostDiscordApplication } from "./integrations/discord/configuration.js";
+import { verifiedDiscordServer, currentDiscordApplication } from "./integrations/discord/api.js";
+import { hostDiscordCredentials } from "./integrations/discord/host-credentials.js";
 import { installationBlizzardEncryptedSecretExists } from "./core/installation/blizzard-configuration.js";
 import { DiscordGateway } from "./integrations/discord/gateway.js";
 
@@ -43,6 +44,22 @@ async function inspectDiscordState(): Promise<void> {
     return;
   }
   installationSecretKey({ encryptedDataExists: await installationBlizzardEncryptedSecretExists() || await discordEncryptedSecretsExist() });
+  const host = hostDiscordCredentials();
+  const beforeVerification = await discordIntegrationConfiguration();
+  if (host && (!beforeVerification?.applicationVerifiedAt || beforeVerification.applicationId !== host.applicationId)) {
+    try {
+      const application = await currentDiscordApplication(host.botToken);
+      if (application.id !== host.applicationId) throw new Error("discord_application_mismatch");
+      await establishHostDiscordApplication({
+        applicationName: application.name,
+        botUserId: application.bot?.id ?? null,
+        botUsername: application.bot?.username ?? null,
+        interactionPublicKey: application.verify_key ?? "",
+      });
+    } catch (error) {
+      log.warn({ err: error }, "Host-provisioned Discord application verification pending");
+    }
+  }
   const configuration = await discordIntegrationConfiguration();
   if (configuration?.enabled && configuration.applicationVerifiedAt && !configuration.discordGuildId) {
     try {
