@@ -180,9 +180,9 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
             </form>
           </div>`}
           ${replacement ? `<div class="discord-server-install" role="status"><h3>Reconnect Discord application</h3>
-            <p>The host administrator changed the Discord application. The previous server binding and guild settings are preserved but inactive. Install the new bot in your existing Discord server, then confirm the connection.</p>
-            <p>Previous Discord server ID: <code>${htmlText(replacement.previousServerId)}</code></p>
-            <form method="post" action="/admin/discord/reconnect"><button class="button-primary" type="submit">Verify and reconnect existing server</button></form>
+            <p>The host administrator changed the Discord application. Existing guild settings are preserved but inactive. Install the new bot in your Discord server, then confirm the application change.</p>
+            ${replacement.previousServerId ? `<p>Previous Discord server ID: <code>${htmlText(replacement.previousServerId)}</code></p>` : "<p>No Discord server was previously connected. After confirmation, choose your server using the normal installation flow.</p>"}
+            <form method="post" action="/admin/discord/reconnect"><button class="button-primary" type="submit">Verify replacement application</button></form>
             <p>Integration remains disabled until you review and enable it again.</p>
           </div>` : ""}
           ${installUrl && !configuration?.discordGuildId ? `<div class="discord-server-install"><h3>Install in your Discord server</h3><p>Choose the server for this deployment. Guild Operations verifies the bot relationship before binding the server.</p><a class="button-primary" href="${htmlText(installUrl)}" target="_blank" rel="noreferrer">Install in Discord Server</a></div>` : ""}
@@ -440,7 +440,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       return reply.code(409).send({ error: "discord_application_not_verified" });
     }
     const guilds = await discordBotGuilds(host.botToken);
-    if (!guilds.some((guild) => guild.id === replacement.previousServerId)) {
+    if (replacement.previousServerId && !guilds.some((guild) => guild.id === replacement.previousServerId)) {
       return reply.code(409).send({ error: "discord_new_bot_not_in_previous_server" });
     }
     const changed = await reconnectHostDiscordApplication({
