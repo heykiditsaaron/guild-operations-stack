@@ -7,11 +7,12 @@ import { deploymentReadiness } from "./deployment-readiness.js";
 import { createDeploymentPlan } from "./deployment-plan.js";
 import { configureNewBundledPostgres } from "./bundled-postgres-credentials.js";
 import { administrationDataDirectory } from "./state.js";
+import { prepareRuntimeHandoff } from "./runtime-handoff.js";
 
 async function main(): Promise<void> {
   const command = argv[2] || "help";
   if (command === "help") {
-    stdout.write("System Administration (foundation)\nCommands: help, status, initialize, enroll-administrator, rotate-administrator, database-status, database-configure <json-file>, database-configure-bundled-new, deployment-check, deployment-plan <compose-directory>\n");
+    stdout.write("System Administration (foundation)\nCommands: help, status, initialize, enroll-administrator, rotate-administrator, database-status, database-configure <json-file>, database-configure-bundled-new, runtime-project <private-directory>, deployment-check, deployment-plan <compose-directory>\n");
   } else if (command === "status") {
     stdout.write(JSON.stringify(await administrationStatus(), null, 2) + "\n");
   } else if (command === "initialize") {
@@ -31,6 +32,10 @@ async function main(): Promise<void> {
     if (argv.length !== 3) throw new Error("Usage: database-configure-bundled-new");
     await configureNewBundledPostgres(administrationDataDirectory());
     stdout.write("New bundled PostgreSQL credentials saved in Administration; no database or containers were modified.\n");
+  } else if (command === "runtime-project") {
+    if (argv.length !== 4 || !argv[3]) throw new Error("Usage: runtime-project <private-directory>");
+    const result = await prepareRuntimeHandoff(argv[3], administrationDataDirectory());
+    stdout.write(`Runtime handoff prepared (${result.mode}); ${result.files.length} private file(s). No deployment performed.\n`);
   } else if (command === "database-status") {
     stdout.write(JSON.stringify(publicDatabaseConfiguration(await readDatabaseConfiguration()), null, 2) + "\n");
   } else if (command === "database-configure") {
