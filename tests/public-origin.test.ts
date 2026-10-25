@@ -1,36 +1,24 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import type { FastifyRequest } from "fastify";
-import { publicOriginForRequest } from "../src/core/installation/public-origin.js";
+import { installationPublicOrigin, normalizeOrigin } from "../src/core/installation/public-origin.js";
 
-function request(headers: Record<string, string>, protocol = "http"): FastifyRequest {
-  return { headers, protocol } as unknown as FastifyRequest;
-}
-
-test("setup discovers direct origin without deployment environment configuration", () => {
-  assert.equal(publicOriginForRequest(request({ host: "localhost:3100" })), "http://localhost:3100");
+test("public origin comes from host configuration", async () => {
+  assert.equal(await installationPublicOrigin({ PUBLIC_ORIGIN: "https://guild.example.com" }), "https://guild.example.com");
 });
 
-test("setup discovers HTTPS origin behind a reverse proxy", () => {
-  assert.equal(publicOriginForRequest(request({
-    host: "api:3100",
-    "x-forwarded-host": "guild.example.com",
-    "x-forwarded-proto": "https",
-  })), "https://guild.example.com");
+test("public origin is absent when host has not configured it", async () => {
+  assert.equal(await installationPublicOrigin({}), null);
 });
 
-test("ambiguous forwarded origin chains are rejected", () => {
-  assert.throws(() => publicOriginForRequest(request({
-    host: "api:3100",
-    "x-forwarded-host": "guild.example.com, attacker.example",
-    "x-forwarded-proto": "https",
-  })));
+test("ambiguous host origin sources are rejected", async () => {
+  await assert.rejects(installationPublicOrigin({
+    PUBLIC_ORIGIN: "https://guild.example.com",
+    PUBLIC_ORIGIN_FILE: "/not-used",
+  }), /only one/);
 });
 
-test("invalid forwarded protocol is rejected", () => {
-  assert.throws(() => publicOriginForRequest(request({
-    host: "api:3100",
-    "x-forwarded-host": "guild.example.com",
-    "x-forwarded-proto": "javascript",
-  })));
+test("public origin must be a scheme and authority without path or credentials", () => {
+  assert.throws(() => normalizeOrigin("javascript://guild.example.com"));
+  assert.throws(() => normalizeOrigin("https://guild.example.com/setup"));
+  assert.throws(() => normalizeOrigin("https://user:pass@guild.example.com"));
 });
