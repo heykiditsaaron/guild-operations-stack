@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { runtimeDatabaseConnectionString } from "./system-administration/database-runtime.js";
+import { hostDatabaseConnectionString } from "./database-connection.js";
 
 export type Region = "us" | "eu" | "kr" | "tw";
 
@@ -27,7 +27,7 @@ export function parseRegion(value: unknown): Region | null {
 
 export const config = {
   port,
-  get databaseUrl() { return runtimeDatabaseConnectionString(); },
+  get databaseUrl() { return hostDatabaseConnectionString(); },
   authAttemptTtlMinutes: 10,
   sessionTtlDays: 30,
   developmentAuthorityGuildieId: development ? optional("DEVELOPMENT_AUTHORITY_GUILDIE_ID") : null,
