@@ -3,6 +3,7 @@ import { promisify } from "node:util";
 import { basename, dirname, isAbsolute, resolve } from "node:path";
 import { prepareLifecycleInvocation, type ComposeInvocation, type RuntimeProjectionPaths } from "./compose-invocation.js";
 import type { DockerInspect } from "./docker-volume-inspection.js";
+import { verifyTrustedComposeFiles } from "./trusted-compose-files.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -65,6 +66,7 @@ export function validateHostComposeInvocation(invocation: ComposeInvocation): vo
  */
 export async function systemComposeRunner(invocation: ComposeInvocation): Promise<void> {
   validateHostComposeInvocation(invocation);
+  await verifyTrustedComposeFiles(invocation, process.env.GO_TRUSTED_COMPOSE_DIRECTORY || "");
   try {
     await execFileAsync("docker", [...invocation.arguments], {
       env: {
