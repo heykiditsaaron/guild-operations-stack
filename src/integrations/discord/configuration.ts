@@ -101,6 +101,17 @@ export async function establishHostDiscordApplication(input: {
   );
 }
 
+export async function pendingDiscordApplicationReplacement(): Promise<{ previousServerId: string } | null> {
+  const host = hostDiscordCredentials();
+  if (!host) return null;
+  const result = await pool.query<{ application_id: string; discord_guild_id: string | null }>(
+    "SELECT application_id, discord_guild_id FROM discord_integration_configuration WHERE singleton = true",
+  );
+  const row = result.rows[0];
+  return row && row.application_id !== host.applicationId && row.discord_guild_id
+    ? { previousServerId: row.discord_guild_id } : null;
+}
+
 /** Explicit guild-authorized replacement. The new bot must already be verified and
  * present in the previously bound server; old destinations remain stored for review.
  * Integration stays disabled until the operator enables it again.
