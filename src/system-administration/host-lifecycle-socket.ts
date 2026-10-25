@@ -1,5 +1,6 @@
 import { createServer, type Socket } from "node:net";
 import { lstat } from "node:fs/promises";
+import { isAbsolute, resolve } from "node:path";
 import { decodeLifecycleMessage, MAX_LIFECYCLE_MESSAGE_BYTES } from "./lifecycle-socket-protocol.js";
 import type { LifecycleRequest } from "./lifecycle-request.js";
 
@@ -12,6 +13,9 @@ export function createHostLifecycleSocketServer(
   execute: (request: LifecycleRequest) => Promise<void>,
   maxRequestMs = 120000,
 ) {
+  if (!Number.isSafeInteger(maxRequestMs) || maxRequestMs < 1) {
+    throw new Error("Invalid lifecycle request timeout");
+  }
   let busy = false;
   return createServer((socket: Socket) => {
     let received = Buffer.alloc(0);
@@ -40,6 +44,9 @@ export function createHostLifecycleSocketServer(
 
 /** Fail closed when the host-owned socket directory is not private. */
 export async function verifyHostSocketDirectory(directory: string): Promise<void> {
+  if (!isAbsolute(directory) || resolve(directory) !== directory) {
+    throw new Error("Host executor socket directory must be absolute and canonical");
+  }
   const stat = await lstat(directory);
   if (!stat.isDirectory() || (stat.mode & 0o007) !== 0) {
     throw new Error("Host executor socket directory must deny access to other users");
