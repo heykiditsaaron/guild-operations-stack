@@ -1,6 +1,8 @@
 import { resolve } from "node:path";
 import { createLifecycleIntent, type LifecycleRequest } from "./lifecycle-request.js";
 import type { DeploymentPlan } from "./deployment-plan.js";
+import { assertBundledClusterContinuity } from "./bundled-cluster-continuity.js";
+import { inspectBundledClusterVolume, type DockerInspect } from "./docker-volume-inspection.js";
 
 /**
  * Host-side executor contract. This prepares an allowlisted invocation only.
@@ -80,7 +82,14 @@ export async function prepareLifecycleInvocation(
   composeDirectory: string,
   administrationDirectory: string,
   projection: RuntimeProjectionPaths,
+  inspect: DockerInspect = async (args) => {
+    const { systemDockerInspect } = await import("./docker-volume-inspection.js");
+    return systemDockerInspect(args);
+  },
 ): Promise<ComposeInvocation> {
   const intent = await createLifecycleIntent(request, composeDirectory, administrationDirectory);
+  if (intent.plan.databaseMode === "bundled") {
+    assertBundledClusterContinuity(await inspectBundledClusterVolume(inspect));
+  }
   return buildComposeInvocation(intent.request, intent.plan, projection);
 }
