@@ -19,3 +19,16 @@ test("bundled and external runtime database connection semantics", () => {
   const url = "postgresql://operator:password@postgres.example:5432/guild";
   assert.equal(databaseConnectionString({ schemaVersion: 1, mode: "external", connectionUrl: url }), url);
 });
+
+test("host DATABASE_URL overrides legacy Administration state", () => {
+  const previous = process.env.DATABASE_URL;
+  try {
+    process.env.DATABASE_URL = "postgresql://operator:password@postgres.example:5432/guild";
+    assert.equal(runtimeDatabaseConnectionString("/missing-admin-state"), process.env.DATABASE_URL);
+    process.env.DATABASE_URL = "https://example.com/database";
+    assert.throws(() => runtimeDatabaseConnectionString("/missing-admin-state"), /PostgreSQL/);
+  } finally {
+    if (previous === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = previous;
+  }
+});
