@@ -1,5 +1,6 @@
 import { pool } from "../../db.js";
 import { decryptApplicationSecret, encryptApplicationSecret } from "../../core/encrypted-secret.js";
+import { hostDiscordCredentials } from "./host-credentials.js";
 
 export type DiscordIntegrationConfiguration = {
   enabled: boolean;
@@ -37,16 +38,18 @@ export async function discordIntegrationConfiguration(): Promise<DiscordIntegrat
       WHERE singleton = true`);
   const row = result.rows[0];
   if (!row) return null;
+  const hostCredentials = hostDiscordCredentials();
+  const credentialsMatch = !hostCredentials || hostCredentials.applicationId === row.application_id;
   return {
-    enabled: row.enabled,
-    applicationId: row.application_id,
+    enabled: row.enabled && credentialsMatch,
+    applicationId: hostCredentials?.applicationId ?? row.application_id,
     applicationName: row.application_name,
-    applicationVerifiedAt: row.application_verified_at,
+    applicationVerifiedAt: credentialsMatch ? row.application_verified_at : null,
     interactionPublicKey: row.interaction_public_key,
     botUserId: row.bot_user_id,
     botUsername: row.bot_username,
-    clientSecret: decryptApplicationSecret(row.client_secret_ciphertext, "Discord client secret"),
-    botToken: decryptApplicationSecret(row.bot_token_ciphertext, "Discord bot token"),
+    clientSecret: hostCredentials?.clientSecret ?? decryptApplicationSecret(row.client_secret_ciphertext, "Discord client secret"),
+    botToken: hostCredentials?.botToken ?? decryptApplicationSecret(row.bot_token_ciphertext, "Discord bot token"),
     discordGuildId: row.discord_guild_id,
     articleChannelId: row.article_channel_id,
     raidChannelId: row.raid_channel_id,
