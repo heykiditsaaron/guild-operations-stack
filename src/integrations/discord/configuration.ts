@@ -101,6 +101,14 @@ export async function establishHostDiscordApplication(input: {
   );
 }
 
+export function discordApplicationReplacementState(
+  stored: { applicationId: string; discordGuildId: string | null } | null,
+  hostApplicationId: string | null,
+): { previousServerId: string | null } | null {
+  if (!stored || !hostApplicationId || stored.applicationId === hostApplicationId) return null;
+  return { previousServerId: stored.discordGuildId };
+}
+
 export async function pendingDiscordApplicationReplacement(): Promise<{ previousServerId: string | null } | null> {
   const host = hostDiscordCredentials();
   if (!host) return null;
@@ -108,8 +116,7 @@ export async function pendingDiscordApplicationReplacement(): Promise<{ previous
     "SELECT application_id, discord_guild_id FROM discord_integration_configuration WHERE singleton = true",
   );
   const row = result.rows[0];
-  return row && row.application_id !== host.applicationId
-    ? { previousServerId: row.discord_guild_id } : null;
+  return discordApplicationReplacementState(row ? { applicationId: row.application_id, discordGuildId: row.discord_guild_id } : null, host.applicationId);
 }
 
 /** Explicit guild-authorized replacement. The new bot must already be verified and
