@@ -65,7 +65,6 @@ export function buildComposeInvocation(
       "compose", "-p", "guild-operations",
       "-f", base, "-f", overlay,
       "up", "-d",
-      ...(request.action === "apply" ? ["--remove-orphans"] : []),
       ...plan.services,
     ],
     environment,
