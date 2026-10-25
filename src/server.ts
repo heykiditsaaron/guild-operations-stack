@@ -12,7 +12,6 @@ import { installationSecretKey } from "./core/installation-secret.js";
 import { installationOperational } from "./core/installation/guild-binding.js";
 import { installationBlizzardEncryptedSecretExists } from "./core/installation/blizzard-configuration.js";
 import { registerInstallationRoutes } from "./core/installation/routes.js";
-import { discordEncryptedSecretsExist } from "./integrations/discord/configuration.js";
 import { registerDiscordOAuthRoutes } from "./integrations/discord/oauth-routes.js";
 import { registerDiscordInteractionRoutes } from "./integrations/discord/interaction-routes.js";
 import { loadDiscordInteractionPublicKey } from "./integrations/discord/interaction-key.js";
@@ -140,7 +139,7 @@ async function inspectReadiness(): Promise<void> {
       return;
     }
     await retryActivityPluginPersistence(app.log);
-    const encryptedDataExists = await installationBlizzardEncryptedSecretExists() || await discordEncryptedSecretsExist();
+    const encryptedDataExists = await installationBlizzardEncryptedSecretExists();
     installationSecretKey({ encryptedDataExists });
     await loadDiscordInteractionPublicKey();
     if (await installationOperational()) startOperationalBackgroundWork();
