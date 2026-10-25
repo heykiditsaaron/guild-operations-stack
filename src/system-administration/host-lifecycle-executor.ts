@@ -70,7 +70,7 @@ export async function systemComposeRunner(invocation: ComposeInvocation): Promis
   await verifyTrustedComposeFiles(invocation, process.env.GO_TRUSTED_COMPOSE_DIRECTORY || "");
   await verifyRuntimeProjectionFiles(invocation);
   try {
-    await execFileAsync("docker", [...invocation.arguments], {
+    await execFileAsync("/usr/bin/docker", [...invocation.arguments], {
       env: {
         PATH: "/usr/bin:/bin",
         HOME: "/",
