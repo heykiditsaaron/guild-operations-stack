@@ -7,12 +7,7 @@ import {
   installationGuildBinding,
 } from "./guild-binding.js";
 import { discoverInstallationGuildCandidates } from "./guild-candidates.js";
-import {
-  installationBlizzardConfigured,
-  storeInstallationBlizzardConfiguration,
-  validateBlizzardApplicationCredentials,
-} from "./blizzard-configuration.js";
-import { establishInstallationPublicOrigin, installationPublicOrigin, normalizeOrigin, publicOriginForRequest, relocateInstallationPublicOrigin } from "./public-origin.js";
+import { installationPublicOrigin, normalizeOrigin, relocateInstallationPublicOrigin } from "./public-origin.js";
 import { effectiveGuildAuthority } from "../authority/guild-permissions.js";
 import { withTransaction } from "../../db.js";
 import { validSetupAuthorization } from "./setup-authorization.js";
@@ -54,25 +49,6 @@ export async function registerInstallationRoutes(
     const updated = await relocateInstallationPublicOrigin(expected, next);
     if (!updated) return reply.code(409).send({ error: "public_origin_changed" });
     return reply.send({ public_origin: updated, previous_origin: expected, oauth_redirects_must_be_updated: true });
-  });
-
-  app.post("/installation/blizzard", async (request, reply) => {
-    if (!validSetupAuthorization(request.headers["x-setup-authorization"])) return reply.code(403).send({ error: "setup_authorization_required" });
-    if (await installationBlizzardConfigured()) {
-      return reply.code(409).send({ error: "blizzard_already_configured" });
-    }
-    const body = request.body as { client_id?: unknown; client_secret?: unknown } | null;
-    const clientId = typeof body?.client_id === "string" ? body.client_id.trim() : "";
-    const clientSecret = typeof body?.client_secret === "string" ? body.client_secret.trim() : "";
-    if (!clientId || !clientSecret) {
-      return reply.code(400).send({ error: "invalid_blizzard_configuration" });
-    }
-    if (!await validateBlizzardApplicationCredentials({ clientId, clientSecret })) {
-      return reply.code(400).send({ error: "blizzard_credentials_rejected" });
-    }
-    await establishInstallationPublicOrigin(publicOriginForRequest(request));
-    await storeInstallationBlizzardConfiguration({ clientId, clientSecret });
-    return reply.code(201).send({ configured: true });
   });
 
   app.post("/installation/restart", async (request, reply) => {
