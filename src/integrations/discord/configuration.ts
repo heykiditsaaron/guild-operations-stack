@@ -120,6 +120,36 @@ export async function storeDiscordIntegrationConfiguration(input: {
   );
 }
 
+/** Establish the guild-owned Discord record from verified host application credentials.
+ * Existing guild settings are preserved when the application identity is unchanged.
+ */
+export async function establishHostDiscordApplication(input: {
+  applicationName: string;
+  botUserId: string | null;
+  botUsername: string | null;
+  interactionPublicKey: string;
+}): Promise<void> {
+  const host = hostDiscordCredentials();
+  if (!host) throw new Error("discord_host_configuration_required");
+  if (!/^[0-9a-f]{64}$/i.test(input.interactionPublicKey)) throw new Error("invalid_discord_interaction_public_key");
+  await pool.query(
+    `INSERT INTO discord_integration_configuration (
+       singleton, enabled, application_id, client_secret_ciphertext, bot_token_ciphertext,
+       application_name, application_verified_at, bot_user_id, bot_username, interaction_public_key
+     ) VALUES (true, false, $1, $2, $3, $4, now(), $5, $6, $7)
+     ON CONFLICT (singleton) DO UPDATE SET
+       application_name = EXCLUDED.application_name,
+       application_verified_at = EXCLUDED.application_verified_at,
+       bot_user_id = EXCLUDED.bot_user_id,
+       bot_username = EXCLUDED.bot_username,
+       interaction_public_key = EXCLUDED.interaction_public_key,
+       updated_at = now()
+     WHERE discord_integration_configuration.application_id = EXCLUDED.application_id`,
+    [host.applicationId, encryptApplicationSecret(host.clientSecret), encryptApplicationSecret(host.botToken),
+      input.applicationName, input.botUserId, input.botUsername, input.interactionPublicKey],
+  );
+}
+
 export async function markDiscordApplicationEstablished(applicationName: string, botUserId: string | null, botUsername: string | null, interactionPublicKey: string): Promise<void> {
   if (!/^[0-9a-f]{64}$/i.test(interactionPublicKey)) throw new Error("invalid_discord_interaction_public_key");
   await pool.query("UPDATE discord_integration_configuration SET application_name = $1, application_verified_at = now(), bot_user_id = $2, bot_username = $3, interaction_public_key = $4, updated_at = now() WHERE singleton = true", [applicationName, botUserId, botUsername, interactionPublicKey]);
