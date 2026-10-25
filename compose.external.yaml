@@ -1,0 +1,53 @@
+# External PostgreSQL topology. Never starts or depends on a bundled db service.
+services:
+  migrate:
+    image: ghcr.io/heykiditsaaron/guild-operations:${GUILD_OPERATIONS_VERSION:-latest}
+    command: node dist/migrate.js
+    environment:
+      GUILD_OPERATIONS_PROCESS: migrate
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: "no"
+
+  api:
+    image: ghcr.io/heykiditsaaron/guild-operations:${GUILD_OPERATIONS_VERSION:-latest}
+    environment:
+      GUILD_OPERATIONS_PROCESS: api
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "${HTTP_PORT:-3000}:3100"
+    volumes:
+      - guild-operations-installation:/var/lib/guild-operations
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+
+  discord:
+    image: ghcr.io/heykiditsaaron/guild-operations:${GUILD_OPERATIONS_VERSION:-latest}
+    command: node dist/discord.js
+    environment:
+      GUILD_OPERATIONS_PROCESS: discord
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      - guild-operations-installation:/var/lib/guild-operations
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+
+volumes:
+  guild-operations-installation:
