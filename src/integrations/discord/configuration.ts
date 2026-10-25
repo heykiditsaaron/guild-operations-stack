@@ -1,5 +1,4 @@
 import { pool } from "../../db.js";
-import { encryptApplicationSecret } from "../../core/encrypted-secret.js";
 import { hostDiscordCredentials } from "./host-credentials.js";
 
 export type DiscordIntegrationConfiguration = {
@@ -28,13 +27,11 @@ export async function discordIntegrationConfiguration(): Promise<DiscordIntegrat
     interaction_public_key: string | null;
     bot_user_id: string | null;
     bot_username: string | null;
-    client_secret_ciphertext: string;
-    bot_token_ciphertext: string;
     discord_guild_id: string | null;
     article_channel_id: string | null;
     raid_channel_id: string | null;
     raffle_channel_id: string | null;
-  }>(`SELECT enabled, application_id, application_name, application_verified_at, interaction_public_key, bot_user_id, bot_username, client_secret_ciphertext, bot_token_ciphertext, discord_guild_id, article_channel_id, raid_channel_id, raffle_channel_id
+  }>(`SELECT enabled, application_id, application_name, application_verified_at, interaction_public_key, bot_user_id, bot_username, discord_guild_id, article_channel_id, raid_channel_id, raffle_channel_id
       FROM discord_integration_configuration
       WHERE singleton = true`);
   const row = result.rows[0];
@@ -75,51 +72,6 @@ export async function discordIntegrationConfiguration(): Promise<DiscordIntegrat
   };
 }
 
-export async function discordEncryptedSecretsExist(): Promise<boolean> {
-  const result = await pool.query<{ exists: boolean }>(
-    "SELECT EXISTS (SELECT 1 FROM discord_integration_configuration WHERE singleton = true) AS exists",
-  );
-  return result.rows[0]?.exists ?? false;
-}
-
-export async function storeDiscordIntegrationConfiguration(input: {
-  enabled?: boolean;
-  applicationId: string;
-  clientSecret: string;
-  botToken: string;
-  discordGuildId?: string | null;
-}): Promise<void> {
-  const applicationId = input.applicationId.trim();
-  const clientSecret = input.clientSecret.trim();
-  const botToken = input.botToken.trim();
-  if (!applicationId || !clientSecret || !botToken) throw new Error("invalid_discord_configuration");
-  const discordGuildId = input.discordGuildId?.trim() || null;
-  await pool.query(
-    `INSERT INTO discord_integration_configuration (
-       singleton, enabled, application_id, client_secret_ciphertext, bot_token_ciphertext, discord_guild_id
-     ) VALUES (true, $1, $2, $3, $4, $5)
-     ON CONFLICT (singleton) DO UPDATE SET
-       enabled = EXCLUDED.enabled,
-       application_id = EXCLUDED.application_id,
-       application_name = NULL,
-       application_verified_at = NULL,
-       interaction_public_key = NULL,
-       bot_user_id = NULL,
-       bot_username = NULL,
-       client_secret_ciphertext = EXCLUDED.client_secret_ciphertext,
-       bot_token_ciphertext = EXCLUDED.bot_token_ciphertext,
-       discord_guild_id = EXCLUDED.discord_guild_id,
-       updated_at = now()`,
-    [
-      input.enabled ?? false,
-      applicationId,
-      encryptApplicationSecret(clientSecret),
-      encryptApplicationSecret(botToken),
-      discordGuildId,
-    ],
-  );
-}
-
 /** Establish the guild-owned Discord record from verified host application credentials.
  * Existing guild settings are preserved when the application identity is unchanged.
  */
@@ -134,9 +86,9 @@ export async function establishHostDiscordApplication(input: {
   if (!/^[0-9a-f]{64}$/i.test(input.interactionPublicKey)) throw new Error("invalid_discord_interaction_public_key");
   await pool.query(
     `INSERT INTO discord_integration_configuration (
-       singleton, enabled, application_id, client_secret_ciphertext, bot_token_ciphertext,
+       singleton, enabled, application_id,
        application_name, application_verified_at, bot_user_id, bot_username, interaction_public_key
-     ) VALUES (true, false, $1, $2, $3, $4, now(), $5, $6, $7)
+     ) VALUES (true, false, $1, $2, now(), $3, $4, $5)
      ON CONFLICT (singleton) DO UPDATE SET
        application_name = EXCLUDED.application_name,
        application_verified_at = EXCLUDED.application_verified_at,
@@ -145,8 +97,7 @@ export async function establishHostDiscordApplication(input: {
        interaction_public_key = EXCLUDED.interaction_public_key,
        updated_at = now()
      WHERE discord_integration_configuration.application_id = EXCLUDED.application_id`,
-    [host.applicationId, encryptApplicationSecret(host.clientSecret), encryptApplicationSecret(host.botToken),
-      input.applicationName, input.botUserId, input.botUsername, input.interactionPublicKey],
+    [host.applicationId, input.applicationName, input.botUserId, input.botUsername, input.interactionPublicKey],
   );
 }
 
@@ -167,46 +118,6 @@ export async function setDiscordIntegrationEnabled(enabled: boolean): Promise<vo
   await pool.query(
     "UPDATE discord_integration_configuration SET enabled = $1, updated_at = now() WHERE singleton = true",
     [enabled],
-  );
-}
-
-export async function replaceDiscordApplicationCredentials(input: {
-  applicationId: string;
-  clientSecret?: string;
-  botToken?: string;
-}): Promise<void> {
-  const existing = await discordIntegrationConfiguration();
-  const applicationId = input.applicationId.trim();
-  const clientSecret = input.clientSecret?.trim() || existing?.clientSecret || "";
-  const botToken = input.botToken?.trim() || existing?.botToken || "";
-  if (!applicationId || !clientSecret || !botToken) throw new Error("invalid_discord_configuration");
-
-  const credentialsChanged =
-    !existing ||
-    applicationId !== existing.applicationId ||
-    clientSecret !== existing.clientSecret ||
-    botToken !== existing.botToken;
-
-  if (!credentialsChanged) return;
-
-  await pool.query(
-    `INSERT INTO discord_integration_configuration (
-       singleton, enabled, application_id, client_secret_ciphertext, bot_token_ciphertext, discord_guild_id
-     ) VALUES (true, false, $1, $2, $3, NULL)
-     ON CONFLICT (singleton) DO UPDATE SET
-       application_id = EXCLUDED.application_id,
-       application_name = NULL,
-       application_verified_at = NULL,
-       bot_user_id = NULL,
-       bot_username = NULL,
-       client_secret_ciphertext = EXCLUDED.client_secret_ciphertext,
-       bot_token_ciphertext = EXCLUDED.bot_token_ciphertext,
-       discord_guild_id = NULL,
-       article_channel_id = NULL,
-       raid_channel_id = NULL,
-       raffle_channel_id = NULL,
-       updated_at = now()`,
-    [applicationId, encryptApplicationSecret(clientSecret), encryptApplicationSecret(botToken)],
   );
 }
 
