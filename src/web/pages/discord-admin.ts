@@ -14,7 +14,7 @@ import {
 } from "../../integrations/discord/configuration.js";
 import { cacheDiscordInteractionPublicKey, loadDiscordInteractionPublicKey } from "../../integrations/discord/interaction-key.js";
 import { hostDiscordCredentials } from "../../integrations/discord/host-credentials.js";
-import { discordBotInstallUrl, currentDiscordApplication, discordBotGuilds, verifyDiscordApplication, discordServerRoles, discordServerMember, discordRoleReadiness, discordServerChannels, discordApplicationEmojis, discordApplicationEmojiMarkup, discordChannelMessage, DISCORD_TEXT_CHANNEL, DISCORD_ANNOUNCEMENT_CHANNEL } from "../../integrations/discord/api.js";
+import { discordBotInstallUrl, currentDiscordApplication, discordBotGuilds, verifyDiscordApplication, discordServerRoles, discordServerMember, discordRoleReadiness, discordChannelPublicationReadiness, discordServerChannels, discordApplicationEmojis, discordApplicationEmojiMarkup, discordChannelMessage, DISCORD_TEXT_CHANNEL, DISCORD_ANNOUNCEMENT_CHANNEL } from "../../integrations/discord/api.js";
 import { provisionDiscordPresentationEmojis } from "../../integrations/discord/application-emojis.js";
 import { publishOperationalRecord } from "../../operational-inspection.js";
 import { discordRankRoleMappings, replaceDiscordRankRoleMappings } from "../../integrations/discord/role-mappings.js";
@@ -487,6 +487,18 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       ));
       if (missingChannels.length) {
         return reply.code(422).send({ error: "discord_configured_channels_unavailable", channelIds: missingChannels });
+      }
+      const channelProblems = configuredChannels.flatMap((id) => {
+        const channel = channels.find((candidate) => candidate.id === id);
+        if (!channel) return [];
+        return discordChannelPublicationReadiness({
+          channel, guildId: configuration.discordGuildId!, botUserId: configuration.botUserId!,
+          botRoleIds: botMember.roles, roles,
+          requireThreads: id === configuration.raffleChannelId,
+        }).reasons;
+      });
+      if (channelProblems.length) {
+        return reply.code(422).send({ error: "discord_channel_permissions_insufficient", reasons: channelProblems });
       }
       if (mappings.length) {
         const readiness = discordRoleReadiness({
