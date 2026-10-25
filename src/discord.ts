@@ -6,11 +6,9 @@ import { createEmissionRecoveryCycle } from "./emissions/recovery.js";
 import { readdir } from "node:fs/promises";
 import { requireOperationalInstallationGuildBinding } from "./core/installation/guild-binding.js";
 import { reconcileAssociatedDiscordRoles } from "./integrations/discord/role-sync-cycle.js";
-import { installationSecretKey } from "./core/installation-secret.js";
-import { discordEncryptedSecretsExist, discordIntegrationConfiguration, establishDiscordGuildBinding, establishHostDiscordApplication } from "./integrations/discord/configuration.js";
+import { discordIntegrationConfiguration, establishDiscordGuildBinding, establishHostDiscordApplication } from "./integrations/discord/configuration.js";
 import { verifiedDiscordServer, currentDiscordApplication } from "./integrations/discord/api.js";
 import { hostDiscordCredentials } from "./integrations/discord/host-credentials.js";
-import { installationBlizzardEncryptedSecretExists } from "./core/installation/blizzard-configuration.js";
 import { DiscordGateway } from "./integrations/discord/gateway.js";
 
 // Secrets are inspected after database readiness, including recovery from startup outages.
@@ -43,7 +41,6 @@ async function inspectDiscordState(): Promise<void> {
     lastState = "database_unavailable";
     return;
   }
-  installationSecretKey({ encryptedDataExists: await installationBlizzardEncryptedSecretExists() || await discordEncryptedSecretsExist() });
   const host = hostDiscordCredentials();
   const beforeVerification = await discordIntegrationConfiguration();
   if (host && (!beforeVerification?.applicationVerifiedAt || beforeVerification.applicationId !== host.applicationId)) {
