@@ -1,0 +1,75 @@
+# Administration-managed bundled PostgreSQL topology. Existing legacy compose.yaml is unchanged.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${GO_BUNDLED_POSTGRES_DATABASE:?Bundled database name required}
+      POSTGRES_USER: ${GO_BUNDLED_POSTGRES_USERNAME:?Bundled database user required}
+      POSTGRES_PASSWORD_FILE: /run/guild-operations/postgres-password
+    volumes:
+      - guild-operations-db:/var/lib/postgresql/data
+      - type: bind
+        source: ${GO_BUNDLED_POSTGRES_PASSWORD_FILE:?Bundled password projection required}
+        target: /run/guild-operations/postgres-password
+        read_only: true
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    image: ghcr.io/heykiditsaaron/guild-operations:${GUILD_OPERATIONS_VERSION:-latest}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: node dist/migrate.js
+    environment:
+      GUILD_OPERATIONS_PROCESS: migrate
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: "no"
+
+  api:
+    image: ghcr.io/heykiditsaaron/guild-operations:${GUILD_OPERATIONS_VERSION:-latest}
+    environment:
+      GUILD_OPERATIONS_PROCESS: api
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "${HTTP_PORT:-3000}:3100"
+    volumes:
+      - guild-operations-installation:/var/lib/guild-operations
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+
+  discord:
+    image: ghcr.io/heykiditsaaron/guild-operations:${GUILD_OPERATIONS_VERSION:-latest}
+    command: node dist/discord.js
+    environment:
+      GUILD_OPERATIONS_PROCESS: discord
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      - guild-operations-installation:/var/lib/guild-operations
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+
+volumes:
+  guild-operations-db:
+  guild-operations-installation:
