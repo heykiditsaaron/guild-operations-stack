@@ -46,6 +46,7 @@ test("lifecycle intent derives services from Administration database mode", asyn
       { schemaVersion: 1, action: "start" }, "/srv/go", directory,
     );
     assert.deepEqual(intent.plan.services, ["migrate", "api", "discord"]);
+    assert.deepEqual(intent.plan.composeFiles, ["/srv/go/compose.external.yaml"]);
     assert.equal(intent.request.action, "start");
     assert.ok(!JSON.stringify(intent).includes("private"));
   } finally { await rm(directory, { recursive: true, force: true }); }
