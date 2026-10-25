@@ -101,6 +101,32 @@ export async function establishHostDiscordApplication(input: {
   );
 }
 
+/** Explicit guild-authorized replacement. The new bot must already be verified and
+ * present in the previously bound server; old destinations remain stored for review.
+ * Integration stays disabled until the operator enables it again.
+ */
+export async function reconnectHostDiscordApplication(input: {
+  applicationName: string;
+  botUserId: string | null;
+  botUsername: string | null;
+  interactionPublicKey: string;
+  discordGuildId: string;
+}): Promise<boolean> {
+  const host = hostDiscordCredentials();
+  if (!host) throw new Error("discord_host_configuration_required");
+  if (!/^[0-9a-f]{64}$/i.test(input.interactionPublicKey)) throw new Error("invalid_discord_interaction_public_key");
+  const result = await pool.query(
+    `UPDATE discord_integration_configuration
+       SET enabled = false, application_id = $1, application_name = $2,
+           application_verified_at = now(), bot_user_id = $3, bot_username = $4,
+           interaction_public_key = $5, updated_at = now()
+       WHERE singleton = true AND application_id <> $1 AND discord_guild_id = $6`,
+    [host.applicationId, input.applicationName, input.botUserId, input.botUsername,
+      input.interactionPublicKey, input.discordGuildId],
+  );
+  return (result.rowCount ?? 0) === 1;
+}
+
 export async function markDiscordApplicationEstablished(applicationName: string, botUserId: string | null, botUsername: string | null, interactionPublicKey: string): Promise<void> {
   if (!/^[0-9a-f]{64}$/i.test(interactionPublicKey)) throw new Error("invalid_discord_interaction_public_key");
   await pool.query("UPDATE discord_integration_configuration SET application_name = $1, application_verified_at = now(), bot_user_id = $2, bot_username = $3, interaction_public_key = $4, updated_at = now() WHERE singleton = true", [applicationName, botUserId, botUsername, interactionPublicKey]);
