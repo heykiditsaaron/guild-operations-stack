@@ -48,7 +48,7 @@ export function validateHostComposeInvocation(invocation: ComposeInvocation): vo
   for (const key of keys) {
     const value = invocation.environment[key];
     if (typeof value !== "string" || value.length === 0 ||
-        value.includes("\\0") || value.includes("\\n")) {
+        value.includes("\0") || value.includes("\n")) {
       throw new Error("Invalid executor environment value");
     }
   }
