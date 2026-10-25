@@ -27,10 +27,13 @@ export function decodeLifecycleMessage(bytes: Buffer): LifecycleRequest {
 export async function submitLifecycleRequest(
   socketPath: string,
   request: unknown,
-  timeoutMs = 5000,
+  timeoutMs = 125000,
 ): Promise<void> {
   if (!socketPath.startsWith("/") || socketPath.includes("\0")) {
     throw new Error("Absolute Unix socket path required");
+  }
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1) {
+    throw new Error("Invalid executor response timeout");
   }
   const message = encodeLifecycleMessage(request);
   await new Promise<void>((resolve, reject) => {
