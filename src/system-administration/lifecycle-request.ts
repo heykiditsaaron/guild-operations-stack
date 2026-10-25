@@ -7,7 +7,7 @@ import { createDeploymentPlan, type DeploymentPlan } from "./deployment-plan.js"
  * This is not a deployment executor. A separately authorized, constrained
  * executor must validate and execute an approved plan in a later milestone.
  */
-export type LifecycleAction = "apply" | "start" | "stop";
+export type LifecycleAction = "apply" | "start";
 
 export type LifecycleRequest = {
   schemaVersion: 1;
@@ -28,7 +28,7 @@ export function validateLifecycleRequest(value: unknown): LifecycleRequest {
     throw new Error("Unexpected lifecycle request fields");
   }
   if (request.schemaVersion !== 1) throw new Error("Unsupported lifecycle request version");
-  if (request.action !== "apply" && request.action !== "start" && request.action !== "stop") {
+  if (request.action !== "apply" && request.action !== "start") {
     throw new Error("Unsupported lifecycle action");
   }
   return request as LifecycleRequest;
