@@ -464,6 +464,40 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     const configuration = await discordIntegrationConfiguration();
     if (!configuration?.applicationVerifiedAt) return reply.code(409).send({ error: "discord_application_not_verified" });
     const body = (request.body ?? {}) as Record<string, unknown>;
+    if (body.enabled === "true") {
+      if (!configuration.discordGuildId || !configuration.botUserId) {
+        return reply.code(409).send({ error: "discord_server_not_established" });
+      }
+      const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
+      const [guilds, channels, roles, botMember, mappings] = await Promise.all([
+        discordBotGuilds(configuration.botToken),
+        discordServerChannels(configuration.botToken, configuration.discordGuildId),
+        discordServerRoles(configuration.botToken, configuration.discordGuildId),
+        discordServerMember(configuration.botToken, configuration.discordGuildId, configuration.botUserId),
+        discordRankRoleMappings(guildId),
+      ]);
+      if (!guilds.some((guild) => guild.id === configuration.discordGuildId) || !botMember) {
+        return reply.code(409).send({ error: "discord_bot_not_in_server" });
+      }
+      const configuredChannels = [configuration.articleChannelId, configuration.raidChannelId, configuration.raffleChannelId].filter(
+        (id): id is string => id !== null,
+      );
+      const missingChannels = configuredChannels.filter((id) => !channels.some(
+        (channel) => channel.id === id && (channel.type === DISCORD_TEXT_CHANNEL || channel.type === DISCORD_ANNOUNCEMENT_CHANNEL),
+      ));
+      if (missingChannels.length) {
+        return reply.code(422).send({ error: "discord_configured_channels_unavailable", channelIds: missingChannels });
+      }
+      if (mappings.length) {
+        const readiness = discordRoleReadiness({
+          roles, botRoleIds: botMember.roles, botUserId: configuration.botUserId,
+          guildId: configuration.discordGuildId, mappedRoleIds: mappings.map((mapping) => mapping.discordRoleId),
+        });
+        if (!readiness.ready) {
+          return reply.code(422).send({ error: "discord_role_mapping_not_manageable", reasons: readiness.reasons });
+        }
+      }
+    }
     await setDiscordIntegrationEnabled(body.enabled === "true");
     await loadDiscordInteractionPublicKey();
     return reply.redirect("/admin/discord");
