@@ -13,7 +13,7 @@ test("lifecycle request rejects arbitrary executor parameters", () => {
     { schemaVersion: 2, action: "start" },
     { schemaVersion: 1, action: "exec" },
     { schemaVersion: 1, action: "start", command: "sh" },
-    { schemaVersion: 1, action: "stop", services: ["administration"] },
+    { schemaVersion: 1, action: "stop" },
     { schemaVersion: 1, action: "apply", composeFiles: ["/tmp/other.yaml"] },
     { schemaVersion: 1, action: "start", project: "another-project" },
   ]) {
@@ -43,10 +43,10 @@ test("lifecycle intent derives services from Administration database mode", asyn
       connectionUrl: "postgresql://test:private@postgres.example/guild",
     }, directory);
     const intent = await createLifecycleIntent(
-      { schemaVersion: 1, action: "stop" }, "/srv/go", directory,
+      { schemaVersion: 1, action: "start" }, "/srv/go", directory,
     );
     assert.deepEqual(intent.plan.services, ["migrate", "api", "discord"]);
-    assert.equal(intent.request.action, "stop");
+    assert.equal(intent.request.action, "start");
     assert.ok(!JSON.stringify(intent).includes("private"));
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
