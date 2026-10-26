@@ -18,3 +18,8 @@ export function configuredInstallationGuild(): InstallationGuildTarget | null {
   if (!nameSlug) return null;
   return { region, realmSlug, name, nameSlug };
 }
+
+/** Host-controlled request only; it never authorizes a guild binding by itself. */
+export function installationRebindRequested(): boolean {
+  return process.env.GUILD_REBIND?.trim().toLowerCase() === "true";
+}
