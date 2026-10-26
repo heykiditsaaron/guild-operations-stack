@@ -29,6 +29,26 @@ docker compose ps
 
 The bundled PostgreSQL service is started automatically and is not published to the host. The web service uses host port 3000 by default; set `HTTP_PORT` in `.env` to change it. The image defaults to `:latest`; set `GUILD_OPERATIONS_VERSION` to a specific release for a pinned deployment or `dev` for development.
 
+### External PostgreSQL
+
+For a PostgreSQL server managed independently of Guild Operations, use the standalone Compose topology rather than layering it on the bundled topology:
+
+```sh
+# Configure DATABASE_URL in the protected .env file first.
+docker compose -f compose.external-db.yaml config --services
+docker compose -f compose.external-db.yaml up -d
+```
+
+The service list must contain `migrate`, `api`, and `discord`, **not** `db`. Set `DATABASE_URL` to a PostgreSQL URL containing the database, host, and application credentials. Provision the database and user on the external server before starting. Guild Operations continues to run its own schema migrations through the one-shot `migrate` service. The host/provider owns PostgreSQL server availability, TLS policy, credentials, backups, and restoration.
+
+To keep the connection URL in a protected file rather than `.env`, place it in `./secrets/database-url` and use both files in this order:
+
+```sh
+docker compose -f compose.external-db.yaml -f compose.database-secret.yaml up -d
+```
+
+Do not use `compose.yaml` in the external database command: it includes the bundled `db` service. Do not switch an existing installation to a fresh external database without a planned data migration and verified backup. The installation encryption key must remain paired with the migrated database state.
+
 **Database provisioning limitation:** the bundled Compose PostgreSQL service currently uses fixed legacy credentials. `DATABASE_URL` can override the application's connection URL, and `compose.database-secret.yaml` supports a protected connection URL file, but external PostgreSQL topology and bundled database credential provisioning are not yet fully implemented. Do not treat the bundled configuration as production-grade database credential management.
 
 ### Host Tools
