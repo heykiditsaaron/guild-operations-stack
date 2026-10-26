@@ -6,8 +6,8 @@ import { createEmissionRecoveryCycle } from "./emissions/recovery.js";
 import { readdir } from "node:fs/promises";
 import { requireOperationalInstallationGuildBinding } from "./core/installation/guild-binding.js";
 import { reconcileAssociatedDiscordRoles } from "./integrations/discord/role-sync-cycle.js";
-import { discordIntegrationConfiguration, establishDiscordGuildBinding, establishHostDiscordApplication } from "./integrations/discord/configuration.js";
-import { verifiedDiscordServer, currentDiscordApplication } from "./integrations/discord/api.js";
+import { discordIntegrationConfiguration, establishHostDiscordApplication } from "./integrations/discord/configuration.js";
+import { currentDiscordApplication } from "./integrations/discord/api.js";
 import { hostDiscordCredentials } from "./integrations/discord/host-credentials.js";
 import { DiscordGateway } from "./integrations/discord/gateway.js";
 
@@ -55,18 +55,6 @@ async function inspectDiscordState(): Promise<void> {
       });
     } catch (error) {
       log.warn({ err: error }, "Host-provisioned Discord application verification pending");
-    }
-  }
-  const configuration = await discordIntegrationConfiguration();
-  if (configuration?.applicationVerifiedAt && !configuration.discordGuildId) {
-    try {
-      const server = await verifiedDiscordServer(configuration);
-      await establishDiscordGuildBinding(server.id);
-      log.info({ discordGuildId: server.id, discordGuildName: server.name }, "Discord Integration established server binding");
-    } catch (error) {
-      if (!(error instanceof Error) || error.message !== "discord_server_not_found") {
-        log.error({ err: error }, "Discord Integration server verification failed");
-      }
     }
   }
   const refreshedConfiguration = await discordIntegrationConfiguration();
