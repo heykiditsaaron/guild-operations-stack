@@ -20,7 +20,7 @@ cp .env.example .env
 
 Edit the single `.env` file in sections: installation origin, Blizzard application, database, optional Discord integration, and operational settings. Set `PUBLIC_ORIGIN`, `BLIZZARD_CLIENT_ID`, and `BLIZZARD_CLIENT_SECRET`. Configure the Blizzard OAuth callback for that origin. If enabling Discord, provide all three Discord application credentials for the same application. These are host-owned values, not Guild Settings.
 
-For a **new bundled PostgreSQL installation**, generate a strong URL-safe password and set `POSTGRES_PASSWORD` in `.env` **before first startup**. For example, `openssl rand -hex 32` produces a suitable value. Leave `DATABASE_URL` unset: Compose constructs the matching bundled database URL from `POSTGRES_PASSWORD`. Protect the file with `chmod 600 .env`; do not commit it.
+For a **new bundled PostgreSQL installation**, the bundled database has a working compatibility default of `guild_operations`. **Strongly recommended:** generate a unique URL-safe password and replace `POSTGRES_PASSWORD` in `.env` **before first startup**. For example, `openssl rand -hex 32` produces a suitable value. Leave `DATABASE_URL` unset: Compose constructs the matching bundled database URL from `POSTGRES_PASSWORD`. Protect the file with `chmod 600 .env`; do not commit it.
 
 ```sh
 docker compose up -d
@@ -29,7 +29,7 @@ docker compose ps
 
 The bundled database is not exposed on the host. The web service publishes port 3000 by default (`HTTP_PORT` overrides it). The image defaults to `:latest`; set `GUILD_OPERATIONS_VERSION` to pin a release or to `dev` for development.
 
-**Existing bundled installations:** `compose.yaml` retains its legacy database password when `POSTGRES_PASSWORD` is unset, to preserve existing-volume continuity. This compatibility default is **not suitable for new installations**. Never change `POSTGRES_PASSWORD` on an initialized database merely by editing `.env`: PostgreSQL does not rotate existing database passwords when its startup environment changes. Coordinate any rotation with a database migration and a verified backup.
+**Existing bundled installations:** `compose.yaml` retains its legacy database password when `POSTGRES_PASSWORD` is unset, to preserve existing-volume continuity. This shared compatibility default is not recommended for new installations; use a unique password whenever possible. Never change `POSTGRES_PASSWORD` on an initialized database merely by editing `.env`: PostgreSQL does not rotate existing database passwords when its startup environment changes. Coordinate any rotation with a database migration and a verified backup.
 
 ### Credential source precedence
 
