@@ -1,0 +1,71 @@
+# External PostgreSQL deployment. Use instead of compose.yaml:
+# docker compose -f compose.external-db.yaml up -d
+# Supply DATABASE_URL through a protected host environment file.
+# For file-based credentials, additionally use compose.database-secret.yaml.
+services:
+  migrate:
+    image: ghcr.io/heykiditsaaron/guild-operations:${GUILD_OPERATIONS_VERSION:-latest}
+    command: node dist/migrate.js
+    environment:
+      GUILD_OPERATIONS_PROCESS: migrate
+      DATABASE_URL: ${DATABASE_URL:-}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: "no"
+
+  api:
+    image: ghcr.io/heykiditsaaron/guild-operations:${GUILD_OPERATIONS_VERSION:-latest}
+    environment:
+      GUILD_OPERATIONS_PROCESS: api
+      DATABASE_URL: ${DATABASE_URL:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-}
+      BLIZZARD_CLIENT_ID: ${BLIZZARD_CLIENT_ID:-}
+      BLIZZARD_CLIENT_SECRET: ${BLIZZARD_CLIENT_SECRET:-}
+      DISCORD_APPLICATION_ID: ${DISCORD_APPLICATION_ID:-}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:-}
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
+    ports:
+      - "${HTTP_PORT:-3000}:3100"
+    volumes:
+      - guild-operations-installation:/var/lib/guild-operations
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+
+  discord:
+    image: ghcr.io/heykiditsaaron/guild-operations:${GUILD_OPERATIONS_VERSION:-latest}
+    command: node dist/discord.js
+    environment:
+      GUILD_OPERATIONS_PROCESS: discord
+      DATABASE_URL: ${DATABASE_URL:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-}
+      BLIZZARD_CLIENT_ID: ${BLIZZARD_CLIENT_ID:-}
+      BLIZZARD_CLIENT_SECRET: ${BLIZZARD_CLIENT_SECRET:-}
+      DISCORD_APPLICATION_ID: ${DISCORD_APPLICATION_ID:-}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET:-}
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
+    volumes:
+      - guild-operations-installation:/var/lib/guild-operations
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+
+volumes:
+  guild-operations-installation:
