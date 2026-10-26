@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME, authenticatedIdentity } from "../../auth.js";
+import { pool } from "../../db.js";
 import { installationGuildBinding } from "../../core/installation/guild-binding.js";
 import { discoverInstallationGuildCandidates } from "../../core/installation/guild-candidates.js";
 import { assetUrl, type AssetRegistry } from "../assets.js";
@@ -52,9 +53,17 @@ export async function registerSetupPage(app: FastifyInstance, assets: AssetRegis
       ));
     }
 
+    const guildResult = await pool.query<{ name: string; realm_name: string | null; realm_slug: string; region: string }>(
+      "SELECT name, realm_name, realm_slug, region FROM guilds WHERE guild_id = $1",
+      [binding.guildId],
+    );
+    const guild = guildResult.rows[0];
+    if (!guild) throw new Error("Installation guild binding references a missing guild");
+    const selectedGuild = `<div class="setup-selected-guild"><p class="setup-selected-label">Selected guild</p><strong>${escapeHtml(guild.name)}</strong><p>${escapeHtml(guild.realm_name ?? guild.realm_slug)} · ${escapeHtml(guild.region.toUpperCase())}</p></div>`;
+
     return reply.type("text/html; charset=utf-8").send(renderSetupDocument(
       assets,
-      '<p>The guild has been identified. A current Guild Master must authorize this installation before it can operate.</p><form method="post" data-setup-authorize><button class="button-primary setup-action" type="submit">Authorize Guild Operations</button></form><p>If you are not the Guild Master, sign out and have them continue setup with their Blizzard account.</p><form method="post" data-setup-signout><button class="button-secondary setup-action" type="submit">Sign out for Guild Master</button></form><p class="setup-status" data-setup-status aria-live="polite"></p>',
+      `<p>The guild has been identified. A current Guild Master must authorize this installation before it can operate.</p>${selectedGuild}<form method="post" data-setup-authorize><button class="button-primary setup-action" type="submit">Authorize Guild Operations</button></form><p>If you are not the Guild Master, sign out and have them continue setup with their Blizzard account.</p><form method="post" data-setup-signout><button class="button-secondary setup-action" type="submit">Sign out for Guild Master</button></form><p class="setup-status" data-setup-status aria-live="polite"></p>`,
     ));
   });
 }
