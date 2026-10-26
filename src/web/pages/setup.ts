@@ -46,7 +46,7 @@ export async function registerSetupPage(app: FastifyInstance, assets: AssetRegis
       const destination = preview.destination;
       const details = `<p>Host-requested guild rebinding</p>
         <div class="setup-selected-guild"><p class="setup-selected-label">Current guild</p><strong>${escapeHtml(previous.name ?? previous.guildId)}</strong><p>${escapeHtml(previous.realm_slug)} · ${escapeHtml(previous.region.toUpperCase())}</p></div>
-        <div class="setup-selected-guild"><p class="setup-selected-label">Destination verified with Blizzard</p><strong>${escapeHtml(destination.name)}</strong><p>${escapeHtml(destination.realmSlug)} · ${escapeHtml(destination.region.toUpperCase())}</p></div>
+        <div class="setup-selected-guild"><p class="setup-selected-label">Destination verified with Blizzard</p><strong>${escapeHtml(destination.name)}</strong><p>${escapeHtml(destination.realmSlug ?? destination.guildId)} · ${escapeHtml(destination.region.toUpperCase())}</p></div>
         <p>The destination Guild Master must authorize this change. Existing historical records are retained.</p>`;
       const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
       if (!identity) return reply.type("text/html; charset=utf-8").send(renderSetupDocument(
