@@ -7,7 +7,7 @@ import {
   pendingDiscordApplicationReplacement,
   reconnectHostDiscordApplication,
   markDiscordApplicationEstablished,
-  setDiscordIntegrationEnabled,
+  setDiscordIntegrationEnabled, enableVerifiedDiscordIntegration,
   setDiscordArticleChannel,
   setDiscordRaidChannel,
   setDiscordRaffleChannel,
@@ -510,7 +510,19 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
         }
       }
     }
-    await setDiscordIntegrationEnabled(body.enabled === "true");
+    if (body.enabled === "true") {
+      const enabled = await enableVerifiedDiscordIntegration({
+        applicationId: configuration.applicationId,
+        discordGuildId: configuration.discordGuildId!,
+        botUserId: configuration.botUserId!,
+        articleChannelId: configuration.articleChannelId,
+        raidChannelId: configuration.raidChannelId,
+        raffleChannelId: configuration.raffleChannelId,
+      });
+      if (!enabled) return reply.code(409).send({ error: "discord_configuration_changed_during_verification" });
+    } else {
+      await setDiscordIntegrationEnabled(false);
+    }
     await loadDiscordInteractionPublicKey();
     return reply.redirect("/admin/discord");
   });
