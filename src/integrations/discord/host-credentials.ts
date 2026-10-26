@@ -9,8 +9,8 @@ export type HostDiscordCredentials = {
 function configuredValue(name: string, env: NodeJS.ProcessEnv): string | null {
   const direct = env[name]?.trim();
   const filePath = env[`${name}_FILE`]?.trim();
-  if (direct && filePath) throw new Error(`Configure only one of ${name} or ${name}_FILE`);
   const value = filePath ? readFileSync(filePath, "utf8").trim() : direct;
+  if (filePath && !value) throw new Error(`${name}_FILE is empty`);
   return value || null;
 }
 
