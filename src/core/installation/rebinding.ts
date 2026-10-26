@@ -38,7 +38,7 @@ export async function authorizeInstallationRebind(identityId: string) {
   // a previously persisted guild roster or an existing member capability.
   const authority = await resolveConfiguredInstallationGuild();
   const destinationId = String(authority.profile.id);
-  const guildMasterCharacters = authority.roster.members
+  const guildMasterCharacters = (authority.roster.members ?? [])
     .filter((member) => member.rank === 0)
     .map((member) => member.character)
     .filter((character) => character?.id && character.realm?.id)
