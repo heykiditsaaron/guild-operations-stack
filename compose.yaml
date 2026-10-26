@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: guild_operations
       POSTGRES_USER: guild_operations
-      POSTGRES_PASSWORD: guild_operations
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-guild_operations}
     volumes:
       - guild-operations-db:/var/lib/postgresql/data
     healthcheck:
@@ -21,7 +21,7 @@ services:
     command: node dist/migrate.js
     environment:
       GUILD_OPERATIONS_PROCESS: migrate
-      DATABASE_URL: ${DATABASE_URL:-postgresql://guild_operations:guild_operations@db:5432/guild_operations}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://guild_operations:${POSTGRES_PASSWORD:-guild_operations}@db:5432/guild_operations}
     logging:
       driver: json-file
       options:
@@ -33,7 +33,7 @@ services:
     image: ghcr.io/heykiditsaaron/guild-operations:${GUILD_OPERATIONS_VERSION:-latest}
     environment:
       GUILD_OPERATIONS_PROCESS: api
-      DATABASE_URL: ${DATABASE_URL:-postgresql://guild_operations:guild_operations@db:5432/guild_operations}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://guild_operations:${POSTGRES_PASSWORD:-guild_operations}@db:5432/guild_operations}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-}
       BLIZZARD_CLIENT_ID: ${BLIZZARD_CLIENT_ID:-}
@@ -60,7 +60,7 @@ services:
     command: node dist/discord.js
     environment:
       GUILD_OPERATIONS_PROCESS: discord
-      DATABASE_URL: ${DATABASE_URL:-postgresql://guild_operations:guild_operations@db:5432/guild_operations}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://guild_operations:${POSTGRES_PASSWORD:-guild_operations}@db:5432/guild_operations}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-}
       BLIZZARD_CLIENT_ID: ${BLIZZARD_CLIENT_ID:-}
