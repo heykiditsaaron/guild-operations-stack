@@ -6,6 +6,7 @@ import {
   installationGuildBinding,
 } from "./guild-binding.js";
 import { configuredInstallationGuild } from "./target.js";
+import { authorizeInstallationRebind, installationRebindPreview } from "./rebinding.js";
 
 export async function registerInstallationRoutes(
   app: FastifyInstance,
@@ -30,6 +31,32 @@ export async function registerInstallationRoutes(
       binding,
       target,
     });
+  });
+
+  app.get("/installation/rebind", async (request, reply) => {
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "not_authenticated" });
+    try {
+      const preview = await installationRebindPreview();
+      if (!preview) return reply.code(404).send({ error: "rebind_not_requested" });
+      return reply.send({ state: "pending_rebind", preview });
+    } catch (error) {
+      request.log.warn({ err: error }, "Installation rebind preview failed");
+      return reply.code(409).send({ error: "rebind_target_unavailable" });
+    }
+  });
+
+  app.post("/installation/rebind/authorize", async (request, reply) => {
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "not_authenticated" });
+    try {
+      const result = await authorizeInstallationRebind(identity.identityId);
+      if (result.changed) await options.onOperational?.();
+      return reply.send({ state: "operational", ...result });
+    } catch (error) {
+      request.log.warn({ err: error }, "Installation guild rebind rejected");
+      return reply.code(403).send({ error: "rebind_authorization_required" });
+    }
   });
 
   app.post("/installation/guild", async (request, reply) => {
