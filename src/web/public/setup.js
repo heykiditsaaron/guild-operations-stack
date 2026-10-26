@@ -44,3 +44,8 @@ document.querySelector("form[data-setup-signout]")?.addEventListener("submit", a
   }
 });
 
+
+document.querySelector("form[data-rebind-authorize]")?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  void submitSetup(event.currentTarget, "/installation/rebind/authorize");
+});
