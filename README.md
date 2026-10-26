@@ -20,7 +20,7 @@ cp .env.example .env
 
 Edit the single `.env` file in sections: installation origin, Blizzard application, database, optional Discord integration, and operational settings. Set `PUBLIC_ORIGIN`, `BLIZZARD_CLIENT_ID`, and `BLIZZARD_CLIENT_SECRET`. Configure the Blizzard OAuth callback for that origin. If enabling Discord, provide all three Discord application credentials for the same application. These are host-owned values, not Guild Settings.
 
-For a **new bundled PostgreSQL installation**, the bundled database has a working compatibility default of `guild_operations`. **Strongly recommended:** generate a unique URL-safe password and replace `POSTGRES_PASSWORD` in `.env` **before first startup**. For example, `openssl rand -hex 32` produces a suitable value. Leave `DATABASE_URL` unset: Compose constructs the matching bundled database URL from `POSTGRES_PASSWORD`. Protect the file with `chmod 600 .env`; do not commit it.
+For a **new bundled PostgreSQL installation**, `.env.example` contains `POSTGRES_PASSWORD=change-me-now` as an obvious placeholder. **Replace it with a unique URL-safe password before first startup**; for example, `openssl rand -hex 32` produces a suitable value. The placeholder is not a secure credential. Leave `DATABASE_URL` unset: Compose constructs the matching bundled database URL from `POSTGRES_PASSWORD`. Protect the file with `chmod 600 .env`; do not commit it.
 
 ```sh
 docker compose up -d
