@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { hostDiscordCredentials } from "../src/integrations/discord/host-credentials.js";
 
 test("Discord credentials are optional when integration is not provisioned", () => {
@@ -26,9 +29,15 @@ test("invalid Discord application IDs are rejected", () => {
   }), /Invalid Discord application ID/);
 });
 
-test("direct and file sources cannot both be configured", () => {
-  assert.throws(() => hostDiscordCredentials({
-    DISCORD_APPLICATION_ID: "123",
-    DISCORD_APPLICATION_ID_FILE: "/unused",
-  }), /only one/);
+test("configured file takes precedence and missing file fails closed", () => {
+  const directory = mkdtempSync(join(tmpdir(), "go-discord-"));
+  try {
+    const file = join(directory, "id");
+    writeFileSync(file, "123456789\n");
+    const env = { DISCORD_APPLICATION_ID: "999", DISCORD_APPLICATION_ID_FILE: file, DISCORD_CLIENT_SECRET: "secret", DISCORD_BOT_TOKEN: "token" };
+    assert.equal(hostDiscordCredentials(env)?.applicationId, "123456789");
+    assert.throws(() => hostDiscordCredentials({ ...env, DISCORD_APPLICATION_ID_FILE: join(directory, "missing") }), /ENOENT/);
+    writeFileSync(file, "");
+    assert.throws(() => hostDiscordCredentials(env), /empty/);
+  } finally { rmSync(directory, { recursive: true, force: true }); }
 });
