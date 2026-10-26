@@ -2,7 +2,6 @@ import type { FastifyInstance } from "fastify";
 import { authenticatedIdentity, SESSION_COOKIE_NAME } from "../../auth.js";
 import { effectiveGuildAuthority } from "../../core/authority/guild-permissions.js";
 import { setGuildRankDisplayName } from "../../core/guild/guild-ranks.js";
-import { installationPublicOrigin } from "../../core/installation/public-origin.js";
 import { guildRefreshStatus } from "../../core/guild/guild-refresh-status.js";
 import {
   canAdministerGuildPermissions,
@@ -144,18 +143,12 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       guildRefreshStatus(),
     ]);
 
-    const authority = await effectiveGuildAuthority(identity.identityId);
-    const publicOrigin = authority?.rankIndex === 0 ? await installationPublicOrigin() : null;
-    const originSettings = publicOrigin
-      ? administrationSection("installation-origin", "installation-origin-heading", "Installation address",
-          `<form class="settings-panel" data-public-origin-form data-current-origin="${htmlText(publicOrigin)}"><h3>Public website address</h3><p>Changing this address updates OAuth callback URLs. Configure the new callback URL in Blizzard and Discord before using account linking again. Existing sessions on the old hostname will not carry over.</p><label><span>Public origin</span><input type="url" required value="${htmlText(publicOrigin)}" data-public-origin-input></label><button type="submit" class="button-primary" data-public-origin-save>Change address</button><p data-public-origin-feedback role="status" aria-live="polite"></p></form>`)
-      : "";
     const themeSettings = administrationSection("appearance", "appearance-heading", "Appearance", renderThemeSettings(theme).replaceAll("<select data-theme-select>", `<select data-theme-select${canConfigureTheme ? "" : " disabled"}>`).replaceAll("<button type=\"submit\" class=\"button-primary\" data-theme-save>", `<button type="submit" class="button-primary" data-theme-save${canConfigureTheme ? "" : " disabled"}>`));
     const presentationSettings = administrationSection("guild-presentation", "guild-presentation-heading", "Guild links", canConfigureGuildPresentation ? renderGuildPresentationSettings(presentation) : renderGuildPresentationSettings(presentation).replaceAll("<input ", "<input disabled ").replaceAll("<button type=\"submit\"", "<button disabled type=\"submit\""));
     const schedule = canConfigureGuildRefreshSchedule ? renderGuildRefreshSchedule(refreshSchedule) : renderGuildRefreshSchedule(refreshSchedule).replaceAll("<input ", "<input disabled ").replaceAll("<button type=\"submit\"", "<button disabled type=\"submit\"");
     const guildSettings = administrationSection("guild-settings", "guild-settings-heading", "Guild synchronization", `<div class="settings-panel guild-synchronization-settings">${schedule}${renderGuildRefreshOperation(refreshStatus, canRefresh)}</div>`);
     const orientation = renderAdministrationOrientation(presentation, canConfigureGuildPresentation);
-    const content = `${orientation}<div class="admin-sections">${themeSettings}${presentationSettings}${guildSettings}${originSettings}</div>`;
+    const content = `${orientation}<div class="admin-sections">${themeSettings}${presentationSettings}${guildSettings}</div>`;
 
     const html = renderPage(assets, { pathname: "/admin/general", title: `General Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Inspect and configure Guild Operations.", viewer, stylesheets: ["admin.css"], scripts: ["admin.js", "operations.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Inspect and manage Guild Operations according to your authority.</p></div>`, body: `${content}` });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
