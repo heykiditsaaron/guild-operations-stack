@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { componentLogger } from "../../core/runtime-logger.js";
 import { publishInspectionBestEffort } from "../../core/operational-inspection/best-effort.js";
+import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import { raidEventFactsIncludingCancelled, raidOccurrenceDestinations } from "./application.js";
 import { raidSignups, type RaidSignupView } from "./participation-view.js";
 import { pool } from "../../db.js";
@@ -74,6 +75,8 @@ function rosterFields(rows: RaidSignupView[], emojis: EmojiLookup, discordIds: M
 async function projectRaid(raidId: string): Promise<void> {
   const config = await discordIntegrationConfiguration();
   if (!config?.enabled || !config.applicationVerifiedAt || !config.discordGuildId) return;
+  const raid = await raidEventFactsIncludingCancelled(raidId);
+  if (!raid || raid.guildId !== (await requireOperationalInstallationGuildBinding()).guildId) return;
   const prior = await pool.query<Projection>(
     "SELECT discord_channel_id, discord_message_id FROM discord_raid_projections WHERE raid_id = $1", [raidId],
   );
@@ -81,8 +84,6 @@ async function projectRaid(raidId: string): Promise<void> {
   // Destination changes affect future publications, not already-published messages.
   const channelId = existing?.discord_channel_id ?? config.raidChannelId;
   if (!channelId) return;
-  const raid = await raidEventFactsIncludingCancelled(raidId);
-  if (!raid) return;
   const [rows, availableEmojis] = await Promise.all([
     raidSignups(raidId),
     discordApplicationEmojis(config.botToken, config.applicationId).catch((err: unknown) => {
