@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { componentLogger } from "../../core/runtime-logger.js";
 import { publishInspectionBestEffort } from "../../core/operational-inspection/best-effort.js";
 import { pool } from "../../db.js";
+import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import { publishedGuildArticle } from "../../core/articles/guild-articles.js";
 import { installationAbsoluteUrl } from "../../core/installation/public-origin.js";
 import { registerEmissionConsumer } from "../../emissions/registry.js";
@@ -34,6 +35,9 @@ async function projectArticle(code: string, articleId: string): Promise<void> {
   const config = await discordIntegrationConfiguration();
   if (!config?.enabled || !config.applicationVerifiedAt || !config.discordGuildId) return;
 
+  const activeGuildId = (await requireOperationalInstallationGuildBinding()).guildId;
+  const owner = await pool.query<{ guild_id: string }>("SELECT guild_id FROM guild_articles WHERE article_id = $1", [articleId]);
+  if (owner.rows[0]?.guild_id !== activeGuildId) return;
   let existing = await existingProjection(articleId);
   const article = code === "article.removed" ? null : await publishedGuildArticle(articleId);
   // Channel selection applies to new publications only. Existing messages
