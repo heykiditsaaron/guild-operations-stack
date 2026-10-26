@@ -1,3 +1,4 @@
+import { belongsToActiveGuild } from "../../integrations/discord/projection-guild-boundary.js";
 import { createHash } from "node:crypto";
 import { componentLogger } from "../../core/runtime-logger.js";
 import { publishInspectionBestEffort } from "../../core/operational-inspection/best-effort.js";
@@ -76,7 +77,7 @@ async function projectRaid(raidId: string): Promise<void> {
   const config = await discordIntegrationConfiguration();
   if (!config?.enabled || !config.applicationVerifiedAt || !config.discordGuildId) return;
   const raid = await raidEventFactsIncludingCancelled(raidId);
-  if (!raid || raid.guildId !== (await requireOperationalInstallationGuildBinding()).guildId) return;
+  if (!raid || !belongsToActiveGuild(raid.guildId, (await requireOperationalInstallationGuildBinding()).guildId)) return;
   const prior = await pool.query<Projection>(
     "SELECT discord_channel_id, discord_message_id FROM discord_raid_projections WHERE raid_id = $1", [raidId],
   );
