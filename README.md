@@ -23,9 +23,12 @@ Edit `.env` to provide `PUBLIC_ORIGIN` (the canonical externally reachable origi
 Protect the environment file (`chmod 600 .env`) and do not commit it. Host-managed credential files are also supported via `compose.blizzard-secret.yaml` and `compose.discord-secret.yaml` as documented in `.env.example`; use those overrides instead of direct values for the corresponding credentials.
 
 ```sh
-docker compose up -d
-docker compose ps
+sh scripts/init-bundled-db-secrets.sh
+docker compose -f compose.yaml -f compose.bundled-db-secret.yaml up -d
+docker compose -f compose.yaml -f compose.bundled-db-secret.yaml ps
 ```
+
+For a **new installation**, the provisioning script creates a random 256-bit PostgreSQL password and a matching database connection URL in ignored, protected files under `secrets/`. Keep these files with the deployment and include them in secure backups. Always use the same Compose file pair for subsequent starts, stops, updates, and inspection. The script refuses to overwrite existing credential files. **Do not run this provisioning sequence against an existing bundled database volume:** PostgreSQL only consumes `POSTGRES_PASSWORD_FILE` during initial database initialization, and replacing the application connection URL would disconnect it. Existing deployments using legacy credentials continue using their original Compose configuration until a deliberate database credential migration is performed.
 
 The bundled PostgreSQL service is started automatically and is not published to the host. The web service uses host port 3000 by default; set `HTTP_PORT` in `.env` to change it. The image defaults to `:latest`; set `GUILD_OPERATIONS_VERSION` to a specific release for a pinned deployment or `dev` for development.
 
@@ -49,7 +52,7 @@ docker compose -f compose.external-db.yaml -f compose.database-secret.yaml up -d
 
 Do not use `compose.yaml` in the external database command: it includes the bundled `db` service. Do not switch an existing installation to a fresh external database without a planned data migration and verified backup. The installation encryption key must remain paired with the migrated database state.
 
-**Database provisioning limitation:** the bundled Compose PostgreSQL service currently uses fixed legacy credentials. `DATABASE_URL` can override the application's connection URL, and `compose.database-secret.yaml` supports a protected connection URL file, but secure bundled database credential provisioning is not yet implemented. Do not treat the bundled configuration as production-grade database credential management.
+**Existing installations:** the original `docker compose up -d` configuration retains fixed legacy PostgreSQL credentials for backward compatibility. Use the protected credential overlay for new installations only. Credential rotation for existing databases is a separate, explicit migration; never rotate merely by changing Compose environment variables. Do not combine `compose.bundled-db-secret.yaml` with `compose.database-secret.yaml` or the external database topology.
 
 ### Host Tools
 
@@ -73,7 +76,7 @@ Discord application credentials are likewise host-owned. Guild-authorized operat
 
 ## Persistent data
 
-The packaged deployment uses two Docker named volumes:
+The packaged bundled-database deployment uses two Docker named volumes:
 
 | Volume | Purpose |
 | --- | --- |
