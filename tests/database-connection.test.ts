@@ -15,14 +15,15 @@ test("host database connection accepts PostgreSQL URL", () => {
   assert.throws(() => hostDatabaseConnectionString({ DATABASE_URL: "https://example.com" }), /PostgreSQL/);
 });
 
-test("host database connection reads protected URL file and rejects conflicting inputs", () => {
+test("host database connection prefers protected URL file over direct input", () => {
   const directory = mkdtempSync(join(tmpdir(), "go-db-connection-"));
   try {
     const path = join(directory, "url");
     const url = "postgresql://operator:password@postgres.example:5432/guild";
     writeFileSync(path, url + "\n", { mode: 0o600 });
     assert.equal(hostDatabaseConnectionString({ DATABASE_URL_FILE: path }), url);
-    assert.throws(() => hostDatabaseConnectionString({ DATABASE_URL_FILE: path, DATABASE_URL: url }), /only one/);
+    assert.equal(hostDatabaseConnectionString({ DATABASE_URL_FILE: path, DATABASE_URL: "postgresql://other:pass@other.example/db" }), url);
+    assert.throws(() => hostDatabaseConnectionString({ DATABASE_URL_FILE: join(directory, "missing"), DATABASE_URL: url }), /ENOENT/);
     writeFileSync(path, "");
     assert.throws(() => hostDatabaseConnectionString({ DATABASE_URL_FILE: path }), /empty/);
   } finally {
