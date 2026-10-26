@@ -1,3 +1,4 @@
+import { belongsToActiveGuild } from "../../integrations/discord/projection-guild-boundary.js";
 import { createHash } from "node:crypto";
 import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import { getRaffle, raffleParticipationCutoffUnix, raffleParticipationIsOpen } from "./application.js";
@@ -114,7 +115,7 @@ async function projectLedger(raffleId: string): Promise<void> {
   const config = await discordIntegrationConfiguration();
   if (!config?.enabled || !config.applicationVerifiedAt || !config.discordGuildId) return;
   const raffle = await getRaffle(raffleId);
-  if (!raffle || raffle.guildId !== (await requireOperationalInstallationGuildBinding()).guildId) return;
+  if (!raffle || !belongsToActiveGuild(raffle.guildId, (await requireOperationalInstallationGuildBinding()).guildId)) return;
   const result = await pool.query<{ discord_thread_id: string | null }>(
     "SELECT discord_thread_id FROM discord_raffle_projections WHERE raffle_id = $1", [raffleId],
   );
