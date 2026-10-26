@@ -11,8 +11,8 @@ export function normalizeOrigin(value: string): string {
 export async function installationPublicOrigin(env: NodeJS.ProcessEnv = process.env): Promise<string | null> {
   const direct = env.PUBLIC_ORIGIN?.trim();
   const file = env.PUBLIC_ORIGIN_FILE?.trim();
-  if (direct && file) throw new Error("Configure only one of PUBLIC_ORIGIN or PUBLIC_ORIGIN_FILE");
   const configured = file ? readFileSync(file, "utf8").trim() : direct;
+  if (file && !configured) throw new Error("PUBLIC_ORIGIN_FILE is empty");
   return configured ? normalizeOrigin(configured) : null;
 }
 
