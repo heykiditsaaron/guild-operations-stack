@@ -1,3 +1,4 @@
+import { belongsToActiveGuild } from "./projection-guild-boundary.js";
 import { createHash } from "node:crypto";
 import { componentLogger } from "../../core/runtime-logger.js";
 import { publishInspectionBestEffort } from "../../core/operational-inspection/best-effort.js";
@@ -37,7 +38,7 @@ async function projectArticle(code: string, articleId: string): Promise<void> {
 
   const activeGuildId = (await requireOperationalInstallationGuildBinding()).guildId;
   const owner = await pool.query<{ guild_id: string }>("SELECT guild_id FROM guild_articles WHERE article_id = $1", [articleId]);
-  if (owner.rows[0]?.guild_id !== activeGuildId) return;
+  if (!belongsToActiveGuild(owner.rows[0]?.guild_id, activeGuildId)) return;
   let existing = await existingProjection(articleId);
   const article = code === "article.removed" ? null : await publishedGuildArticle(articleId);
   // Channel selection applies to new publications only. Existing messages
