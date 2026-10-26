@@ -70,7 +70,7 @@ export async function authorizeInstallationRebind(identityId: string) {
     if (!installationRebindRequested()) throw new Error("Host has disabled guild rebinding");
 
     // A leftover host flag after completion cannot repeat the transition.
-    if (binding.guild_id === destinationId) return { guildId: destinationId, changed: false };
+    const sameGuild = binding.guild_id === destinationId;
 
     const guild = authority.profile;
     await client.query(
@@ -89,6 +89,7 @@ export async function authorizeInstallationRebind(identityId: string) {
         authority.referenceHref],
     );
     await persistGuildRoster(client, destinationId, target.region, authority.roster);
+    if (!sameGuild) {
     await client.query(
       `UPDATE installation_guild_binding SET
          guild_id=$1, bound_at=now(), bound_by_identity_id=$2,
@@ -103,6 +104,7 @@ export async function authorizeInstallationRebind(identityId: string) {
        VALUES ($1,$2,$3)`,
       [binding.guild_id, destinationId, identityId],
     );
-    return { guildId: destinationId, changed: true };
+    }
+    return { guildId: destinationId, changed: !sameGuild };
   });
 }
