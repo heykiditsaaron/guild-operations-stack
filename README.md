@@ -49,7 +49,7 @@ docker compose -f compose.external-db.yaml -f compose.database-secret.yaml up -d
 
 Do not use `compose.yaml` in the external database command: it includes the bundled `db` service. Do not switch an existing installation to a fresh external database without a planned data migration and verified backup. The installation encryption key must remain paired with the migrated database state.
 
-**Database provisioning limitation:** the bundled Compose PostgreSQL service currently uses fixed legacy credentials. `DATABASE_URL` can override the application's connection URL, and `compose.database-secret.yaml` supports a protected connection URL file, but external PostgreSQL topology and bundled database credential provisioning are not yet fully implemented. Do not treat the bundled configuration as production-grade database credential management.
+**Database provisioning limitation:** the bundled Compose PostgreSQL service currently uses fixed legacy credentials. `DATABASE_URL` can override the application's connection URL, and `compose.database-secret.yaml` supports a protected connection URL file, but secure bundled database credential provisioning is not yet implemented. Do not treat the bundled configuration as production-grade database credential management.
 
 ### Host Tools
 
