@@ -1,8 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME, authenticatedIdentity } from "../../auth.js";
 import { pool } from "../../db.js";
-import { installationGuildBinding } from "../../core/installation/guild-binding.js";
-import { discoverInstallationGuildCandidates } from "../../core/installation/guild-candidates.js";
+import { installationGuildBinding, resolveConfiguredInstallationGuild } from "../../core/installation/guild-binding.js";
+import { configuredInstallationGuild } from "../../core/installation/target.js";
 import { assetUrl, type AssetRegistry } from "../assets.js";
 import { installationBlizzardConfigured } from "../../core/installation/blizzard-configuration.js";
 
@@ -31,25 +31,33 @@ export async function registerSetupPage(app: FastifyInstance, assets: AssetRegis
     const binding = await installationGuildBinding();
     if (binding?.authorizedAt) return reply.redirect("/");
 
-    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
-    if (!identity) {
-      return reply.type("text/html; charset=utf-8").send(renderSetupDocument(
-        assets,
-        '<p>Connect your Blizzard account to identify the guild this installation will serve.</p><p><a class="button-primary setup-action" href="/auth/blizzard/start?return_to=%2Fsetup">Continue with Blizzard</a></p>',
-      ));
-    }
-
     if (!binding) {
-      const candidates = await discoverInstallationGuildCandidates(identity.identityId);
-      const choices = candidates.map((candidate) => `
-        <form method="post" data-setup-guild>
-          <input type="hidden" name="region" value="${escapeHtml(candidate.region)}">
-          <input type="hidden" name="guild_id" value="${escapeHtml(candidate.guildId)}">
-          <button class="button-primary setup-action" type="submit">${escapeHtml(candidate.name)} — ${escapeHtml(candidate.realmName ?? candidate.realmSlug)}</button>
-        </form>`).join("");
+      const target = configuredInstallationGuild();
+      if (!target) {
+        request.log.error("Installation guild target is missing or invalid");
+        return reply.code(503).type("text/html; charset=utf-8").send(renderSetupDocument(
+          assets, "<p>Guild target configuration required. Set GUILD_REGION, GUILD_REALM and GUILD_NAME in the host environment, then restart Guild Operations.</p>",
+        ));
+      }
+      let resolved;
+      try {
+        resolved = await resolveConfiguredInstallationGuild();
+      } catch (error) {
+        request.log.error({ err: error, region: target.region, realm: target.realmSlug }, "Configured installation guild resolution failed");
+        return reply.code(503).type("text/html; charset=utf-8").send(renderSetupDocument(
+          assets, `<p>Could not verify the configured guild with Blizzard. Check the host guild target and Blizzard availability, then retry.</p><p>${escapeHtml(target.name)} — ${escapeHtml(target.realmSlug)} · ${escapeHtml(target.region.toUpperCase())}</p>`,
+        ));
+      }
+      const guild = resolved.profile;
+      const selected = `<div class="setup-selected-guild"><p class="setup-selected-label">Verified with Blizzard</p><strong>${escapeHtml(guild.name)}</strong><p>${escapeHtml(guild.realm.slug)} · ${escapeHtml(target.region.toUpperCase())}</p></div>`;
+      const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+      if (!identity) {
+        return reply.type("text/html; charset=utf-8").send(renderSetupDocument(
+          assets, `<p>This installation is configured for:</p>${selected}<p>A current Guild Master must sign in to authorize this installation.</p><p><a class="button-primary setup-action" href="/auth/blizzard/start?return_to=%2Fsetup">Continue with Blizzard</a></p>`,
+        ));
+      }
       return reply.type("text/html; charset=utf-8").send(renderSetupDocument(
-        assets,
-        `<p>Select the guild this installation will serve.</p>${choices || "<p>No current guilds were found for your controlled characters.</p>"}<p class="setup-status" data-setup-status aria-live="polite"></p>`,
+        assets, `<p>This installation is configured for:</p>${selected}<form method="post" data-setup-guild><button class="button-primary setup-action" type="submit">Continue to Guild Master verification</button></form><p class="setup-status" data-setup-status aria-live="polite"></p>`,
       ));
     }
 
