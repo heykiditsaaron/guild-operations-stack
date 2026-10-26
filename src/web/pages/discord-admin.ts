@@ -7,7 +7,7 @@ import {
   pendingDiscordApplicationReplacement,
   reconnectHostDiscordApplication,
   markDiscordApplicationEstablished,
-  setDiscordIntegrationEnabled, enableVerifiedDiscordIntegration,
+  setDiscordIntegrationEnabled, enableVerifiedDiscordIntegration, establishDiscordGuildBinding,
   setDiscordArticleChannel,
   setDiscordRaidChannel,
   setDiscordRaffleChannel,
@@ -55,6 +55,9 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
         ? configuration.enabled ? "Enabled · server established" : "Configured · disabled"
         : configuration.enabled ? "Enabled · server not established" : "Configured · disabled";
 
+    const confirmServerForm = configuration?.applicationVerifiedAt && !configuration.discordGuildId
+      ? '<form method="post" action="/admin/discord/confirm-server"><p>Confirm the Discord server after installing the bot. The bot must belong to exactly one server.</p><button type="submit">Confirm Discord server</button></form>'
+      : "";
     const installUrl = (configuration?.applicationVerifiedAt || replacement) && configuration ? discordBotInstallUrl(configuration.applicationId) : null;
     const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
     const [guildRanks, mappings] = await Promise.all([guildRankDefinitions(guildId), discordRankRoleMappings(guildId)]);
@@ -423,6 +426,22 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       }
       throw error;
     }
+    return reply.redirect("/admin/discord");
+  });
+
+  app.post("/admin/discord/confirm-server", async (request, reply) => {
+    const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+    if (!identity) return reply.code(401).send({ error: "authentication_required" });
+    if (!await identityHasGuildCapability(identity.identityId, DISCORD_CONFIGURE_CAPABILITY)) {
+      return reply.code(403).send({ error: "discord_configuration_not_authorized" });
+    }
+    const configuration = await discordIntegrationConfiguration();
+    if (!configuration?.applicationVerifiedAt || configuration.discordGuildId) {
+      return reply.code(409).send({ error: "discord_server_confirmation_not_pending" });
+    }
+    const guilds = await discordBotGuilds(configuration.botToken);
+    if (guilds.length !== 1) return reply.code(409).send({ error: "discord_server_binding_ambiguous" });
+    await establishDiscordGuildBinding(guilds[0].id);
     return reply.redirect("/admin/discord");
   });
 
