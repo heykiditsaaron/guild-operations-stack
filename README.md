@@ -95,14 +95,15 @@ Preserve the installation volume alongside the database for continuity and recov
 
 ## Restarting
 
-A normal container restart does not require setup again:
+A normal container restart does not require setup again. Use **the same Compose file selection used to create the deployment**. For a new bundled installation using protected credentials:
 
-    docker compose down
-    docker compose up -d
+```sh
+docker compose -f compose.yaml -f compose.bundled-db-secret.yaml down
+docker compose -f compose.yaml -f compose.bundled-db-secret.yaml up -d
+docker compose -f compose.yaml -f compose.bundled-db-secret.yaml ps
+```
 
-Inspect the deployment with:
-
-    docker compose ps
+For legacy bundled installations, retain the original `docker compose` invocation. For external PostgreSQL installations, use `docker compose -f compose.external-db.yaml` (plus the database-secret override if configured). Do not switch Compose configurations during routine restarts or upgrades.
 
 Do not add -v during an ordinary restart or update.
 
