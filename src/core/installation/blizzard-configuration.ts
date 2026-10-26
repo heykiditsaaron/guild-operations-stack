@@ -3,8 +3,8 @@ import { readFileSync } from "node:fs";
 function hostValue(name: string, env: NodeJS.ProcessEnv): string | null {
   const direct = env[name]?.trim();
   const file = env[`${name}_FILE`]?.trim();
-  if (direct && file) throw new Error(`Configure only one of ${name} or ${name}_FILE`);
   const value = file ? readFileSync(file, "utf8").trim() : direct;
+  if (file && !value) throw new Error(`${name}_FILE is empty`);
   return value || null;
 }
 
