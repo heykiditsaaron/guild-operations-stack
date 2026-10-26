@@ -15,11 +15,15 @@ export async function installationRebindPreview() {
   const target = configuredInstallationGuild();
   if (!target) throw new Error("Rebind target is not configured");
   const authority = await resolveConfiguredInstallationGuild();
-  if (binding.guildId === String(authority.profile.id)) return null;
   const existing = await pool.query<{ name: string; realm_slug: string; region: string }>(
     "SELECT name, realm_slug, region FROM guilds WHERE guild_id = $1",
     [binding.guildId],
   );
+  const current = existing.rows[0];
+  if (binding.guildId === String(authority.profile.id)
+    && current?.name === authority.profile.name
+    && current?.realm_slug === authority.profile.realm.slug
+    && current?.region === target.region) return null;
   return {
     previous: { guildId: binding.guildId, ...existing.rows[0] },
     destination: {
@@ -72,6 +76,15 @@ export async function authorizeInstallationRebind(identityId: string) {
 
     // A leftover host flag after completion cannot repeat the transition.
     const sameGuild = binding.guild_id === destinationId;
+    const currentGuild = await client.query<{ name: string; realm_slug: string; region: string }>(
+      "SELECT name, realm_slug, region FROM guilds WHERE guild_id = $1 FOR UPDATE",
+      [destinationId],
+    );
+    if (sameGuild && currentGuild.rows[0]?.name === authority.profile.name
+      && currentGuild.rows[0]?.realm_slug === authority.profile.realm.slug
+      && currentGuild.rows[0]?.region === target.region) {
+      return { guildId: destinationId, changed: false };
+    }
 
     const guild = authority.profile;
     await client.query(
@@ -106,6 +119,6 @@ export async function authorizeInstallationRebind(identityId: string) {
       [binding.guild_id, destinationId, identityId],
     );
     }
-    return { guildId: destinationId, changed: !sameGuild };
+    return { guildId: destinationId, changed: true };
   });
 }
