@@ -50,7 +50,7 @@ export async function registerInstallationRoutes(
     const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
     if (!identity) return reply.code(401).send({ error: "not_authenticated" });
     try {
-      const result = await authorizeInstallationRebind(identity.identityId);
+      const result = await authorizeInstallationRebind(identity.identityId, request.cookies[SESSION_COOKIE_NAME]!);
       if (result.changed) await options.onOperational?.();
       return reply.send({ state: "operational", ...result });
     } catch (error) {
