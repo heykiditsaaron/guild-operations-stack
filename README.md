@@ -18,19 +18,26 @@ cd guild-operations-stack
 cp .env.example .env
 ```
 
-Edit `.env` to provide `PUBLIC_ORIGIN` (the canonical externally reachable origin, including `https://`), `BLIZZARD_CLIENT_ID`, and `BLIZZARD_CLIENT_SECRET`. Blizzard OAuth must allow the callback URL for that public origin. Discord integration is optional; when enabled, provide `DISCORD_APPLICATION_ID`, `DISCORD_CLIENT_SECRET`, and `DISCORD_BOT_TOKEN` for the same Discord application. The host owns these credentials; they are not entered through Guild Settings.
+Edit the single `.env` file in sections: installation origin, Blizzard application, database, optional Discord integration, and operational settings. Set `PUBLIC_ORIGIN`, `BLIZZARD_CLIENT_ID`, and `BLIZZARD_CLIENT_SECRET`. Configure the Blizzard OAuth callback for that origin. If enabling Discord, provide all three Discord application credentials for the same application. These are host-owned values, not Guild Settings.
 
-Protect the environment file (`chmod 600 .env`) and do not commit it. Host-managed credential files are also supported via `compose.blizzard-secret.yaml` and `compose.discord-secret.yaml` as documented in `.env.example`; use those overrides instead of direct values for the corresponding credentials.
+For a **new bundled PostgreSQL installation**, generate a strong URL-safe password and set `POSTGRES_PASSWORD` in `.env` **before first startup**. For example, `openssl rand -hex 32` produces a suitable value. Leave `DATABASE_URL` unset: Compose constructs the matching bundled database URL from `POSTGRES_PASSWORD`. Protect the file with `chmod 600 .env`; do not commit it.
 
 ```sh
-sh scripts/init-bundled-db-secrets.sh
-docker compose -f compose.yaml -f compose.bundled-db-secret.yaml up -d
-docker compose -f compose.yaml -f compose.bundled-db-secret.yaml ps
+docker compose up -d
+docker compose ps
 ```
 
-For a **new installation**, the provisioning script creates a random 256-bit PostgreSQL password and a matching database connection URL in ignored, protected files under `secrets/`. Keep these files with the deployment and include them in secure backups. Always use the same Compose file pair for subsequent starts, stops, updates, and inspection. The script refuses to overwrite existing credential files. **Do not run this provisioning sequence against an existing bundled database volume:** PostgreSQL only consumes `POSTGRES_PASSWORD_FILE` during initial database initialization, and replacing the application connection URL would disconnect it. Existing deployments using legacy credentials continue using their original Compose configuration until a deliberate database credential migration is performed.
+The bundled database is not exposed on the host. The web service publishes port 3000 by default (`HTTP_PORT` overrides it). The image defaults to `:latest`; set `GUILD_OPERATIONS_VERSION` to pin a release or to `dev` for development.
 
-The bundled PostgreSQL service is started automatically and is not published to the host. The web service uses host port 3000 by default; set `HTTP_PORT` in `.env` to change it. The image defaults to `:latest`; set `GUILD_OPERATIONS_VERSION` to a specific release for a pinned deployment or `dev` for development.
+**Existing bundled installations:** `compose.yaml` retains its legacy database password when `POSTGRES_PASSWORD` is unset, to preserve existing-volume continuity. This compatibility default is **not suitable for new installations**. Never change `POSTGRES_PASSWORD` on an initialized database merely by editing `.env`: PostgreSQL does not rotate existing database passwords when its startup environment changes. Coordinate any rotation with a database migration and a verified backup.
+
+### Credential source precedence
+
+The standard installation uses one `.env` file. Optional Compose overlays support protected files for operators who prefer them. For each application credential, an explicitly configured `*_FILE` source **wins over** the direct environment value. A selected file that is missing, unreadable, or empty causes an error; it never silently falls back to `.env`. Values without a selected file come from the environment. `PUBLIC_ORIGIN_FILE` is supported by application code but requires the host to arrange its mount; the supplied Compose files use `PUBLIC_ORIGIN` directly.
+
+Use `compose.blizzard-secret.yaml` and `compose.discord-secret.yaml` for file-based application credentials, or `compose.database-secret.yaml` for a file-based database URL. For a **new** bundled database, `sh scripts/init-bundled-db-secrets.sh` and `compose.bundled-db-secret.yaml` remain an optional alternative to `POSTGRES_PASSWORD` in `.env`. Do not apply that overlay to an existing database without credential migration. The bundled PostgreSQL server's password source and the application connection URL must always agree. When using an overlay, keep the same Compose file selection for subsequent commands and preserve the files in secure backups.
+
+Docker Compose environment variables (including values sourced from `.env`) can be visible through rendered Compose configuration and container inspection. Use protected file overlays if that exposure is unacceptable for your host.
 
 ### External PostgreSQL
 
@@ -52,7 +59,7 @@ docker compose -f compose.external-db.yaml -f compose.database-secret.yaml up -d
 
 Do not use `compose.yaml` in the external database command: it includes the bundled `db` service. Do not switch an existing installation to a fresh external database without a planned data migration and verified backup. The installation encryption key must remain paired with the migrated database state.
 
-**Existing installations:** the original `docker compose up -d` configuration retains fixed legacy PostgreSQL credentials for backward compatibility. Use the protected credential overlay for new installations only. Credential rotation for existing databases is a separate, explicit migration; never rotate merely by changing Compose environment variables. Do not combine `compose.bundled-db-secret.yaml` with `compose.database-secret.yaml` or the external database topology.
+**Database topology safety:** Do not combine `compose.bundled-db-secret.yaml` with `compose.database-secret.yaml` or the external database topology. Do not change database credentials or topology on an existing deployment without a deliberate migration.
 
 ## First-run setup
 
@@ -83,15 +90,15 @@ Preserve the installation volume alongside the database for continuity and recov
 
 ## Restarting
 
-A normal container restart does not require setup again. Use **the same Compose file selection used to create the deployment**. For a new bundled installation using protected credentials:
+A normal container restart does not require setup again. Use **the same Compose file selection used to create the deployment**. For a standard bundled installation configured through `.env`:
 
 ```sh
-docker compose -f compose.yaml -f compose.bundled-db-secret.yaml down
-docker compose -f compose.yaml -f compose.bundled-db-secret.yaml up -d
-docker compose -f compose.yaml -f compose.bundled-db-secret.yaml ps
+docker compose down
+docker compose up -d
+docker compose ps
 ```
 
-For legacy bundled installations, retain the original `docker compose` invocation. For external PostgreSQL installations, use `docker compose -f compose.external-db.yaml` (plus the database-secret override if configured). Do not switch Compose configurations during routine restarts or upgrades.
+For bundled installations using protected-file overlays, retain the original Compose file selection. For external PostgreSQL installations, use `docker compose -f compose.external-db.yaml` (plus the database-secret override if configured). Do not switch Compose configurations during routine restarts or upgrades.
 
 Do not add -v during an ordinary restart or update.
 
