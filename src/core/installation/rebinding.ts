@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { pool, withTransaction } from "../../db.js";
 import { installationGuildBinding, resolveConfiguredInstallationGuild } from "./guild-binding.js";
 import { configuredInstallationGuild, installationRebindRequested } from "./target.js";
@@ -35,7 +36,7 @@ export async function installationRebindPreview() {
   };
 }
 
-export async function authorizeInstallationRebind(identityId: string) {
+export async function authorizeInstallationRebind(identityId: string, sessionToken: string) {
   if (!installationRebindRequested()) throw new Error("Host has not enabled guild rebinding");
   const target = configuredInstallationGuild();
   if (!target) throw new Error("Rebind target is not configured");
@@ -53,12 +54,17 @@ export async function authorizeInstallationRebind(identityId: string) {
       characterId: String(character.id),
     }));
   if (!guildMasterCharacters.length) throw new Error("Destination guild has no verifiable Guild Master");
+  const tokenHash = createHash("sha256").update(sessionToken).digest("hex");
   const owned = await pool.query<{ character_id: string; realm_id: string; region: string }>(
     `SELECT cr.character_id, cr.realm_id, cr.region
        FROM controlled_character_roster ccr
        JOIN character_roster cr ON cr.character_record_id = ccr.character_record_id
-      WHERE ccr.identity_id = $1 AND ccr.currently_controlled = true`,
-    [identityId],
+      JOIN application_sessions sess ON sess.identity_id = ccr.identity_id
+      WHERE ccr.identity_id = $1 AND ccr.currently_controlled = true
+        AND sess.token_hash = $2 AND sess.revoked_at IS NULL AND sess.expires_at > now()
+        AND sess.created_at >= now() - interval '5 minutes'
+        AND ccr.last_seen_at >= sess.created_at - interval '5 seconds'`,
+    [identityId, tokenHash],
   );
   if (!guildMasterCharacters.some((gm) =>
     owned.rows.some((row) => row.region === gm.region
