@@ -54,18 +54,6 @@ Do not use `compose.yaml` in the external database command: it includes the bund
 
 **Existing installations:** the original `docker compose up -d` configuration retains fixed legacy PostgreSQL credentials for backward compatibility. Use the protected credential overlay for new installations only. Credential rotation for existing databases is a separate, explicit migration; never rotate merely by changing Compose environment variables. Do not combine `compose.bundled-db-secret.yaml` with `compose.database-secret.yaml` or the external database topology.
 
-### Host Tools
-
-The deployment-local `./go` launcher runs the Host Tools CLI from the selected application image:
-
-```sh
-./go
-./go help
-./go version
-```
-
-Host Tools currently provides console, help, and version commands. Installation and recovery commands are not yet available. The host-side launcher must be updated alongside deployment files when upgrading.
-
 ## First-run setup
 
 With host configuration in place, open the public origin in a browser. A new installation redirects to `/setup`. Sign in with Blizzard, choose an eligible guild from the Blizzard-backed candidates, and authorize it as the current rank-0 Guild Master. Host access does not grant guild authority.
