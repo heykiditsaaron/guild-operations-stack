@@ -49,7 +49,7 @@ export async function registerSetupPage(app: FastifyInstance, assets: AssetRegis
         ));
       }
       const guild = resolved.profile;
-      const selected = `<div class="setup-selected-guild"><p class="setup-selected-label">Verified with Blizzard</p><strong>${escapeHtml(guild.name)}</strong><p>${escapeHtml(guild.realm.slug)} · ${escapeHtml(target.region.toUpperCase())}</p></div>`;
+      const selected = `<div class="setup-selected-guild"><p class="setup-selected-label">Verified with Blizzard</p><strong>${escapeHtml(guild.name)}</strong><p>${escapeHtml(guild.realm.slug ?? target.realmSlug)} · ${escapeHtml(target.region.toUpperCase())}</p></div>`;
       const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
       if (!identity) {
         return reply.type("text/html; charset=utf-8").send(renderSetupDocument(
