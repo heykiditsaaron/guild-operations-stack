@@ -16,3 +16,8 @@
 .account-selection-characters-empty{font-style:italic;color:var(--theme-text-muted)}
 .account-selection-form>.setup-action{margin-top:.15rem}
 @media(max-width:34rem){.account-selection-card h1{font-size:clamp(2.15rem,11vw,3rem)}.account-selection-option{padding:.9rem}.account-selection-characters{font-size:.84rem}}
+
+.setup-selected-guild{margin:1.25rem 0;padding:1rem 1.1rem;border:1px solid var(--theme-accent-border);border-radius:.75rem;background:var(--theme-accent-soft)}
+.setup-selected-guild .setup-selected-label{margin:0 0 .4rem;color:var(--theme-text-secondary);font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.setup-selected-guild strong{display:block;color:var(--theme-text);font-size:1.2rem;overflow-wrap:anywhere}
+.setup-selected-guild p:last-child{margin:.3rem 0 0;color:var(--theme-text-secondary);overflow-wrap:anywhere}
