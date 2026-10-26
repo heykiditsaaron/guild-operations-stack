@@ -182,6 +182,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
               <button type="submit" class="button-primary">Save integration settings</button>
             </form>
           </div>`}
+          ${confirmServerForm}
           ${replacement ? `<div class="discord-server-install" role="status"><h3>Reconnect Discord application</h3>
             <p>The host administrator changed the Discord application. Existing guild settings are preserved but inactive. Install the new bot in your Discord server, then confirm the application change.</p>
             ${replacement.previousServerId ? `<p>Previous Discord server ID: <code>${htmlText(replacement.previousServerId)}</code></p>` : "<p>No Discord server was previously connected. After confirmation, choose your server using the normal installation flow.</p>"}
