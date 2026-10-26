@@ -104,6 +104,15 @@ export async function authorizeInstallationRebind(identityId: string) {
     );
     await persistGuildRoster(client, destinationId, target.region, authority.roster);
     if (!sameGuild) {
+    // Discord destinations are installation-wide, not keyed by WoW guild.
+    // Disable and clear the previous guild's routing before switching authority.
+    await client.query(
+      `UPDATE discord_integration_configuration
+          SET enabled = false, discord_guild_id = NULL,
+              article_channel_id = NULL, raid_channel_id = NULL,
+              raffle_channel_id = NULL, updated_at = now()
+        WHERE singleton = true`,
+    );
     await client.query(
       `UPDATE installation_guild_binding SET
          guild_id=$1, bound_at=now(), bound_by_identity_id=$2,
