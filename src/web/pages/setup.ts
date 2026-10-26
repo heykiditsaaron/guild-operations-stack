@@ -2,7 +2,8 @@ import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME, authenticatedIdentity } from "../../auth.js";
 import { pool } from "../../db.js";
 import { installationGuildBinding, resolveConfiguredInstallationGuild } from "../../core/installation/guild-binding.js";
-import { configuredInstallationGuild } from "../../core/installation/target.js";
+import { configuredInstallationGuild, installationRebindRequested } from "../../core/installation/target.js";
+import { installationRebindPreview } from "../../core/installation/rebinding.js";
 import { assetUrl, type AssetRegistry } from "../assets.js";
 import { installationBlizzardConfigured } from "../../core/installation/blizzard-configuration.js";
 
@@ -29,7 +30,32 @@ export async function registerSetupPage(app: FastifyInstance, assets: AssetRegis
     }
 
     const binding = await installationGuildBinding();
-    if (binding?.authorizedAt) return reply.redirect("/");
+    if (binding?.authorizedAt) {
+      if (!installationRebindRequested()) return reply.redirect("/");
+      let preview;
+      try {
+        preview = await installationRebindPreview();
+      } catch (error) {
+        request.log.warn({ err: error }, "Rebind destination resolution failed");
+        return reply.code(503).type("text/html; charset=utf-8").send(renderSetupDocument(
+          assets, "<p>Could not verify the host-configured destination guild with Blizzard. The existing guild binding remains active. Contact the host administrator to review the target configuration.</p>",
+        ));
+      }
+      if (!preview) return reply.redirect("/");
+      const previous = preview.previous;
+      const destination = preview.destination;
+      const details = `<p>Host-requested guild rebinding</p>
+        <div class="setup-selected-guild"><p class="setup-selected-label">Current guild</p><strong>${escapeHtml(previous.name)}</strong><p>${escapeHtml(previous.realm_slug)} · ${escapeHtml(previous.region.toUpperCase())}</p></div>
+        <div class="setup-selected-guild"><p class="setup-selected-label">Destination verified with Blizzard</p><strong>${escapeHtml(destination.name)}</strong><p>${escapeHtml(destination.realmSlug)} · ${escapeHtml(destination.region.toUpperCase())}</p></div>
+        <p>The destination Guild Master must authorize this change. Existing historical records are retained.</p>`;
+      const identity = await authenticatedIdentity(request.cookies[SESSION_COOKIE_NAME]);
+      if (!identity) return reply.type("text/html; charset=utf-8").send(renderSetupDocument(
+        assets, `${details}<p><a class="button-primary setup-action" href="/auth/blizzard/start?return_to=%2Fsetup">Sign in with Blizzard</a></p>`,
+      ));
+      return reply.type("text/html; charset=utf-8").send(renderSetupDocument(
+        assets, `${details}<form method="post" data-rebind-authorize><button class="button-primary setup-action" type="submit">Authorize guild rebinding</button></form><p class="setup-status" data-setup-status aria-live="polite"></p>`,
+      ));
+    }
 
     if (!binding) {
       const target = configuredInstallationGuild();
