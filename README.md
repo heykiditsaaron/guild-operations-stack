@@ -10,75 +10,46 @@ PostgreSQL is packaged with Guild Operations and is not exposed on the host.
 
 ## Install
 
-Clone the repository and start the application:
+Clone the repository, configure the host-owned settings, and start the deployment:
 
-    git clone https://github.com/heykiditsaaron/guild-operations-stack.git
-    cd guild-operations-stack
-    docker compose up -d
+```sh
+git clone https://github.com/heykiditsaaron/guild-operations-stack.git
+cd guild-operations-stack
+cp .env.example .env
+```
 
-The web service is published on host port 3000 by default. Browse to the address through which members will reach the application. A new installation automatically redirects the root URL to /setup.
+Edit `.env` to provide `PUBLIC_ORIGIN` (the canonical externally reachable origin, including `https://`), `BLIZZARD_CLIENT_ID`, and `BLIZZARD_CLIENT_SECRET`. Blizzard OAuth must allow the callback URL for that public origin. Discord integration is optional; when enabled, provide `DISCORD_APPLICATION_ID`, `DISCORD_CLIENT_SECRET`, and `DISCORD_BOT_TOKEN` for the same Discord application. The host owns these credentials; they are not entered through Guild Settings.
 
-### Optional deployment settings
+Protect the environment file (`chmod 600 .env`) and do not commit it. Host-managed credential files are also supported via `compose.blizzard-secret.yaml` and `compose.discord-secret.yaml` as documented in `.env.example`; use those overrides instead of direct values for the corresponding credentials.
 
-No .env file is required for an ordinary installation. If host port 3000 is occupied, create .env in the repository root containing:
+```sh
+docker compose up -d
+docker compose ps
+```
 
-    HTTP_PORT=8765
+The bundled PostgreSQL service is started automatically and is not published to the host. The web service uses host port 3000 by default; set `HTTP_PORT` in `.env` to change it. The image defaults to `:latest`; set `GUILD_OPERATIONS_VERSION` to a specific release for a pinned deployment or `dev` for development.
 
-A published image may also be pinned instead of using the default latest tag:
-
-    GUILD_OPERATIONS_VERSION=v0.1.0
-
-These are deployment choices, not application configuration. Docker Compose reads these settings from the deployment's `.env` file automatically, including when invoked by `./go`. For a development deployment, set `GUILD_OPERATIONS_VERSION=dev` in `.env` once rather than prefixing every command with it.
-
-System Administration is bootstrapped independently, bound to `127.0.0.1:3001` by default, and can use a different host port via `ADMIN_HOST_PORT`. See [System Administration bootstrap](docs/system-administration-bootstrap.md). The application and Administration ports are independent.
+**Database provisioning limitation:** the bundled Compose PostgreSQL service currently uses fixed legacy credentials. `DATABASE_URL` can override the application's connection URL, and `compose.database-secret.yaml` supports a protected connection URL file, but external PostgreSQL topology and bundled database credential provisioning are not yet fully implemented. Do not treat the bundled configuration as production-grade database credential management.
 
 ### Host Tools
 
-The deployment-local `./go` launcher runs the Host Tools CLI from the configured application image:
+The deployment-local `./go` launcher runs the Host Tools CLI from the selected application image:
 
-    ./go           # Interactive console (exit or Ctrl+D to leave)
-    ./go help      # Execute one command and return to the host
-    ./go version
+```sh
+./go
+./go help
+./go version
+```
 
-Host Tools uses the same image selection as the deployment. The launcher does not start the database, migration service, or API dependencies when invoked; operations that require running services will validate their own prerequisites. Host Tools currently provides the console, help, and version commands. Installation and recovery commands will be introduced separately. The launcher is a host-side file and must be updated alongside deployment files when upgrading; pulling an image alone does not replace it.
+Host Tools currently provides console, help, and version commands. Installation and recovery commands are not yet available. The host-side launcher must be updated alongside deployment files when upgrading.
 
 ## First-run setup
 
-### Setup authorization
+With host configuration in place, open the public origin in a browser. A new installation redirects to `/setup`. Sign in with Blizzard, choose an eligible guild from the Blizzard-backed candidates, and authorize it as the current rank-0 Guild Master. Host access does not grant guild authority.
 
-Before configuring Blizzard, retrieve the installation-local setup authorization token from the running API container:
+Blizzard credentials and public origin are configured on the host, **not** through the browser setup wizard. A separate System Administration service and setup-token bootstrap are not part of this deployment.
 
-    docker compose exec api cat /var/lib/guild-operations/setup-authorization.token
-
-Enter it in the first-run setup form. The token is generated automatically, remains in the installation volume, and is required again if an incomplete setup must be restarted. Treat it as a private host-operator credential. It does **not** grant guild authority; a Blizzard-verified rank-0 Guild Master must still authorize the installation.
-
-### 1. Configure Blizzard
-
-Guild Operations displays the exact OAuth callback URL for the address through which setup was opened. Copy that value and register it for an application in the Blizzard Developer Portal.
-
-Enter the application's Client ID and Client Secret into Guild Operations. They are validated with Blizzard before persistence. The Client Secret is encrypted and does not belong in .env.
-
-### 2. Continue with Blizzard
-
-Authenticate with Blizzard. Guild Operations discovers guild candidates from the account's controlled Characters and current Blizzard data.
-
-### 3. Select the guild
-
-Choose the guild represented by this deployment. Guild Operations corroborates it with Blizzard and acquires its current authoritative roster.
-
-### 4. Authorize the installation
-
-A currently controlled Character belonging to the authenticated Guildie must be a current rank-0 Guild Master of the selected guild. That Blizzard-backed authority authorizes the installation.
-
-Host or deployment control is not guild authority.
-
-After authorization, the installation becomes operational and the root URL opens the normal application.
-
-### Restart an incomplete setup
-
-Before the installation becomes operational, Restart setup is available on the setup screen. It clears the incomplete guild binding, Blizzard application configuration, established public origin, and setup authentication state, then returns to the beginning.
-
-It does not factory-reset the database or delete previously observed Guildies and Characters.
+Discord application credentials are likewise host-owned. Guild-authorized operators configure the Discord server, channels, and integration enablement in Guild Settings. Replacing the Discord application identity requires explicit reconnection; rotating credentials for the same application does not require reselecting guild-owned settings.
 
 ## Persistent data
 
@@ -97,7 +68,7 @@ Do not use docker compose down -v unless you intend to delete persistent deploym
 
 A recoverable backup must preserve both the PostgreSQL data and the installation volume, including /var/lib/guild-operations/installation.key.
 
-The database contains encrypted secrets whose encryption key deliberately lives outside the database. A database backup without the matching installation key is therefore not a complete recoverable backup. Guild Operations will not silently generate a replacement key when encrypted installation secrets already exist.
+Preserve the installation volume alongside the database for continuity and recovery. Also back up the host-owned configuration and credential material separately and securely; a database backup alone does not capture these host settings.
 
 ## Restarting
 
