@@ -15,6 +15,7 @@ export async function installationRebindPreview() {
   const target = configuredInstallationGuild();
   if (!target) throw new Error("Rebind target is not configured");
   const authority = await resolveConfiguredInstallationGuild();
+  if (binding.guildId === String(authority.profile.id)) return null;
   const existing = await pool.query<{ name: string; realm_slug: string; region: string }>(
     "SELECT name, realm_slug, region FROM guilds WHERE guild_id = $1",
     [binding.guildId],
