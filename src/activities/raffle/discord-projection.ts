@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import { getRaffle, raffleParticipationCutoffUnix, raffleParticipationIsOpen } from "./application.js";
 import { rafflePublicDestination } from "./destinations.js";
 import { raffleClaimLedger, type RaffleLedgerClaim } from "./queries.js";
@@ -112,6 +113,8 @@ async function projectClaim(raffleId: string, claim: RaffleLedgerClaim, threadId
 async function projectLedger(raffleId: string): Promise<void> {
   const config = await discordIntegrationConfiguration();
   if (!config?.enabled || !config.applicationVerifiedAt || !config.discordGuildId) return;
+  const raffle = await getRaffle(raffleId);
+  if (!raffle || raffle.guildId !== (await requireOperationalInstallationGuildBinding()).guildId) return;
   const result = await pool.query<{ discord_thread_id: string | null }>(
     "SELECT discord_thread_id FROM discord_raffle_projections WHERE raffle_id = $1", [raffleId],
   );
@@ -145,14 +148,15 @@ async function projectLedger(raffleId: string): Promise<void> {
 async function projectRaffle(raffleId: string): Promise<void> {
   const config = await discordIntegrationConfiguration();
   if (!config?.enabled || !config.applicationVerifiedAt || !config.discordGuildId) return;
+  const raffle = await getRaffle(raffleId);
+  if (!raffle || raffle.guildId !== (await requireOperationalInstallationGuildBinding()).guildId) return;
   const previous = await pool.query<Projection>(
     "SELECT discord_channel_id, discord_message_id, discord_thread_id FROM discord_raffle_projections WHERE raffle_id = $1", [raffleId],
   );
   let existing: Projection | null = previous.rows[0] ?? null;
   const channelId = existing?.discord_channel_id ?? config.raffleChannelId;
   if (!channelId) return;
-  const raffle = await getRaffle(raffleId);
-  if (!raffle || raffle.openedAtUnix === null) return;
+  if (raffle.openedAtUnix === null) return;
   const publicUrl = await installationAbsoluteUrl(rafflePublicDestination(raffleId));
   const cutoff = raffleParticipationCutoffUnix(raffle.drawingAtUnix);
   const status = raffle.conclusion !== null ? "Concluded" : raffleParticipationIsOpen(raffle) ? "Open" : "Paused or closed";
