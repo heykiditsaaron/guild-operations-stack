@@ -165,6 +165,32 @@ export async function setDiscordIntegrationEnabled(enabled: boolean): Promise<vo
   );
 }
 
+/** Enable only the application, server and destinations that passed validation.
+ * The host identity is checked again after external Discord API requests.
+ */
+export async function enableVerifiedDiscordIntegration(expected: {
+  applicationId: string;
+  discordGuildId: string;
+  botUserId: string;
+  articleChannelId: string | null;
+  raidChannelId: string | null;
+  raffleChannelId: string | null;
+}): Promise<boolean> {
+  const host = hostDiscordCredentials();
+  if (!host || host.applicationId !== expected.applicationId) return false;
+  const result = await pool.query(
+    `UPDATE discord_integration_configuration SET enabled = true, updated_at = now()
+      WHERE singleton = true AND application_id = $1 AND discord_guild_id = $2
+        AND bot_user_id = $3 AND application_verified_at IS NOT NULL
+        AND article_channel_id IS NOT DISTINCT FROM $4
+        AND raid_channel_id IS NOT DISTINCT FROM $5
+        AND raffle_channel_id IS NOT DISTINCT FROM $6`,
+    [expected.applicationId, expected.discordGuildId, expected.botUserId,
+      expected.articleChannelId, expected.raidChannelId, expected.raffleChannelId],
+  );
+  return (result.rowCount ?? 0) === 1;
+}
+
 /** The configured destination is optional; an empty selection disables article projection. */
 export async function setDiscordArticleChannel(channelId: string | null): Promise<void> {
   if (channelId !== null && !/^\d+$/.test(channelId)) throw new Error("invalid_discord_article_channel");
