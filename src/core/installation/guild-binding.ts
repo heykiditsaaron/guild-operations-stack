@@ -1,12 +1,12 @@
 import type { PoolClient } from "pg";
-import { acquireGuildAuthorityByReference, type BlizzardGuildProfile } from "../../blizzard.js";
+import { acquireGuildAuthority, acquireGuildAuthorityByReference, type BlizzardGuildProfile } from "../../blizzard.js";
 import type { Region } from "../../config.js";
 import { pool, withTransaction } from "../../db.js";
 import { controlledCharacterRecordIdsForIdentity } from "../identity/controlled-characters.js";
 import { characterProjections } from "../identity/character-projection.js";
 import { persistGuildRoster } from "../guild/guild-refresh.js";
 import { hasDevelopmentGuildMasterAuthority } from "../authority/operator-authority.js";
-import { discoverInstallationGuildCandidates } from "./guild-candidates.js";
+
 
 function localizedValue(value: unknown): string | null {
   if (typeof value === "string") return value;
@@ -78,61 +78,49 @@ export async function installationGuildBinding(): Promise<InstallationGuildBindi
   } : null;
 }
 
-export async function establishPendingInstallationGuildBinding(input: {
-  identityId: string;
+export async function resolveConfiguredInstallationGuild(): Promise<{
   region: Region;
-  guildId: string;
-}): Promise<InstallationGuildBinding> {
-  if (await installationGuildBinding()) throw new Error("Installation is already bound to a guild");
-
-  const candidates = await discoverInstallationGuildCandidates(input.identityId);
-  const candidate = candidates.find((value) => value.region === input.region && value.guildId === input.guildId);
-  if (!candidate) throw new Error("Selected guild is not a current controlled-character guild candidate");
-
-  const authority = await acquireGuildAuthorityByReference({
-    region: candidate.region,
-    referenceHref: candidate.referenceHref,
+  profile: BlizzardGuildProfile;
+  roster: Awaited<ReturnType<typeof acquireGuildAuthority>>["roster"];
+  referenceHref: string;
+}> {
+  const { configuredInstallationGuild } = await import("./target.js");
+  const target = configuredInstallationGuild();
+  if (!target) throw new Error("Installation guild target is not configured");
+  const authority = await acquireGuildAuthority({
+    region: target.region,
+    realmSlug: target.realmSlug,
+    nameSlug: target.nameSlug,
   });
-  if (
-    String(authority.profile.id) !== candidate.guildId
-    || String(authority.roster.guild.id) !== candidate.guildId
-  ) {
-    throw new Error("Blizzard guild authority did not corroborate the selected guild");
+  if (authority.profile.name.toLocaleLowerCase() !== target.name.toLocaleLowerCase()
+    || authority.profile.realm.slug !== target.realmSlug
+    || String(authority.roster.guild.id) !== String(authority.profile.id)) {
+    throw new Error("Blizzard guild identity does not match the configured installation target");
   }
-  if (
-    String(authority.profile.realm.id) !== candidate.realmId
-    || authority.profile.realm.slug !== candidate.realmSlug
-  ) {
-    throw new Error("Blizzard guild profile did not corroborate the selected guild realm");
-  }
+  return {
+    region: target.region,
+    ...authority,
+    referenceHref: `https://${target.region}.api.blizzard.com/data/wow/guild/${encodeURIComponent(target.realmSlug)}/${encodeURIComponent(target.nameSlug)}?namespace=profile-${target.region}`,
+  };
+}
 
-  const controlled = await characterProjections(await controlledCharacterRecordIdsForIdentity(input.identityId));
-  const controlledCoordinates = new Set(controlled.map((character) =>
-    `${character.region}:${character.realmId}:${character.characterId}`
-  ));
-  const currentlyPresent = (authority.roster.members ?? []).some((member) => {
-    const character = member.character;
-    return controlledCoordinates.has(
-      `${candidate.region}:${String(character.realm.id)}:${String(character.id)}`
-    );
-  });
-  if (!currentlyPresent) throw new Error("Selected guild roster does not contain a currently controlled character");
-
+export async function establishPendingInstallationGuildBinding(identityId: string): Promise<InstallationGuildBinding> {
+  const existing = await installationGuildBinding();
+  if (existing) return existing;
+  const authority = await resolveConfiguredInstallationGuild();
   await withTransaction(async (client) => {
-    const guildId = await persistGuild(client, candidate.region, authority.profile, candidate.referenceHref);
-    await persistGuildRoster(client, guildId, candidate.region, authority.roster);
+    const guildId = await persistGuild(client, authority.region, authority.profile, authority.referenceHref);
+    await persistGuildRoster(client, guildId, authority.region, authority.roster);
     await client.query(
       `INSERT INTO installation_guild_binding (singleton, guild_id, bound_by_identity_id)
-       VALUES (true, $1, $2)`,
-      [guildId, input.identityId],
+       VALUES (true, $1, $2) ON CONFLICT (singleton) DO NOTHING`,
+      [guildId, identityId],
     );
   });
-
   const binding = await installationGuildBinding();
   if (!binding) throw new Error("Installation guild binding was not persisted");
   return binding;
 }
-
 
 export async function authorizeInstallationGuildBinding(
   identityId: string,
