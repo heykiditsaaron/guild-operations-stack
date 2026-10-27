@@ -1,48 +1,57 @@
 import { createHash } from "node:crypto";
 import { pool, withTransaction } from "../../db.js";
-import { installationGuildBinding, resolveConfiguredInstallationGuild } from "./guild-binding.js";
-import { configuredInstallationGuild, installationRebindRequested } from "./target.js";
+import { installationGuildBinding } from "./guild-binding.js";
+import { acquireGuildAuthority } from "../../blizzard.js";
+import { parseRegion } from "../../config.js";
 import { persistGuildRoster } from "../guild/guild-refresh.js";
 
-/**
- * The host's explicit configuration opens the ceremony. Only a current
- * destination Guild Master who controls a Blizzard-observed character may
- * complete it. Never use the original-install development bypass here.
- */
+/** Host intent is persisted independently of the currently bound guild. */
+async function pendingRebindRequest() {
+  const result = await pool.query<{ request_id: string; region: string; realm_slug: string; guild_name: string }>(
+    "SELECT request_id, region, realm_slug, guild_name FROM installation_rebind_requests WHERE completed_at IS NULL AND cancelled_at IS NULL",
+  );
+  return result.rows[0] ?? null;
+}
+
+async function resolvePendingRebind() {
+  const request = await pendingRebindRequest();
+  if (!request) return null;
+  const region = parseRegion(request.region);
+  if (!region) throw new Error("Pending rebind has invalid region");
+  const nameSlug = request.guild_name.toLowerCase().normalize("NFKD")
+    .replace(/[\\u0300-\\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const authority = await acquireGuildAuthority({ region, realmSlug: request.realm_slug, nameSlug });
+  if (authority.profile.name.toLocaleLowerCase() !== request.guild_name.toLocaleLowerCase()
+    || authority.profile.realm.slug !== request.realm_slug
+    || String(authority.roster.guild.id) !== String(authority.profile.id)) {
+    throw new Error("Blizzard guild identity does not match the pending destination");
+  }
+  return { request, target: { region }, authority: {
+    ...authority,
+    referenceHref: `https://${region}.api.blizzard.com/data/wow/guild/${encodeURIComponent(request.realm_slug)}/${encodeURIComponent(nameSlug)}?namespace=profile-${region}`,
+  } };
+}
+
 export async function installationRebindPreview() {
-  if (!installationRebindRequested()) return null;
+  const pending = await resolvePendingRebind();
+  if (!pending) return null;
   const binding = await installationGuildBinding();
   if (!binding?.authorizedAt) return null;
-  const target = configuredInstallationGuild();
-  if (!target) throw new Error("Rebind target is not configured");
-  const authority = await resolveConfiguredInstallationGuild();
   const existing = await pool.query<{ name: string; realm_slug: string; region: string }>(
-    "SELECT name, realm_slug, region FROM guilds WHERE guild_id = $1",
-    [binding.guildId],
+    "SELECT name, realm_slug, region FROM guilds WHERE guild_id = $1", [binding.guildId],
   );
-  const current = existing.rows[0];
-  if (binding.guildId === String(authority.profile.id)
-    && current?.name === authority.profile.name
-    && current?.realm_slug === authority.profile.realm.slug
-    && current?.region === target.region) return null;
   return {
     previous: { guildId: binding.guildId, ...existing.rows[0] },
-    destination: {
-      guildId: String(authority.profile.id),
-      name: authority.profile.name,
-      realmSlug: authority.profile.realm.slug,
-      region: target.region,
-    },
+    destination: { guildId: String(pending.authority.profile.id), name: pending.authority.profile.name,
+      realmSlug: pending.authority.profile.realm.slug, region: pending.target.region },
   };
 }
 
 export async function authorizeInstallationRebind(identityId: string, sessionToken: string) {
-  if (!installationRebindRequested()) throw new Error("Host has not enabled guild rebinding");
-  const target = configuredInstallationGuild();
-  if (!target) throw new Error("Rebind target is not configured");
-  // Acquire the roster from Blizzard on every authorization attempt, not from
-  // a previously persisted guild roster or an existing member capability.
-  const authority = await resolveConfiguredInstallationGuild();
+  const pending = await resolvePendingRebind();
+  if (!pending) throw new Error("No pending host rebinding request");
+  const { request, target, authority } = pending;
+  // Acquire the roster from Blizzard on every authorization attempt.
   const destinationId = String(authority.profile.id);
   const guildMasterCharacters = (authority.roster.members ?? [])
     .filter((member) => member.rank === 0)
@@ -79,24 +88,16 @@ export async function authorizeInstallationRebind(identityId: string, sessionTok
     );
     const binding = bindingResult.rows[0];
     if (!binding?.authorized_at) throw new Error("Installation is not operational");
-    if (!installationRebindRequested()) throw new Error("Host has disabled guild rebinding");
+    const activeRequest = await client.query<{ request_id: string }>(
+      "SELECT request_id FROM installation_rebind_requests WHERE request_id = $1 AND completed_at IS NULL AND cancelled_at IS NULL FOR UPDATE",
+      [request.request_id],
+    );
+    if (!activeRequest.rowCount) return { guildId: binding.guild_id, changed: false };
 
-    // A leftover host flag after completion cannot repeat the transition.
-    const sameGuild = binding.guild_id === destinationId;
     const previousGuild = await client.query<{ name: string; realm_slug: string; region: string }>(
       "SELECT name, realm_slug, region FROM guilds WHERE guild_id = $1 FOR UPDATE",
       [binding.guild_id],
     );
-    const currentGuild = await client.query<{ name: string; realm_slug: string; region: string }>(
-      "SELECT name, realm_slug, region FROM guilds WHERE guild_id = $1 FOR UPDATE",
-      [destinationId],
-    );
-    if (sameGuild && currentGuild.rows[0]?.name === authority.profile.name
-      && currentGuild.rows[0]?.realm_slug === authority.profile.realm.slug
-      && currentGuild.rows[0]?.region === target.region) {
-      return { guildId: destinationId, changed: false };
-    }
-
     const guild = authority.profile;
     await client.query(
       `INSERT INTO guilds
@@ -114,7 +115,6 @@ export async function authorizeInstallationRebind(identityId: string, sessionTok
         authority.referenceHref],
     );
     await persistGuildRoster(client, destinationId, target.region, authority.roster);
-    if (!sameGuild) {
     // Transport projections are replaceable pointers to the previous Discord server.
     // Remove them before allowing the destination guild to reconnect.
     await client.query("DELETE FROM discord_raffle_claim_projections");
@@ -147,7 +147,6 @@ export async function authorizeInstallationRebind(identityId: string, sessionTok
        WHERE singleton=true`,
       [destinationId, identityId],
     );
-    }
     await client.query(
       `INSERT INTO installation_guild_rebindings
          (previous_guild_id, destination_guild_id, authorized_by_identity_id,
@@ -159,6 +158,8 @@ export async function authorizeInstallationRebind(identityId: string, sessionTok
         previousGuild.rows[0]?.region ?? null,
         guild.name, guild.realm.slug, target.region],
     );
+    await client.query("UPDATE installation_rebind_requests SET completed_at = now(), authorized_by_identity_id = $2 WHERE request_id = $1",
+      [request.request_id, identityId]);
     return { guildId: destinationId, changed: true };
   });
 }
