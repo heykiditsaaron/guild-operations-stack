@@ -4,6 +4,8 @@ import { installationGuildBinding } from "./guild-binding.js";
 import { acquireGuildAuthority } from "../../blizzard.js";
 import { parseRegion } from "../../config.js";
 import { persistGuildRoster } from "../guild/guild-refresh.js";
+import { publishGuildRefreshObservation } from "../guild/guild-refresh-observers.js";
+import { ensureGuildCapabilityPolicies } from "../authority/guild-capability-policy.js";
 
 /** Host intent is persisted independently of the currently bound guild. */
 async function pendingRebindRequest() {
@@ -81,7 +83,7 @@ export async function authorizeInstallationRebind(identityId: string, sessionTok
     throw new Error("Current destination Guild Master authority is required");
   }
 
-  return withTransaction(async (client) => {
+  const result = await withTransaction(async (client) => {
     await client.query("SELECT pg_advisory_xact_lock(256, 1)");
     const bindingResult = await client.query<{ guild_id: string; authorized_at: Date | null }>(
       "SELECT guild_id, authorized_at FROM installation_guild_binding WHERE singleton = true FOR UPDATE",
@@ -162,4 +164,11 @@ export async function authorizeInstallationRebind(identityId: string, sessionTok
       [request.request_id, identityId]);
     return { guildId: destinationId, changed: true };
   });
+  if (result.changed) {
+    // The roster was persisted atomically with the binding. Notify refresh
+    // observers and initialize defaults without requiring another Blizzard call.
+    await publishGuildRefreshObservation({ guildId: result.guildId, changedIdentityIds: [] });
+    await ensureGuildCapabilityPolicies(result.guildId);
+  }
+  return result;
 }
