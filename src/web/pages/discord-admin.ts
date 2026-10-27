@@ -435,6 +435,9 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       if (error instanceof Error && error.message === "invalid_discord_rank_role_mapping") {
         return reply.code(400).send({ error: error.message });
       }
+      if (error instanceof Error && ["discord_guild_binding_changed", "discord_server_binding_changed"].includes(error.message)) {
+        return reply.code(409).send({ error: error.message });
+      }
       throw error;
     }
     return reply.redirect("/admin/discord");
