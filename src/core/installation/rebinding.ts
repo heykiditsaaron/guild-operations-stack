@@ -73,6 +73,7 @@ export async function authorizeInstallationRebind(identityId: string, sessionTok
   }
 
   return withTransaction(async (client) => {
+    await client.query("SELECT pg_advisory_xact_lock(256, 1)");
     const bindingResult = await client.query<{ guild_id: string; authorized_at: Date | null }>(
       "SELECT guild_id, authorized_at FROM installation_guild_binding WHERE singleton = true FOR UPDATE",
     );
