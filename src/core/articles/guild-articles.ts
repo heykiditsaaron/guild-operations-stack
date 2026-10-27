@@ -143,7 +143,7 @@ export async function removeGuildArticle(actorIdentityId: string, articleId: str
       throw new Error("Identity cannot remove another author's Article");
     }
     await client.query("DELETE FROM guild_articles WHERE article_id = $1 AND guild_id = $2", [articleId, guildId]);
-    return existing.publishedAtUnix === null ? null : publishEmission(client, { code: "article.removed", subject: articleId });
+    return existing.publishedAtUnix === null ? null : publishEmission(client, { code: "article.removed", parent: guildId, subject: articleId });
   });
   await deliverAfterCommit(publication);
 }
