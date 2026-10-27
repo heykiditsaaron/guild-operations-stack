@@ -134,13 +134,13 @@ export async function authorizeInstallationRebind(identityId: string, sessionTok
        WHERE singleton=true`,
       [destinationId, identityId],
     );
+    }
     await client.query(
       `INSERT INTO installation_guild_rebindings
          (previous_guild_id, destination_guild_id, authorized_by_identity_id)
        VALUES ($1,$2,$3)`,
       [binding.guild_id, destinationId, identityId],
     );
-    }
     return { guildId: destinationId, changed: true };
   });
 }
