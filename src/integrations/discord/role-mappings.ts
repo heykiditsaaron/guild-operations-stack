@@ -44,6 +44,19 @@ export async function replaceDiscordRankRoleMappings(input: {
   }
 
   await withTransaction(async (client) => {
+    await client.query("SELECT pg_advisory_xact_lock_shared(256, 1)");
+    const binding = await client.query<{ guild_id: string }>(
+      "SELECT guild_id FROM installation_guild_binding WHERE singleton = true",
+    );
+    if (binding.rows[0]?.guild_id !== input.guildId) {
+      throw new Error("discord_guild_binding_changed");
+    }
+    const configuredServer = await client.query<{ discord_guild_id: string | null }>(
+      "SELECT discord_guild_id FROM discord_integration_configuration WHERE singleton = true AND enabled = true",
+    );
+    if (configuredServer.rows[0]?.discord_guild_id !== input.discordGuildId) {
+      throw new Error("discord_server_binding_changed");
+    }
     const defined = await client.query<{ rank_index: number }>(
       "SELECT rank_index FROM guild_rank_definitions WHERE guild_id = $1 AND active = true",
       [input.guildId],
