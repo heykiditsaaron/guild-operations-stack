@@ -501,6 +501,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     if (!hostDiscordCredentials()) return reply.code(409).send({ error: "discord_host_configuration_required" });
     const configuration = await discordIntegrationConfiguration();
     if (!configuration?.applicationVerifiedAt) return reply.code(409).send({ error: "discord_application_not_verified" });
+    const expectedGuildId = (await requireOperationalInstallationGuildBinding()).guildId;
     const body = (request.body ?? {}) as Record<string, unknown>;
     if (body.enabled === "true") {
       if (!configuration.discordGuildId || !configuration.botUserId) {
