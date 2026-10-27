@@ -83,6 +83,10 @@ export async function authorizeInstallationRebind(identityId: string, sessionTok
 
     // A leftover host flag after completion cannot repeat the transition.
     const sameGuild = binding.guild_id === destinationId;
+    const previousGuild = await client.query<{ name: string; realm_slug: string; region: string }>(
+      "SELECT name, realm_slug, region FROM guilds WHERE guild_id = $1 FOR UPDATE",
+      [binding.guild_id],
+    );
     const currentGuild = await client.query<{ name: string; realm_slug: string; region: string }>(
       "SELECT name, realm_slug, region FROM guilds WHERE guild_id = $1 FOR UPDATE",
       [destinationId],
@@ -137,9 +141,14 @@ export async function authorizeInstallationRebind(identityId: string, sessionTok
     }
     await client.query(
       `INSERT INTO installation_guild_rebindings
-         (previous_guild_id, destination_guild_id, authorized_by_identity_id)
-       VALUES ($1,$2,$3)`,
-      [binding.guild_id, destinationId, identityId],
+         (previous_guild_id, destination_guild_id, authorized_by_identity_id,
+          previous_guild_name, previous_realm_slug, previous_region,
+          destination_guild_name, destination_realm_slug, destination_region)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [binding.guild_id, destinationId, identityId,
+        previousGuild.rows[0]?.name ?? null, previousGuild.rows[0]?.realm_slug ?? null,
+        previousGuild.rows[0]?.region ?? null,
+        guild.name, guild.realm.slug, target.region],
     );
     return { guildId: destinationId, changed: true };
   });
