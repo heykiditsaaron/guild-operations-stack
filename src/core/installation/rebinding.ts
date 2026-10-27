@@ -73,6 +73,7 @@ export async function authorizeInstallationRebind(identityId: string, sessionTok
   }
 
   return withTransaction(async (client) => {
+    await client.query("SELECT pg_advisory_xact_lock(256, 1)");
     const bindingResult = await client.query<{ guild_id: string; authorized_at: Date | null }>(
       "SELECT guild_id, authorized_at FROM installation_guild_binding WHERE singleton = true FOR UPDATE",
     );
@@ -110,6 +111,12 @@ export async function authorizeInstallationRebind(identityId: string, sessionTok
     );
     await persistGuildRoster(client, destinationId, target.region, authority.roster);
     if (!sameGuild) {
+    // Transport projections are replaceable pointers to the previous Discord server.
+    // Remove them before allowing the destination guild to reconnect.
+    await client.query("DELETE FROM discord_raffle_claim_projections");
+    await client.query("DELETE FROM discord_raffle_projections");
+    await client.query("DELETE FROM discord_raid_projections");
+    await client.query("DELETE FROM discord_article_projections");
     // Discord destinations are installation-wide, not keyed by WoW guild.
     // Disable and clear the previous guild's routing before switching authority.
     await client.query(
