@@ -20,7 +20,7 @@ async function resolvePendingRebind() {
   const region = parseRegion(request.region);
   if (!region) throw new Error("Pending rebind has invalid region");
   const nameSlug = request.guild_name.toLowerCase().normalize("NFKD")
-    .replace(/[\\u0300-\\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const authority = await acquireGuildAuthority({ region, realmSlug: request.realm_slug, nameSlug });
   if (authority.profile.name.toLocaleLowerCase() !== request.guild_name.toLocaleLowerCase()
     || authority.profile.realm.slug !== request.realm_slug
