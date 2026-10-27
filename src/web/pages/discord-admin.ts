@@ -345,12 +345,15 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     if (!configuration?.enabled || !configuration.discordGuildId) return reply.code(409).send({ error: "discord_integration_not_ready" });
     const body = (request.body ?? {}) as Record<string, unknown>;
     if (typeof body.channel_id !== "string") return reply.code(400).send({ error: "invalid_discord_raid_channel" });
+    const expectedGuildId = (await requireOperationalInstallationGuildBinding()).guildId;
     const channels = await discordServerChannels(configuration.botToken, configuration.discordGuildId);
     if (body.channel_id && !channels.some((channel) => channel.id === body.channel_id &&
       (channel.type === DISCORD_TEXT_CHANNEL || channel.type === DISCORD_ANNOUNCEMENT_CHANNEL))) {
       return reply.code(422).send({ error: "discord_raid_channel_unavailable" });
     }
-    await setDiscordRaidChannel(body.channel_id || null);
+    if (!await setDiscordRaidChannel(body.channel_id || null, expectedGuildId)) {
+      return reply.code(409).send({ error: "discord_configuration_changed_during_verification" });
+    }
     return reply.redirect("/admin/discord");
   });
 
@@ -364,12 +367,15 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     if (!configuration?.enabled || !configuration.discordGuildId) return reply.code(409).send({ error: "discord_integration_not_ready" });
     const body = (request.body ?? {}) as Record<string, unknown>;
     if (typeof body.channel_id !== "string") return reply.code(400).send({ error: "invalid_discord_raffle_channel" });
+    const expectedGuildId = (await requireOperationalInstallationGuildBinding()).guildId;
     const channels = await discordServerChannels(configuration.botToken, configuration.discordGuildId);
     if (body.channel_id && !channels.some((channel) => channel.id === body.channel_id &&
       (channel.type === DISCORD_TEXT_CHANNEL || channel.type === DISCORD_ANNOUNCEMENT_CHANNEL))) {
       return reply.code(422).send({ error: "discord_raffle_channel_unavailable" });
     }
-    await setDiscordRaffleChannel(body.channel_id || null);
+    if (!await setDiscordRaffleChannel(body.channel_id || null, expectedGuildId)) {
+      return reply.code(409).send({ error: "discord_configuration_changed_during_verification" });
+    }
     return reply.redirect("/admin/discord");
   });
 
@@ -383,10 +389,13 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     if (!configuration?.enabled || !configuration.discordGuildId) return reply.code(409).send({ error: "discord_integration_not_ready" });
     const body = (request.body ?? {}) as Record<string, unknown>;
     if (typeof body.channel_id !== "string") return reply.code(400).send({ error: "invalid_discord_article_channel" });
+    const expectedGuildId = (await requireOperationalInstallationGuildBinding()).guildId;
     const channels = await discordServerChannels(configuration.botToken, configuration.discordGuildId);
     const valid = channels.some((channel) => channel.id === body.channel_id && (channel.type === DISCORD_TEXT_CHANNEL || channel.type === DISCORD_ANNOUNCEMENT_CHANNEL));
     if (body.channel_id && !valid) return reply.code(422).send({ error: "discord_article_channel_unavailable" });
-    await setDiscordArticleChannel(body.channel_id || null);
+    if (!await setDiscordArticleChannel(body.channel_id || null, expectedGuildId)) {
+      return reply.code(409).send({ error: "discord_configuration_changed_during_verification" });
+    }
     return reply.redirect("/admin/discord");
   });
 
@@ -440,9 +449,12 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     if (!configuration?.applicationVerifiedAt || configuration.discordGuildId) {
       return reply.code(409).send({ error: "discord_server_confirmation_not_pending" });
     }
+    const expectedGuildId = (await requireOperationalInstallationGuildBinding()).guildId;
     const guilds = await discordBotGuilds(configuration.botToken);
     if (guilds.length !== 1) return reply.code(409).send({ error: "discord_server_binding_ambiguous" });
-    await establishDiscordGuildBinding(guilds[0].id);
+    if (!await establishDiscordGuildBinding(guilds[0].id, expectedGuildId)) {
+      return reply.code(409).send({ error: "discord_server_confirmation_state_changed" });
+    }
     return reply.redirect("/admin/discord");
   });
 
