@@ -147,6 +147,7 @@ export async function reconnectHostDiscordApplication(input: {
   botUsername: string | null;
   interactionPublicKey: string;
   discordGuildId: string | null;
+  expectedGuildId: string;
 }): Promise<boolean> {
   const host = hostDiscordCredentials();
   if (!host) throw new Error("discord_host_configuration_required");
@@ -158,7 +159,7 @@ export async function reconnectHostDiscordApplication(input: {
            interaction_public_key = $5, updated_at = now()
        WHERE singleton = true AND application_id <> $1 AND discord_guild_id IS NOT DISTINCT FROM $6`,
     [host.applicationId, input.applicationName, input.botUserId, input.botUsername,
-      input.interactionPublicKey, input.discordGuildId],
+      input.interactionPublicKey, input.discordGuildId], input.expectedGuildId,
   );
   return result === 1;
 }
@@ -176,11 +177,11 @@ export async function establishDiscordGuildBinding(discordGuildId: string, expec
      WHERE singleton = true AND discord_guild_id IS NULL`, [value], expectedGuildId)) === 1;
 }
 
-export async function setDiscordIntegrationEnabled(enabled: boolean): Promise<void> {
-  await updateDiscordConfiguration(
+export async function setDiscordIntegrationEnabled(enabled: boolean, expectedGuildId: string): Promise<boolean> {
+  return (await updateDiscordConfiguration(
     "UPDATE discord_integration_configuration SET enabled = $1, updated_at = now() WHERE singleton = true",
-    [enabled],
-  );
+    [enabled], expectedGuildId,
+  )) === 1;
 }
 
 /** Enable only the application, server and destinations that passed validation.
@@ -193,6 +194,7 @@ export async function enableVerifiedDiscordIntegration(expected: {
   articleChannelId: string | null;
   raidChannelId: string | null;
   raffleChannelId: string | null;
+  expectedGuildId: string;
 }): Promise<boolean> {
   const host = hostDiscordCredentials();
   if (!host || host.applicationId !== expected.applicationId) return false;
@@ -204,7 +206,7 @@ export async function enableVerifiedDiscordIntegration(expected: {
         AND raid_channel_id IS NOT DISTINCT FROM $5
         AND raffle_channel_id IS NOT DISTINCT FROM $6`,
     [expected.applicationId, expected.discordGuildId, expected.botUserId,
-      expected.articleChannelId, expected.raidChannelId, expected.raffleChannelId],
+      expected.articleChannelId, expected.raidChannelId, expected.raffleChannelId], expected.expectedGuildId,
   );
   return result === 1;
 }
