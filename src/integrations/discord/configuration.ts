@@ -1,5 +1,17 @@
-import { pool } from "../../db.js";
+import { pool, withTransaction } from "../../db.js";
 import { hostDiscordCredentials } from "./host-credentials.js";
+
+
+// Coordinate configuration writes with installation rebinding. The shared lock
+// permits ordinary configuration operations concurrently but excludes the
+// rebinding transaction while an update is in progress.
+async function updateDiscordConfiguration(query: string, parameters: unknown[]): Promise<number> {
+  return withTransaction(async (client) => {
+    await client.query("SELECT pg_advisory_xact_lock_shared(256, 1)");
+    const result = await client.query(query, parameters);
+    return result.rowCount ?? 0;
+  });
+}
 
 export type DiscordIntegrationConfiguration = {
   enabled: boolean;
@@ -84,7 +96,7 @@ export async function establishHostDiscordApplication(input: {
   const host = hostDiscordCredentials();
   if (!host) throw new Error("discord_host_configuration_required");
   if (!/^[0-9a-f]{64}$/i.test(input.interactionPublicKey)) throw new Error("invalid_discord_interaction_public_key");
-  await pool.query(
+  await updateDiscordConfiguration(
     `INSERT INTO discord_integration_configuration (
        singleton, enabled, application_id,
        application_name, application_verified_at, bot_user_id, bot_username, interaction_public_key
@@ -133,7 +145,7 @@ export async function reconnectHostDiscordApplication(input: {
   const host = hostDiscordCredentials();
   if (!host) throw new Error("discord_host_configuration_required");
   if (!/^[0-9a-f]{64}$/i.test(input.interactionPublicKey)) throw new Error("invalid_discord_interaction_public_key");
-  const result = await pool.query(
+  const result = await updateDiscordConfiguration(
     `UPDATE discord_integration_configuration
        SET enabled = false, application_id = $1, application_name = $2,
            application_verified_at = now(), bot_user_id = $3, bot_username = $4,
@@ -142,24 +154,24 @@ export async function reconnectHostDiscordApplication(input: {
     [host.applicationId, input.applicationName, input.botUserId, input.botUsername,
       input.interactionPublicKey, input.discordGuildId],
   );
-  return (result.rowCount ?? 0) === 1;
+  return (result === 1;
 }
 
 export async function markDiscordApplicationEstablished(applicationName: string, botUserId: string | null, botUsername: string | null, interactionPublicKey: string): Promise<void> {
   if (!/^[0-9a-f]{64}$/i.test(interactionPublicKey)) throw new Error("invalid_discord_interaction_public_key");
-  await pool.query("UPDATE discord_integration_configuration SET application_name = $1, application_verified_at = now(), bot_user_id = $2, bot_username = $3, interaction_public_key = $4, updated_at = now() WHERE singleton = true", [applicationName, botUserId, botUsername, interactionPublicKey]);
+  await updateDiscordConfiguration("UPDATE discord_integration_configuration SET application_name = $1, application_verified_at = now(), bot_user_id = $2, bot_username = $3, interaction_public_key = $4, updated_at = now() WHERE singleton = true", [applicationName, botUserId, botUsername, interactionPublicKey]);
 }
 
 export async function establishDiscordGuildBinding(discordGuildId: string): Promise<void> {
   const value = discordGuildId.trim();
   if (!value) throw new Error("invalid_discord_guild_id");
-  await pool.query(`UPDATE discord_integration_configuration
+  await updateDiscordConfiguration(`UPDATE discord_integration_configuration
        SET discord_guild_id = $1, updated_at = now()
      WHERE singleton = true`, [value]);
 }
 
 export async function setDiscordIntegrationEnabled(enabled: boolean): Promise<void> {
-  await pool.query(
+  await updateDiscordConfiguration(
     "UPDATE discord_integration_configuration SET enabled = $1, updated_at = now() WHERE singleton = true",
     [enabled],
   );
@@ -178,7 +190,7 @@ export async function enableVerifiedDiscordIntegration(expected: {
 }): Promise<boolean> {
   const host = hostDiscordCredentials();
   if (!host || host.applicationId !== expected.applicationId) return false;
-  const result = await pool.query(
+  const result = await updateDiscordConfiguration(
     `UPDATE discord_integration_configuration SET enabled = true, updated_at = now()
       WHERE singleton = true AND application_id = $1 AND discord_guild_id = $2
         AND bot_user_id = $3 AND application_verified_at IS NOT NULL
@@ -188,13 +200,13 @@ export async function enableVerifiedDiscordIntegration(expected: {
     [expected.applicationId, expected.discordGuildId, expected.botUserId,
       expected.articleChannelId, expected.raidChannelId, expected.raffleChannelId],
   );
-  return (result.rowCount ?? 0) === 1;
+  return (result === 1;
 }
 
 /** The configured destination is optional; an empty selection disables article projection. */
 export async function setDiscordArticleChannel(channelId: string | null): Promise<void> {
   if (channelId !== null && !/^\d+$/.test(channelId)) throw new Error("invalid_discord_article_channel");
-  await pool.query(
+  await updateDiscordConfiguration(
     "UPDATE discord_integration_configuration SET article_channel_id = $1, updated_at = now() WHERE singleton = true",
     [channelId],
   );
@@ -203,7 +215,7 @@ export async function setDiscordArticleChannel(channelId: string | null): Promis
 /** Optional destination for future Raid projections. */
 export async function setDiscordRaidChannel(channelId: string | null): Promise<void> {
   if (channelId !== null && !/^\d+$/.test(channelId)) throw new Error("invalid_discord_raid_channel");
-  await pool.query(
+  await updateDiscordConfiguration(
     "UPDATE discord_integration_configuration SET raid_channel_id = $1, updated_at = now() WHERE singleton = true",
     [channelId],
   );
@@ -212,7 +224,7 @@ export async function setDiscordRaidChannel(channelId: string | null): Promise<v
 /** Optional destination for Raffle announcements and claim ledger threads. */
 export async function setDiscordRaffleChannel(channelId: string | null): Promise<void> {
   if (channelId !== null && !/^[0-9]+$/.test(channelId)) throw new Error("invalid_discord_raffle_channel");
-  await pool.query(
+  await updateDiscordConfiguration(
     "UPDATE discord_integration_configuration SET raffle_channel_id = $1, updated_at = now() WHERE singleton = true",
     [channelId],
   );
