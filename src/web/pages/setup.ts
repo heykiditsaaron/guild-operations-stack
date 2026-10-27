@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { SESSION_COOKIE_NAME, authenticatedIdentity } from "../../auth.js";
 import { pool } from "../../db.js";
 import { installationGuildBinding, resolveConfiguredInstallationGuild } from "../../core/installation/guild-binding.js";
-import { configuredInstallationGuild, installationRebindRequested } from "../../core/installation/target.js";
+import { configuredInstallationGuild } from "../../core/installation/target.js";
 import { installationRebindPreview } from "../../core/installation/rebinding.js";
 import { assetUrl, type AssetRegistry } from "../assets.js";
 import { installationBlizzardConfigured } from "../../core/installation/blizzard-configuration.js";
@@ -31,14 +31,13 @@ export async function registerSetupPage(app: FastifyInstance, assets: AssetRegis
 
     const binding = await installationGuildBinding();
     if (binding?.authorizedAt) {
-      if (!installationRebindRequested()) return reply.redirect("/");
       let preview;
       try {
         preview = await installationRebindPreview();
       } catch (error) {
         request.log.warn({ err: error }, "Rebind destination resolution failed");
         return reply.code(503).type("text/html; charset=utf-8").send(renderSetupDocument(
-          assets, "<p>Could not verify the host-configured destination guild with Blizzard. The existing guild binding remains active. Contact the host administrator to review the target configuration.</p>",
+          assets, "<p>Could not verify the pending destination guild with Blizzard. The existing guild binding remains active. Contact the host administrator to review the target configuration.</p>",
         ));
       }
       if (!preview) return reply.redirect("/");
