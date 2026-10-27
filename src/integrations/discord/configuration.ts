@@ -171,9 +171,9 @@ export async function markDiscordApplicationEstablished(applicationName: string,
 export async function establishDiscordGuildBinding(discordGuildId: string, expectedGuildId: string): Promise<boolean> {
   const value = discordGuildId.trim();
   if (!value) throw new Error("invalid_discord_guild_id");
-  await updateDiscordConfiguration(`UPDATE discord_integration_configuration
+  return (await updateDiscordConfiguration(`UPDATE discord_integration_configuration
        SET discord_guild_id = $1, updated_at = now()
-     WHERE singleton = true`, [value]);
+     WHERE singleton = true AND discord_guild_id IS NULL`, [value], expectedGuildId)) === 1;
 }
 
 export async function setDiscordIntegrationEnabled(enabled: boolean): Promise<void> {
