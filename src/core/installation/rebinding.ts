@@ -5,7 +5,6 @@ import { acquireGuildAuthority } from "../../blizzard.js";
 import { parseRegion } from "../../config.js";
 import { persistGuildRoster } from "../guild/guild-refresh.js";
 import { publishGuildRefreshObservation } from "../guild/guild-refresh-observers.js";
-import { ensureGuildCapabilityPolicies } from "../authority/guild-capability-policy.js";
 
 /** Host intent is persisted independently of the currently bound guild. */
 async function pendingRebindRequest() {
@@ -168,7 +167,6 @@ export async function authorizeInstallationRebind(identityId: string, sessionTok
     // The roster was persisted atomically with the binding. Notify refresh
     // observers and initialize defaults without requiring another Blizzard call.
     await publishGuildRefreshObservation({ guildId: result.guildId, changedIdentityIds: [] });
-    await ensureGuildCapabilityPolicies(result.guildId);
   }
   return result;
 }
