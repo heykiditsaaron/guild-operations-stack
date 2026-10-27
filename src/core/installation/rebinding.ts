@@ -121,6 +121,15 @@ export async function authorizeInstallationRebind(identityId: string, sessionTok
     await client.query("DELETE FROM discord_raffle_projections");
     await client.query("DELETE FROM discord_raid_projections");
     await client.query("DELETE FROM discord_article_projections");
+    // A destination previously hosted here must not recover its old capability grants.
+    // Clear both policy configuration and its effective projection so the next
+    // guild refresh initializes the destination from registered defaults.
+    await client.query("DELETE FROM guild_capability_policy_configuration WHERE guild_id = $1", [destinationId]);
+    await client.query("DELETE FROM guild_rank_capabilities WHERE guild_id = $1", [destinationId]);
+    // Role mappings are configuration, not historical records. Do not reuse
+    // mappings from an earlier binding of this same WoW guild.
+    await client.query("DELETE FROM discord_rank_role_mappings WHERE guild_id = $1", [destinationId]);
+    await client.query("DELETE FROM discord_rank_role_managed");
     // Discord destinations are installation-wide, not keyed by WoW guild.
     // Disable and clear the previous guild's routing before switching authority.
     await client.query(
