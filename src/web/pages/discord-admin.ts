@@ -234,6 +234,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     }
     const configuration = await discordIntegrationConfiguration();
     if (!configuration?.applicationVerifiedAt) return reply.code(409).send({ error: "discord_application_not_verified" });
+    const expectedGuildId = (await requireOperationalInstallationGuildBinding()).guildId;
     if (emojiSetupsInProgress.has(configuration.applicationId)) {
       return reply.code(409).send({ error: "emoji_setup_already_running" });
     }
@@ -467,6 +468,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     const replacement = await pendingDiscordApplicationReplacement();
     const host = hostDiscordCredentials();
     if (!replacement || !host) return reply.code(409).send({ error: "discord_reconnection_not_pending" });
+    const expectedGuildId = (await requireOperationalInstallationGuildBinding()).guildId;
     const application = await currentDiscordApplication(host.botToken);
     if (application.id !== host.applicationId || !application.verify_key) {
       return reply.code(409).send({ error: "discord_application_not_verified" });
@@ -481,6 +483,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       botUsername: application.bot?.username ?? null,
       interactionPublicKey: application.verify_key,
       discordGuildId: replacement.previousServerId,
+      expectedGuildId,
     });
     if (!changed) return reply.code(409).send({ error: "discord_reconnection_state_changed" });
     return reply.redirect("/admin/discord");
@@ -550,10 +553,13 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
         articleChannelId: configuration.articleChannelId,
         raidChannelId: configuration.raidChannelId,
         raffleChannelId: configuration.raffleChannelId,
+        expectedGuildId,
       });
       if (!enabled) return reply.code(409).send({ error: "discord_configuration_changed_during_verification" });
     } else {
-      await setDiscordIntegrationEnabled(false);
+      if (!await setDiscordIntegrationEnabled(false, expectedGuildId)) {
+        return reply.code(409).send({ error: "discord_configuration_changed_during_verification" });
+      }
     }
     await loadDiscordInteractionPublicKey();
     return reply.redirect("/admin/discord");
