@@ -1,4 +1,4 @@
-import { belongsToActiveGuild } from "./projection-guild-boundary.js";
+import { articleEmissionGuildId, belongsToActiveGuild } from "./projection-guild-boundary.js";
 import { createHash } from "node:crypto";
 import { componentLogger } from "../../core/runtime-logger.js";
 import { publishInspectionBestEffort } from "../../core/operational-inspection/best-effort.js";
@@ -38,7 +38,7 @@ async function projectArticle(code: string, articleId: string, sourceGuildId?: s
 
   const activeGuildId = (await requireOperationalInstallationGuildBinding()).guildId;
   const owner = await pool.query<{ guild_id: string }>("SELECT guild_id FROM guild_articles WHERE article_id = $1", [articleId]);
-  const guildId = code === "article.removed" ? sourceGuildId : owner.rows[0]?.guild_id;
+  const guildId = articleEmissionGuildId(code, owner.rows[0]?.guild_id, sourceGuildId);
   if (!belongsToActiveGuild(guildId, activeGuildId)) return;
   let existing = await existingProjection(articleId);
   const article = code === "article.removed" ? null : await publishedGuildArticle(articleId);
