@@ -154,7 +154,7 @@ export async function reconnectHostDiscordApplication(input: {
     [host.applicationId, input.applicationName, input.botUserId, input.botUsername,
       input.interactionPublicKey, input.discordGuildId],
   );
-  return (result === 1;
+  return result === 1;
 }
 
 export async function markDiscordApplicationEstablished(applicationName: string, botUserId: string | null, botUsername: string | null, interactionPublicKey: string): Promise<void> {
@@ -200,7 +200,7 @@ export async function enableVerifiedDiscordIntegration(expected: {
     [expected.applicationId, expected.discordGuildId, expected.botUserId,
       expected.articleChannelId, expected.raidChannelId, expected.raffleChannelId],
   );
-  return (result === 1;
+  return result === 1;
 }
 
 /** The configured destination is optional; an empty selection disables article projection. */
