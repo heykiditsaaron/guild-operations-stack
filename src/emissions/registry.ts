@@ -97,8 +97,24 @@ async function attemptConsumerReceipt(
   const trace = { publicationId: publication.publicationId, consumerId: consumer.consumerId, emissionCode: publication.emission.code, attemptCount };
   log.info(trace, "Emission delivery attempt started");
 
+  const guardedReceive = consumer.consumerId.startsWith("discord.")
+    ? async (emission: Emission) => {
+        const connection = await pool.connect();
+        try {
+          await connection.query("BEGIN");
+          await connection.query("SELECT pg_advisory_xact_lock_shared(256, 1)");
+          await consumer.receive(emission);
+          await connection.query("COMMIT");
+        } catch (error) {
+          await connection.query("ROLLBACK");
+          throw error;
+        } finally {
+          connection.release();
+        }
+      }
+    : consumer.receive;
   await completeEmissionAttempt(
-    consumer.receive,
+    guardedReceive,
     publication.emission,
     async () => {
       await pool.query(
