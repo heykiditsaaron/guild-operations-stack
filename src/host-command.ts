@@ -7,10 +7,32 @@ import { parseRegion } from "./config.js";
 
 async function main(): Promise<void> {
   const [command, ...args] = process.argv.slice(2);
-  if (command !== "rebind" || args.length !== 3) {
-    throw new Error("Usage: node dist/host-command.js rebind <region> <realm-slug> <guild-name>");
+  if (command !== "rebind" || (args.length !== 3 && !(args.length === 1 && args[0] === "cancel"))) {
+    throw new Error("Usage: node dist/host-command.js rebind <region> <realm-slug> <guild-name> | rebind cancel");
   }
   if (!stdin.isTTY || !stdout.isTTY) throw new Error("Rebinding requires an interactive host terminal");
+  if (args[0] === "cancel") {
+    const pending = await pool.query<{ request_id: string; guild_name: string; realm_slug: string; region: string }>(
+      "SELECT request_id, guild_name, realm_slug, region FROM installation_rebind_requests WHERE completed_at IS NULL AND cancelled_at IS NULL",
+    );
+    const request = pending.rows[0];
+    if (!request) { stdout.write("No pending rebind request.\\n"); return; }
+    stdout.write(`Pending destination: ${request.guild_name} (${request.realm_slug}, ${request.region})\\n`);
+    const rl = createInterface({ input: stdin, output: stdout });
+    let confirmation: string;
+    try { confirmation = await rl.question(`Type "${request.guild_name}" to cancel this request: `); }
+    finally { rl.close(); }
+    if (confirmation !== request.guild_name) { stdout.write("No changes made.\\n"); return; }
+    const cancelled = await withTransaction(async (client) => {
+      await client.query("SELECT pg_advisory_xact_lock(256, 1)");
+      return client.query(
+        "UPDATE installation_rebind_requests SET cancelled_at = now() WHERE request_id = $1 AND completed_at IS NULL AND cancelled_at IS NULL",
+        [request.request_id],
+      );
+    });
+    stdout.write(cancelled.rowCount ? "Pending rebind request cancelled.\\n" : "Request already completed or cancelled.\\n");
+    return;
+  }
   const [regionInput, realmInput, nameInput] = args;
   const region = parseRegion(regionInput);
   const realmSlug = realmInput.trim().toLowerCase();
