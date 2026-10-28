@@ -116,6 +116,10 @@ export async function authorizeInstallationRebind(identityId: string, sessionTok
         guild.realm.slug,
         authority.referenceHref],
     );
+    // Homepage copy and layout are guild-owned configuration, not history.
+    // A guild returning to this installation must not recover its old homepage.
+    await client.query("DELETE FROM guild_homepage_settings WHERE guild_id = $1", [destinationId]);
+    await client.query("DELETE FROM guild_homepage_primitives WHERE guild_id = $1", [destinationId]);
     // Rank labels and active flags are guild-owned presentation settings.
     // Reset them before roster observation reactivates current Blizzard ranks.
     await client.query(
