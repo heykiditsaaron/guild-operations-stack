@@ -57,6 +57,7 @@ async function main(): Promise<void> {
     stdout.write("Reading the configured destination from this command's environment.\\n");
     const target = await resolveConfiguredInstallationGuild();
     region = target.region;
+    if (!target.profile.realm.slug) throw new Error("Blizzard guild profile omitted realm slug");
     realmSlug = target.profile.realm.slug;
     guildName = target.profile.name;
     if (String(target.profile.id) === binding.guildId) {
