@@ -5,14 +5,15 @@ import { hostDiscordCredentials } from "./host-credentials.js";
 // Coordinate configuration writes with installation rebinding. The shared lock
 // permits ordinary configuration operations concurrently but excludes the
 // rebinding transaction while an update is in progress.
-async function updateDiscordConfiguration(query: string, parameters: unknown[], expectedGuildId?: string): Promise<number> {
+async function updateDiscordConfiguration(query: string, parameters: unknown[], expectedBinding?: { guildId: string; boundAt: Date }): Promise<number> {
   return withTransaction(async (client) => {
     await client.query("SELECT pg_advisory_xact_lock_shared(256, 1)");
-    if (expectedGuildId !== undefined) {
-      const binding = await client.query<{ guild_id: string }>(
-        "SELECT guild_id FROM installation_guild_binding WHERE singleton = true",
+    if (expectedBinding !== undefined) {
+      const binding = await client.query<{ guild_id: string; bound_at: Date }>(
+        "SELECT guild_id, bound_at FROM installation_guild_binding WHERE singleton = true",
       );
-      if (binding.rows[0]?.guild_id !== expectedGuildId) return 0;
+      if (binding.rows[0]?.guild_id !== expectedBinding.guildId ||
+        binding.rows[0]?.bound_at.getTime() !== expectedBinding.boundAt.getTime()) return 0;
     }
     const result = await client.query(query, parameters);
     return result.rowCount ?? 0;
@@ -147,7 +148,7 @@ export async function reconnectHostDiscordApplication(input: {
   botUsername: string | null;
   interactionPublicKey: string;
   discordGuildId: string | null;
-  expectedGuildId: string;
+  expectedBinding: { guildId: string; boundAt: Date };
 }): Promise<boolean> {
   const host = hostDiscordCredentials();
   if (!host) throw new Error("discord_host_configuration_required");
@@ -159,7 +160,7 @@ export async function reconnectHostDiscordApplication(input: {
            interaction_public_key = $5, updated_at = now()
        WHERE singleton = true AND application_id <> $1 AND discord_guild_id IS NOT DISTINCT FROM $6`,
     [host.applicationId, input.applicationName, input.botUserId, input.botUsername,
-      input.interactionPublicKey, input.discordGuildId], input.expectedGuildId,
+      input.interactionPublicKey, input.discordGuildId], input.expectedBinding,
   );
   return result === 1;
 }
@@ -169,18 +170,18 @@ export async function markDiscordApplicationEstablished(applicationName: string,
   await updateDiscordConfiguration("UPDATE discord_integration_configuration SET application_name = $1, application_verified_at = now(), bot_user_id = $2, bot_username = $3, interaction_public_key = $4, updated_at = now() WHERE singleton = true", [applicationName, botUserId, botUsername, interactionPublicKey]);
 }
 
-export async function establishDiscordGuildBinding(discordGuildId: string, expectedGuildId: string): Promise<boolean> {
+export async function establishDiscordGuildBinding(discordGuildId: string, expectedBinding: { guildId: string; boundAt: Date }): Promise<boolean> {
   const value = discordGuildId.trim();
   if (!value) throw new Error("invalid_discord_guild_id");
   return (await updateDiscordConfiguration(`UPDATE discord_integration_configuration
        SET discord_guild_id = $1, updated_at = now()
-     WHERE singleton = true AND discord_guild_id IS NULL`, [value], expectedGuildId)) === 1;
+     WHERE singleton = true AND discord_guild_id IS NULL`, [value], expectedBinding)) === 1;
 }
 
-export async function setDiscordIntegrationEnabled(enabled: boolean, expectedGuildId: string): Promise<boolean> {
+export async function setDiscordIntegrationEnabled(enabled: boolean, expectedBinding: { guildId: string; boundAt: Date }): Promise<boolean> {
   return (await updateDiscordConfiguration(
     "UPDATE discord_integration_configuration SET enabled = $1, updated_at = now() WHERE singleton = true",
-    [enabled], expectedGuildId,
+    [enabled], expectedBinding,
   )) === 1;
 }
 
@@ -194,7 +195,7 @@ export async function enableVerifiedDiscordIntegration(expected: {
   articleChannelId: string | null;
   raidChannelId: string | null;
   raffleChannelId: string | null;
-  expectedGuildId: string;
+  expectedBinding: { guildId: string; boundAt: Date };
 }): Promise<boolean> {
   const host = hostDiscordCredentials();
   if (!host || host.applicationId !== expected.applicationId) return false;
@@ -206,34 +207,34 @@ export async function enableVerifiedDiscordIntegration(expected: {
         AND raid_channel_id IS NOT DISTINCT FROM $5
         AND raffle_channel_id IS NOT DISTINCT FROM $6`,
     [expected.applicationId, expected.discordGuildId, expected.botUserId,
-      expected.articleChannelId, expected.raidChannelId, expected.raffleChannelId], expected.expectedGuildId,
+      expected.articleChannelId, expected.raidChannelId, expected.raffleChannelId], expected.expectedBinding,
   );
   return result === 1;
 }
 
 /** The configured destination is optional; an empty selection disables article projection. */
-export async function setDiscordArticleChannel(channelId: string | null, expectedGuildId: string): Promise<boolean> {
+export async function setDiscordArticleChannel(channelId: string | null, expectedBinding: { guildId: string; boundAt: Date }): Promise<boolean> {
   if (channelId !== null && !/^\d+$/.test(channelId)) throw new Error("invalid_discord_article_channel");
   return (await updateDiscordConfiguration(
     "UPDATE discord_integration_configuration SET article_channel_id = $1, updated_at = now() WHERE singleton = true AND enabled = true",
-    [channelId], expectedGuildId,
+    [channelId], expectedBinding,
   )) === 1;
 }
 
 /** Optional destination for future Raid projections. */
-export async function setDiscordRaidChannel(channelId: string | null, expectedGuildId: string): Promise<boolean> {
+export async function setDiscordRaidChannel(channelId: string | null, expectedBinding: { guildId: string; boundAt: Date }): Promise<boolean> {
   if (channelId !== null && !/^\d+$/.test(channelId)) throw new Error("invalid_discord_raid_channel");
   return (await updateDiscordConfiguration(
     "UPDATE discord_integration_configuration SET raid_channel_id = $1, updated_at = now() WHERE singleton = true AND enabled = true",
-    [channelId], expectedGuildId,
+    [channelId], expectedBinding,
   )) === 1;
 }
 
 /** Optional destination for Raffle announcements and claim ledger threads. */
-export async function setDiscordRaffleChannel(channelId: string | null, expectedGuildId: string): Promise<boolean> {
+export async function setDiscordRaffleChannel(channelId: string | null, expectedBinding: { guildId: string; boundAt: Date }): Promise<boolean> {
   if (channelId !== null && !/^[0-9]+$/.test(channelId)) throw new Error("invalid_discord_raffle_channel");
   return (await updateDiscordConfiguration(
     "UPDATE discord_integration_configuration SET raffle_channel_id = $1, updated_at = now() WHERE singleton = true AND enabled = true",
-    [channelId], expectedGuildId,
+    [channelId], expectedBinding,
   )) === 1;
 }
