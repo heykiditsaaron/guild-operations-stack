@@ -120,6 +120,11 @@ export async function authorizeInstallationRebind(identityId: string, sessionTok
     // A guild returning to this installation must not recover its old homepage.
     await client.query("DELETE FROM guild_homepage_settings WHERE guild_id = $1", [destinationId]);
     await client.query("DELETE FROM guild_homepage_primitives WHERE guild_id = $1", [destinationId]);
+    // Reset guild presentation, scheduled refresh, and plugin enablement.
+    // Their historical activity records remain untouched.
+    await client.query("DELETE FROM guild_presentation_settings WHERE guild_id = $1", [destinationId]);
+    await client.query("DELETE FROM guild_refresh_schedule WHERE guild_id = $1", [destinationId]);
+    await client.query("DELETE FROM guild_activity_plugin_enablement WHERE guild_id = $1", [destinationId]);
     // Rank labels and active flags are guild-owned presentation settings.
     // Reset them before roster observation reactivates current Blizzard ranks.
     await client.query(
