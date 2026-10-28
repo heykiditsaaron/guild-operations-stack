@@ -28,6 +28,7 @@ export async function managedDiscordRankRoleIds(discordGuildId: string): Promise
  */
 export async function replaceDiscordRankRoleMappings(input: {
   guildId: string;
+  boundAt: Date;
   discordGuildId: string;
   mappings: DiscordRankRoleMapping[];
 }): Promise<void> {
@@ -45,10 +46,11 @@ export async function replaceDiscordRankRoleMappings(input: {
 
   await withTransaction(async (client) => {
     await client.query("SELECT pg_advisory_xact_lock_shared(256, 1)");
-    const binding = await client.query<{ guild_id: string }>(
-      "SELECT guild_id FROM installation_guild_binding WHERE singleton = true",
+    const binding = await client.query<{ guild_id: string; bound_at: Date }>(
+      "SELECT guild_id, bound_at FROM installation_guild_binding WHERE singleton = true",
     );
-    if (binding.rows[0]?.guild_id !== input.guildId) {
+    if (binding.rows[0]?.guild_id !== input.guildId ||
+      binding.rows[0]?.bound_at.getTime() !== input.boundAt.getTime()) {
       throw new Error("discord_guild_binding_changed");
     }
     const configuredServer = await client.query<{ discord_guild_id: string | null }>(
