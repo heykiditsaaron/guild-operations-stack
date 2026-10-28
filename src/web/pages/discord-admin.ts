@@ -410,7 +410,8 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     if (!configuration?.enabled || !configuration.discordGuildId || !configuration.botUserId) {
       return reply.code(409).send({ error: "discord_integration_not_ready" });
     }
-    const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
+    const binding = await requireOperationalInstallationGuildBinding();
+    const guildId = binding.guildId;
     const [ranks, roles, botMember] = await Promise.all([
       guildRankDefinitions(guildId),
       discordServerRoles(configuration.botToken, configuration.discordGuildId),
@@ -430,7 +431,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       return reply.code(422).send({ error: "discord_role_mapping_not_manageable", reasons: readiness.reasons });
     }
     try {
-      await replaceDiscordRankRoleMappings({ guildId, discordGuildId: configuration.discordGuildId, mappings });
+      await replaceDiscordRankRoleMappings({ guildId, boundAt: binding.boundAt, discordGuildId: configuration.discordGuildId, mappings });
     } catch (error) {
       if (error instanceof Error && error.message === "invalid_discord_rank_role_mapping") {
         return reply.code(400).send({ error: error.message });
