@@ -115,6 +115,15 @@ export async function authorizeInstallationRebind(identityId: string, sessionTok
         guild.realm.slug,
         authority.referenceHref],
     );
+    // Rank labels and active flags are guild-owned presentation settings.
+    // Reset them before roster observation reactivates current Blizzard ranks.
+    await client.query(
+      `UPDATE guild_rank_definitions
+          SET display_name = 'Rank ' || rank_index::text,
+              active = false, updated_at = now()
+        WHERE guild_id = $1`,
+      [destinationId],
+    );
     await persistGuildRoster(client, destinationId, target.region, authority.roster);
     // Transport projections are replaceable pointers to the previous Discord server.
     // Remove them before allowing the destination guild to reconnect.
