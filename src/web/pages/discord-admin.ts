@@ -234,7 +234,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     }
     const configuration = await discordIntegrationConfiguration();
     if (!configuration?.applicationVerifiedAt) return reply.code(409).send({ error: "discord_application_not_verified" });
-    const expectedGuildId = (await requireOperationalInstallationGuildBinding()).guildId;
+    const expectedBinding = await requireOperationalInstallationGuildBinding();
     if (emojiSetupsInProgress.has(configuration.applicationId)) {
       return reply.code(409).send({ error: "emoji_setup_already_running" });
     }
@@ -346,13 +346,13 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     if (!configuration?.enabled || !configuration.discordGuildId) return reply.code(409).send({ error: "discord_integration_not_ready" });
     const body = (request.body ?? {}) as Record<string, unknown>;
     if (typeof body.channel_id !== "string") return reply.code(400).send({ error: "invalid_discord_raid_channel" });
-    const expectedGuildId = (await requireOperationalInstallationGuildBinding()).guildId;
+    const expectedBinding = await requireOperationalInstallationGuildBinding();
     const channels = await discordServerChannels(configuration.botToken, configuration.discordGuildId);
     if (body.channel_id && !channels.some((channel) => channel.id === body.channel_id &&
       (channel.type === DISCORD_TEXT_CHANNEL || channel.type === DISCORD_ANNOUNCEMENT_CHANNEL))) {
       return reply.code(422).send({ error: "discord_raid_channel_unavailable" });
     }
-    if (!await setDiscordRaidChannel(body.channel_id || null, expectedGuildId)) {
+    if (!await setDiscordRaidChannel(body.channel_id || null, expectedBinding)) {
       return reply.code(409).send({ error: "discord_configuration_changed_during_verification" });
     }
     return reply.redirect("/admin/discord");
@@ -368,13 +368,13 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     if (!configuration?.enabled || !configuration.discordGuildId) return reply.code(409).send({ error: "discord_integration_not_ready" });
     const body = (request.body ?? {}) as Record<string, unknown>;
     if (typeof body.channel_id !== "string") return reply.code(400).send({ error: "invalid_discord_raffle_channel" });
-    const expectedGuildId = (await requireOperationalInstallationGuildBinding()).guildId;
+    const expectedBinding = await requireOperationalInstallationGuildBinding();
     const channels = await discordServerChannels(configuration.botToken, configuration.discordGuildId);
     if (body.channel_id && !channels.some((channel) => channel.id === body.channel_id &&
       (channel.type === DISCORD_TEXT_CHANNEL || channel.type === DISCORD_ANNOUNCEMENT_CHANNEL))) {
       return reply.code(422).send({ error: "discord_raffle_channel_unavailable" });
     }
-    if (!await setDiscordRaffleChannel(body.channel_id || null, expectedGuildId)) {
+    if (!await setDiscordRaffleChannel(body.channel_id || null, expectedBinding)) {
       return reply.code(409).send({ error: "discord_configuration_changed_during_verification" });
     }
     return reply.redirect("/admin/discord");
@@ -390,11 +390,11 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     if (!configuration?.enabled || !configuration.discordGuildId) return reply.code(409).send({ error: "discord_integration_not_ready" });
     const body = (request.body ?? {}) as Record<string, unknown>;
     if (typeof body.channel_id !== "string") return reply.code(400).send({ error: "invalid_discord_article_channel" });
-    const expectedGuildId = (await requireOperationalInstallationGuildBinding()).guildId;
+    const expectedBinding = await requireOperationalInstallationGuildBinding();
     const channels = await discordServerChannels(configuration.botToken, configuration.discordGuildId);
     const valid = channels.some((channel) => channel.id === body.channel_id && (channel.type === DISCORD_TEXT_CHANNEL || channel.type === DISCORD_ANNOUNCEMENT_CHANNEL));
     if (body.channel_id && !valid) return reply.code(422).send({ error: "discord_article_channel_unavailable" });
-    if (!await setDiscordArticleChannel(body.channel_id || null, expectedGuildId)) {
+    if (!await setDiscordArticleChannel(body.channel_id || null, expectedBinding)) {
       return reply.code(409).send({ error: "discord_configuration_changed_during_verification" });
     }
     return reply.redirect("/admin/discord");
@@ -454,10 +454,10 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     if (!configuration?.applicationVerifiedAt || configuration.discordGuildId) {
       return reply.code(409).send({ error: "discord_server_confirmation_not_pending" });
     }
-    const expectedGuildId = (await requireOperationalInstallationGuildBinding()).guildId;
+    const expectedBinding = await requireOperationalInstallationGuildBinding();
     const guilds = await discordBotGuilds(configuration.botToken);
     if (guilds.length !== 1) return reply.code(409).send({ error: "discord_server_binding_ambiguous" });
-    if (!await establishDiscordGuildBinding(guilds[0].id, expectedGuildId)) {
+    if (!await establishDiscordGuildBinding(guilds[0].id, expectedBinding)) {
       return reply.code(409).send({ error: "discord_server_confirmation_state_changed" });
     }
     return reply.redirect("/admin/discord");
@@ -472,7 +472,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     const replacement = await pendingDiscordApplicationReplacement();
     const host = hostDiscordCredentials();
     if (!replacement || !host) return reply.code(409).send({ error: "discord_reconnection_not_pending" });
-    const expectedGuildId = (await requireOperationalInstallationGuildBinding()).guildId;
+    const expectedBinding = await requireOperationalInstallationGuildBinding();
     const application = await currentDiscordApplication(host.botToken);
     if (application.id !== host.applicationId || !application.verify_key) {
       return reply.code(409).send({ error: "discord_application_not_verified" });
@@ -487,7 +487,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       botUsername: application.bot?.username ?? null,
       interactionPublicKey: application.verify_key,
       discordGuildId: replacement.previousServerId,
-      expectedGuildId,
+      expectedBinding,
     });
     if (!changed) return reply.code(409).send({ error: "discord_reconnection_state_changed" });
     return reply.redirect("/admin/discord");
@@ -502,7 +502,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     if (!hostDiscordCredentials()) return reply.code(409).send({ error: "discord_host_configuration_required" });
     const configuration = await discordIntegrationConfiguration();
     if (!configuration?.applicationVerifiedAt) return reply.code(409).send({ error: "discord_application_not_verified" });
-    const expectedGuildId = (await requireOperationalInstallationGuildBinding()).guildId;
+    const expectedBinding = await requireOperationalInstallationGuildBinding();
     const body = (request.body ?? {}) as Record<string, unknown>;
     if (body.enabled === "true") {
       if (!configuration.discordGuildId || !configuration.botUserId) {
@@ -558,11 +558,11 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
         articleChannelId: configuration.articleChannelId,
         raidChannelId: configuration.raidChannelId,
         raffleChannelId: configuration.raffleChannelId,
-        expectedGuildId,
+        expectedBinding,
       });
       if (!enabled) return reply.code(409).send({ error: "discord_configuration_changed_during_verification" });
     } else {
-      if (!await setDiscordIntegrationEnabled(false, expectedGuildId)) {
+      if (!await setDiscordIntegrationEnabled(false, expectedBinding)) {
         return reply.code(409).send({ error: "discord_configuration_changed_during_verification" });
       }
     }
