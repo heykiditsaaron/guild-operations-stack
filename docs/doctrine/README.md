@@ -6,6 +6,7 @@ Use these documents when deciding **what Guild Operations should mean**, which a
 
 The doctrine hierarchy is intentionally small:
 
+- [`installation-lifecycle.md`](installation-lifecycle.md) — reset, rebind, reinstall, and external responsibility boundaries.
 - [`architecture.md`](architecture.md) — product purpose, architectural center, authority ownership, application boundaries, persistence law, interface model, and feature-pressure rules.
 - [`member-objects.md`](member-objects.md) — Identity, WoW Account authority, Actor resolution, Character control, derived Guildie status, representation, session, and rank-derived capability meanings.
 - [`guild-activity.md`](guild-activity.md) — Core Activity meaning: occurrence lifecycle, temporal relevance, Participation, shared language, and ownership.
