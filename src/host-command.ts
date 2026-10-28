@@ -35,6 +35,10 @@ async function main(): Promise<void> {
   }
   const binding = await installationGuildBinding();
   if (!binding?.authorizedAt) throw new Error("Installation must be operational before rebinding");
+  const pendingExisting = await pool.query(
+    "SELECT request_id FROM installation_rebind_requests WHERE completed_at IS NULL AND cancelled_at IS NULL",
+  );
+  if (pendingExisting.rowCount) throw new Error("A rebind request is already pending; cancel it before starting another");
   const previous = await pool.query<{ name: string; realm_slug: string; region: string }>(
     "SELECT name, realm_slug, region FROM guilds WHERE guild_id = $1", [binding.guildId],
   );
