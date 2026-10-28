@@ -7,8 +7,8 @@ import { resolveConfiguredInstallationGuild } from "./core/installation/guild-bi
 
 async function main(): Promise<void> {
   const [command, ...args] = process.argv.slice(2);
-  if (command !== "rebind" || !(args.length === 0 || (args.length === 1 && args[0] === "cancel"))) {
-    throw new Error("Usage: node dist/host-command.js rebind | rebind cancel");
+  if (command !== "rebind" || !(args.length === 0 || (args.length === 1 && ["cancel", "confirm"].includes(args[0])))) {
+    throw new Error("Usage: node dist/host-command.js rebind | rebind confirm | rebind cancel");
   }
   if (!stdin.isTTY || !stdout.isTTY) throw new Error("Rebinding requires an interactive host terminal");
   if (args[0] === "cancel") {
@@ -40,8 +40,12 @@ async function main(): Promise<void> {
   );
   const current = previous.rows[0];
   stdout.write(`Current guild: ${current?.name ?? binding.guildId} (${current?.realm_slug ?? "unknown"}, ${current?.region ?? "unknown"})\\n`);
-  stdout.write("Manually edit GUILD_REGION, GUILD_REALM, and GUILD_NAME in the host .env file.\\n");
-  stdout.write("This command does not modify .env. Once saved, return here to continue.\\n");
+  if (args.length === 0) {
+    stdout.write("Manually review or edit GUILD_REGION, GUILD_REALM, and GUILD_NAME in the host .env file.\n");
+    stdout.write("After saving, run rebind confirm as a NEW Compose invocation to load the updated environment.\n");
+    stdout.write("No request has been created.\n");
+    return;
+  }
   const rl = createInterface({ input: stdin, output: stdout });
   let region: string;
   let realmSlug: string;
@@ -49,8 +53,7 @@ async function main(): Promise<void> {
   try {
     const reviewed = await rl.question('Type "reviewed" after reviewing and saving the host .env: ');
     if (reviewed !== "reviewed") { stdout.write("Cancelled. No changes made.\\n"); return; }
-    // A new Compose invocation receives the edited .env values. A running
-    // container does not automatically receive edits to its environment.
+    // This fresh Compose invocation receives the current host .env.
     stdout.write("Reading the configured destination from this command's environment.\\n");
     const target = await resolveConfiguredInstallationGuild();
     region = target.region;
