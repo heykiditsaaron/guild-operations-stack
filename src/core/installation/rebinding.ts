@@ -89,6 +89,7 @@ export async function authorizeInstallationRebind(identityId: string, sessionTok
     );
     const binding = bindingResult.rows[0];
     if (!binding?.authorized_at) throw new Error("Installation is not operational");
+    if (binding.guild_id === destinationId) throw new Error("Destination guild is already bound; use refresh instead");
     const activeRequest = await client.query<{ request_id: string }>(
       "SELECT request_id FROM installation_rebind_requests WHERE request_id = $1 AND completed_at IS NULL AND cancelled_at IS NULL FOR UPDATE",
       [request.request_id],
