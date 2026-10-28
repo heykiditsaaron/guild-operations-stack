@@ -1,21 +1,27 @@
 # Host rebinding
 
-The host operator creates a one-time request; the destination Guild Master authorizes it through the browser. The active guild remains unchanged until authorization succeeds.
+Rebinding changes the installation's Blizzard guild identity. A rename or an unchanged guild identity is not a rebind. Reset and reinstall are separate lifecycle operations.
 
-Run from the installation directory with the usual Compose environment:
+From the installation directory, initiate the host procedure:
 
 ```sh
-docker compose run --rm -it api node dist/host-command.js rebind us area-52 "Example Guild"
+docker compose run --rm -it api node dist/host-command.js rebind
 ```
 
-Review the current and destination guild and type the destination guild name to confirm. Only one request may be pending. A request survives restarts and does not modify the active guild.
+The command displays the current guild and instructs the host operator to manually review or edit `GUILD_REGION`, `GUILD_REALM`, and `GUILD_NAME` in the host `.env`. It never edits the file. After saving it, use a **new Compose invocation** so the command receives the updated environment:
 
-To cancel a pending request without changing the binding:
+```sh
+docker compose run --rm -it api node dist/host-command.js rebind confirm
+```
+
+Confirming validates the configured guild against Blizzard and compares its identity with the current binding. An unchanged guild identity creates no request. Otherwise the operator acknowledges the reviewed configuration and types the destination guild name to create a durable pending request. The active binding is unchanged until the destination Guild Master authorizes in the browser with fresh Blizzard authentication.
+
+To cancel a pending request:
 
 ```sh
 docker compose run --rm -it api node dist/host-command.js rebind cancel
 ```
 
-After host confirmation, the destination Guild Master signs in with Blizzard and authorizes on the installation setup page. Successful authorization refreshes the destination roster from Blizzard, resets guild-owned capability policies and Discord configuration, records the transition, and consumes the request. Identities and history remain.
+Only one request may be pending. Successful authorization resets guild-owned permissions and integrations, refreshes the destination roster, and records the transition. Identities and historical records remain. External messages and actions from the previous binding may persist on provider systems but are no longer managed; cleanup is best effort, not guaranteed.
 
-The `GUILD_REBIND` environment flag is obsolete. Do not run rebinding against production until the release has passed runtime validation.
+Do not run rebinding against production until runtime validation is complete.
