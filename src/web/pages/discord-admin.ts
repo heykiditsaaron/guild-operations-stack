@@ -49,17 +49,16 @@ export async function renderDiscordContextSetting(kind: DiscordContextSetting, l
           const options = roles.filter((role) => role.id !== configuration.discordGuildId && !role.managed);
           const fields = guildRanks.map((rank) => {
             const selected = mappings.find((mapping) => mapping.rankIndex === rank.rankIndex)?.discordRoleId ?? "";
-            return `<label class="discord-field"><span>${htmlText(rank.displayName)} (Rank ${rank.rankIndex})</span>
-              <select name="rank_${rank.rankIndex}"><option value="">No role</option>
+            return `<label class="discord-field" data-discord-rank-field="${rank.rankIndex}"><span>Discord role mapping</span>
+              <select form="discord-role-mappings-form" name="rank_${rank.rankIndex}"><option value="">Not mapped</option>
               ${options.map((role) => `<option value="${htmlText(role.id)}"${selected === role.id ? " selected" : ""}>${htmlText(role.name)}</option>`).join("")}
               </select></label>`;
           }).join("");
           roleSection = `<p>${mappings.length === 0 ? "No rank roles configured." : roleReadiness.ready ? "Configured role mappings are manageable." : "Role synchronization needs attention."}</p>
             ${roleReadiness.reasons.map((reason) => `<p>${htmlText(reason)}</p>`).join("")}
-            <form method="post" action="/admin/discord/roles">
-              <p>Choose an optional Discord role for each effective guild rank.</p>
-              ${fields}<button class="button-primary" type="submit">Save role mappings</button>
-            </form>`;
+            <form id="discord-role-mappings-form" method="post" action="/admin/discord/roles"></form>
+            <div data-discord-role-fields>${fields}</div>
+            <button class="button-primary" type="submit" form="discord-role-mappings-form" data-discord-role-global-save>Save role mappings</button>`;
         } else {
           roleSection = "<p>The bot is not in the bound Discord server.</p>";
         }
@@ -184,16 +183,16 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       <section class="admin-section" aria-labelledby="discord-heading">
         <h2 id="discord-heading">Discord Integration</h2>
         <div class="settings-panel">
-          <div><h3>Status</h3><p><strong>${htmlText(readiness)}</strong></p>${configuration?.applicationVerifiedAt ? `<p>Application: ${htmlText(configuration.applicationName ?? configuration.applicationId)}${configuration.botUsername ? ` · Bot: ${htmlText(configuration.botUsername)}` : ""}</p>` : ""}<p>Discord remains authoritative for Discord application and server authorization. Guild Operations stores only the relationship and credentials needed to operate the Integration.</p></div>
+          <div><h3>Status</h3><p><strong>${htmlText(readiness)}</strong></p>${configuration?.applicationVerifiedAt ? `<p>Application: ${htmlText(configuration.applicationName ?? configuration.applicationId)}${configuration.botUsername ? ` · Bot: ${htmlText(configuration.botUsername)}` : ""}</p>` : ""}<p>Discord authorizes the application and server; Guild Operations manages their connection.</p></div>
           ${!hostDiscordCredentials() ? '<p role="status">Discord integration is not configured for this installation. Contact your Guild Operations host administrator.</p>' : `<div class="discord-setup-guide">
             <h3>Discord application</h3>
-            <p>Application credentials are managed by the host administrator, outside Guild Operations.</p>
-            <p>Register this OAuth redirect URI in the Discord Developer Portal:</p>
+            <p>Credentials are managed by the host administrator.</p>
+            <p>OAuth redirect URI:</p>
             <div class="discord-callback"><code>${htmlText(callbackUrl)}</code><button type="button" class="button-secondary" data-copy-discord-callback>Copy</button></div>
-            <p>Leave the Discord Interactions Endpoint URL empty; interactions are delivered through the Gateway.</p>
+            <p>Interactions use the Gateway; leave the Interactions Endpoint URL empty.</p>
             <form method="post" action="/admin/discord">
               <div class="discord-enablement-row">
-                <div><strong>Discord Integration</strong><p>Enable guild-facing Discord operations after the application has been verified.</p></div>
+                <div><strong>Integration enabled</strong></div>
                 <label class="switch discord-enablement"><input type="checkbox" name="enabled" value="true"${configuration?.enabled ? " checked" : ""}><span class="switch-control" aria-hidden="true"></span><span>${configuration?.enabled ? "On" : "Off"}</span></label>
               </div>
               <button type="submit" class="button-primary">Save integration settings</button>
@@ -209,7 +208,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
           ${installUrl && !configuration?.discordGuildId ? `<div class="discord-server-install"><h3>Install in your Discord server</h3><p>Choose the server for this deployment. Guild Operations verifies the bot relationship before binding the server.</p><a class="button-primary" href="${htmlText(installUrl)}" target="_blank" rel="noreferrer">Install in Discord Server</a></div>` : ""}
         </div>
       </section>
-      <section class="admin-section"><h2>Application emojis</h2><div class="settings-panel">\n        <p>Set up raid role and WoW specialization icons. Existing icons are reused; unrelated emojis are not changed.</p>
+      <section class="admin-section"><h2>Discord emojis</h2><div class="settings-panel">\n        <p>Set up raid role and WoW specialization icons. Existing icons are reused; unrelated emojis are not changed.</p>
         ${configuration?.applicationVerifiedAt ? `<form data-emoji-setup method="post" action="/admin/discord/emoji/raid-roles">
           <button type="submit" class="button-secondary" data-emoji-submit>Set up Discord icons</button>
           <div data-emoji-results hidden aria-live="polite">
@@ -219,10 +218,9 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
             <ul data-emoji-failures></ul>
           </div>
         </form>` : "<p>Verify the Discord application first.</p>"}
-      </div></section>
-      <section class="admin-section"><h2>Emoji rendering preview</h2><div class="settings-panel">
+        <div class="discord-emoji-preview"><h3>Rendering preview</h3>
         ${((request.query as { preview?: string }).preview === "success") ? '<p role="status">Discord emoji preview sent to the selected channel.</p>' : ((request.query as { preview?: string }).preview === "failed") ? '<p role="alert">Unable to send the emoji preview. Check Operations → Logs.</p>' : ""}
-        ${previewSection}
+        ${previewSection}</div>
       </div></section>
 
     </div>`;
