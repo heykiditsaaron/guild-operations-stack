@@ -90,3 +90,13 @@
 .module-lifecycle-publication { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--theme-border, rgba(255,255,255,.14)); }
 .module-lifecycle-publication h4 { margin: 0 0 .5rem; font-size: .95rem; }
 .module-lifecycle-publication p { margin: .35rem 0 .75rem; color: var(--theme-text-muted); font-size: .88rem; }
+
+/* Compact unified activity editor */
+.module-lifecycle-publication { margin-top: .8rem; padding-top: .8rem; }
+.module-lifecycle-publication h4 { margin: 0 0 .65rem; }
+.module-lifecycle-publication form { display: grid; gap: .5rem; }
+.module-lifecycle-publication .discord-field { display: grid; gap: .5rem; }
+.module-lifecycle-publication select { width: 100%; }
+.module-lifecycle-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1.25rem; margin-top: 1rem; }
+.module-lifecycle-actions .module-lifecycle-configure { margin-top: 0; }
+.module-lifecycle-feedback:empty { min-height: 0; }
