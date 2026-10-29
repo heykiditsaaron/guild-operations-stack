@@ -158,11 +158,10 @@ function renderActionBar(viewer: WebViewer, pathname: string): string {
       : false;
     const destinations = [
       { label: "General", href: "/admin/general" },
-      { label: "Homepage", href: "/admin/homepage" },
-      { label: "Add-ons", href: "/admin/modules" },
+      { label: "Appearance", href: "/admin/appearance" },
       { label: "Ranks", href: "/admin/permissions" },
-      { label: "Logs", href: "/admin/history" },
       ...(discordAdministrationAvailable ? [{ label: "Discord", href: "/admin/discord" }] : []),
+      { label: "Plugins", href: "/admin/modules" },
     ];
     const links = destinations.map((destination) => {
       const active = pathname === destination.href ? ' aria-current="page"' : "";
