@@ -95,10 +95,9 @@ export async function renderDiscordContextSetting(kind: DiscordContextSetting, l
         const channels = (await discordServerChannels(configuration.botToken, configuration.discordGuildId))
           .filter((channel) => channel.type === DISCORD_TEXT_CHANNEL || channel.type === DISCORD_ANNOUNCEMENT_CHANNEL);
         const options = channels.map((channel) => `<option value="${htmlText(channel.id)}"${configuration.raidChannelId === channel.id ? " selected" : ""}>${htmlText(channel.name ?? channel.id)}</option>`).join("");
-        raidSection = `<p>Choose where future Raid projections will appear. Selecting a channel does not publish existing raids.</p>
-          <form method="post" action="/admin/discord/raids">
+        raidSection = `<form method="post" action="/admin/discord/raids" data-activity-publication-form>
             <label class="discord-field"><span>Raid publication channel</span><select name="channel_id"><option value="">Do not publish raids to Discord</option>${options}</select></label>
-            <button type="submit" class="button-primary">Save raid destination</button>
+            
           </form>`;
       } catch (error) {
         log.warn({ err: error }, "Discord raid channel discovery failed");
@@ -113,10 +112,9 @@ export async function renderDiscordContextSetting(kind: DiscordContextSetting, l
         const channels = (await discordServerChannels(configuration.botToken, configuration.discordGuildId))
           .filter((channel) => channel.type === DISCORD_TEXT_CHANNEL || channel.type === DISCORD_ANNOUNCEMENT_CHANNEL);
         const options = channels.map((channel) => `<option value="${htmlText(channel.id)}"${configuration.raffleChannelId === channel.id ? " selected" : ""}>${htmlText(channel.name ?? channel.id)}</option>`).join("");
-        raffleSection = `<p>Choose where future Raffle projections will appear. Selecting a channel does not publish existing raffles.</p>
-          <form method="post" action="/admin/discord/raffles">
+        raffleSection = `<form method="post" action="/admin/discord/raffles" data-activity-publication-form>
             <label class="discord-field"><span>Raffle publication channel</span><select name="channel_id"><option value="">Do not publish raffles to Discord</option>${options}</select></label>
-            <button type="submit" class="button-primary">Save raffle destination</button>
+            
           </form>`;
       } catch (error) {
         log.warn({ err: error }, "Discord raffle channel discovery failed");
