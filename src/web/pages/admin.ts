@@ -130,15 +130,13 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     const [viewer, identity] = await Promise.all([viewerForRequest(sessionToken), authenticatedIdentity(sessionToken)]);
     if (!identity) return reply.code(401).send("Authentication is required.");
 
-    const [canConfigureGuildRefreshSchedule, canConfigureTheme, canConfigureGuildPresentation, canRefresh] = await Promise.all([
+    const [canConfigureGuildRefreshSchedule, canConfigureGuildPresentation, canRefresh] = await Promise.all([
       identityHasGuildCapability(identity.identityId, GUILD_REFRESH_SCHEDULE_CONFIGURE_CAPABILITY),
-      identityHasGuildCapability(identity.identityId, THEME_CONFIGURE_CAPABILITY),
       identityHasGuildCapability(identity.identityId, GUILD_PRESENTATION_CONFIGURE_CAPABILITY),
       identityHasGuildCapability(identity.identityId, GUILD_REFRESH_CAPABILITY),
     ]);
-    const [refreshSchedule, theme, presentation, refreshStatus] = await Promise.all([
+    const [refreshSchedule, presentation, refreshStatus] = await Promise.all([
       guildRefreshSchedule(),
-      guildTheme(),
       guildPresentation(),
       guildRefreshStatus(),
     ]);
@@ -173,22 +171,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
 
-  app.get("/admin/homepage", async (request, reply) => {
-    const sessionToken = request.cookies[SESSION_COOKIE_NAME];
-    const [viewer, identity] = await Promise.all([viewerForRequest(sessionToken), authenticatedIdentity(sessionToken)]);
-    if (!identity) return reply.code(401).send("Authentication is required.");
-
-    const [canConfigureGuildPresentation, homepage] = await Promise.all([
-      identityHasGuildCapability(identity.identityId, GUILD_PRESENTATION_CONFIGURE_CAPABILITY),
-      guildHomepage(),
-    ]);
-    const homepageSettings = canConfigureGuildPresentation
-      ? renderHomepageSettings(homepage)
-      : renderHomepageSettings(homepage).replaceAll("<input ", "<input disabled ").replaceAll("<textarea ", "<textarea disabled ").replaceAll("<select ", "<select disabled ").replaceAll("<button ", "<button disabled ");
-    const content = administrationSection("homepage-presentation", "homepage-presentation-heading", "Homepage", homepageSettings);
-    const html = renderPage(assets, { pathname: "/admin/homepage", title: `Homepage Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Configure the guild homepage.", viewer, stylesheets: ["admin.css"], scripts: ["homepage-admin.js"], header: `<div class="admin-page-header"><h1 id="page-title">Homepage</h1><p class="lede">Choose the information your guild presents and how Guild Operations composes it.</p></div>`, body: `<div class="admin-sections">${content}</div>` });
-    return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
-  });
+  app.get("/admin/homepage", async (_request, reply) => reply.redirect("/admin/appearance"));
 
   app.get("/admin/modules", async (request, reply) => {
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
