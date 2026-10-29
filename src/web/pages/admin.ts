@@ -49,14 +49,14 @@ function administrationSection(sectionId: string, headingId: string, heading: st
   return `<section id="${sectionId}" class="admin-section" aria-labelledby="${headingId}"><h2 id="${headingId}">${heading}</h2>${content}</section>`;
 }
 
-async function renderActivityAdministration(canConfigureModules: boolean): Promise<string> {
+async function renderActivityAdministration(canConfigureModules: boolean, publication: Record<string, string> = {}): Promise<string> {
   const [states, fingerprints] = await Promise.all([activityRegistrationStates(), knownActivityPlugins()]);
   const labels = new Map(fingerprints.map((plugin) => [plugin.kind, plugin.label]));
   const cards = states.map((state: ActivityRegistrationState) => {
     const toggleDisabled = canConfigureModules && state.available && state.status !== "failed" ? "" : " disabled";
-    return `<article class="module-lifecycle-card settings-panel" data-activity-key="${htmlText(state.kind)}"><div class="module-lifecycle-header"><div class="module-lifecycle-copy"><div class="module-lifecycle-heading"><h3>${htmlText(labels.get(state.kind) ?? state.kind)}</h3><span class="module-lifecycle-availability">${htmlText(state.status)}</span></div><p>${state.active ? "Active in Guild Operations." : "Activity procedure is not currently active."}</p></div><label class="switch module-lifecycle-toggle"><input type="checkbox" data-activity-enabled${state.enabled === false ? "" : " checked"}${toggleDisabled}><span class="switch-control" aria-hidden="true"></span><span data-activity-switch-label>${state.enabled === false ? "Off" : "On"}</span></label></div><div class="module-lifecycle-permissions"><a class="module-lifecycle-configure" href="/admin/permissions">Manage permissions →</a></div><p class="module-lifecycle-feedback" data-activity-feedback role="status" aria-live="polite"></p></article>`;
+    return `<article class="module-lifecycle-card settings-panel" data-activity-key="${htmlText(state.kind)}"><div class="module-lifecycle-header"><div class="module-lifecycle-copy"><div class="module-lifecycle-heading"><h3>${htmlText(labels.get(state.kind) ?? state.kind)}</h3><span class="module-lifecycle-availability">${htmlText(state.status)}</span></div><p>${state.active ? "Active in Guild Operations." : "Activity procedure is not currently active."}</p></div><label class="switch module-lifecycle-toggle"><input type="checkbox" data-activity-enabled${state.enabled === false ? "" : " checked"}${toggleDisabled}><span class="switch-control" aria-hidden="true"></span><span data-activity-switch-label>${state.enabled === false ? "Off" : "On"}</span></label></div>${publication[state.kind] ? `<div class="module-lifecycle-publication"><h4>Discord publication</h4>${publication[state.kind]}</div>` : ""}<div class="module-lifecycle-permissions"><a class="module-lifecycle-configure" href="/admin/permissions">Manage permissions →</a></div><p class="module-lifecycle-feedback" data-activity-feedback role="status" aria-live="polite"></p></article>`;
   });
-  return `<section class="packaged-capability-group"><h3>Activities</h3><div class="module-lifecycle-list">${cards.join("\n")}</div></section>`;
+  return `<section class="packaged-capability-group"><div class="module-lifecycle-list">${cards.join("\n")}</div></section>`;
 }
 
 function renderGuildRefreshSchedule(schedule: GuildRefreshSchedule): string {
@@ -118,7 +118,7 @@ function renderPermissionPolicies(policies: GuildCapabilityPolicySet, canRename:
       const enabled = rank.rankIndex === 0 || capability.permittedRanks.includes(rank.rankIndex);
       return `<label class="rank-capability-row"><input type="checkbox" data-rank-capability="${htmlText(capability.key)}" data-rank-index="${rank.rankIndex}" data-permitted-ranks="${htmlText(capability.permittedRanks.join(","))}"${enabled ? " checked" : ""}${rank.rankIndex === 0 ? " disabled" : ""}><span><strong>${htmlText(capability.label)}</strong>${capability.description ? `<small>${htmlText(capability.description)}</small>` : ""}</span><span role="status" data-capability-status></span></label>`;
     }).join("")}</div></section>`).join("");
-    return `<section id="rank-${rank.rankIndex}" class="rank-workspace" data-rank-workspace hidden><h2 data-rank-heading>${htmlText(rank.displayName)}</h2><p class="rank-coordinate">${rank.rankIndex === 0 ? "Guild Master · highest Blizzard rank · Rank 0" : `Blizzard Rank ${rank.rankIndex} · lower numbers are higher ranks`}</p>${nameEditor}<details class="rank-capability-details"><summary>Capabilities ${rank.rankIndex === 0 ? "· inherent authority" : ""}</summary><p>${rank.rankIndex === 0 ? "Guild Master has inherent authority; grants cannot be removed here." : "Changes save individually and preserve grants to other ranks."}</p>${capabilities}</details></section>`;
+    return `<section id="rank-${rank.rankIndex}" class="rank-workspace" data-rank-workspace hidden><h2 data-rank-heading>${htmlText(rank.displayName)}</h2><p class="rank-coordinate">${rank.rankIndex === 0 ? "Guild Master · highest Blizzard rank · Rank 0" : `Blizzard Rank ${rank.rankIndex} · lower numbers are higher ranks`}</p>${nameEditor}<details class="rank-capability-details"><summary>Capabilities ${rank.rankIndex === 0 ? "· inherent authority" : ""}</summary><p>${rank.rankIndex === 0 ? "Guild Master has inherent authority; grants cannot be removed here." : "Changes save individually and preserve grants to other ranks."}</p>${capabilities}</details><div data-discord-role-slot="${rank.rankIndex}"></div></section>`;
   }).join("");
   const index = ranks.map((rank) => `<button type="button" class="rank-selection" data-rank-select="${rank.rankIndex}" aria-controls="rank-${rank.rankIndex}" aria-pressed="false"><strong data-rank-label>${htmlText(rank.displayName)}</strong><small>Blizzard rank ${rank.rankIndex}${rank.rankIndex === 0 ? " · Highest" : ""}</small></button>`).join("");
   return `<div class="rank-administration-layout"><nav class="permission-index" aria-label="Select guild rank"><h3>Select a rank</h3>${index}</nav><div class="rank-workspaces">${sections}</div></div>`;
@@ -150,7 +150,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     const articleSettings = canConfigureDiscord ? administrationSection("article-publication", "article-publication-heading", "Article publication", `<div class="settings-panel">${await renderDiscordContextSetting("article", request.log)}</div>`) : "";
     const content = `${orientation}<div class="admin-sections">${guildSettings}${articleSettings}</div>`;
 
-    const html = renderPage(assets, { pathname: "/admin/general", title: `General Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Inspect and configure Guild Operations.", viewer, stylesheets: ["admin.css"], scripts: ["admin.js", "operations.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Inspect and manage Guild Operations according to your authority.</p></div>`, body: `${content}` });
+    const html = renderPage(assets, { pathname: "/admin/general", title: `General Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Inspect and configure Guild Operations.", viewer, stylesheets: ["admin.css", "discord-admin.css"], scripts: ["admin.js", "operations.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Inspect and manage Guild Operations according to your authority.</p></div>`, body: `${content}` });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
 
@@ -183,15 +183,13 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     if (!identity) return reply.code(401).send("Authentication is required.");
     const canConfigureModules = await identityHasGuildCapabilityOrOperator(identity.identityId, MODULES_CONFIGURE_CAPABILITY);
     const canConfigureDiscord = await identityHasGuildCapability(identity.identityId, DISCORD_CONFIGURE_CAPABILITY);
-    const lifecycle = await renderActivityAdministration(canConfigureModules);
-    const publication = canConfigureDiscord
-      ? `<div class="admin-sections">
-        ${administrationSection("raid-publication", "raid-publication-heading", "Raid Activity · Discord publication", `<div class="settings-panel">${await renderDiscordContextSetting("raid", request.log)}</div>`)}
-        ${administrationSection("raffle-publication", "raffle-publication-heading", "Raffle Activity · Discord publication", `<div class="settings-panel">${await renderDiscordContextSetting("raffle", request.log)}</div>`)}
-      </div>`
-      : "";
-    const content = administrationSection("modules", "modules-heading", "Packaged capabilities", `${lifecycle}${publication}<p class="admin-section-note">Availability and entitlement are distinct from enablement. Controls are available only when your authority permits changes.</p>`);
-    const html = renderPage(assets, { pathname: "/admin/modules", title: `Plugin Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Manage optional capabilities available to this guild.", viewer, stylesheets: ["admin.css", "admin-modules.css"], scripts: ["admin-modules.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Manage the optional capabilities available to your guild.</p></div>`, body: `<div class="admin-sections">${content}</div>` });
+    const publication: Record<string, string> = canConfigureDiscord ? {
+      raid: await renderDiscordContextSetting("raid", request.log),
+      raffle: await renderDiscordContextSetting("raffle", request.log),
+    } : {};
+    const lifecycle = await renderActivityAdministration(canConfigureModules, publication);
+    const content = administrationSection("modules", "modules-heading", "Activities", lifecycle);
+    const html = renderPage(assets, { pathname: "/admin/modules", title: `Plugin Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Manage optional capabilities available to this guild.", viewer, stylesheets: ["admin.css", "admin-modules.css", "discord-admin.css"], scripts: ["admin-modules.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Manage the optional capabilities available to your guild.</p></div>`, body: `<div class="admin-sections">${content}</div>` });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
 
