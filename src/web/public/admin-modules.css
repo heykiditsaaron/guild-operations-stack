@@ -86,3 +86,7 @@
 .module-lifecycle-permissions .permission-capability-editor {
   padding-inline: 0;
 }
+
+.module-lifecycle-publication { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--theme-border, rgba(255,255,255,.14)); }
+.module-lifecycle-publication h4 { margin: 0 0 .5rem; font-size: .95rem; }
+.module-lifecycle-publication p { margin: .35rem 0 .75rem; color: var(--theme-text-muted); font-size: .88rem; }
