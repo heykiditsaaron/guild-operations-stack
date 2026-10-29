@@ -21,7 +21,7 @@ import { discordRankRoleMappings, replaceDiscordRankRoleMappings } from "../../i
 import { guildRankDefinitions } from "../../core/guild/guild-ranks.js";
 import { requireOperationalInstallationGuildBinding } from "../../core/installation/guild-binding.js";
 import type { AssetRegistry } from "../assets.js";
-import { htmlText, renderPage } from "../render.js";
+import { htmlText, renderGuildSettingsHeader, renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
 
 const emojiSetupsInProgress = new Set<string>();
