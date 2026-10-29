@@ -201,3 +201,7 @@
 .rank-workspace[hidden] { display: none !important; }
 .rank-capability-details:not([open]) { border: 1px solid rgba(255,255,255,.1); border-radius: .65rem; padding: .2rem .75rem; }
 @media (max-width: 48rem) { .rank-administration-layout { grid-template-columns: minmax(0, 1fr); } .rank-administration-layout .permission-index { grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); } .permission-index h3 { grid-column: 1 / -1; } }
+
+[data-discord-role-slot]:not(:empty) { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--theme-border, rgba(255,255,255,.14)); }
+[data-discord-role-slot] .discord-field { display: block; margin-bottom: .75rem; }
+.discord-role-mappings-relocated { display: none; }
