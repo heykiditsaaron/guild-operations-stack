@@ -205,3 +205,21 @@
 [data-discord-role-slot]:not(:empty) { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--theme-border, rgba(255,255,255,.14)); }
 [data-discord-role-slot] .discord-field { display: block; margin-bottom: .75rem; }
 .discord-role-mappings-relocated { display: none; }
+
+/* Unified selected-rank editor */
+.rank-workspace { padding: clamp(1rem, 3vw, 1.5rem); }
+.rank-workspace-heading { padding-bottom: 1rem; }
+.rank-workspace-heading .rank-coordinate { margin: .35rem 0 0; }
+.rank-editor-section { padding: 1rem 0; border-top: 1px solid var(--theme-border, rgba(255,255,255,.12)); }
+.rank-editor-section:empty { display: none; }
+.rank-editor-section .rank-name-form { margin: 0; display: block; }
+.rank-editor-section .rank-name-form label { display: grid; gap: .5rem; }
+.rank-editor-section .rank-name-form input { width: 100%; max-width: none; box-sizing: border-box; }
+.rank-editor-section .rank-capability-details { margin: 0; }
+.rank-editor-section .rank-capability-details:not([open]) { border: 0; padding: 0; }
+.rank-editor-section .rank-capability-details > summary { padding: .35rem 0; }
+.rank-editor-section[data-discord-role-slot] { margin: 0; }
+.rank-editor-section[data-discord-role-slot] .discord-field { display: grid; gap: .5rem; margin: 0; }
+.rank-editor-section[data-discord-role-slot] select { width: 100%; }
+.rank-editor-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem; padding-top: 1rem; border-top: 1px solid var(--theme-border, rgba(255,255,255,.12)); }
+.rank-editor-actions [role="status"] { color: var(--theme-text-muted); font-size: .85rem; }
