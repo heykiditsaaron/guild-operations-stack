@@ -12,6 +12,11 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
+/** Shared header for the five Guild Settings destinations. */
+export function renderGuildSettingsHeader(section: string, description: string): string {
+  return `<div class="admin-page-header"><p class="eyebrow">Guild Settings</p><h1 id="page-title">${escapeHtml(section)}</h1><p class="lede">${escapeHtml(description)}</p></div>`;
+}
+
 export type WebViewerCharacter = {
   characterId: string;
   realmId: string;
