@@ -71,3 +71,28 @@ for (const form of document.querySelectorAll("[data-rank-name-form]")) {
     }
   });
 }
+
+// Move existing Discord role selectors into the corresponding rank workspaces.
+// All selectors still submit together through the existing batch configuration endpoint.
+const discordRoleFields = document.querySelector("[data-discord-role-fields]");
+if (discordRoleFields) {
+  let moved = 0;
+  for (const field of [...discordRoleFields.querySelectorAll("[data-discord-rank-field]")]) {
+    const slot = document.querySelector('[data-discord-role-slot="' + field.dataset.discordRankField + '"]');
+    if (!slot) continue;
+    slot.append(field);
+    const save = document.createElement("button");
+    save.type = "submit";
+    save.className = "button-secondary";
+    save.setAttribute("form", "discord-role-mappings-form");
+    save.textContent = "Save role mapping";
+    slot.append(save);
+    moved++;
+  }
+  if (moved && !discordRoleFields.children.length) {
+    const globalSave = document.querySelector("[data-discord-role-global-save]");
+    if (globalSave) globalSave.hidden = true;
+  }
+  const section = discordRoleFields.closest(".admin-section");
+  if (section && moved && !discordRoleFields.children.length) section.classList.add("discord-role-mappings-relocated");
+}
