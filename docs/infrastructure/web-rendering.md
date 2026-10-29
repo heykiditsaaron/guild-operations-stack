@@ -50,19 +50,26 @@ Guild Operations
 │
 └── Administration shell
     ├── General
-    ├── Modules
-    ├── Permissions
-    └── History
+    ├── General
+    ├── Appearance
+    ├── Ranks
+    ├── Discord (when available)
+    └── Plugins
 ```
 
 The member-facing Application shell is for participating in the guild. Its primary navigation owns ordinary application destinations, while **Me** remains persistent personal context and quick access. Guild-wide administration does not belong in Me.
 
-The Administration shell is for operating the guild. `/admin` is its entry and redirects to `/admin/general`. Its primary navigation owns the current administrative concerns:
+The Administration shell exposes **Guild Settings**: controls for configuring Guild Operations behavior within the guild, subject to the capabilities granted to each viewer. `/admin` redirects to `/admin/general`. Its primary navigation groups settings by the application capability being configured:
 
-- `/admin/general` for durable guild and application configuration;
-- `/admin/modules` for packaged Module and Plugin enablement/configuration;
-- `/admin/permissions` for administratively configurable permission policy;
-- `/admin/history` for operational inspection and recorded outcomes.
+- `/admin/general` for guild synchronization, orientation, and Article publication destination;
+- `/admin/appearance` for theme, homepage composition, and guild presentation links;
+- `/admin/permissions` (**Ranks**) for rank display names, capability policy, and Discord role mappings;
+- `/admin/discord` for Discord connection, server association, and integration utilities, when Discord administration is available;
+- `/admin/modules` (**Plugins**) for activity enablement and Raid/Raffle publication destinations.
+
+The legacy `/admin/homepage` GET redirects to Appearance. Existing configuration mutation endpoints retain their backend authorization requirements. In particular, Discord role mapping requires Discord configuration authority independently of permission-policy administration authority.
+
+Operational inspection remains available at `/admin/history` but is no longer a top-level Guild Settings destination. Host-owned installation, credentials, deployment, and recovery are outside Guild Settings.
 
 Modules may gain administrative depth beneath the appropriate concern without each becoming a top-level shell destination.
 
