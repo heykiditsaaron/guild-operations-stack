@@ -42,7 +42,7 @@ function selectRank(rankIndex) {
 }
 for (const button of rankSelectors) button.addEventListener("click", () => selectRank(button.dataset.rankSelect));
 if (rankSelectors.length) {
-  const requestedRank = location.hash.match(/^#rank-(\\d+)$/)?.[1];
+  const requestedRank = location.hash.match(/^#rank-(\d+)$/)?.[1];
   selectRank(rankSelectors.some(button => button.dataset.rankSelect === requestedRank) ? requestedRank : rankSelectors[0].dataset.rankSelect);
 }
 
