@@ -52,7 +52,7 @@ export async function registerHomePage(app: FastifyInstance, assets: AssetRegist
       : "";
     const primitives = (await Promise.all(homepage.primitives.map((primitive, index) => renderPrimitive(primitive, index, canPublishArticles)))).join("\n");
     const editHomepage = viewer.authenticated && viewer.canConfigureGuildPresentation
-      ? `<div class="home-edit"><a href="/admin/homepage">Edit homepage</a></div>`
+      ? `<div class="home-edit"><a href="/admin/appearance">Edit homepage</a></div>`
       : "";
 
     const html = renderPage(assets, {
