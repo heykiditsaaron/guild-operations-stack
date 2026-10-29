@@ -26,6 +26,107 @@ import { viewerForRequest } from "../viewer.js";
 
 const emojiSetupsInProgress = new Set<string>();
 
+export type DiscordContextSetting = "article" | "raid" | "raffle" | "roles";
+
+/** Presentation only. Mutation endpoints continue to enforce Discord configuration authority. */
+export async function renderDiscordContextSetting(kind: DiscordContextSetting, log: { warn: (value: unknown, message: string) => void }): Promise<string> {
+  const configuration = await discordIntegrationConfiguration();
+  if (kind === "roles") {
+    const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
+    const [guildRanks, mappings] = await Promise.all([guildRankDefinitions(guildId), discordRankRoleMappings(guildId)]);
+    let roleSection = "<p>Enable Discord and establish the server to configure role synchronization.</p>";
+    if (configuration?.enabled && configuration.discordGuildId && configuration.botUserId) {
+      try {
+        const [roles, botMember] = await Promise.all([
+          discordServerRoles(configuration.botToken, configuration.discordGuildId),
+          discordServerMember(configuration.botToken, configuration.discordGuildId, configuration.botUserId),
+        ]);
+        if (botMember) {
+          const roleReadiness = discordRoleReadiness({
+            roles, botRoleIds: botMember.roles, botUserId: configuration.botUserId,
+            guildId: configuration.discordGuildId, mappedRoleIds: mappings.map((mapping) => mapping.discordRoleId),
+          });
+          const options = roles.filter((role) => role.id !== configuration.discordGuildId && !role.managed);
+          const fields = guildRanks.map((rank) => {
+            const selected = mappings.find((mapping) => mapping.rankIndex === rank.rankIndex)?.discordRoleId ?? "";
+            return `<label class="discord-field"><span>${htmlText(rank.displayName)} (Rank ${rank.rankIndex})</span>
+              <select name="rank_${rank.rankIndex}"><option value="">No role</option>
+              ${options.map((role) => `<option value="${htmlText(role.id)}"${selected === role.id ? " selected" : ""}>${htmlText(role.name)}</option>`).join("")}
+              </select></label>`;
+          }).join("");
+          roleSection = `<p>${mappings.length === 0 ? "No rank roles configured." : roleReadiness.ready ? "Configured role mappings are manageable." : "Role synchronization needs attention."}</p>
+            ${roleReadiness.reasons.map((reason) => `<p>${htmlText(reason)}</p>`).join("")}
+            <form method="post" action="/admin/discord/roles">
+              <p>Choose an optional Discord role for each effective guild rank.</p>
+              ${fields}<button class="button-primary" type="submit">Save role mappings</button>
+            </form>`;
+        } else {
+          roleSection = "<p>The bot is not in the bound Discord server.</p>";
+        }
+      } catch (error) {
+        log.warn({ err: error }, "Discord role discovery failed");
+        roleSection = "<p>Unable to inspect Discord roles. Check bot authorization.</p>";
+      }
+    }
+    return roleSection;
+  }
+  if (kind === "article") {
+    let articleSection = "<p>Enable Discord and establish the server to select an article publication channel.</p>";
+    if (configuration?.enabled && configuration.discordGuildId) {
+      try {
+        const channels = (await discordServerChannels(configuration.botToken, configuration.discordGuildId))
+          .filter((channel) => channel.type === DISCORD_TEXT_CHANNEL || channel.type === DISCORD_ANNOUNCEMENT_CHANNEL);
+        const options = channels.map((channel) => `<option value="${htmlText(channel.id)}"${configuration.articleChannelId === channel.id ? " selected" : ""}>${htmlText(channel.name ?? channel.id)}</option>`).join("");
+        articleSection = `<p>Publish Guild Operations articles to an optional Discord channel. Articles remain authoritative in Guild Operations.</p>
+          <form method="post" action="/admin/discord/articles">
+            <label class="discord-field"><span>Article publication channel</span><select name="channel_id"><option value="">Do not publish articles to Discord</option>${options}</select></label>
+            <button type="submit" class="button-primary">Save article destination</button>
+          </form>`;
+      } catch (error) {
+        log.warn({ err: error }, "Discord channel discovery failed");
+        articleSection = "<p>Unable to inspect Discord channels. Check bot authorization.</p>";
+      }
+    }
+    return articleSection;
+  }
+  if (kind === "raid") {
+    let raidSection = "<p>Enable Discord and establish the server to select a raid publication channel.</p>";
+    if (configuration?.enabled && configuration.discordGuildId) {
+      try {
+        const channels = (await discordServerChannels(configuration.botToken, configuration.discordGuildId))
+          .filter((channel) => channel.type === DISCORD_TEXT_CHANNEL || channel.type === DISCORD_ANNOUNCEMENT_CHANNEL);
+        const options = channels.map((channel) => `<option value="${htmlText(channel.id)}"${configuration.raidChannelId === channel.id ? " selected" : ""}>${htmlText(channel.name ?? channel.id)}</option>`).join("");
+        raidSection = `<p>Choose where future Raid projections will appear. Selecting a channel does not publish existing raids.</p>
+          <form method="post" action="/admin/discord/raids">
+            <label class="discord-field"><span>Raid publication channel</span><select name="channel_id"><option value="">Do not publish raids to Discord</option>${options}</select></label>
+            <button type="submit" class="button-primary">Save raid destination</button>
+          </form>`;
+      } catch (error) {
+        log.warn({ err: error }, "Discord raid channel discovery failed");
+        raidSection = "<p>Unable to inspect Discord channels. Check bot authorization.</p>";
+      }
+    }
+    return raidSection;
+  }
+    let raffleSection = "<p>Enable Discord and establish the server to select a raffle publication channel.</p>";
+    if (configuration?.enabled && configuration.discordGuildId) {
+      try {
+        const channels = (await discordServerChannels(configuration.botToken, configuration.discordGuildId))
+          .filter((channel) => channel.type === DISCORD_TEXT_CHANNEL || channel.type === DISCORD_ANNOUNCEMENT_CHANNEL);
+        const options = channels.map((channel) => `<option value="${htmlText(channel.id)}"${configuration.raffleChannelId === channel.id ? " selected" : ""}>${htmlText(channel.name ?? channel.id)}</option>`).join("");
+        raffleSection = `<p>Choose where future Raffle projections will appear. Selecting a channel does not publish existing raffles.</p>
+          <form method="post" action="/admin/discord/raffles">
+            <label class="discord-field"><span>Raffle publication channel</span><select name="channel_id"><option value="">Do not publish raffles to Discord</option>${options}</select></label>
+            <button type="submit" class="button-primary">Save raffle destination</button>
+          </form>`;
+      } catch (error) {
+        log.warn({ err: error }, "Discord raffle channel discovery failed");
+        raffleSection = "<p>Unable to inspect Discord channels. Check bot authorization.</p>";
+      }
+    }
+  return raffleSection;
+}
+
 export async function registerDiscordAdminPage(app: FastifyInstance, assets: AssetRegistry): Promise<void> {
   if (!app.hasContentTypeParser("application/x-www-form-urlencoded")) {
     app.addContentTypeParser("application/x-www-form-urlencoded", { parseAs: "string" }, (_request, body, done) => {
@@ -59,90 +160,6 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       ? '<form method="post" action="/admin/discord/confirm-server"><p>Confirm the Discord server after installing the bot. The bot must belong to exactly one server.</p><button type="submit">Confirm Discord server</button></form>'
       : "";
     const installUrl = (configuration?.applicationVerifiedAt || replacement) && configuration ? discordBotInstallUrl(configuration.applicationId) : null;
-    const guildId = (await requireOperationalInstallationGuildBinding()).guildId;
-    const [guildRanks, mappings] = await Promise.all([guildRankDefinitions(guildId), discordRankRoleMappings(guildId)]);
-    let roleSection = "<p>Enable Discord and establish the server to configure role synchronization.</p>";
-    if (configuration?.enabled && configuration.discordGuildId && configuration.botUserId) {
-      try {
-        const [roles, botMember] = await Promise.all([
-          discordServerRoles(configuration.botToken, configuration.discordGuildId),
-          discordServerMember(configuration.botToken, configuration.discordGuildId, configuration.botUserId),
-        ]);
-        if (botMember) {
-          const roleReadiness = discordRoleReadiness({
-            roles, botRoleIds: botMember.roles, botUserId: configuration.botUserId,
-            guildId: configuration.discordGuildId, mappedRoleIds: mappings.map((mapping) => mapping.discordRoleId),
-          });
-          const options = roles.filter((role) => role.id !== configuration.discordGuildId && !role.managed);
-          const fields = guildRanks.map((rank) => {
-            const selected = mappings.find((mapping) => mapping.rankIndex === rank.rankIndex)?.discordRoleId ?? "";
-            return `<label class="discord-field"><span>${htmlText(rank.displayName)} (Rank ${rank.rankIndex})</span>
-              <select name="rank_${rank.rankIndex}"><option value="">No role</option>
-              ${options.map((role) => `<option value="${htmlText(role.id)}"${selected === role.id ? " selected" : ""}>${htmlText(role.name)}</option>`).join("")}
-              </select></label>`;
-          }).join("");
-          roleSection = `<p>${mappings.length === 0 ? "No rank roles configured." : roleReadiness.ready ? "Configured role mappings are manageable." : "Role synchronization needs attention."}</p>
-            ${roleReadiness.reasons.map((reason) => `<p>${htmlText(reason)}</p>`).join("")}
-            <form method="post" action="/admin/discord/roles">
-              <p>Choose an optional Discord role for each effective guild rank.</p>
-              ${fields}<button class="button-primary" type="submit">Save role mappings</button>
-            </form>`;
-        } else {
-          roleSection = "<p>The bot is not in the bound Discord server.</p>";
-        }
-      } catch (error) {
-        request.log.warn({ err: error }, "Discord role discovery failed");
-        roleSection = "<p>Unable to inspect Discord roles. Check bot authorization.</p>";
-      }
-    }
-    let articleSection = "<p>Enable Discord and establish the server to select an article publication channel.</p>";
-    if (configuration?.enabled && configuration.discordGuildId) {
-      try {
-        const channels = (await discordServerChannels(configuration.botToken, configuration.discordGuildId))
-          .filter((channel) => channel.type === DISCORD_TEXT_CHANNEL || channel.type === DISCORD_ANNOUNCEMENT_CHANNEL);
-        const options = channels.map((channel) => `<option value="${htmlText(channel.id)}"${configuration.articleChannelId === channel.id ? " selected" : ""}>${htmlText(channel.name ?? channel.id)}</option>`).join("");
-        articleSection = `<p>Publish Guild Operations articles to an optional Discord channel. Articles remain authoritative in Guild Operations.</p>
-          <form method="post" action="/admin/discord/articles">
-            <label class="discord-field"><span>Article publication channel</span><select name="channel_id"><option value="">Do not publish articles to Discord</option>${options}</select></label>
-            <button type="submit" class="button-primary">Save article destination</button>
-          </form>`;
-      } catch (error) {
-        request.log.warn({ err: error }, "Discord channel discovery failed");
-        articleSection = "<p>Unable to inspect Discord channels. Check bot authorization.</p>";
-      }
-    }
-    let raidSection = "<p>Enable Discord and establish the server to select a raid publication channel.</p>";
-    if (configuration?.enabled && configuration.discordGuildId) {
-      try {
-        const channels = (await discordServerChannels(configuration.botToken, configuration.discordGuildId))
-          .filter((channel) => channel.type === DISCORD_TEXT_CHANNEL || channel.type === DISCORD_ANNOUNCEMENT_CHANNEL);
-        const options = channels.map((channel) => `<option value="${htmlText(channel.id)}"${configuration.raidChannelId === channel.id ? " selected" : ""}>${htmlText(channel.name ?? channel.id)}</option>`).join("");
-        raidSection = `<p>Choose where future Raid projections will appear. Selecting a channel does not publish existing raids.</p>
-          <form method="post" action="/admin/discord/raids">
-            <label class="discord-field"><span>Raid publication channel</span><select name="channel_id"><option value="">Do not publish raids to Discord</option>${options}</select></label>
-            <button type="submit" class="button-primary">Save raid destination</button>
-          </form>`;
-      } catch (error) {
-        request.log.warn({ err: error }, "Discord raid channel discovery failed");
-        raidSection = "<p>Unable to inspect Discord channels. Check bot authorization.</p>";
-      }
-    }
-    let raffleSection = "<p>Enable Discord and establish the server to select a raffle publication channel.</p>";
-    if (configuration?.enabled && configuration.discordGuildId) {
-      try {
-        const channels = (await discordServerChannels(configuration.botToken, configuration.discordGuildId))
-          .filter((channel) => channel.type === DISCORD_TEXT_CHANNEL || channel.type === DISCORD_ANNOUNCEMENT_CHANNEL);
-        const options = channels.map((channel) => `<option value="${htmlText(channel.id)}"${configuration.raffleChannelId === channel.id ? " selected" : ""}>${htmlText(channel.name ?? channel.id)}</option>`).join("");
-        raffleSection = `<p>Choose where future Raffle projections will appear. Selecting a channel does not publish existing raffles.</p>
-          <form method="post" action="/admin/discord/raffles">
-            <label class="discord-field"><span>Raffle publication channel</span><select name="channel_id"><option value="">Do not publish raffles to Discord</option>${options}</select></label>
-            <button type="submit" class="button-primary">Save raffle destination</button>
-          </form>`;
-      } catch (error) {
-        request.log.warn({ err: error }, "Discord raffle channel discovery failed");
-        raffleSection = "<p>Unable to inspect Discord channels. Check bot authorization.</p>";
-      }
-    }
     let previewSection = "<p>Enable Discord and establish the server to send an emoji preview.</p>";
     if (configuration?.enabled && configuration.discordGuildId && configuration.applicationVerifiedAt) {
       try {
@@ -192,9 +209,6 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
           ${installUrl && !configuration?.discordGuildId ? `<div class="discord-server-install"><h3>Install in your Discord server</h3><p>Choose the server for this deployment. Guild Operations verifies the bot relationship before binding the server.</p><a class="button-primary" href="${htmlText(installUrl)}" target="_blank" rel="noreferrer">Install in Discord Server</a></div>` : ""}
         </div>
       </section>
-      <section class="admin-section"><h2>Article publication</h2><div class="settings-panel">${articleSection}</div></section>
-      <section class="admin-section"><h2>Raid publication</h2><div class="settings-panel">${raidSection}</div></section>
-      <section class="admin-section"><h2>Raffle publication</h2><div class="settings-panel">${raffleSection}</div></section>
       <section class="admin-section"><h2>Application emojis</h2><div class="settings-panel">\n        <p>Set up raid role and WoW specialization icons. Existing icons are reused; unrelated emojis are not changed.</p>
         ${configuration?.applicationVerifiedAt ? `<form data-emoji-setup method="post" action="/admin/discord/emoji/raid-roles">
           <button type="submit" class="button-secondary" data-emoji-submit>Set up Discord icons</button>
@@ -210,7 +224,6 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
         ${((request.query as { preview?: string }).preview === "success") ? '<p role="status">Discord emoji preview sent to the selected channel.</p>' : ((request.query as { preview?: string }).preview === "failed") ? '<p role="alert">Unable to send the emoji preview. Check Operations → Logs.</p>' : ""}
         ${previewSection}
       </div></section>
-      <section class="admin-section"><h2>Rank role mapping</h2><div class="settings-panel">${roleSection}</div></section>
 
     </div>`;
 
@@ -355,7 +368,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     if (!await setDiscordRaidChannel(body.channel_id || null, expectedBinding)) {
       return reply.code(409).send({ error: "discord_configuration_changed_during_verification" });
     }
-    return reply.redirect("/admin/discord");
+    return reply.redirect("/admin/modules");
   });
 
   app.post("/admin/discord/raffles", async (request, reply) => {
@@ -377,7 +390,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     if (!await setDiscordRaffleChannel(body.channel_id || null, expectedBinding)) {
       return reply.code(409).send({ error: "discord_configuration_changed_during_verification" });
     }
-    return reply.redirect("/admin/discord");
+    return reply.redirect("/admin/modules");
   });
 
   app.post("/admin/discord/articles", async (request, reply) => {
@@ -397,7 +410,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
     if (!await setDiscordArticleChannel(body.channel_id || null, expectedBinding)) {
       return reply.code(409).send({ error: "discord_configuration_changed_during_verification" });
     }
-    return reply.redirect("/admin/discord");
+    return reply.redirect("/admin/general");
   });
 
   app.post("/admin/discord/roles", async (request, reply) => {
@@ -441,7 +454,7 @@ export async function registerDiscordAdminPage(app: FastifyInstance, assets: Ass
       }
       throw error;
     }
-    return reply.redirect("/admin/discord");
+    return reply.redirect("/admin/permissions");
   });
 
   app.post("/admin/discord/confirm-server", async (request, reply) => {
