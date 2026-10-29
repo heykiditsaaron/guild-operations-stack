@@ -32,7 +32,7 @@ import { GUILD_THEMES, guildTheme, isGuildThemeKey, setGuildTheme, type GuildThe
 import { guildPresentation, parseGuildPresentationUrl, setGuildPresentationDestinations, setGuildSettingsLocationAcknowledged, type GuildPresentation } from "../../core/presentation/guild-presentation.js";
 import { guildHomepage, parseGuildHomepage, setGuildHomepage, type GuildHomepage, type GuildHomepagePrimitive } from "../../core/presentation/guild-homepage.js";
 import type { AssetRegistry } from "../assets.js";
-import { renderPage } from "../render.js";
+import { renderGuildSettingsHeader, renderPage } from "../render.js";
 import { viewerForRequest } from "../viewer.js";
 import { renderDiscordContextSetting } from "./discord-admin.js";
 import { publishOperationalRecord } from "../../operational-inspection.js";
@@ -150,7 +150,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     const articleSettings = canConfigureDiscord ? administrationSection("article-publication", "article-publication-heading", "Article publication", `<div class="settings-panel">${await renderDiscordContextSetting("article", request.log)}</div>`) : "";
     const content = `${orientation}<div class="admin-sections">${guildSettings}${articleSettings}</div>`;
 
-    const html = renderPage(assets, { pathname: "/admin/general", title: `General Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Inspect and configure Guild Operations.", viewer, stylesheets: ["admin.css", "discord-admin.css"], scripts: ["admin.js", "operations.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Inspect and manage Guild Operations according to your authority.</p></div>`, body: `${content}` });
+    const html = renderPage(assets, { pathname: "/admin/general", title: `General Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Inspect and configure Guild Operations.", viewer, stylesheets: ["admin.css", "discord-admin.css"], scripts: ["admin.js", "operations.js"], header: renderGuildSettingsHeader("General", "Inspect and manage guild-wide configuration."), body: `${content}` });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
 
@@ -171,7 +171,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
       ? renderHomepageSettings(homepage)
       : renderHomepageSettings(homepage).replaceAll("<input ", "<input disabled ").replaceAll("<textarea ", "<textarea disabled ").replaceAll("<select ", "<select disabled ").replaceAll("<button ", "<button disabled ");
     const homepageSection = administrationSection("homepage-presentation", "homepage-presentation-heading", "Homepage", homepageSettings);
-    const html = renderPage(assets, { pathname: "/admin/appearance", title: `Appearance Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Configure the guild appearance and homepage.", viewer, stylesheets: ["admin.css"], scripts: ["admin.js", "homepage-admin.js"], header: `<div class="admin-page-header"><h1 id="page-title">Appearance</h1><p class="lede">Configure how your guild is presented in Guild Operations.</p></div>`, body: `<div class="admin-sections">${themeSettings}${presentationSettings}${homepageSection}</div>` });
+    const html = renderPage(assets, { pathname: "/admin/appearance", title: `Appearance Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Configure the guild appearance and homepage.", viewer, stylesheets: ["admin.css"], scripts: ["admin.js", "homepage-admin.js"], header: renderGuildSettingsHeader("Appearance", "Configure how your guild is presented in Guild Operations."), body: `<div class="admin-sections">${themeSettings}${presentationSettings}${homepageSection}</div>` });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
 
@@ -189,7 +189,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     } : {};
     const lifecycle = await renderActivityAdministration(canConfigureModules, publication);
     const content = administrationSection("modules", "modules-heading", "Activities", lifecycle);
-    const html = renderPage(assets, { pathname: "/admin/modules", title: `Plugin Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Manage optional capabilities available to this guild.", viewer, stylesheets: ["admin.css", "admin-modules.css", "discord-admin.css"], scripts: ["admin-modules.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Manage the optional capabilities available to your guild.</p></div>`, body: `<div class="admin-sections">${content}</div>` });
+    const html = renderPage(assets, { pathname: "/admin/modules", title: `Plugin Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Manage optional capabilities available to this guild.", viewer, stylesheets: ["admin.css", "admin-modules.css", "discord-admin.css"], scripts: ["admin-modules.js"], header: renderGuildSettingsHeader("Plugins", "Manage the optional capabilities available to your guild."), body: `<div class="admin-sections">${content}</div>` });
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
 
@@ -267,7 +267,7 @@ export async function registerAdminPage(app: FastifyInstance, assets: AssetRegis
     const developmentAuthority = identity ? hasDevelopmentGuildMasterAuthority(identity.identityId) : false;
     const canRename = identity ? (developmentAuthority || (await effectiveGuildAuthority(identity.identityId))?.rankIndex === 0) : false;
     const content = authorized && policies ? `<section class="permission-administration" aria-labelledby="permission-heading"><div class="permission-intro"><h2 id="permission-heading">Guild ranks</h2><p>Start with a guild rank to review its display name, capabilities, and integration relationships. Lower Blizzard rank numbers mean higher authority; Rank 0 is Guild Master.</p>${developmentAuthority ? `<p class="permission-operator-notice"><strong>Development authority override active.</strong> This access is independent of your current guild rank.</p>` : ""}</div>${renderPermissionPolicies(policies, canRename)}</section>` : `<section class="admin-unavailable" aria-labelledby="admin-unavailable-heading"><h2 id="admin-unavailable-heading">Permission administration is not available for this account.</h2></section>`;
-    const html = renderPage(assets, { pathname: "/admin/permissions", title: `Ranks Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Configure guild rank presentation and capability access.", viewer, stylesheets: ["admin.css", "admin-permissions.css", "discord-admin.css"], scripts: ["admin-permissions.js"], header: `<div class="admin-page-header"><h1 id="page-title">Settings</h1><p class="lede">Configure guild ranks and their capabilities.</p></div>`, body: `${content}${discordRoleSettings}` });
+    const html = renderPage(assets, { pathname: "/admin/permissions", title: `Ranks Settings · ${viewer.guildPresentation.guildName} Guild Operations`, description: "Configure guild rank presentation and capability access.", viewer, stylesheets: ["admin.css", "admin-permissions.css", "discord-admin.css"], scripts: ["admin-permissions.js"], header: renderGuildSettingsHeader("Ranks", "Configure guild ranks and their capabilities."), body: `${content}${discordRoleSettings}` });
     if (!authorized && !canConfigureDiscord) return reply.code(identity ? 403 : 401).header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
     return reply.header("Cache-Control", "no-cache").type("text/html; charset=utf-8").send(html);
   });
